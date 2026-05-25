@@ -61,7 +61,7 @@ export function StaffSettingsClient({
   const [scoutFileId, setScoutFileId] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [offsetSeconds, setOffsetSeconds] = useState("0");
-  const [prerollSeconds, setPrerollSeconds] = useState("0");
+  const [prerollSeconds, setPrerollSeconds] = useState("3");
   const [useOriginalTime, setUseOriginalTime] = useState(false);
   const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
@@ -179,7 +179,7 @@ export function StaffSettingsClient({
       setScoutFileId("");
       setVideoUrl("");
       setOffsetSeconds("0");
-      setPrerollSeconds("0");
+      setPrerollSeconds("3");
       setUseOriginalTime(false);
       setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
     } catch (error) {

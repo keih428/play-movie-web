@@ -10,7 +10,7 @@ import type {
 const demoSettings: VideoSyncSettings = {
   youtubeUrl: "https://www.youtube.com/watch?v=demo-video-id",
   offsetSeconds: 12,
-  prerollSeconds: 4,
+  prerollSeconds: 3,
   useOriginalTime: false,
 };
 

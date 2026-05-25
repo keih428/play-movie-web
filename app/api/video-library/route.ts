@@ -8,14 +8,26 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const payload = (await request.json()) as {
-    root?: VideoLibraryNode[];
-  };
+  try {
+    const payload = (await request.json()) as {
+      root?: VideoLibraryNode[];
+    };
 
-  if (!Array.isArray(payload.root)) {
-    return NextResponse.json({ error: "root is required" }, { status: 400 });
+    if (!Array.isArray(payload.root)) {
+      return NextResponse.json({ error: "root is required" }, { status: 400 });
+    }
+
+    const library = await saveVideoLibrary({ root: payload.root });
+    return NextResponse.json({ library });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "ライブラリの保存に失敗しました",
+      },
+      { status: 500 },
+    );
   }
-
-  const library = await saveVideoLibrary({ root: payload.root });
-  return NextResponse.json({ library });
 }

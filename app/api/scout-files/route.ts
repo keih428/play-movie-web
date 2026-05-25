@@ -70,77 +70,101 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const formData = await request.formData();
-  const file = formData.get("file");
-  const parentIdValue = formData.get("parentId");
-  const noteValue = formData.get("note");
-  const displayNameValue = formData.get("displayName");
+  try {
+    const formData = await request.formData();
+    const file = formData.get("file");
+    const parentIdValue = formData.get("parentId");
+    const noteValue = formData.get("note");
+    const displayNameValue = formData.get("displayName");
 
-  if (!(file instanceof File)) {
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { error: "ファイルを選択してください" },
+        { status: 400 },
+      );
+    }
+
+    const extension = getFileExtension(file.name || "");
+    if (!extension) {
+      return NextResponse.json(
+        { error: "vsm または vsdb ファイルのみ登録できます" },
+        { status: 400 },
+      );
+    }
+
+    const parentId =
+      typeof parentIdValue === "string" && parentIdValue.trim()
+        ? parentIdValue
+        : null;
+    const text = await file.text();
+    const parsedCollection = parseScoutFile(extension, text, file.name);
+    const fileId = makeId();
+    const uploadedAt = new Date().toISOString();
+
+    await saveScoutFileRecord({
+      id: fileId,
+      fileName: file.name,
+      extension,
+      text,
+      parsedCollection,
+      uploadedAt,
+    });
+
+    const library = await getScoutFileLibrary();
+    const nextRoot = addNode(library.root, parentId, {
+      id: makeId(),
+      type: "file",
+      name:
+        typeof displayNameValue === "string" && displayNameValue.trim()
+          ? displayNameValue.trim()
+          : file.name.replace(/\.[^.]+$/, ""),
+      fileId,
+      extension,
+      note:
+        typeof noteValue === "string" && noteValue.trim()
+          ? noteValue.trim()
+          : undefined,
+    });
+    const savedLibrary = await saveScoutFileLibrary({ root: nextRoot });
+
+    return NextResponse.json({ library: savedLibrary });
+  } catch (error) {
     return NextResponse.json(
-      { error: "ファイルを選択してください" },
-      { status: 400 },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "試合データの登録に失敗しました",
+      },
+      { status: 500 },
     );
   }
-
-  const extension = getFileExtension(file.name || "");
-  if (!extension) {
-    return NextResponse.json(
-      { error: "vsm または vsdb ファイルのみ登録できます" },
-      { status: 400 },
-    );
-  }
-
-  const parentId =
-    typeof parentIdValue === "string" && parentIdValue.trim()
-      ? parentIdValue
-      : null;
-  const text = await file.text();
-  const parsedCollection = parseScoutFile(extension, text, file.name);
-  const fileId = makeId();
-  const uploadedAt = new Date().toISOString();
-
-  await saveScoutFileRecord({
-    id: fileId,
-    fileName: file.name,
-    extension,
-    text,
-    parsedCollection,
-    uploadedAt,
-  });
-
-  const library = await getScoutFileLibrary();
-  const nextRoot = addNode(library.root, parentId, {
-    id: makeId(),
-    type: "file",
-    name:
-      typeof displayNameValue === "string" && displayNameValue.trim()
-        ? displayNameValue.trim()
-        : file.name.replace(/\.[^.]+$/, ""),
-    fileId,
-    extension,
-    note:
-      typeof noteValue === "string" && noteValue.trim()
-        ? noteValue.trim()
-        : undefined,
-  });
-  const savedLibrary = await saveScoutFileLibrary({ root: nextRoot });
-
-  return NextResponse.json({ library: savedLibrary });
 }
 
 export async function PUT(request: NextRequest) {
-  const payload = (await request.json()) as {
-    root?: ScoutFileNode[];
-  };
+  try {
+    const payload = (await request.json()) as {
+      root?: ScoutFileNode[];
+    };
 
-  if (!Array.isArray(payload.root)) {
+    if (!Array.isArray(payload.root)) {
+      return NextResponse.json(
+        { error: "ルート構造が必要です" },
+        { status: 400 },
+      );
+    }
+
+    const library = await saveScoutFileLibrary({ root: payload.root });
+    return NextResponse.json({ library });
+  } catch (error) {
     return NextResponse.json(
-      { error: "ルート構造が必要です" },
-      { status: 400 },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "試合データライブラリの保存に失敗しました",
+      },
+      { status: 500 },
     );
   }
-
-  const library = await saveScoutFileLibrary({ root: payload.root });
-  return NextResponse.json({ library });
 }
