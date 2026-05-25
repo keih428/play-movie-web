@@ -63,6 +63,7 @@ export function StaffSettingsClient({
   const [prerollSeconds, setPrerollSeconds] = useState("3");
   const [useOriginalTime, setUseOriginalTime] = useState(false);
   const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
+  const [selectedSetIndex, setSelectedSetIndex] = useState<number>();
   const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
@@ -73,10 +74,28 @@ export function StaffSettingsClient({
     [scoutLibrary.root],
   );
   const matchVideos = useMemo(() => getMatchVideos(videoLibrary), [videoLibrary]);
+  const selectedSetVideo = setVideos.find(
+    (entry) => entry.setIndex === selectedSetIndex,
+  );
+
+  function updateSelectedSetVideo(
+    updater: (entry: VideoSyncSetSource) => VideoSyncSetSource,
+  ) {
+    if (typeof selectedSetIndex !== "number") {
+      return;
+    }
+
+    setSetVideos((current) =>
+      current.map((entry) =>
+        entry.setIndex === selectedSetIndex ? updater(entry) : entry,
+      ),
+    );
+  }
 
   useEffect(() => {
     if (!scoutFileId) {
       setSetVideos([]);
+      setSelectedSetIndex(undefined);
       return;
     }
 
@@ -106,10 +125,12 @@ export function StaffSettingsClient({
 
         if (!cancelled) {
           setSetVideos(nextSetVideos);
+          setSelectedSetIndex(nextSetVideos[0]?.setIndex);
         }
       } catch (error) {
         if (!cancelled) {
           setSetVideos([]);
+          setSelectedSetIndex(undefined);
           setRegisterStatus(
             error instanceof Error
               ? error.message
@@ -234,6 +255,7 @@ export function StaffSettingsClient({
       setMatchName("");
       setScoutFileId("");
       setSetVideos([]);
+      setSelectedSetIndex(undefined);
       setPrerollSeconds("3");
       setUseOriginalTime(false);
       setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
@@ -299,63 +321,90 @@ export function StaffSettingsClient({
               <div className="section-heading">
                 <h3>セットごとの試合動画</h3>
                 <p className="muted">
-                  1つの vsm / vsdb は試合単位で扱うため、各セットに対応する動画とオフセットを設定します。
+                  何セット目かを選んだうえで、そのセットに対応する動画リンクとオフセット秒を設定します。
                 </p>
               </div>
 
-              <div className="stack">
-                {setVideos.map((entry, index) => (
-                  <div className="soft-panel" key={entry.setIndex}>
-                    <div className="section-heading">
-                      <h3>セット {entry.setIndex}</h3>
-                    </div>
-                    <div className="field-grid">
-                      <div className="field">
-                        <label htmlFor={`set-video-${entry.setIndex}`}>試合動画</label>
-                        <select
-                          id={`set-video-${entry.setIndex}`}
-                          value={entry.youtubeUrl}
-                          onChange={(event) =>
-                            setSetVideos((current) =>
-                              current.map((item, itemIndex) =>
-                                itemIndex === index
-                                  ? { ...item, youtubeUrl: event.target.value }
-                                  : item,
-                              ),
-                            )
-                          }
-                        >
-                          <option value="">試合動画を選択</option>
-                          {matchVideos.map((video) => (
-                            <option key={video.id} value={video.url}>
-                              {video.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+              <div className="field">
+                <label htmlFor="selected-set-index">対象セット</label>
+                <select
+                  id="selected-set-index"
+                  value={selectedSetIndex ?? ""}
+                  onChange={(event) => setSelectedSetIndex(Number(event.target.value))}
+                >
+                  {setVideos.map((entry) => (
+                    <option key={entry.setIndex} value={entry.setIndex}>
+                      セット {entry.setIndex}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                      <div className="field">
-                        <label htmlFor={`set-offset-${entry.setIndex}`}>オフセット秒</label>
-                        <input
-                          id={`set-offset-${entry.setIndex}`}
-                          type="number"
-                          value={entry.offsetSeconds}
-                          onChange={(event) =>
-                            setSetVideos((current) =>
-                              current.map((item, itemIndex) =>
-                                itemIndex === index
-                                  ? {
-                                      ...item,
-                                      offsetSeconds: Number(event.target.value) || 0,
-                                    }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                      </div>
+              {selectedSetVideo ? (
+                <div className="soft-panel">
+                  <div className="section-heading">
+                    <h3>セット {selectedSetVideo.setIndex} の設定</h3>
+                  </div>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="selected-set-video">試合動画</label>
+                      <select
+                        id="selected-set-video"
+                        value={selectedSetVideo.youtubeUrl}
+                        onChange={(event) =>
+                          updateSelectedSetVideo((entry) => ({
+                            ...entry,
+                            youtubeUrl: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">試合動画を選択</option>
+                        {matchVideos.map((video) => (
+                          <option key={video.id} value={video.url}>
+                            {video.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="selected-set-offset">オフセット秒</label>
+                      <input
+                        id="selected-set-offset"
+                        type="number"
+                        value={selectedSetVideo.offsetSeconds}
+                        onChange={(event) =>
+                          updateSelectedSetVideo((entry) => ({
+                            ...entry,
+                            offsetSeconds: Number(event.target.value) || 0,
+                          }))
+                        }
+                      />
                     </div>
                   </div>
+                </div>
+              ) : null}
+
+              <div className="workspace-list">
+                {setVideos.map((entry) => (
+                  <article className="workspace-card" key={entry.setIndex}>
+                    <div className="list-item-header">
+                      <strong>セット {entry.setIndex}</strong>
+                      <span className="tag">
+                        {entry.youtubeUrl ? "設定済み" : "未設定"}
+                      </span>
+                    </div>
+                    <div className="meta-grid">
+                      <div className="meta-card">
+                        <span className="muted">動画</span>
+                        <strong>{entry.youtubeUrl || "未選択"}</strong>
+                      </div>
+                      <div className="meta-card">
+                        <span className="muted">オフセット</span>
+                        <strong>{entry.offsetSeconds}s</strong>
+                      </div>
+                    </div>
+                  </article>
                 ))}
               </div>
             </section>
@@ -384,6 +433,9 @@ export function StaffSettingsClient({
                 <option value="time">再生時刻</option>
                 <option value="original">元時刻</option>
               </select>
+              <p className="muted">
+                `再生時刻` は通常の `time` を使い、`元時刻` はデータ内の `originalTime` を優先して使います。
+              </p>
             </div>
           </div>
 
