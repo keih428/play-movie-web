@@ -247,11 +247,18 @@ export function ScoutFileLibraryClient({
 
     async function loadLatestLibrary() {
       try {
+        console.log("[scout-file-library-client] load latest start");
         const response = await fetch("/api/scout-files", { cache: "no-store" });
         const payload = (await response.json()) as {
           library?: ScoutFileLibrary;
           error?: string;
         };
+        console.log("[scout-file-library-client] load latest response", {
+          status: response.status,
+          ok: response.ok,
+          rootCount: payload.library?.root.length ?? null,
+          error: payload.error ?? null,
+        });
 
         if (!response.ok || !payload.library) {
           throw new Error(
@@ -263,6 +270,7 @@ export function ScoutFileLibraryClient({
           setLibrary(payload.library);
         }
       } catch (error) {
+        console.error("[scout-file-library-client] load latest failed", error);
         if (!cancelled) {
           setStatus(
             error instanceof Error
@@ -282,6 +290,9 @@ export function ScoutFileLibraryClient({
   async function saveLibrary(nextRoot: ScoutFileNode[]) {
     setIsSaving(true);
     setStatus(undefined);
+    console.log("[scout-file-library-client] save start", {
+      rootCount: nextRoot.length,
+    });
 
     try {
       const response = await fetch("/api/scout-files", {
@@ -296,6 +307,12 @@ export function ScoutFileLibraryClient({
         library: ScoutFileLibrary;
         error?: string;
       };
+      console.log("[scout-file-library-client] save response", {
+        status: response.status,
+        ok: response.ok,
+        rootCount: payload.library?.root.length ?? null,
+        error: payload.error ?? null,
+      });
 
       if (!response.ok) {
         throw new Error(
@@ -305,6 +322,7 @@ export function ScoutFileLibraryClient({
       setLibrary(payload.library);
       setStatus("試合データライブラリを保存しました。");
     } catch (error) {
+      console.error("[scout-file-library-client] save failed", error);
       setStatus(
         error instanceof Error
           ? error.message
@@ -328,6 +346,10 @@ export function ScoutFileLibraryClient({
       note: note.trim() || undefined,
       children: [],
     });
+    console.log("[scout-file-library-client] handle add folder", {
+      parentId: parentId || null,
+      name: folderName.trim(),
+    });
 
     await saveLibrary(nextRoot);
     setFolderName("");
@@ -342,6 +364,12 @@ export function ScoutFileLibraryClient({
 
     setIsSaving(true);
     setStatus(undefined);
+    console.log("[scout-file-library-client] upload start", {
+      fileName: uploadFile.name,
+      fileSize: uploadFile.size,
+      parentId: parentId || null,
+      uploadName: uploadName.trim() || null,
+    });
 
     try {
       const formData = new FormData();
@@ -362,6 +390,12 @@ export function ScoutFileLibraryClient({
         library?: ScoutFileLibrary;
         error?: string;
       };
+      console.log("[scout-file-library-client] upload response", {
+        status: response.status,
+        ok: response.ok,
+        rootCount: payload.library?.root.length ?? null,
+        error: payload.error ?? null,
+      });
 
       if (!response.ok || !payload.library) {
         throw new Error(payload.error || "upload failed");
@@ -376,6 +410,7 @@ export function ScoutFileLibraryClient({
       }
       setStatus("試合データを登録しました。");
     } catch (error) {
+      console.error("[scout-file-library-client] upload failed", error);
       setStatus(
         error instanceof Error ? error.message : "試合データの登録に失敗しました。",
       );
@@ -385,6 +420,7 @@ export function ScoutFileLibraryClient({
   }
 
   async function handleDelete(id: string) {
+    console.log("[scout-file-library-client] handle delete", { id });
     await saveLibrary(removeNode(library.root, id));
   }
 
@@ -414,6 +450,11 @@ export function ScoutFileLibraryClient({
       name: editing.name.trim(),
       note: editing.note.trim() || undefined,
     }));
+    console.log("[scout-file-library-client] handle edit", {
+      id: editing.id,
+      parentId: editing.parentId,
+      name: editing.name.trim(),
+    });
 
     if (found.parentId !== editing.parentId) {
       nextRoot = moveNode(nextRoot, editing.id, editing.parentId);
@@ -424,6 +465,7 @@ export function ScoutFileLibraryClient({
   }
 
   async function handleMove(id: string, direction: "up" | "down") {
+    console.log("[scout-file-library-client] handle move", { id, direction });
     await saveLibrary(reorderAtLevel(library.root, id, direction));
   }
 

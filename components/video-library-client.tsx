@@ -256,11 +256,18 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
 
     async function loadLatestLibrary() {
       try {
+        console.log("[video-library-client] load latest start");
         const response = await fetch("/api/video-library", { cache: "no-store" });
         const payload = (await response.json()) as {
           library?: VideoLibrary;
           error?: string;
         };
+        console.log("[video-library-client] load latest response", {
+          status: response.status,
+          ok: response.ok,
+          rootCount: payload.library?.root.length ?? null,
+          error: payload.error ?? null,
+        });
 
         if (!response.ok || !payload.library) {
           throw new Error(payload.error || "ライブラリの取得に失敗しました。");
@@ -270,6 +277,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
           setLibrary(payload.library);
         }
       } catch (error) {
+        console.error("[video-library-client] load latest failed", error);
         if (!cancelled) {
           setStatus(
             error instanceof Error
@@ -289,6 +297,9 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
   async function saveLibrary(nextRoot: VideoLibraryNode[]) {
     setIsSaving(true);
     setStatus(undefined);
+    console.log("[video-library-client] save start", {
+      rootCount: nextRoot.length,
+    });
 
     try {
       const response = await fetch("/api/video-library", {
@@ -303,6 +314,12 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
         library: VideoLibrary;
         error?: string;
       };
+      console.log("[video-library-client] save response", {
+        status: response.status,
+        ok: response.ok,
+        rootCount: payload.library?.root.length ?? null,
+        error: payload.error ?? null,
+      });
 
       if (!response.ok) {
         throw new Error(payload.error || "ライブラリの保存に失敗しました。");
@@ -311,6 +328,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       setLibrary(payload.library);
       setStatus("ライブラリを保存しました。");
     } catch (error) {
+      console.error("[video-library-client] save failed", error);
       setStatus(
         error instanceof Error
           ? error.message
@@ -340,6 +358,12 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       note: note.trim() || undefined,
       children: mode === "folder" ? [] : undefined,
     });
+    console.log("[video-library-client] handle add", {
+      mode,
+      parentId: parentId || null,
+      name: name.trim(),
+      url: mode === "link" ? url.trim() : null,
+    });
 
     await saveLibrary(nextRoot);
     setName("");
@@ -348,6 +372,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
   }
 
   async function handleDelete(id: string) {
+    console.log("[video-library-client] handle delete", { id });
     await saveLibrary(removeNode(library.root, id));
   }
 
@@ -379,6 +404,12 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       url: node.type === "link" ? editing.url.trim() : undefined,
       note: editing.note.trim() || undefined,
     }));
+    console.log("[video-library-client] handle edit", {
+      id: editing.id,
+      parentId: editing.parentId,
+      name: editing.name.trim(),
+      url: editing.url.trim() || null,
+    });
 
     if (found.parentId !== editing.parentId) {
       nextRoot = moveNode(nextRoot, editing.id, editing.parentId);
@@ -389,6 +420,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
   }
 
   async function handleMove(id: string, direction: "up" | "down") {
+    console.log("[video-library-client] handle move", { id, direction });
     await saveLibrary(reorderAtLevel(library.root, id, direction));
   }
 
