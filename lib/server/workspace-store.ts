@@ -35,7 +35,7 @@ function hasBlobToken() {
 function assertPersistentWorkspaceStore() {
   if (isRunningOnVercel() && !hasBlobToken()) {
     throw new Error(
-      "Vercel 本番ではワークスペース保存に Vercel Blob が必要です。環境変数 `BLOB_READ_WRITE_TOKEN` と `WORKSPACE_STORE_PROVIDER=vercel-blob` を設定してください。",
+      "Vercel 本番ではワークスペース保存に Vercel Blob が必要です。環境変数 `BLOB_READ_WRITE_TOKEN` を設定してください。",
     );
   }
 }
@@ -214,9 +214,10 @@ let storePromise: Promise<WorkspaceStore> | undefined;
 
 async function resolveStore(): Promise<WorkspaceStore> {
   const provider = process.env.WORKSPACE_STORE_PROVIDER;
-  const useBlob =
-    provider === "vercel-blob" ||
-    (!provider && Boolean(process.env.BLOB_READ_WRITE_TOKEN));
+  const useBlob = isRunningOnVercel()
+    ? hasBlobToken()
+    : provider === "vercel-blob" ||
+      (!provider && Boolean(process.env.BLOB_READ_WRITE_TOKEN));
 
   if (useBlob) {
     return createBlobStore();

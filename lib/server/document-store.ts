@@ -16,7 +16,7 @@ function hasBlobToken() {
 function assertWritableDocumentStore() {
   if (isRunningOnVercel() && !hasBlobToken()) {
     throw new Error(
-      "Vercel 本番ではドキュメント保存に Vercel Blob が必要です。環境変数 `BLOB_READ_WRITE_TOKEN` と `WORKSPACE_STORE_PROVIDER=vercel-blob` を設定してください。",
+      "Vercel 本番ではドキュメント保存に Vercel Blob が必要です。環境変数 `BLOB_READ_WRITE_TOKEN` を設定してください。",
     );
   }
 }
@@ -31,10 +31,11 @@ function getDocumentPath(key: string) {
 
 function shouldUseBlob() {
   const provider = process.env.WORKSPACE_STORE_PROVIDER;
-  return (
-    provider === "vercel-blob" ||
-    (!provider && hasBlobToken())
-  );
+  if (isRunningOnVercel()) {
+    return hasBlobToken();
+  }
+
+  return provider === "vercel-blob" || (!provider && hasBlobToken());
 }
 
 async function putDocument(pathname: string, body: string) {
