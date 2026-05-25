@@ -19,6 +19,10 @@ function makeId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function normalizeName(name: string) {
+  return name.trim().toLocaleLowerCase();
+}
+
 function addNode(
   nodes: ScoutFileNode[],
   parentId: string | null,
@@ -100,21 +104,77 @@ function updateNode(
 
 function collectFolders(
   nodes: ScoutFileNode[],
-  depth = 0,
+  path = "",
 ): Array<{ id: string; label: string }> {
   return nodes.flatMap((entry) => {
     if (entry.type !== "folder") {
       return [];
     }
 
+    const nextPath = path ? `${path}/${entry.name}` : entry.name;
+
     return [
       {
         id: entry.id,
-        label: `${"  ".repeat(depth)}${entry.name}`,
+        label: nextPath,
       },
-      ...collectFolders(entry.children ?? [], depth + 1),
+      ...collectFolders(entry.children ?? [], nextPath),
     ];
   });
+}
+
+function getSiblingNodes(
+  nodes: ScoutFileNode[],
+  parentId: string | null,
+): ScoutFileNode[] {
+  if (!parentId) {
+    return nodes;
+  }
+
+  const found = findNode(nodes, parentId);
+  if (!found || found.node.type !== "folder") {
+    return [];
+  }
+
+  return found.node.children ?? [];
+}
+
+function hasNameConflict(
+  nodes: ScoutFileNode[],
+  parentId: string | null,
+  name: string,
+  excludeId?: string,
+): boolean {
+  const normalizedName = normalizeName(name);
+  return getSiblingNodes(nodes, parentId).some(
+    (node) =>
+      node.id !== excludeId && normalizeName(node.name) === normalizedName,
+  );
+}
+
+function collectDescendantFolderIds(
+  nodes: ScoutFileNode[],
+  targetId: string,
+): string[] {
+  const found = findNode(nodes, targetId);
+  if (!found || found.node.type !== "folder") {
+    return [];
+  }
+
+  const ids: string[] = [];
+  const walk = (entries: ScoutFileNode[]) => {
+    entries.forEach((entry) => {
+      if (entry.type !== "folder") {
+        return;
+      }
+
+      ids.push(entry.id);
+      walk(entry.children ?? []);
+    });
+  };
+
+  walk(found.node.children ?? []);
+  return ids;
 }
 
 function moveNode(
@@ -168,51 +228,95 @@ function TreeNode({
   onEdit: (node: ScoutFileNode) => void;
   onMove: (id: string, direction: "up" | "down") => void;
 }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const hasChildren = Boolean(node.children?.length);
+
   return (
     <article className="tree-node">
       <div className="tree-node-header">
-        <div>
-          <strong>{node.name}</strong>
+        <div className="tree-node-main">
+          <div className="tree-node-title-row">
+            {node.type === "folder" ? (
+              <button
+                className="tree-toggle"
+                type="button"
+                aria-expanded={isExpanded}
+                onClick={() => setIsExpanded((current) => !current)}
+              >
+                {isExpanded ? "▾" : "▸"}
+              </button>
+            ) : (
+              <span className="tree-toggle tree-toggle-placeholder" aria-hidden="true">
+                •
+              </span>
+            )}
+            <strong>{node.name}</strong>
+          </div>
           <div className="tag-row">
             <span className="tag">{node.type === "folder" ? "フォルダ" : "試合データ"}</span>
             {node.extension ? <span className="tag">{node.extension}</span> : null}
           </div>
           {node.note ? <p className="muted">{node.note}</p> : null}
         </div>
-        <div className="button-row">
+        <div className="tree-menu">
           <button
-            className="button secondary"
+            className="tree-menu-trigger"
             type="button"
-            onClick={() => onMove(node.id, "up")}
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen((current) => !current)}
           >
-            上へ
+            ⋯
           </button>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={() => onMove(node.id, "down")}
-          >
-            下へ
-          </button>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={() => onEdit(node)}
-          >
-            編集
-          </button>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={() => onDelete(node.id)}
-          >
-            削除
-          </button>
+          {isMenuOpen ? (
+            <div className="tree-menu-popover">
+              <button
+                className="tree-menu-item"
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onMove(node.id, "up");
+                }}
+              >
+                上へ
+              </button>
+              <button
+                className="tree-menu-item"
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onMove(node.id, "down");
+                }}
+              >
+                下へ
+              </button>
+              <button
+                className="tree-menu-item"
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onEdit(node);
+                }}
+              >
+                編集
+              </button>
+              <button
+                className="tree-menu-item tree-menu-item-danger"
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onDelete(node.id);
+                }}
+              >
+                削除
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
-      {node.children?.length ? (
+      {hasChildren && isExpanded ? (
         <div className="tree-children">
-          {node.children.map((child) => (
+          {node.children?.map((child) => (
             <TreeNode
               key={child.id}
               node={child}
@@ -242,6 +346,10 @@ export function ScoutFileLibraryClient({
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
+  const editingBlockedFolderIds = useMemo(
+    () => (editing ? [editing.id, ...collectDescendantFolderIds(library.root, editing.id)] : []),
+    [editing, library.root],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -340,6 +448,11 @@ export function ScoutFileLibraryClient({
       return;
     }
 
+    if (hasNameConflict(library.root, parentId || null, folderName)) {
+      setStatus("同じフォルダ内に同名のフォルダまたは試合データは追加できません。");
+      return;
+    }
+
     const nextRoot = addNode(library.root, parentId || null, {
       id: makeId(),
       type: "folder",
@@ -360,6 +473,12 @@ export function ScoutFileLibraryClient({
   async function handleUpload() {
     if (!uploadFile) {
       setStatus("アップロードするファイルを選択してください。");
+      return;
+    }
+
+    const nextName = uploadName.trim() || uploadFile.name.replace(/\.[^.]+$/, "");
+    if (hasNameConflict(library.root, parentId || null, nextName)) {
+      setStatus("同じフォルダ内に同名のフォルダまたは試合データは追加できません。");
       return;
     }
 
@@ -443,6 +562,18 @@ export function ScoutFileLibraryClient({
 
     const found = findNode(library.root, editing.id);
     if (!found) {
+      return;
+    }
+
+    if (
+      hasNameConflict(
+        library.root,
+        editing.parentId || null,
+        editing.name,
+        editing.id,
+      )
+    ) {
+      setStatus("同じフォルダ内に同名のフォルダまたは試合データは保存できません。");
       return;
     }
 
@@ -638,7 +769,7 @@ export function ScoutFileLibraryClient({
                   >
                     <option value="">ルート</option>
                     {folders
-                      .filter((folder) => folder.id !== editing.id)
+                      .filter((folder) => !editingBlockedFolderIds.includes(folder.id))
                       .map((folder) => (
                         <option key={folder.id} value={folder.id}>
                           {folder.label}

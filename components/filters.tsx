@@ -4,15 +4,18 @@ type FiltersProps = {
   teamOptions: string[];
   playerOptions: string[];
   skillOptions: string[];
+  rotationOptions: string[];
   filters: {
     team: string;
     player: string;
     skill: string;
+    rotation: string;
   };
   onChange: (filters: {
     team: string;
     player: string;
     skill: string;
+    rotation: string;
   }) => void;
 };
 
@@ -20,6 +23,7 @@ export function Filters({
   teamOptions,
   playerOptions,
   skillOptions,
+  rotationOptions,
   filters,
   onChange,
 }: FiltersProps) {
@@ -43,6 +47,7 @@ export function Filters({
                 team: event.target.value,
                 player: "all",
                 skill: "all",
+                rotation: "all",
               })
             }
           >
@@ -98,6 +103,27 @@ export function Filters({
           <p className="muted">
             スキルはプレー種別です。サーブ、レセプション、アタック、ブロック、ディグ、セットなどに対応します。
           </p>
+        </div>
+
+        <div className="field">
+          <label htmlFor="rotation-filter">自チームローテーション</label>
+          <select
+            id="rotation-filter"
+            value={filters.rotation}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                rotation: event.target.value,
+              })
+            }
+          >
+            <option value="all">すべてのローテーション</option>
+            {rotationOptions.map((rotation) => (
+              <option key={rotation} value={rotation}>
+                {rotation}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </section>

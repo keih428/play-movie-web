@@ -212,16 +212,8 @@ export function VideoPlayer({
             <strong>{settings.prerollSeconds}s</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">時刻基準</span>
-            <strong>originalTime / 30</strong>
-          </div>
-          <div className="meta-card">
             <span className="muted">セット動画</span>
             <strong>{activeVideoSource.youtubeUrl || "-"}</strong>
-          </div>
-          <div className="meta-card">
-            <span className="muted">動画パス</span>
-            <strong>{match?.video?.path ?? "-"}</strong>
           </div>
           <div className="meta-card">
             <span className="muted">選択中プレイ</span>

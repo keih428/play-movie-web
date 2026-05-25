@@ -64,6 +64,41 @@ function addNode(
   });
 }
 
+function findNode(nodes: ScoutFileNode[], targetId: string): ScoutFileNode | null {
+  for (const node of nodes) {
+    if (node.id === targetId) {
+      return node;
+    }
+
+    if (node.children) {
+      const nested = findNode(node.children, targetId);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+
+  return null;
+}
+
+function normalizeName(name: string) {
+  return name.trim().toLocaleLowerCase();
+}
+
+function hasNameConflict(
+  nodes: ScoutFileNode[],
+  parentId: string | null,
+  name: string,
+): boolean {
+  const siblings = parentId
+    ? findNode(nodes, parentId)?.type === "folder"
+      ? findNode(nodes, parentId)?.children ?? []
+      : []
+    : nodes;
+
+  return siblings.some((node) => normalizeName(node.name) === normalizeName(name));
+}
+
 export async function GET() {
   const library = await getScoutFileLibrary();
   console.log("[api/scout-files] GET", {
@@ -100,6 +135,18 @@ export async function POST(request: NextRequest) {
       typeof parentIdValue === "string" && parentIdValue.trim()
         ? parentIdValue
         : null;
+    const displayName =
+      typeof displayNameValue === "string" && displayNameValue.trim()
+        ? displayNameValue.trim()
+        : file.name.replace(/\.[^.]+$/, "");
+    const library = await getScoutFileLibrary();
+    if (hasNameConflict(library.root, parentId, displayName)) {
+      return NextResponse.json(
+        { error: "同じフォルダ内に同名のフォルダまたは試合データは追加できません" },
+        { status: 400 },
+      );
+    }
+
     const text = await file.text();
     const parsedCollection = parseScoutFile(extension, text, file.name);
     const fileId = makeId();
@@ -121,14 +168,10 @@ export async function POST(request: NextRequest) {
       uploadedAt,
     });
 
-    const library = await getScoutFileLibrary();
     const nextRoot = addNode(library.root, parentId, {
       id: makeId(),
       type: "file",
-      name:
-        typeof displayNameValue === "string" && displayNameValue.trim()
-          ? displayNameValue.trim()
-          : file.name.replace(/\.[^.]+$/, ""),
+      name: displayName,
       fileId,
       extension,
       note:

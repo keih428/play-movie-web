@@ -9,6 +9,7 @@ import { SetupPanel } from "@/components/setup-panel";
 import { TabErrorBoundary } from "@/components/tab-error-boundary";
 import { VideoPlayer } from "@/components/video-player";
 import { getSkillLabel, getTeamLabel } from "@/lib/domain/display";
+import { getRotationLabel } from "@/lib/domain/rotation";
 import { getMatchResultLabel, getMatchSetScore } from "@/lib/domain/summary";
 import type {
   ParsedCollection,
@@ -25,6 +26,7 @@ type FilterState = {
   team: string;
   player: string;
   skill: string;
+  rotation: string;
 };
 
 type DashboardTab = "workspace" | "review" | "analysis";
@@ -59,9 +61,11 @@ function getFilterOptions(match: ParsedMatch | undefined) {
   const teams = new Set<string>();
   const players = new Set<string>();
   const skills = new Set<string>();
+  const rotations = new Set<string>();
 
   match?.sets.forEach((set) => {
     set.events.forEach((event) => {
+      rotations.add(getRotationLabel(event.lineup.home));
       event.plays.forEach((play) => {
         if (play.team) {
           teams.add(getTeamLabel(play.team, match));
@@ -80,6 +84,7 @@ function getFilterOptions(match: ParsedMatch | undefined) {
     teams: [...teams].sort(),
     players: [...players].sort(),
     skills: [...skills].sort(),
+    rotations: [...rotations].filter((value) => value !== "-").sort(),
   };
 }
 
@@ -100,6 +105,12 @@ function getFilteredMatch(
           .map((event) => ({
             ...event,
             plays: event.plays.filter((play) => {
+              if (
+                filters.rotation !== "all" &&
+                getRotationLabel(event.lineup.home) !== filters.rotation
+              ) {
+                return false;
+              }
               if (
                 filters.team !== "all" &&
                 getTeamLabel(play.team, match) !== filters.team
@@ -139,6 +150,7 @@ export function WorkspaceClient({
     team: "all",
     player: "all",
     skill: "all",
+    rotation: "all",
   });
   const [status, setStatus] = useState(initialStatus ?? "試合データの準備ができています");
   const [error, setError] = useState<string | null>(null);
@@ -321,6 +333,7 @@ export function WorkspaceClient({
           team: "all",
           player: "all",
           skill: "all",
+          rotation: "all",
         });
       });
       setStatus(`試合データを反映しました: ${record.fileName}`);
@@ -352,6 +365,7 @@ export function WorkspaceClient({
       team: "all",
       player: "all",
       skill: "all",
+      rotation: "all",
     });
   }
 
@@ -370,6 +384,7 @@ export function WorkspaceClient({
         team: "all",
         player: "all",
         skill: "all",
+        rotation: "all",
       });
       setSelectedPlay(undefined);
       setLastSavedAt(undefined);
@@ -467,6 +482,7 @@ export function WorkspaceClient({
           team: "all",
           player: "all",
           skill: "all",
+          rotation: "all",
         });
         setWorkspaceName(workspace.name);
         setRemoteSavedAt(workspace.updatedAt);
@@ -752,6 +768,7 @@ export function WorkspaceClient({
                   teamOptions={filterOptions.teams}
                   playerOptions={filterOptions.players}
                   skillOptions={filterOptions.skills}
+                  rotationOptions={filterOptions.rotations}
                   filters={filters}
                   onChange={handleFiltersChange}
                 />
@@ -764,51 +781,6 @@ export function WorkspaceClient({
                       selectedPlay={selectedPlay}
                       onPlayerTimeChange={setCurrentPlayerSeconds}
                     />
-                    <section className="panel">
-                      <div className="panel-inner stack">
-                        <div>
-                          <h2>同期情報</h2>
-                          <p className="muted">
-                            動画とプレイの同期調整に必要な項目だけをまとめています。
-                          </p>
-                        </div>
-                        <div className="overview-grid">
-                          <div className="meta-card">
-                            <span className="muted">オフセット</span>
-                            <strong>{settings.offsetSeconds}s</strong>
-                          </div>
-                          <div className="meta-card">
-                            <span className="muted">プリロール</span>
-                            <strong>{settings.prerollSeconds}s</strong>
-                            <div className="field" style={{ marginTop: 10 }}>
-                              <input
-                                id="review-preroll-seconds"
-                                type="number"
-                                step="any"
-                                inputMode="decimal"
-                                value={settings.prerollSeconds}
-                                onChange={(event) =>
-                                  setSettings((current) => ({
-                                    ...current,
-                                    prerollSeconds: Number(event.target.value) || 0,
-                                  }))
-                                }
-                              />
-                            </div>
-                          </div>
-                          <div className="meta-card">
-                            <span className="muted">時刻基準</span>
-                            <strong>originalTime / 30</strong>
-                          </div>
-                          <div className="meta-card">
-                            <span className="muted">選択中プレイ</span>
-                            <strong>
-                              {selectedPlay ? getSkillLabel(selectedPlay.skill) : "なし"}
-                            </strong>
-                          </div>
-                        </div>
-                      </div>
-                    </section>
                   </div>
 
                   <PlayList

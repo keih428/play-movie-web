@@ -20,6 +20,10 @@ function makeId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function normalizeName(name: string) {
+  return name.trim().toLocaleLowerCase();
+}
+
 function addNode(
   nodes: VideoLibraryNode[],
   parentId: string | null,
@@ -101,21 +105,77 @@ function updateNode(
 
 function collectFolders(
   nodes: VideoLibraryNode[],
-  depth = 0,
+  path = "",
 ): Array<{ id: string; label: string }> {
   return nodes.flatMap((entry) => {
     if (entry.type !== "folder") {
       return [];
     }
 
+    const nextPath = path ? `${path}/${entry.name}` : entry.name;
+
     return [
       {
         id: entry.id,
-        label: `${"  ".repeat(depth)}${entry.name}`,
+        label: nextPath,
       },
-      ...collectFolders(entry.children ?? [], depth + 1),
+      ...collectFolders(entry.children ?? [], nextPath),
     ];
   });
+}
+
+function getSiblingNodes(
+  nodes: VideoLibraryNode[],
+  parentId: string | null,
+): VideoLibraryNode[] {
+  if (!parentId) {
+    return nodes;
+  }
+
+  const found = findNode(nodes, parentId);
+  if (!found || found.node.type !== "folder") {
+    return [];
+  }
+
+  return found.node.children ?? [];
+}
+
+function hasNameConflict(
+  nodes: VideoLibraryNode[],
+  parentId: string | null,
+  name: string,
+  excludeId?: string,
+): boolean {
+  const normalizedName = normalizeName(name);
+  return getSiblingNodes(nodes, parentId).some(
+    (node) =>
+      node.id !== excludeId && normalizeName(node.name) === normalizedName,
+  );
+}
+
+function collectDescendantFolderIds(
+  nodes: VideoLibraryNode[],
+  targetId: string,
+): string[] {
+  const found = findNode(nodes, targetId);
+  if (!found || found.node.type !== "folder") {
+    return [];
+  }
+
+  const ids: string[] = [];
+  const walk = (entries: VideoLibraryNode[]) => {
+    entries.forEach((entry) => {
+      if (entry.type !== "folder") {
+        return;
+      }
+
+      ids.push(entry.id);
+      walk(entry.children ?? []);
+    });
+  };
+
+  walk(found.node.children ?? []);
+  return ids;
 }
 
 function moveNode(
@@ -170,12 +230,31 @@ function TreeNode({
   onMove: (id: string, direction: "up" | "down") => void;
 }) {
   const isFixed = node.systemKey === "match-videos";
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const hasChildren = Boolean(node.children?.length);
 
   return (
     <article className="tree-node">
       <div className="tree-node-header">
-        <div>
-          <strong>{node.name}</strong>
+        <div className="tree-node-main">
+          <div className="tree-node-title-row">
+            {node.type === "folder" ? (
+              <button
+                className="tree-toggle"
+                type="button"
+                aria-expanded={isExpanded}
+                onClick={() => setIsExpanded((current) => !current)}
+              >
+                {isExpanded ? "▾" : "▸"}
+              </button>
+            ) : (
+              <span className="tree-toggle tree-toggle-placeholder" aria-hidden="true">
+                •
+              </span>
+            )}
+            <strong>{node.name}</strong>
+          </div>
           <div className="tag-row">
             <span className="tag">{node.type === "folder" ? "フォルダ" : "リンク"}</span>
             {isFixed ? <span className="tag">固定</span> : null}
@@ -187,44 +266,68 @@ function TreeNode({
           </div>
           {node.note ? <p className="muted">{node.note}</p> : null}
         </div>
-        <div className="button-row">
+        <div className="tree-menu">
           <button
-            className="button secondary"
+            className="tree-menu-trigger"
             type="button"
-            onClick={() => onMove(node.id, "up")}
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen((current) => !current)}
           >
-            上へ
+            ⋯
           </button>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={() => onMove(node.id, "down")}
-          >
-            下へ
-          </button>
-          {!isFixed ? (
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => onEdit(node)}
-            >
-              編集
-            </button>
-          ) : null}
-          {!isFixed ? (
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => onDelete(node.id)}
-            >
-              削除
-            </button>
+          {isMenuOpen ? (
+            <div className="tree-menu-popover">
+              <button
+                className="tree-menu-item"
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onMove(node.id, "up");
+                }}
+              >
+                上へ
+              </button>
+              <button
+                className="tree-menu-item"
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onMove(node.id, "down");
+                }}
+              >
+                下へ
+              </button>
+              {!isFixed ? (
+                <button
+                  className="tree-menu-item"
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onEdit(node);
+                  }}
+                >
+                  編集
+                </button>
+              ) : null}
+              {!isFixed ? (
+                <button
+                  className="tree-menu-item tree-menu-item-danger"
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onDelete(node.id);
+                  }}
+                >
+                  削除
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
-      {node.children?.length ? (
+      {hasChildren && isExpanded ? (
         <div className="tree-children">
-          {node.children.map((child) => (
+          {node.children?.map((child) => (
             <TreeNode
               key={child.id}
               node={child}
@@ -251,6 +354,10 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
   const [editing, setEditing] = useState<EditState | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
+  const editingBlockedFolderIds = useMemo(
+    () => (editing ? [editing.id, ...collectDescendantFolderIds(library.root, editing.id)] : []),
+    [editing, library.root],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -351,6 +458,11 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       return;
     }
 
+    if (hasNameConflict(library.root, parentId || null, name)) {
+      setStatus("同じフォルダ内に同名のフォルダまたはリンクは追加できません。");
+      return;
+    }
+
     const nextRoot = addNode(library.root, parentId || null, {
       id: makeId(),
       type: mode,
@@ -397,6 +509,18 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
 
     const found = findNode(library.root, editing.id);
     if (!found) {
+      return;
+    }
+
+    if (
+      hasNameConflict(
+        library.root,
+        editing.parentId || null,
+        editing.name,
+        editing.id,
+      )
+    ) {
+      setStatus("同じフォルダ内に同名のフォルダまたはリンクは保存できません。");
       return;
     }
 
@@ -566,11 +690,13 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
                     }
                   >
                     <option value="">ルート</option>
-                    {folders.map((folder) => (
+                    {folders
+                      .filter((folder) => !editingBlockedFolderIds.includes(folder.id))
+                      .map((folder) => (
                       <option key={folder.id} value={folder.id}>
                         {folder.label}
                       </option>
-                    ))}
+                      ))}
                   </select>
                 </div>
 

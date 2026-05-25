@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
+import { getRotationLabel, getSideLabel } from "@/lib/domain/rotation";
 import type { ParsedEvent, ParsedMatch, TeamSide } from "@/lib/domain/types";
 
 type RotationPanelProps = {
@@ -61,7 +62,9 @@ function RotationCourt({
     <div className="rotation-team-card">
       <div className="rotation-team-header">
         <strong>{teamName}</strong>
-        <small className="muted">セッター位置: {lineup.setterAt ?? "-"}</small>
+        <small className="muted">
+          {getSideLabel(side)} / {getRotationLabel(lineup)}
+        </small>
       </div>
       <div className="court-grid" aria-label={`${teamName} rotation`}>
         {COURT_LAYOUT.flatMap((row) =>
@@ -133,6 +136,14 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
                 <strong>
                   {selectedEvent.score.home}-{selectedEvent.score.away}
                 </strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">自チーム</span>
+                <strong>{getRotationLabel(selectedEvent.lineup.home)}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">相手チーム</span>
+                <strong>{getRotationLabel(selectedEvent.lineup.away)}</strong>
               </div>
             </div>
 

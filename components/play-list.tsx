@@ -1,4 +1,5 @@
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
+import { getRotationLabel } from "@/lib/domain/rotation";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
 
@@ -25,6 +26,8 @@ export function PlayList({
           play,
           seekSeconds: calculateSeekSeconds(play, settings),
           score: event.score,
+          homeRotation: getRotationLabel(event.lineup.home),
+          awayRotation: getRotationLabel(event.lineup.away),
         })),
       ),
     ) ?? [];
@@ -73,6 +76,8 @@ export function PlayList({
                 </small>
                 <div className="tag-row">
                   <span className="tag">チーム: {getTeamLabel(item.play.team, match)}</span>
+                  <span className="tag">自チーム: {item.homeRotation}</span>
+                  <span className="tag">相手チーム: {item.awayRotation}</span>
                   <span className="tag">コード: {item.play.code || "-"}</span>
                 </div>
                 <div className="button-row" style={{ marginTop: 10 }}>
