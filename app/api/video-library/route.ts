@@ -4,6 +4,10 @@ import type { VideoLibraryNode } from "@/lib/domain/types";
 
 export async function GET() {
   const library = await getVideoLibrary();
+  console.log("[api/video-library] GET", {
+    rootCount: library.root.length,
+    updatedAt: library.updatedAt,
+  });
   return NextResponse.json({ library });
 }
 
@@ -18,6 +22,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const library = await saveVideoLibrary({ root: payload.root });
+    console.log("[api/video-library] PUT", {
+      rootCount: library.root.length,
+      updatedAt: library.updatedAt,
+    });
     return NextResponse.json({ library });
   } catch (error) {
     console.error("video-library PUT failed", error);

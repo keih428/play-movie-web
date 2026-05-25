@@ -66,6 +66,10 @@ function addNode(
 
 export async function GET() {
   const library = await getScoutFileLibrary();
+  console.log("[api/scout-files] GET", {
+    rootCount: library.root.length,
+    updatedAt: library.updatedAt,
+  });
   return NextResponse.json({ library });
 }
 
@@ -100,6 +104,13 @@ export async function POST(request: NextRequest) {
     const parsedCollection = parseScoutFile(extension, text, file.name);
     const fileId = makeId();
     const uploadedAt = new Date().toISOString();
+    console.log("[api/scout-files] POST start", {
+      fileName: file.name,
+      extension,
+      size: text.length,
+      fileId,
+      parentId,
+    });
 
     await saveScoutFileRecord({
       id: fileId,
@@ -126,6 +137,11 @@ export async function POST(request: NextRequest) {
           : undefined,
     });
     const savedLibrary = await saveScoutFileLibrary({ root: nextRoot });
+    console.log("[api/scout-files] POST saved", {
+      fileId,
+      rootCount: savedLibrary.root.length,
+      updatedAt: savedLibrary.updatedAt,
+    });
 
     return NextResponse.json({ library: savedLibrary });
   } catch (error) {
@@ -156,6 +172,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const library = await saveScoutFileLibrary({ root: payload.root });
+    console.log("[api/scout-files] PUT", {
+      rootCount: library.root.length,
+      updatedAt: library.updatedAt,
+    });
     return NextResponse.json({ library });
   } catch (error) {
     console.error("scout-files PUT failed", error);

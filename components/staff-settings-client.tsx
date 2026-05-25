@@ -124,6 +124,13 @@ export function StaffSettingsClient({
         );
       }
 
+      console.log("[staff-settings] refreshLibraries", {
+        scoutStatus: scoutResponse.status,
+        scoutRootCount: scoutPayload.library?.root.length ?? null,
+        videoStatus: videoResponse.status,
+        videoRootCount: videoPayload.library?.root.length ?? null,
+      });
+
       if (scoutPayload.library) {
         setCurrentScoutLibrary(scoutPayload.library);
       }
@@ -183,13 +190,20 @@ export function StaffSettingsClient({
 
     async function loadScoutFile() {
       try {
-        const response = await fetch(`/api/scout-files/${scoutFileId}`);
-        const payload = (await response.json()) as {
-          record?: {
-            parsedCollection: ParsedCollection;
-          };
-          error?: string;
+      const response = await fetch(`/api/scout-files/${scoutFileId}`);
+      const payload = (await response.json()) as {
+        record?: {
+          parsedCollection: ParsedCollection;
         };
+        error?: string;
+      };
+
+      console.log("[staff-settings] loadScoutFile", {
+        scoutFileId,
+        status: response.status,
+        hasRecord: Boolean(payload.record),
+        error: payload.error ?? null,
+      });
 
         if (!response.ok || !payload.record) {
           throw new Error(payload.error || "試合データの読込に失敗しました。");
@@ -319,6 +333,12 @@ export function StaffSettingsClient({
         workspace?: SavedWorkspaceSummary & { id: string; createdAt: string; updatedAt: string };
         error?: string;
       };
+
+      console.log("[staff-settings] register workspace", {
+        status: workspaceResponse.status,
+        workspaceId: workspacePayload.workspace?.id ?? null,
+        error: workspacePayload.error ?? null,
+      });
 
       if (!workspaceResponse.ok || !workspacePayload.workspace) {
         throw new Error(workspacePayload.error || "試合の登録に失敗しました。");
