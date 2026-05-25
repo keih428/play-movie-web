@@ -48,6 +48,10 @@ type SetupPanelProps = {
   onCopyShareUrl: () => Promise<void>;
 };
 
+type VideoLinkOption = VideoLibraryNode & {
+  label: string;
+};
+
 function flattenScoutFiles(
   nodes: ScoutFileNode[],
   depth = 0,
@@ -69,7 +73,7 @@ function flattenScoutFiles(
 function flattenVideoLinks(
   nodes: VideoLibraryNode[],
   depth = 0,
-): Array<VideoLibraryNode & { label: string }> {
+): VideoLinkOption[] {
   return nodes.flatMap((node) => {
     if (node.type === "link" && node.url) {
       return [
@@ -117,7 +121,7 @@ export function SetupPanel({
   onRefreshWorkspaces,
   onCopyShareUrl,
 }: SetupPanelProps) {
-  const [matchVideoOptions, setMatchVideoOptions] = useState<VideoLibraryNode[]>([]);
+  const [matchVideoOptions, setMatchVideoOptions] = useState<VideoLinkOption[]>([]);
   const [scoutFileOptions, setScoutFileOptions] = useState<ScoutFileNode[]>([]);
 
   useEffect(() => {
@@ -228,7 +232,7 @@ export function SetupPanel({
               <option value="">試合動画を選択</option>
               {matchVideoOptions.map((video) => (
                 <option key={video.id} value={video.url}>
-                  {"label" in video ? video.label : video.name}
+                  {video.label}
                 </option>
               ))}
             </select>
