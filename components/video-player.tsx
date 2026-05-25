@@ -144,7 +144,7 @@ export function VideoPlayer({
     <section className="panel">
       <div className="panel-inner video-stage">
         <div>
-          <h2>Video Player Area</h2>
+          <h2>動画プレーヤー</h2>
           <p className="muted">
             YouTube IFrame Player API に接続し、選択したプレイへシークできる状態です。
           </p>
@@ -157,7 +157,7 @@ export function VideoPlayer({
         ) : (
           <div className="video-placeholder">
             <div>
-              <strong>{settings.youtubeUrl || "YouTube URL を設定してください"}</strong>
+              <strong>{settings.youtubeUrl || "動画URLが設定されていません"}</strong>
               <p className="muted">
                 プレイ選択時の再生位置 =
                 <span className="mono"> play.time + offset - preroll </span>
@@ -168,35 +168,35 @@ export function VideoPlayer({
 
         <div className="meta-grid">
           <div className="meta-card">
-            <span className="muted">Match</span>
+            <span className="muted">試合</span>
             <strong>{match ? `${match.teams.home.name} vs ${match.teams.away.name}` : "-"}</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Sets</span>
+            <span className="muted">セット数</span>
             <strong>{match?.sets.length ?? 0}</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Offset</span>
+            <span className="muted">オフセット</span>
             <strong>{settings.offsetSeconds}s</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Preroll</span>
+            <span className="muted">プリロール</span>
             <strong>{settings.prerollSeconds}s</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Time Base</span>
-            <strong>{settings.useOriginalTime ? "originalTime" : "time"}</strong>
+            <span className="muted">時刻基準</span>
+            <strong>{settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Video Path</span>
+            <span className="muted">動画パス</span>
             <strong>{match?.video?.path ?? "-"}</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Selected Play</span>
+            <span className="muted">選択中プレイ</span>
             <strong>{selectedPlay ? `${selectedPlay.skill ?? "-"} / ${selectedPlay.player ?? "-"}` : "-"}</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Seek Target</span>
+            <span className="muted">移動先</span>
             <strong>{formatSeconds(selectedSeek)}</strong>
           </div>
         </div>

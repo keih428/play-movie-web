@@ -107,3 +107,24 @@ export type SavedWorkspaceSummary = {
 };
 
 export type WorkspaceStoreProvider = "local" | "vercel-blob";
+
+export type StaffAppSettings = {
+  defaultWorkspaceId?: string;
+  defaultWorkspaceName?: string;
+  landingMessage?: string;
+  updatedAt: string;
+};
+
+export type VideoLibraryNode = {
+  id: string;
+  type: "folder" | "link";
+  name: string;
+  children?: VideoLibraryNode[];
+  url?: string;
+  note?: string;
+};
+
+export type VideoLibrary = {
+  root: VideoLibraryNode[];
+  updatedAt: string;
+};

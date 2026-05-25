@@ -85,7 +85,7 @@ function RotationCourt({
     <div className="rotation-team-card">
       <div className="rotation-team-header">
         <strong>{teamName}</strong>
-        <small className="muted">setterAt: {lineup.setterAt ?? "-"}</small>
+        <small className="muted">セッター位置: {lineup.setterAt ?? "-"}</small>
       </div>
       <div className="court-grid" aria-label={`${teamName} rotation`}>
         {COURT_LAYOUT.flatMap((row) =>
@@ -97,7 +97,7 @@ function RotationCourt({
                 className={`court-cell${isSetter ? " court-cell-setter" : ""}`}
                 key={`${side}-${positionKey}`}
               >
-                <small>P{positionKey}</small>
+                <small>位置{positionKey}</small>
                 <strong>{String(value)}</strong>
               </div>
             );
@@ -117,7 +117,7 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
     <section className="panel">
       <div className="panel-inner stack">
         <div>
-          <h2>Rotation Panel</h2>
+          <h2>ローテーション</h2>
           <p className="muted">
             選択中プレイが属するイベントのラインナップを表示します。未選択時は最初のイベントを基準にします。
           </p>
@@ -131,23 +131,23 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
           <>
             <div className="rotation-summary">
               <div className="meta-card">
-                <span className="muted">Focus</span>
+                <span className="muted">注目位置</span>
                 <strong>
-                  Set {focus.setIndex} / Event {focus.event.eventIndex}
+                  セット {focus.setIndex} / ラリー {focus.event.eventIndex}
                 </strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Score</span>
+                <span className="muted">スコア</span>
                 <strong>
                   {focus.event.score.home}-{focus.event.score.away}
                 </strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Home Changes</span>
+                <span className="muted">ホーム変化回数</span>
                 <strong>{homeChanges}</strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Away Changes</span>
+                <span className="muted">アウェイ変化回数</span>
                 <strong>{awayChanges}</strong>
               </div>
             </div>
@@ -166,7 +166,7 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
             </div>
 
             <div className="analysis-block">
-              <h3>Plays In Focus Event</h3>
+              <h3>注目ラリーのプレイ</h3>
               <div className="tag-row">
                 {focus.event.plays.map((play) => (
                   <span className="tag" key={play.id}>

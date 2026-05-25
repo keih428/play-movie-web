@@ -9,16 +9,16 @@ type CopyShareLinkButtonProps = {
 export function CopyShareLinkButton({
   workspaceId,
 }: CopyShareLinkButtonProps) {
-  const [status, setStatus] = useState("Copy Share URL");
+  const [status, setStatus] = useState("共有URLをコピー");
 
   async function handleCopy() {
     try {
       const url = new URL(window.location.origin);
       url.searchParams.set("workspaceId", workspaceId);
       await navigator.clipboard.writeText(url.toString());
-      setStatus("Copied");
+      setStatus("コピーしました");
     } catch {
-      setStatus("Copy Failed");
+      setStatus("コピー失敗");
     }
   }
 

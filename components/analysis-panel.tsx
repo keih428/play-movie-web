@@ -25,7 +25,7 @@ function buildSkillSummary(match: ParsedMatch | undefined): SkillSummaryRow[] {
   match.sets.forEach((set) => {
     set.events.forEach((event) => {
       event.plays.forEach((play) => {
-        const skill = play.skill ?? "unknown";
+        const skill = play.skill ?? "不明";
         counts.set(skill, (counts.get(skill) ?? 0) + 1);
       });
     });
@@ -82,7 +82,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
     <section className="panel">
       <div className="panel-inner stack">
         <div>
-          <h2>Analysis Panel</h2>
+          <h2>分析</h2>
           <p className="muted">
             フィルタ後のプレイデータから、スキル別件数とセットごとの得点推移を表示します。
           </p>
@@ -90,7 +90,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
 
         <div className="analysis-grid">
           <div className="analysis-block">
-            <h3>Skill Breakdown</h3>
+            <h3>スキル内訳</h3>
             {skillSummary.length === 0 ? (
               <p className="muted">表示できるプレイがありません。</p>
             ) : (
@@ -116,7 +116,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
           </div>
 
           <div className="analysis-block">
-            <h3>Score Timeline</h3>
+            <h3>得点推移</h3>
             {timeline.length === 0 ? (
               <p className="muted">セットデータがありません。</p>
             ) : (
@@ -132,9 +132,9 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                   return (
                     <div className="timeline-card" key={set.setIndex}>
                       <div className="timeline-header">
-                        <strong>Set {set.setIndex}</strong>
+                        <strong>セット {set.setIndex}</strong>
                         <small className="muted">
-                          {set.points.length} events / final{" "}
+                          {set.points.length} ラリー / 最終スコア{" "}
                           {set.points[set.points.length - 1]?.home ?? 0}-
                           {set.points[set.points.length - 1]?.away ?? 0}
                         </small>
@@ -164,11 +164,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
 
         <div className="meta-grid">
           <div className="meta-card">
-            <span className="muted">Events</span>
+            <span className="muted">ラリー数</span>
             <strong>{totalEvents}</strong>
           </div>
           <div className="meta-card">
-            <span className="muted">Unique Skills</span>
+            <span className="muted">スキル種類</span>
             <strong>{skillSummary.length}</strong>
           </div>
         </div>

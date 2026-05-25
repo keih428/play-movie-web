@@ -39,10 +39,10 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
             </p>
             <div className="badge-row">
               <Link className="badge badge-link" href="/workspaces">
-                All Workspaces
+                一覧へ戻る
               </Link>
               <Link className="badge badge-link" href={`/?workspaceId=${workspace.id}`}>
-                Open In Home
+                ホームで開く
               </Link>
               <CopyShareLinkButton workspaceId={workspace.id} />
             </div>
@@ -50,19 +50,19 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
 
           <div className="meta-grid">
             <div className="meta-card">
-              <span className="muted">Matches</span>
+              <span className="muted">試合数</span>
               <strong>{workspace.collection.matches.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Sets</span>
+              <span className="muted">セット数</span>
               <strong>{totalSets}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Events</span>
+              <span className="muted">ラリー数</span>
               <strong>{totalEvents}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Plays</span>
+              <span className="muted">プレイ数</span>
               <strong>{totalPlays}</strong>
             </div>
           </div>
@@ -73,23 +73,23 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
         <section className="panel">
           <div className="panel-inner stack">
             <div>
-              <h2>Workspace Metadata</h2>
+              <h2>ワークスペース情報</h2>
             </div>
             <div className="meta-grid">
               <div className="meta-card">
-                <span className="muted">Source</span>
+                <span className="muted">ソース種別</span>
                 <strong>{workspace.collection.sourceType.toUpperCase()}</strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Selected Match Index</span>
+                <span className="muted">選択試合番号</span>
                 <strong>{workspace.selectedMatchIndex}</strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Updated</span>
+                <span className="muted">更新日時</span>
                 <strong>{workspace.updatedAt.slice(0, 16).replace("T", " ")}</strong>
               </div>
               <div className="meta-card">
-                <span className="muted">YouTube</span>
+                <span className="muted">YouTubeリンク</span>
                 <strong>{workspace.settings.youtubeUrl || "-"}</strong>
               </div>
             </div>
@@ -99,20 +99,20 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
         <section className="panel">
           <div className="panel-inner stack">
             <div>
-              <h2>Sync Settings</h2>
+              <h2>同期設定</h2>
             </div>
             <div className="meta-grid">
               <div className="meta-card">
-                <span className="muted">Offset</span>
+                <span className="muted">オフセット</span>
                 <strong>{workspace.settings.offsetSeconds}s</strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Preroll</span>
+                <span className="muted">プリロール</span>
                 <strong>{workspace.settings.prerollSeconds}s</strong>
               </div>
               <div className="meta-card">
-                <span className="muted">Time Base</span>
-                <strong>{workspace.settings.useOriginalTime ? "originalTime" : "time"}</strong>
+                <span className="muted">時刻基準</span>
+                <strong>{workspace.settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
       <section className="panel" style={{ marginTop: 20 }}>
         <div className="panel-inner stack">
           <div>
-            <h2>Matches</h2>
+            <h2>試合一覧</h2>
             <p className="muted">試合ごとの件数と主要スキルを確認できます。</p>
           </div>
 
@@ -145,19 +145,19 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
 
                   <div className="meta-grid">
                     <div className="meta-card">
-                      <span className="muted">Sets</span>
+                      <span className="muted">セット数</span>
                       <strong>{match.sets.length}</strong>
                     </div>
                     <div className="meta-card">
-                      <span className="muted">Plays</span>
+                      <span className="muted">プレイ数</span>
                       <strong>{playCount}</strong>
                     </div>
                     <div className="meta-card">
-                      <span className="muted">Created</span>
+                      <span className="muted">作成日時</span>
                       <strong>{match.createdAt?.slice(0, 16).replace("T", " ") ?? "-"}</strong>
                     </div>
                     <div className="meta-card">
-                      <span className="muted">Video Path</span>
+                      <span className="muted">動画パス</span>
                       <strong>{match.video?.path ?? "-"}</strong>
                     </div>
                   </div>

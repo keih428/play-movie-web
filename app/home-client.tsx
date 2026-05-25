@@ -24,7 +24,10 @@ type FilterState = {
   skill: string;
 };
 
+type DashboardTab = "workspace" | "video" | "plays" | "analysis";
+
 type HomeClientProps = {
+  allowEditing?: boolean;
   initialCollection: ParsedCollection;
   initialSettings: VideoSyncSettings;
   initialWorkspaceId?: string;
@@ -32,6 +35,7 @@ type HomeClientProps = {
   initialRemoteSavedAt?: string;
   initialStatus?: string;
   skipLocalRestore?: boolean;
+  landingMessage?: string;
 };
 
 const WORKSPACE_STORAGE_KEY = "play-movie-web.workspace.v1";
@@ -112,6 +116,7 @@ function getFilteredMatch(
 }
 
 export function HomeClient({
+  allowEditing = false,
   initialCollection,
   initialSettings,
   initialWorkspaceId,
@@ -119,6 +124,7 @@ export function HomeClient({
   initialRemoteSavedAt,
   initialStatus,
   skipLocalRestore,
+  landingMessage,
 }: HomeClientProps) {
   const [collection, setCollection] = useState(initialCollection);
   const [settings, setSettings] = useState(initialSettings);
@@ -128,7 +134,7 @@ export function HomeClient({
     player: "all",
     skill: "all",
   });
-  const [status, setStatus] = useState(initialStatus ?? "Sample data loaded");
+  const [status, setStatus] = useState(initialStatus ?? "試合データの準備ができています");
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [selectedPlay, setSelectedPlay] = useState<ParsedPlay | undefined>();
@@ -136,7 +142,7 @@ export function HomeClient({
   const [lastSavedAt, setLastSavedAt] = useState<string>();
   const [hasHydratedWorkspace, setHasHydratedWorkspace] = useState(false);
   const [workspaceName, setWorkspaceName] = useState(
-    initialWorkspaceName ?? "UTVB Workspace",
+    initialWorkspaceName ?? "東大バレー部ワークスペース",
   );
   const [remoteWorkspaceId, setRemoteWorkspaceId] = useState<string | undefined>(
     initialWorkspaceId,
@@ -148,7 +154,9 @@ export function HomeClient({
   const [isSyncingWorkspace, setIsSyncingWorkspace] = useState(false);
   const [shareStatus, setShareStatus] = useState<string>();
   const [storeProvider, setStoreProvider] = useState<WorkspaceStoreProvider>();
+  const [activeTab, setActiveTab] = useState<DashboardTab>("workspace");
 
+  const hasMatches = collection.matches.length > 0;
   const match = collection.matches[selectedMatchIndex];
   const filteredMatch = getFilteredMatch(match, filters);
   const playCount = countPlays(filteredMatch);
@@ -289,6 +297,7 @@ export function HomeClient({
         setSelectedMatchIndex(0);
         setSelectedPlay(undefined);
         setWorkspaceName(file.name.replace(/\.[^.]+$/, ""));
+        setActiveTab("video");
         setFilters({
           team: "all",
           player: "all",
@@ -347,6 +356,7 @@ export function HomeClient({
       setLastSavedAt(undefined);
       setRemoteWorkspaceId(undefined);
       setRemoteSavedAt(undefined);
+      setActiveTab("workspace");
       setStatus("Saved workspace cleared");
       setError(null);
     } catch {
@@ -426,23 +436,26 @@ export function HomeClient({
         throw new Error(payload.error || "failed to load workspace");
       }
 
+      const workspace = payload.workspace;
+
       startTransition(() => {
-        setCollection(payload.workspace!.collection);
-        setSettings(payload.workspace!.settings);
-        setSelectedMatchIndex(payload.workspace!.selectedMatchIndex);
+        setCollection(workspace.collection);
+        setSettings(workspace.settings);
+        setSelectedMatchIndex(workspace.selectedMatchIndex);
         setSelectedPlay(undefined);
+        setActiveTab("workspace");
         setFilters({
           team: "all",
           player: "all",
           skill: "all",
         });
-        setWorkspaceName(payload.workspace!.name);
-        setRemoteSavedAt(payload.workspace!.updatedAt);
-        setLastSavedAt(payload.workspace!.savedAt);
+        setWorkspaceName(workspace.name);
+        setRemoteSavedAt(workspace.updatedAt);
+        setLastSavedAt(workspace.savedAt);
         setShareStatus("ready to copy");
         setStoreProvider(payload.provider);
       });
-      setStatus(`Loaded workspace ${payload.workspace.name}`);
+      setStatus(`Loaded workspace ${workspace.name}`);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "load failed");
       setStatus("Server load failed");
@@ -505,112 +518,362 @@ export function HomeClient({
     }
   }
 
+  const setupPanelProps = {
+    settings,
+    matchCount: collection.matches.length,
+    matchOptions: collection.matches.map((entry, index) => ({
+      index,
+      label: `${index + 1}. ${entry.teams.home.name} vs ${entry.teams.away.name}`,
+    })),
+    selectedMatchIndex,
+    status,
+    error,
+    isParsing,
+    currentPlayerSeconds,
+    lastSavedAt,
+    workspaceName,
+    remoteWorkspaceId,
+    remoteSavedAt,
+    shareUrl,
+    shareStatus,
+    storeProvider,
+    savedWorkspaces,
+    isSyncingWorkspace,
+    onParseFile: handleParseFile,
+    onMatchChange: handleMatchChange,
+    onSettingsChange: setSettings,
+    onCaptureOffset: handleCaptureOffset,
+    onClearSavedWorkspace: handleClearSavedWorkspace,
+    onWorkspaceNameChange: setWorkspaceName,
+    onRemoteWorkspaceChange: setRemoteWorkspaceId,
+    onSaveWorkspace: handleSaveWorkspace,
+    onLoadWorkspace: handleLoadWorkspace,
+    onDeleteWorkspace: handleDeleteWorkspace,
+    onRefreshWorkspaces: refreshSavedWorkspaces,
+    onCopyShareUrl: handleCopyShareUrl,
+  };
+
   return (
     <main className="page-shell">
-      <section className="hero">
+      <section className="hero hero-home">
         <div className="hero-grid">
           <div>
-            <h1>Scout the rally, then jump to the tape.</h1>
+            <div className="hero-kicker">東京大学運動会バレー部 専用</div>
+            <h1>東大バレー部 試合ビューア</h1>
             <p>
-              VolleyStation 由来の `.vsm` / `.vsdb` データを正規化し、
-              YouTube 動画と同期して、プレイ一覧・スコア推移・ローテーション分析へつなぐ
-              Web アプリの初期雛形です。
+              東京大学運動会バレー部の試合データを整理し、動画同期、プレイ確認、
+              ローテーション分析までをひとつのワークスペースで扱うための専用ツールです。
             </p>
             <div className="badge-row">
-              <span className="badge">MVP ready skeleton</span>
-              <span className="badge">Live parse API connected</span>
-              <span className="badge">YouTube sync formula</span>
+              <span className="badge">部内向けツール</span>
+              <span className="badge">試合レビュー</span>
+              <span className="badge">映像連動分析</span>
             </div>
           </div>
 
           <div className="meta-grid">
             <div className="meta-card">
-              <span className="muted">Matches</span>
+              <span className="muted">試合数</span>
               <strong>{collection.matches.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Sets</span>
+              <span className="muted">セット数</span>
               <strong>{filteredMatch?.sets.length ?? 0}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Filtered Plays</span>
+              <span className="muted">表示プレイ数</span>
               <strong>{playCount}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Mode</span>
-              <strong>{collection.sourceType.toUpperCase()}</strong>
+              <span className="muted">表示モード</span>
+              <strong>{hasMatches ? collection.sourceType.toUpperCase() : "ホーム"}</strong>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="layout-grid">
-        <div className="stack">
-          <SetupPanel
-            settings={settings}
-            matchCount={collection.matches.length}
-            matchOptions={collection.matches.map((entry, index) => ({
-              index,
-              label: `${index + 1}. ${entry.teams.home.name} vs ${entry.teams.away.name}`,
-            }))}
-            selectedMatchIndex={selectedMatchIndex}
-            status={status}
-            error={error}
-            isParsing={isParsing}
-            currentPlayerSeconds={currentPlayerSeconds}
-            lastSavedAt={lastSavedAt}
-            workspaceName={workspaceName}
-            remoteWorkspaceId={remoteWorkspaceId}
-            remoteSavedAt={remoteSavedAt}
-            shareUrl={shareUrl}
-            shareStatus={shareStatus}
-            storeProvider={storeProvider}
-            savedWorkspaces={savedWorkspaces}
-            isSyncingWorkspace={isSyncingWorkspace}
-            onParseFile={handleParseFile}
-            onMatchChange={handleMatchChange}
-            onSettingsChange={setSettings}
-            onCaptureOffset={handleCaptureOffset}
-            onClearSavedWorkspace={handleClearSavedWorkspace}
-            onWorkspaceNameChange={setWorkspaceName}
-            onRemoteWorkspaceChange={setRemoteWorkspaceId}
-            onSaveWorkspace={handleSaveWorkspace}
-            onLoadWorkspace={handleLoadWorkspace}
-            onDeleteWorkspace={handleDeleteWorkspace}
-            onRefreshWorkspaces={refreshSavedWorkspaces}
-            onCopyShareUrl={handleCopyShareUrl}
-          />
-          <Filters
-            teamOptions={filterOptions.teams}
-            playerOptions={filterOptions.players}
-            skillOptions={filterOptions.skills}
-            filters={filters}
-            onChange={handleFiltersChange}
-          />
-        </div>
-        <VideoPlayer
-          match={filteredMatch}
-          settings={settings}
-          selectedPlay={selectedPlay}
-          onPlayerTimeChange={setCurrentPlayerSeconds}
-        />
-        <PlayList
-          match={filteredMatch}
-          settings={settings}
-          selectedPlayId={selectedPlay?.id}
-          onSelectPlay={setSelectedPlay}
-        />
-      </section>
+      {hasMatches ? (
+        <section className="dashboard-shell">
+          <div className="dashboard-header">
+            <div>
+              <h2>試合ワークスペース</h2>
+              <p className="muted">
+                {allowEditing
+                  ? "主要機能をタブで切り替えながら、読み込み・同期・分析を進めます。"
+                  : "公開された試合ワークスペースを、閲覧と分析に集中できる形で表示します。"}
+              </p>
+            </div>
+            <div className="tab-row" role="tablist" aria-label="画面切替">
+              {[
+                ["workspace", "概要"],
+                ["video", "動画"],
+                ["plays", "プレイ"],
+                ["analysis", "分析"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  className={`tab-button${activeTab === value ? " tab-button-active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === value}
+                  onClick={() => setActiveTab(value as DashboardTab)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <section className="analysis-layout">
-        <div className="detail-grid">
-          <AnalysisPanel match={filteredMatch} />
-          <RotationPanel
-            match={filteredMatch}
-            selectedPlayId={selectedPlay?.id}
-          />
-        </div>
-      </section>
+          {activeTab === "workspace" ? (
+            <section className="workspace-grid">
+              {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
+              <section className="panel">
+                <div className="panel-inner stack">
+                  <div>
+                    <h2>{allowEditing ? "ワークスペース概要" : "試合概要"}</h2>
+                    <p className="muted">
+                      {allowEditing
+                        ? "現在の試合データ、共有状態、フィルタ条件をここで俯瞰します。"
+                        : "現在公開されている試合データと、閲覧中の状態をここで確認します。"}
+                    </p>
+                  </div>
+
+                  <div className="overview-grid">
+                    <div className="meta-card">
+                      <span className="muted">現在の試合</span>
+                      <strong>
+                        {match
+                          ? `${match.teams.home.name} vs ${match.teams.away.name}`
+                          : "試合未設定"}
+                      </strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">ワークスペース</span>
+                      <strong>{workspaceName}</strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">サーバー保存</span>
+                      <strong>{remoteSavedAt ? "あり" : "なし"}</strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">保存先</span>
+                      <strong>{storeProvider ?? "不明"}</strong>
+                    </div>
+                  </div>
+
+                  <Filters
+                    teamOptions={filterOptions.teams}
+                    playerOptions={filterOptions.players}
+                    skillOptions={filterOptions.skills}
+                    filters={filters}
+                    onChange={handleFiltersChange}
+                  />
+
+                  <section className="panel-section soft-panel">
+                    <div className="section-heading">
+                      <h3>{allowEditing ? "状態メモ" : "閲覧状態"}</h3>
+                      <p className="muted">
+                        状態表示をひとまとまりにして、現在の同期状態を見やすくしています。
+                      </p>
+                    </div>
+                    <div className="status-list">
+                      <div className="status-row">
+                        <span>状態</span>
+                        <strong>{status}</strong>
+                      </div>
+                      <div className="status-row">
+                        <span>共有URL</span>
+                        <strong>{shareStatus ?? "未準備"}</strong>
+                      </div>
+                      <div className="status-row">
+                        <span>前回ローカル保存</span>
+                        <strong>{lastSavedAt ?? "未保存"}</strong>
+                      </div>
+                      <div className="status-row">
+                        <span>プレーヤー時刻</span>
+                        <strong>
+                          {typeof currentPlayerSeconds === "number"
+                            ? `${currentPlayerSeconds.toFixed(1)}s`
+                            : "未取得"}
+                        </strong>
+                      </div>
+                    </div>
+                    {error ? <p className="error-text">{error}</p> : null}
+                  </section>
+                </div>
+              </section>
+            </section>
+          ) : null}
+
+          {activeTab === "video" ? (
+            <section className="dashboard-content-stack">
+              <VideoPlayer
+                match={filteredMatch}
+                settings={settings}
+                selectedPlay={selectedPlay}
+                onPlayerTimeChange={setCurrentPlayerSeconds}
+              />
+              <section className="panel">
+                <div className="panel-inner stack">
+                  <div>
+                    <h2>同期情報</h2>
+                    <p className="muted">
+                      動画とプレイの同期調整に必要な項目だけをまとめています。
+                    </p>
+                  </div>
+                  <div className="overview-grid">
+                    <div className="meta-card">
+                      <span className="muted">オフセット</span>
+                      <strong>{settings.offsetSeconds}s</strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">プリロール</span>
+                      <strong>{settings.prerollSeconds}s</strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">時刻基準</span>
+                      <strong>{settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">選択中プレイ</span>
+                      <strong>{selectedPlay?.skill ?? "なし"}</strong>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </section>
+          ) : null}
+
+          {activeTab === "plays" ? (
+            <section className="workspace-grid">
+              <Filters
+                teamOptions={filterOptions.teams}
+                playerOptions={filterOptions.players}
+                skillOptions={filterOptions.skills}
+                filters={filters}
+                onChange={handleFiltersChange}
+              />
+              <PlayList
+                match={filteredMatch}
+                settings={settings}
+                selectedPlayId={selectedPlay?.id}
+                onSelectPlay={setSelectedPlay}
+              />
+            </section>
+          ) : null}
+
+          {activeTab === "analysis" ? (
+            <section className="dashboard-content-stack">
+              <div className="detail-grid">
+                <AnalysisPanel match={filteredMatch} />
+                <RotationPanel
+                  match={filteredMatch}
+                  selectedPlayId={selectedPlay?.id}
+                />
+              </div>
+            </section>
+          ) : null}
+        </section>
+      ) : (
+        <section className="home-grid home-grid-polished">
+          <section className="panel home-landing-panel">
+            <div className="panel-inner stack">
+              <div className="home-intro">
+                <div
+                  className="logo-placeholder logo-placeholder-large"
+                  aria-label="東大バレー部ロゴ"
+                >
+                  <img className="logo-image logo-image-large" src="/logo.png" alt="東大バレー部ロゴ" />
+                </div>
+                <div>
+                  <div className="hero-kicker">
+                    東京大学運動会バレー部
+                  </div>
+                  <h2>試合レビューの入口を、ひとつに。</h2>
+                  <p className="muted">
+                    {landingMessage ??
+                      "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、東京大学運動会バレー部専用の環境です。"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="home-steps">
+                <article className="home-step">
+                  <span className="home-step-index">01</span>
+                  <div>
+                    <strong>試合ワークスペースを開く</strong>
+                    <p className="muted">
+                      スタッフが設定した現在の試合ワークスペースを開いて、すぐにレビューへ入れます。
+                    </p>
+                  </div>
+                </article>
+                <article className="home-step">
+                  <span className="home-step-index">02</span>
+                  <div>
+                    <strong>映像で確認する</strong>
+                    <p className="muted">
+                      プレイ一覧から試合映像へ移動し、分析対象のラリーを短時間で確認できます。
+                    </p>
+                  </div>
+                </article>
+                <article className="home-step">
+                  <span className="home-step-index">03</span>
+                  <div>
+                    <strong>動画ライブラリを見る</strong>
+                    <p className="muted">
+                      試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
+                    </p>
+                  </div>
+                </article>
+              </div>
+
+              <div className="home-feature-band">
+                <div className="feature-chip">試合レビュー</div>
+                <div className="feature-chip">映像ジャンプ</div>
+                <div className="feature-chip">ローテーション確認</div>
+                <div className="feature-chip">共有ワークスペース</div>
+              </div>
+            </div>
+          </section>
+
+          <div className="stack">
+            {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
+            <section className="panel">
+              <div className="panel-inner stack">
+                <div>
+                  <h2>{allowEditing ? "部内向け概要" : "現在の閲覧情報"}</h2>
+                  <p className="muted">
+                    {allowEditing
+                      ? "初期状態で必要な情報だけを右側に残し、最初の一歩を迷わないようにしています。"
+                      : "一般部員向けには閲覧に必要な要素だけを残し、設定操作を分離しています。"}
+                  </p>
+                </div>
+
+                <div className="overview-grid">
+                  <div className="meta-card">
+                    <span className="muted">Saved Workspaces</span>
+                    <strong>{savedWorkspaces.length}</strong>
+                  </div>
+                  <div className="meta-card">
+                    <span className="muted">保存先</span>
+                    <strong>{storeProvider ?? "ローカル"}</strong>
+                  </div>
+                  <div className="meta-card">
+                    <span className="muted">Status</span>
+                    <strong>{status}</strong>
+                  </div>
+                  <div className="meta-card">
+                    <span className="muted">Workspace</span>
+                    <strong>{workspaceName}</strong>
+                  </div>
+                </div>
+
+                {error ? <p className="error-text">{error}</p> : null}
+              </div>
+            </section>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

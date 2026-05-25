@@ -32,7 +32,7 @@ export function PlayList({
     <section className="panel">
       <div className="panel-inner stack">
         <div>
-          <h2>Play-by-Play Panel</h2>
+          <h2>プレイ一覧</h2>
           <p className="muted">
             クリック時に YouTube シークへつなぐ前提で、正規化済みプレイを一覧表示します。
           </p>
@@ -54,7 +54,7 @@ export function PlayList({
               >
                 <div className="list-item-header">
                   <strong>
-                    Set {item.setIndex} / Event {item.eventIndex}
+                    セット {item.setIndex} / ラリー {item.eventIndex}
                   </strong>
                   <small className="mono">
                     {formatSeconds(item.seekSeconds)}
@@ -63,16 +63,16 @@ export function PlayList({
                 <div>
                   <strong>{item.play.skill ?? "-"}</strong>
                   {" / "}
-                  <span>{item.play.player ?? "unknown player"}</span>
+                  <span>{item.play.player ?? "不明な選手"}</span>
                   {" / "}
                   <span>{item.play.effect ?? "-"}</span>
                 </div>
                 <small>
-                  score {item.score.home} - {item.score.away}
+                  スコア {item.score.home} - {item.score.away}
                 </small>
                 <div className="tag-row">
-                  <span className="tag">team: {item.play.team || "-"}</span>
-                  <span className="tag">code: {item.play.code || "-"}</span>
+                  <span className="tag">チーム: {item.play.team || "-"}</span>
+                  <span className="tag">コード: {item.play.code || "-"}</span>
                 </div>
                 <div className="button-row" style={{ marginTop: 10 }}>
                   <button

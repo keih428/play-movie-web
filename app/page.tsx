@@ -1,9 +1,11 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { HomeClient } from "@/app/home-client";
+import { getStaffAppSettings } from "@/lib/server/app-settings-store";
 import { getSavedWorkspace } from "@/lib/server/workspace-store";
-import { parseVsmText } from "@/lib/parsers/vsm";
-import type { SavedWorkspaceRecord, VideoSyncSettings } from "@/lib/domain/types";
+import type {
+  ParsedCollection,
+  SavedWorkspaceRecord,
+  VideoSyncSettings,
+} from "@/lib/domain/types";
 
 const demoSettings: VideoSyncSettings = {
   youtubeUrl: "https://www.youtube.com/watch?v=demo-video-id",
@@ -12,13 +14,10 @@ const demoSettings: VideoSyncSettings = {
   useOriginalTime: false,
 };
 
-async function getDemoMatch() {
-  const fileName = "2026-04-12 UTVB-TU.vsm";
-  const samplePath = path.resolve(process.cwd(), "..", "vsm-vsdb-data", fileName);
-  const sampleText = await readFile(samplePath, "utf8");
-  const parsedCollection = parseVsmText(sampleText, fileName);
-  return parsedCollection;
-}
+const emptyCollection: ParsedCollection = {
+  sourceType: "vsm",
+  matches: [],
+};
 
 type HomePageProps = {
   searchParams: Promise<{
@@ -38,23 +37,28 @@ async function getInitialWorkspace(
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { workspaceId } = await searchParams;
-  const savedWorkspace = await getInitialWorkspace(workspaceId);
-  const parsedCollection = savedWorkspace?.collection ?? (await getDemoMatch());
+  const appSettings = await getStaffAppSettings();
+  const resolvedWorkspaceId = workspaceId ?? appSettings.defaultWorkspaceId;
+  const savedWorkspace = await getInitialWorkspace(resolvedWorkspaceId);
+  const parsedCollection = savedWorkspace?.collection ?? emptyCollection;
   const initialSettings = savedWorkspace?.settings ?? demoSettings;
+  const initialStatus = savedWorkspace
+    ? workspaceId
+      ? `Loaded workspace ${savedWorkspace.name} from URL`
+      : `Loaded current match ${savedWorkspace.name}`
+    : appSettings.landingMessage ?? "現在公開中の試合データはまだ設定されていません。";
 
   return (
     <HomeClient
+      allowEditing={false}
       initialCollection={parsedCollection}
       initialSettings={initialSettings}
       initialWorkspaceId={savedWorkspace?.id}
       initialWorkspaceName={savedWorkspace?.name}
       initialRemoteSavedAt={savedWorkspace?.updatedAt}
-      initialStatus={
-        savedWorkspace
-          ? `Loaded workspace ${savedWorkspace.name} from URL`
-          : "Sample data loaded"
-      }
+      initialStatus={initialStatus}
       skipLocalRestore={Boolean(savedWorkspace)}
+      landingMessage={appSettings.landingMessage}
     />
   );
 }

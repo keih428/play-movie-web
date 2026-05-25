@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listSavedWorkspaces } from "@/lib/server/workspace-store";
 
 export const metadata = {
-  title: "Saved Workspaces | Play Movie Web",
+  title: "保存済みワークスペース一覧 | 東大バレー部 試合ビューア",
 };
 
 export default async function WorkspacesPage() {
@@ -13,23 +13,23 @@ export default async function WorkspacesPage() {
       <section className="hero">
         <div className="hero-grid">
           <div>
-            <h1>Saved Workspaces</h1>
+            <h1>保存済みワークスペース</h1>
             <p>
               サーバー保存した解析ワークスペースを一覧表示します。試合数、更新時刻、ソース種別を見ながら再読込対象を選べます。
             </p>
             <div className="badge-row">
               <Link className="badge badge-link" href="/">
-                Back to Workspace
+                ホームへ戻る
               </Link>
             </div>
           </div>
           <div className="meta-grid">
             <div className="meta-card">
-              <span className="muted">Workspaces</span>
+              <span className="muted">件数</span>
               <strong>{workspaces.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">Latest Update</span>
+              <span className="muted">最新更新日</span>
               <strong>{workspaces[0]?.updatedAt?.slice(0, 10) ?? "-"}</strong>
             </div>
           </div>
@@ -39,7 +39,7 @@ export default async function WorkspacesPage() {
       <section className="panel">
         <div className="panel-inner stack">
           <div>
-            <h2>Workspace Index</h2>
+            <h2>ワークスペース一覧</h2>
             <p className="muted">保存済みワークスペースの概要です。</p>
           </div>
 
@@ -63,11 +63,11 @@ export default async function WorkspacesPage() {
                   </div>
                   <div className="meta-grid">
                     <div className="meta-card">
-                      <span className="muted">Matches</span>
+                      <span className="muted">試合数</span>
                       <strong>{workspace.matchCount}</strong>
                     </div>
                     <div className="meta-card">
-                      <span className="muted">Updated</span>
+                      <span className="muted">更新日時</span>
                       <strong>{workspace.updatedAt.slice(0, 16).replace("T", " ")}</strong>
                     </div>
                   </div>

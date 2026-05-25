@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
   if (!(file instanceof File)) {
     return NextResponse.json(
-      { error: "file is required" },
+      { error: "file が必要です" },
       { status: 400 },
     );
   }
@@ -32,14 +32,14 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "unsupported file type" },
+      { error: "未対応のファイル形式です" },
       { status: 400 },
     );
   } catch (error) {
     return NextResponse.json(
       {
-        error: "failed to parse file",
-        detail: error instanceof Error ? error.message : "unknown error",
+        error: "ファイル解析に失敗しました",
+        detail: error instanceof Error ? error.message : "不明なエラーです",
       },
       { status: 400 },
     );
