@@ -1,5 +1,6 @@
 import { HomeClient } from "@/app/home-client";
 import { getStaffAppSettings } from "@/lib/server/app-settings-store";
+import { getLatestVideoLibraryLink } from "@/lib/server/app-settings-store";
 import { getSavedWorkspace } from "@/lib/server/workspace-store";
 import type {
   ParsedCollection,
@@ -37,14 +38,12 @@ async function getInitialWorkspace(
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { workspaceId } = await searchParams;
   const appSettings = await getStaffAppSettings();
-  const resolvedWorkspaceId = workspaceId ?? appSettings.defaultWorkspaceId;
-  const savedWorkspace = await getInitialWorkspace(resolvedWorkspaceId);
+  const latestVideoLink = await getLatestVideoLibraryLink();
+  const savedWorkspace = await getInitialWorkspace(workspaceId);
   const parsedCollection = savedWorkspace?.collection ?? emptyCollection;
   const initialSettings = savedWorkspace?.settings ?? demoSettings;
   const initialStatus = savedWorkspace
-    ? workspaceId
-      ? `Loaded workspace ${savedWorkspace.name} from URL`
-      : `Loaded current match ${savedWorkspace.name}`
+    ? `Loaded workspace ${savedWorkspace.name} from URL`
     : appSettings.landingMessage ?? "現在公開中の試合データはまだ設定されていません。";
 
   return (
@@ -58,6 +57,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       initialStatus={initialStatus}
       skipLocalRestore={Boolean(savedWorkspace)}
       landingMessage={appSettings.landingMessage}
+      latestVideoLink={latestVideoLink}
     />
   );
 }

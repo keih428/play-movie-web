@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getSkillLabel } from "@/lib/domain/display";
 import {
   calculateSeekSeconds,
   extractYouTubeVideoId,
@@ -206,7 +207,11 @@ export function VideoPlayer({
           </div>
           <div className="meta-card">
             <span className="muted">選択中プレイ</span>
-            <strong>{selectedPlay ? `${selectedPlay.skill ?? "-"} / ${selectedPlay.player ?? "-"}` : "-"}</strong>
+            <strong>
+              {selectedPlay
+                ? `${getSkillLabel(selectedPlay.skill)} / ${selectedPlay.player ?? "-"}`
+                : "-"}
+            </strong>
           </div>
           <div className="meta-card">
             <span className="muted">移動先</span>

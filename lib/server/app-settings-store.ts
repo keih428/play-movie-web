@@ -40,6 +40,22 @@ function normalizeVideoLibraryRoot(root: VideoLibraryNode[]): VideoLibraryNode[]
   return [fixedFolder, ...preserved];
 }
 
+function collectVideoLinks(
+  nodes: VideoLibraryNode[],
+  bucket: VideoLibraryNode[] = [],
+): VideoLibraryNode[] {
+  nodes.forEach((node) => {
+    if (node.type === "link" && node.url) {
+      bucket.push(node);
+    }
+    if (node.children?.length) {
+      collectVideoLinks(node.children, bucket);
+    }
+  });
+
+  return bucket;
+}
+
 export async function getStaffAppSettings(): Promise<StaffAppSettings> {
   return (
     (await readDocument<StaffAppSettings>(APP_SETTINGS_KEY)) ?? {
@@ -77,6 +93,27 @@ export async function saveVideoLibrary(
     root: normalizeVideoLibraryRoot(input.root),
     updatedAt: new Date().toISOString(),
   });
+}
+
+export async function getLatestVideoLibraryLink(): Promise<VideoLibraryNode | null> {
+  const library = await getVideoLibrary();
+  const links = collectVideoLinks(library.root);
+  if (links.length === 0) {
+    return null;
+  }
+
+  return links.reduce<VideoLibraryNode>((latest, current) => {
+    if (!latest.createdAt && current.createdAt) {
+      return current;
+    }
+    if (!current.createdAt) {
+      return latest;
+    }
+    if (!latest.createdAt) {
+      return current;
+    }
+    return current.createdAt > latest.createdAt ? current : latest;
+  }, links[links.length - 1]);
 }
 
 function normalizeScoutFileLibraryRoot(root: ScoutFileNode[]): ScoutFileNode[] {

@@ -1,3 +1,4 @@
+import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import type { ParsedEvent, ParsedMatch, TeamSide } from "@/lib/domain/types";
 
 type RotationPanelProps = {
@@ -170,7 +171,8 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
               <div className="tag-row">
                 {focus.event.plays.map((play) => (
                   <span className="tag" key={play.id}>
-                    {play.team}:{play.player ?? "-"}:{play.skill ?? "-"}:{play.effect ?? "-"}
+                    {getTeamLabel(play.team, match)}:{play.player ?? "-"}:
+                    {getSkillLabel(play.skill)}:{getEffectGrade(play.effect)}
                   </span>
                 ))}
               </div>

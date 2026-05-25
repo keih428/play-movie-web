@@ -133,6 +133,7 @@ export type VideoLibraryNode = {
   children?: VideoLibraryNode[];
   url?: string;
   note?: string;
+  createdAt?: string;
   systemKey?: "match-videos";
 };
 

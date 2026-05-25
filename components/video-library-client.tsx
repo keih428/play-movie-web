@@ -356,6 +356,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       name: name.trim(),
       url: mode === "link" ? url.trim() : undefined,
       note: note.trim() || undefined,
+      createdAt: new Date().toISOString(),
       children: mode === "folder" ? [] : undefined,
     });
     console.log("[video-library-client] handle add", {

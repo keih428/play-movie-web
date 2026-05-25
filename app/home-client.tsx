@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analysis-panel";
 import { Filters } from "@/components/filters";
@@ -8,7 +9,13 @@ import { PlayList } from "@/components/play-list";
 import { RotationPanel } from "@/components/rotation-panel";
 import { SetupPanel } from "@/components/setup-panel";
 import { VideoPlayer } from "@/components/video-player";
-import { getTeamLabel } from "@/lib/domain/display";
+import { getSkillLabel, getTeamLabel } from "@/lib/domain/display";
+import {
+  getMatchResultLabel,
+  getMatchSetScore,
+  getTopSkillsForMatch,
+} from "@/lib/domain/summary";
+import { extractYouTubeVideoId } from "@/lib/domain/video";
 import type {
   ParsedCollection,
   ParsedMatch,
@@ -16,6 +23,7 @@ import type {
   PersistedWorkspace,
   SavedWorkspaceRecord,
   SavedWorkspaceSummary,
+  VideoLibraryNode,
   VideoSyncSettings,
   WorkspaceStoreProvider,
 } from "@/lib/domain/types";
@@ -38,6 +46,7 @@ type HomeClientProps = {
   initialStatus?: string;
   skipLocalRestore?: boolean;
   landingMessage?: string;
+  latestVideoLink?: VideoLibraryNode | null;
 };
 
 const WORKSPACE_STORAGE_KEY = "play-movie-web.workspace.v1";
@@ -130,6 +139,7 @@ export function HomeClient({
   initialStatus,
   skipLocalRestore,
   landingMessage,
+  latestVideoLink,
 }: HomeClientProps) {
   const [collection, setCollection] = useState(initialCollection);
   const [settings, setSettings] = useState(initialSettings);
@@ -175,6 +185,7 @@ export function HomeClient({
           return url.toString();
         })()
       : undefined;
+  const latestVideoId = extractYouTubeVideoId(latestVideoLink?.url ?? "");
 
   async function refreshSavedWorkspaces() {
     const response = await fetch("/api/workspaces");
@@ -641,8 +652,8 @@ export function HomeClient({
                     <h2>{allowEditing ? "ワークスペース概要" : "試合概要"}</h2>
                     <p className="muted">
                       {allowEditing
-                        ? "現在の試合データ、共有状態、フィルタ条件をここで俯瞰します。"
-                        : "現在公開されている試合データと、閲覧中の状態をここで確認します。"}
+                        ? "現在の試合データとワークスペース名だけを簡潔に確認します。"
+                        : "現在公開されている試合データの概要だけを確認します。"}
                     </p>
                   </div>
 
@@ -660,54 +671,94 @@ export function HomeClient({
                       <strong>{workspaceName}</strong>
                     </div>
                     <div className="meta-card">
-                      <span className="muted">サーバー保存</span>
-                      <strong>{remoteSavedAt ? "あり" : "なし"}</strong>
+                      <span className="muted">セット数</span>
+                      <strong>{match?.sets.length ?? 0}</strong>
                     </div>
                     <div className="meta-card">
-                      <span className="muted">保存先</span>
-                      <strong>{storeProvider ?? "不明"}</strong>
+                      <span className="muted">プレイ数</span>
+                      <strong>{countPlays(match)}</strong>
                     </div>
                   </div>
 
-                  <Filters
-                    teamOptions={filterOptions.teams}
-                    playerOptions={filterOptions.players}
-                    skillOptions={filterOptions.skills}
-                    filters={filters}
-                    onChange={handleFiltersChange}
-                  />
+                  {match ? (
+                    <>
+                      <section className="panel-section soft-panel">
+                        <div className="section-heading">
+                          <h3>試合結果</h3>
+                          <p className="muted">
+                            セットスコアと各セットの勝敗をまとめて確認できます。
+                          </p>
+                        </div>
+                        <div className="overview-grid">
+                          <div className="meta-card">
+                            <span className="muted">試合結果</span>
+                            <strong>{getMatchResultLabel(match)}</strong>
+                          </div>
+                          <div className="meta-card">
+                            <span className="muted">セットスコア</span>
+                            <strong>
+                              {getMatchSetScore(match).home}-{getMatchSetScore(match).away}
+                            </strong>
+                          </div>
+                        </div>
+                        <div className="workspace-list">
+                          {match.sets.map((set) => {
+                            const winner =
+                              set.score.home === set.score.away
+                                ? "引き分け"
+                                : set.score.home > set.score.away
+                                  ? `${match.teams.home.name} セット先取`
+                                  : `${match.teams.away.name} セット先取`;
+                            const setPlayCount = set.events.reduce(
+                              (sum, event) => sum + event.plays.length,
+                              0,
+                            );
 
-                  <section className="panel-section soft-panel">
-                    <div className="section-heading">
-                      <h3>{allowEditing ? "状態メモ" : "閲覧状態"}</h3>
-                      <p className="muted">
-                        状態表示をひとまとまりにして、現在の同期状態を見やすくしています。
-                      </p>
-                    </div>
-                    <div className="status-list">
-                      <div className="status-row">
-                        <span>状態</span>
-                        <strong>{status}</strong>
-                      </div>
-                      <div className="status-row">
-                        <span>共有URL</span>
-                        <strong>{shareStatus ?? "未準備"}</strong>
-                      </div>
-                      <div className="status-row">
-                        <span>前回ローカル保存</span>
-                        <strong>{lastSavedAt ?? "未保存"}</strong>
-                      </div>
-                      <div className="status-row">
-                        <span>プレーヤー時刻</span>
-                        <strong>
-                          {typeof currentPlayerSeconds === "number"
-                            ? `${currentPlayerSeconds.toFixed(1)}s`
-                            : "未取得"}
-                        </strong>
-                      </div>
-                    </div>
-                    {error ? <p className="error-text">{error}</p> : null}
-                  </section>
+                            return (
+                              <article className="workspace-card" key={set.id}>
+                                <div className="list-item-header">
+                                  <strong>セット {set.setIndex}</strong>
+                                  <span className="tag">{winner}</span>
+                                </div>
+                                <div className="meta-grid">
+                                  <div className="meta-card">
+                                    <span className="muted">スコア</span>
+                                    <strong>
+                                      {set.score.home}-{set.score.away}
+                                    </strong>
+                                  </div>
+                                  <div className="meta-card">
+                                    <span className="muted">ラリー数</span>
+                                    <strong>{set.events.length}</strong>
+                                  </div>
+                                  <div className="meta-card">
+                                    <span className="muted">プレイ数</span>
+                                    <strong>{setPlayCount}</strong>
+                                  </div>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+
+                      <section className="panel-section soft-panel">
+                        <div className="section-heading">
+                          <h3>簡易分析</h3>
+                          <p className="muted">
+                            試合全体で多かったスキルを上位から表示します。
+                          </p>
+                        </div>
+                        <div className="tag-row">
+                          {getTopSkillsForMatch(match, 6).map((entry) => (
+                            <span className="tag" key={entry.skill}>
+                              {getSkillLabel(entry.skill)}: {entry.count}
+                            </span>
+                          ))}
+                        </div>
+                      </section>
+                    </>
+                  ) : null}
                 </div>
               </section>
             </section>
@@ -769,7 +820,9 @@ export function HomeClient({
                         </div>
                         <div className="meta-card">
                           <span className="muted">選択中プレイ</span>
-                          <strong>{selectedPlay?.skill ?? "なし"}</strong>
+                          <strong>
+                            {selectedPlay ? getSkillLabel(selectedPlay.skill) : "なし"}
+                          </strong>
                         </div>
                       </div>
                     </div>
@@ -828,20 +881,26 @@ export function HomeClient({
                 </div>
               </div>
 
+              <div className="button-row">
+                <Link className="button" href="/workspaces">
+                  試合一覧を見る
+                </Link>
+              </div>
+
               <div className="home-steps">
                 <article className="home-step">
                   <span className="home-step-index">01</span>
                   <div>
-                    <strong>試合ワークスペースを開く</strong>
+                    <strong>試合一覧を開く</strong>
                     <p className="muted">
-                      スタッフが設定した現在の試合ワークスペースを開いて、すぐにレビューへ入れます。
+                      登録済みの試合を一覧から選び、見たい試合だけを開きます。
                     </p>
                   </div>
                 </article>
                 <article className="home-step">
                   <span className="home-step-index">02</span>
                   <div>
-                    <strong>映像で確認する</strong>
+                    <strong>映像でレビューする</strong>
                     <p className="muted">
                       プレイ一覧から試合映像へ移動し、分析対象のラリーを短時間で確認できます。
                     </p>
@@ -869,42 +928,45 @@ export function HomeClient({
 
           <div className="stack">
             {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
-            <section className="panel">
-              <div className="panel-inner stack">
-                <div>
-                  <h2>{allowEditing ? "部内向け概要" : "現在の閲覧情報"}</h2>
-                  <p className="muted">
-                    {allowEditing
-                      ? "初期状態で必要な情報だけを右側に残し、最初の一歩を迷わないようにしています。"
-                      : "一般部員向けには閲覧に必要な要素だけを残し、設定操作を分離しています。"}
-                  </p>
-                </div>
-
-                <div className="overview-grid">
-                    <div className="meta-card">
-                      <span className="muted">保存済みワークスペース</span>
-                      <strong>{savedWorkspaces.length}</strong>
-                    </div>
-                  <div className="meta-card">
-                    <span className="muted">保存先</span>
-                    <strong>{storeProvider ?? "ローカル"}</strong>
-                  </div>
-                    <div className="meta-card">
-                      <span className="muted">状態</span>
-                      <strong>{status}</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">ワークスペース</span>
-                      <strong>{workspaceName}</strong>
-                    </div>
-                </div>
-
-                {error ? <p className="error-text">{error}</p> : null}
-              </div>
-            </section>
           </div>
         </section>
       )}
+
+      {latestVideoLink && latestVideoId ? (
+        <section className="panel" style={{ marginTop: 24 }}>
+          <div className="panel-inner stack">
+            <div>
+              <h2>最新追加動画</h2>
+              <p className="muted">
+                動画ライブラリで最後に追加された YouTube 動画をここから直接再生できます。
+              </p>
+            </div>
+            <div className="meta-grid">
+              <div className="meta-card">
+                <span className="muted">タイトル</span>
+                <strong>{latestVideoLink.name}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">追加日時</span>
+                <strong>
+                  {latestVideoLink.createdAt?.slice(0, 16).replace("T", " ") ?? "-"}
+                </strong>
+              </div>
+            </div>
+            {latestVideoLink.note ? <p className="muted">{latestVideoLink.note}</p> : null}
+            <div className="video-embed-shell">
+              <iframe
+                className="video-embed"
+                src={`https://www.youtube.com/embed/${latestVideoId}`}
+                title={latestVideoLink.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

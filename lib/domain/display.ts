@@ -7,6 +7,7 @@ const SKILL_LABELS: Record<string, string> = {
   B: "ブロック",
   D: "ディグ",
   E: "セット",
+  F: "フリーボール",
 };
 
 const EFFECT_GRADES: Record<string, string> = {
