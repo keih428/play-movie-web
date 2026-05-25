@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ library: savedLibrary });
   } catch (error) {
+    console.error("scout-files POST failed", error);
     return NextResponse.json(
       {
         error:
@@ -157,6 +158,7 @@ export async function PUT(request: NextRequest) {
     const library = await saveScoutFileLibrary({ root: payload.root });
     return NextResponse.json({ library });
   } catch (error) {
+    console.error("scout-files PUT failed", error);
     return NextResponse.json(
       {
         error:

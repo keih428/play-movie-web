@@ -264,18 +264,23 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
         body: JSON.stringify({ root: nextRoot }),
       });
 
-      if (!response.ok) {
-        throw new Error("failed to save");
-      }
-
       const payload = (await response.json()) as {
         library: VideoLibrary;
+        error?: string;
       };
+
+      if (!response.ok) {
+        throw new Error(payload.error || "ライブラリの保存に失敗しました。");
+      }
 
       setLibrary(payload.library);
       setStatus("ライブラリを保存しました。");
-    } catch {
-      setStatus("ライブラリの保存に失敗しました。");
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "ライブラリの保存に失敗しました。",
+      );
     } finally {
       setIsSaving(false);
     }

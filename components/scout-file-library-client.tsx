@@ -254,17 +254,24 @@ export function ScoutFileLibraryClient({
         body: JSON.stringify({ root: nextRoot }),
       });
 
-      if (!response.ok) {
-        throw new Error("save failed");
-      }
-
       const payload = (await response.json()) as {
         library: ScoutFileLibrary;
+        error?: string;
       };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error || "試合データライブラリの保存に失敗しました。",
+        );
+      }
       setLibrary(payload.library);
       setStatus("試合データライブラリを保存しました。");
-    } catch {
-      setStatus("試合データライブラリの保存に失敗しました。");
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "試合データライブラリの保存に失敗しました。",
+      );
     } finally {
       setIsSaving(false);
     }

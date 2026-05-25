@@ -20,6 +20,7 @@ export async function PUT(request: NextRequest) {
     const library = await saveVideoLibrary({ root: payload.root });
     return NextResponse.json({ library });
   } catch (error) {
+    console.error("video-library PUT failed", error);
     return NextResponse.json(
       {
         error:
