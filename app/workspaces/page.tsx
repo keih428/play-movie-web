@@ -55,36 +55,25 @@ export default async function WorkspacesPage() {
               </p>
             </div>
           ) : (
-            <div className="workspace-list">
+            <div className="workspace-row-list">
               {workspaces.map((workspace) => (
-                <article className="workspace-card" key={workspace.id}>
-                  <div className="list-item-header">
-                    <div>
-                      <strong>{workspace.name}</strong>
-                      <p className="muted">{workspace.matchLabel ?? "対戦カード未設定"}</p>
-                    </div>
-                    <span className="tag">{workspace.resultLabel ?? "結果未取得"}</span>
-                  </div>
-                  <div className="meta-grid">
-                    <div className="meta-card">
-                      <span className="muted">セットスコア</span>
-                      <strong>{workspace.setScoreLabel ?? "-"}</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">登録日時</span>
-                      <strong>{workspace.createdAt.slice(0, 16).replace("T", " ")}</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">データ形式</span>
-                      <strong>{workspace.sourceType.toUpperCase()}</strong>
-                    </div>
-                  </div>
-                  <div className="button-row">
+                <article className="workspace-row" key={workspace.id}>
+                  <strong className="workspace-row-title">{workspace.name}</strong>
+                  <span className="workspace-row-cell muted">
+                    {workspace.matchLabel ?? "対戦カード未設定"}
+                  </span>
+                  <span className="workspace-row-cell">
+                    {workspace.resultLabel ?? "結果未取得"}
+                  </span>
+                  <span className="workspace-row-cell">
+                    {workspace.setScoreLabel ?? "-"}
+                  </span>
+                  <span className="workspace-row-cell mono">
+                    {workspace.createdAt.slice(0, 16).replace("T", " ")}
+                  </span>
+                  <div className="workspace-row-action">
                     <Link className="button" href={`/?workspaceId=${workspace.id}`}>
                       動画とプレイで見る
-                    </Link>
-                    <Link className="button secondary" href={`/workspaces/${workspace.id}`}>
-                      概要を見る
                     </Link>
                   </div>
                 </article>

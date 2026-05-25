@@ -443,6 +443,38 @@ textarea {
   gap: 14px;
 }
 
+.workspace-row-list {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 1.4fr) 120px 100px 160px 180px;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.workspace-row-title {
+  min-width: 0;
+}
+
+.workspace-row-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-row-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .tree-list {
   display: grid;
   gap: 12px;
@@ -926,6 +958,7 @@ textarea {
   .analysis-block,
   .rotation-team-card,
   .workspace-card,
+  .workspace-row,
   .list-item,
   .meta-card {
     border-radius: 16px;
@@ -972,6 +1005,15 @@ textarea {
   .logo-placeholder {
     min-height: 132px;
     padding: 14px;
+  }
+
+  .workspace-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .workspace-row-action {
+    justify-content: stretch;
   }
 
   .logo-placeholder-large {
