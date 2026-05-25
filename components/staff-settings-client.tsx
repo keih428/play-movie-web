@@ -61,7 +61,6 @@ export function StaffSettingsClient({
   const [matchName, setMatchName] = useState("");
   const [scoutFileId, setScoutFileId] = useState("");
   const [prerollSeconds, setPrerollSeconds] = useState("3");
-  const [useOriginalTime, setUseOriginalTime] = useState(false);
   const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
   const [selectedSetIndex, setSelectedSetIndex] = useState<number>();
   const [status, setStatus] = useState<string>();
@@ -218,7 +217,6 @@ export function StaffSettingsClient({
         youtubeUrl: setVideos[0]?.youtubeUrl ?? "",
         offsetSeconds: setVideos[0]?.offsetSeconds ?? 0,
         prerollSeconds: Number(prerollSeconds) || 0,
-        useOriginalTime,
         setVideos,
       };
 
@@ -257,7 +255,6 @@ export function StaffSettingsClient({
       setSetVideos([]);
       setSelectedSetIndex(undefined);
       setPrerollSeconds("3");
-      setUseOriginalTime(false);
       setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
     } catch (error) {
       setRegisterStatus(
@@ -421,22 +418,9 @@ export function StaffSettingsClient({
               />
             </div>
 
-            <div className="field">
-              <label htmlFor="staff-time-mode">同期時刻の基準</label>
-              <select
-                id="staff-time-mode"
-                value={useOriginalTime ? "original" : "time"}
-                onChange={(event) =>
-                  setUseOriginalTime(event.target.value === "original")
-                }
-              >
-                <option value="time">再生時刻</option>
-                <option value="original">元時刻</option>
-              </select>
-              <p className="muted">
-                `再生時刻` は通常の `time` を使い、`元時刻` はデータ内の `originalTime` を優先して使います。
-              </p>
-            </div>
+            <p className="muted">
+              動画同期は `originalTime` を 30fps で秒換算して計算します。
+            </p>
           </div>
 
           <div className="button-row">

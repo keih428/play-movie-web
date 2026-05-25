@@ -737,7 +737,7 @@ export function HomeClient({
                     </div>
                     <div className="meta-card">
                       <span className="muted">時刻基準</span>
-                      <strong>{settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
+                      <strong>originalTime / 30</strong>
                     </div>
                     <div className="meta-card">
                       <span className="muted">選択中プレイ</span>

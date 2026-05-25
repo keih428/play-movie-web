@@ -262,22 +262,9 @@ export function SetupPanel({
             </div>
           </div>
 
-          <div className="field">
-            <label htmlFor="time-mode">同期時刻の基準</label>
-            <select
-              id="time-mode"
-              value={settings.useOriginalTime ? "original" : "time"}
-              onChange={(event) =>
-                onSettingsChange({
-                  ...settings,
-                  useOriginalTime: event.target.value === "original",
-                })
-              }
-            >
-              <option value="time">再生時刻</option>
-              <option value="original">元時刻</option>
-            </select>
-          </div>
+          <p className="muted">
+            動画同期は `.vsm` / `.vsdb` 内の `originalTime` を 30fps で秒換算して計算します。
+          </p>
 
           <div className="button-row">
             <button

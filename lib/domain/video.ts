@@ -4,26 +4,21 @@ import type {
   VideoSyncSettings,
 } from "@/lib/domain/types";
 
-export function getBasePlayTime(
-  play: ParsedPlay,
-  useOriginalTime: boolean,
-): number | undefined {
-  if (useOriginalTime && typeof play.originalTime === "number") {
-    return play.originalTime;
+const VSM_FRAME_RATE = 30;
+
+export function getBasePlayTimeSeconds(play: ParsedPlay): number | undefined {
+  if (typeof play.originalTime === "number") {
+    return play.originalTime / VSM_FRAME_RATE;
   }
 
-  if (typeof play.time === "number") {
-    return play.time;
-  }
-
-  return play.originalTime;
+  return undefined;
 }
 
 export function calculateSeekSeconds(
   play: ParsedPlay,
   settings: VideoSyncSettings,
 ): number | undefined {
-  const baseTime = getBasePlayTime(play, settings.useOriginalTime);
+  const baseTime = getBasePlayTimeSeconds(play);
   if (typeof baseTime !== "number") {
     return undefined;
   }

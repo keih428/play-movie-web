@@ -165,7 +165,7 @@ export function VideoPlayer({
               </strong>
               <p className="muted">
                 プレイ選択時の再生位置 =
-                <span className="mono"> play.time + offset - preroll </span>
+                <span className="mono"> play.originalTime / 30 + offset - preroll </span>
               </p>
             </div>
           </div>
@@ -194,7 +194,7 @@ export function VideoPlayer({
           </div>
           <div className="meta-card">
             <span className="muted">時刻基準</span>
-            <strong>{settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
+            <strong>originalTime / 30</strong>
           </div>
           <div className="meta-card">
             <span className="muted">セット動画</span>

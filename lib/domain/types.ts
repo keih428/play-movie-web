@@ -88,7 +88,6 @@ export type VideoSyncSettings = {
   youtubeUrl: string;
   offsetSeconds: number;
   prerollSeconds: number;
-  useOriginalTime: boolean;
   setVideos?: VideoSyncSetSource[];
 };
 

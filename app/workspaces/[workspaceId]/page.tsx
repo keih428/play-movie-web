@@ -138,7 +138,7 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
               </div>
               <div className="meta-card">
                 <span className="muted">時刻基準</span>
-                <strong>{workspace.settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
+                <strong>originalTime / 30</strong>
               </div>
               <div className="meta-card">
                 <span className="muted">セット別動画</span>
