@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { VideoLibrary, VideoLibraryNode } from "@/lib/domain/types";
 
 type VideoLibraryClientProps = {
@@ -250,6 +250,41 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
   const [editing, setEditing] = useState<EditState | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLatestLibrary() {
+      try {
+        const response = await fetch("/api/video-library", { cache: "no-store" });
+        const payload = (await response.json()) as {
+          library?: VideoLibrary;
+          error?: string;
+        };
+
+        if (!response.ok || !payload.library) {
+          throw new Error(payload.error || "ライブラリの取得に失敗しました。");
+        }
+
+        if (!cancelled) {
+          setLibrary(payload.library);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStatus(
+            error instanceof Error
+              ? error.message
+              : "ライブラリの取得に失敗しました。",
+          );
+        }
+      }
+    }
+
+    void loadLatestLibrary();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function saveLibrary(nextRoot: VideoLibraryNode[]) {
     setIsSaving(true);

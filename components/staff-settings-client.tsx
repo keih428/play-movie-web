@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type {
   ParsedCollection,
@@ -78,8 +79,10 @@ export function StaffSettingsClient({
   const [selectedSetIndex, setSelectedSetIndex] = useState<number>();
   const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
+  const [libraryStatus, setLibraryStatus] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isRefreshingLibraries, setIsRefreshingLibraries] = useState(false);
 
   const scoutFileOptions = useMemo(
     () => flattenScoutFiles(currentScoutLibrary.root),
@@ -93,32 +96,59 @@ export function StaffSettingsClient({
     (entry) => entry.setIndex === selectedSetIndex,
   );
 
+  async function refreshLibraries() {
+    setIsRefreshingLibraries(true);
+
+    try {
+      const [scoutResponse, videoResponse] = await Promise.all([
+        fetch("/api/scout-files", { cache: "no-store" }),
+        fetch("/api/video-library", { cache: "no-store" }),
+      ]);
+      const scoutPayload = (await scoutResponse.json()) as {
+        library?: ScoutFileLibrary;
+        error?: string;
+      };
+      const videoPayload = (await videoResponse.json()) as {
+        library?: VideoLibrary;
+        error?: string;
+      };
+
+      if (!scoutResponse.ok) {
+        throw new Error(
+          scoutPayload.error || "試合データライブラリの取得に失敗しました。",
+        );
+      }
+      if (!videoResponse.ok) {
+        throw new Error(
+          videoPayload.error || "動画リンクライブラリの取得に失敗しました。",
+        );
+      }
+
+      if (scoutPayload.library) {
+        setCurrentScoutLibrary(scoutPayload.library);
+      }
+      if (videoPayload.library) {
+        setCurrentVideoLibrary(videoPayload.library);
+      }
+      setLibraryStatus(undefined);
+    } catch (error) {
+      setLibraryStatus(
+        error instanceof Error
+          ? error.message
+          : "ライブラリの再読込に失敗しました。",
+      );
+    } finally {
+      setIsRefreshingLibraries(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadLibraries() {
-      try {
-        const [scoutResponse, videoResponse] = await Promise.all([
-          fetch("/api/scout-files", { cache: "no-store" }),
-          fetch("/api/video-library", { cache: "no-store" }),
-        ]);
-        const scoutPayload = (await scoutResponse.json()) as {
-          library?: ScoutFileLibrary;
-        };
-        const videoPayload = (await videoResponse.json()) as {
-          library?: VideoLibrary;
-        };
-
-        if (!cancelled) {
-          if (scoutPayload.library) {
-            setCurrentScoutLibrary(scoutPayload.library);
-          }
-          if (videoPayload.library) {
-            setCurrentVideoLibrary(videoPayload.library);
-          }
-        }
-      } catch {
-        // Keep server-rendered fallback values when live refresh fails.
+      await refreshLibraries();
+      if (cancelled) {
+        return;
       }
     }
 
@@ -364,15 +394,49 @@ export function StaffSettingsClient({
             </select>
           </div>
 
-          {setVideos.length > 0 ? (
-            <section className="panel-section soft-panel">
-              <div className="section-heading">
-                <h3>セットごとの試合動画</h3>
-                <p className="muted">
-                  何セット目かを選んだうえで、そのセットに対応する動画リンクとオフセット秒を設定します。
-                </p>
-              </div>
+          <div className="button-row">
+            <button
+              className="button secondary"
+              type="button"
+              disabled={isRefreshingLibraries}
+              onClick={() => {
+                void refreshLibraries();
+              }}
+            >
+              {isRefreshingLibraries ? "再読込中..." : "候補を再読込"}
+            </button>
+          </div>
 
+          {libraryStatus ? <p className="muted">{libraryStatus}</p> : null}
+          <p className="muted">
+            試合データ候補 {scoutFileOptions.length} 件 /
+            動画リンク候補 {matchVideos.length} 件
+          </p>
+
+          {scoutFileOptions.length === 0 ? (
+            <p className="muted">
+              まだ候補がありません。<Link href="/staff/data-library">試合データ管理</Link>
+              で `.vsm` / `.vsdb` を登録したあと、この画面で `候補を再読込` を押してください。
+            </p>
+          ) : null}
+
+          {matchVideos.length === 0 ? (
+            <p className="muted">
+              まだ動画リンク候補がありません。<Link href="/videos">動画ライブラリ</Link>
+              で YouTube リンクを追加したあと、この画面で `候補を再読込` を押してください。
+            </p>
+          ) : null}
+
+          <section className="panel-section soft-panel">
+            <div className="section-heading">
+              <h3>セットごとの試合動画</h3>
+              <p className="muted">
+                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。各セットに YouTube リンクとオフセット秒を設定してください。
+              </p>
+            </div>
+
+            {setVideos.length > 0 ? (
+              <>
               <div className="field">
                 <label htmlFor="selected-set-index">対象セット</label>
                 <select
@@ -455,8 +519,13 @@ export function StaffSettingsClient({
                   </article>
                 ))}
               </div>
-            </section>
-          ) : null}
+              </>
+            ) : (
+              <p className="muted">
+                まず上の `試合データ` で `.vsm` / `.vsdb` を選択してください。選択後にセットごとの YouTube リンク選択コンポーネントが表示されます。
+              </p>
+            )}
+          </section>
 
           <div className="field-grid">
             <div className="field">

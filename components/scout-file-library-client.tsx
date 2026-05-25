@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScoutFileLibrary, ScoutFileNode } from "@/lib/domain/types";
 
 type ScoutFileLibraryClientProps = {
@@ -241,6 +241,43 @@ export function ScoutFileLibraryClient({
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLatestLibrary() {
+      try {
+        const response = await fetch("/api/scout-files", { cache: "no-store" });
+        const payload = (await response.json()) as {
+          library?: ScoutFileLibrary;
+          error?: string;
+        };
+
+        if (!response.ok || !payload.library) {
+          throw new Error(
+            payload.error || "試合データライブラリの取得に失敗しました。",
+          );
+        }
+
+        if (!cancelled) {
+          setLibrary(payload.library);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStatus(
+            error instanceof Error
+              ? error.message
+              : "試合データライブラリの取得に失敗しました。",
+          );
+        }
+      }
+    }
+
+    void loadLatestLibrary();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function saveLibrary(nextRoot: ScoutFileNode[]) {
     setIsSaving(true);
