@@ -51,6 +51,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       allowEditing={false}
       initialCollection={parsedCollection}
       initialSettings={initialSettings}
+      initialSelectedMatchIndex={savedWorkspace?.selectedMatchIndex}
       initialWorkspaceId={savedWorkspace?.id}
       initialWorkspaceName={savedWorkspace?.name}
       initialRemoteSavedAt={savedWorkspace?.updatedAt}

@@ -40,6 +40,7 @@ type HomeClientProps = {
   allowEditing?: boolean;
   initialCollection: ParsedCollection;
   initialSettings: VideoSyncSettings;
+  initialSelectedMatchIndex?: number;
   initialWorkspaceId?: string;
   initialWorkspaceName?: string;
   initialRemoteSavedAt?: string;
@@ -133,6 +134,7 @@ export function HomeClient({
   allowEditing = false,
   initialCollection,
   initialSettings,
+  initialSelectedMatchIndex = 0,
   initialWorkspaceId,
   initialWorkspaceName,
   initialRemoteSavedAt,
@@ -143,7 +145,7 @@ export function HomeClient({
 }: HomeClientProps) {
   const [collection, setCollection] = useState(initialCollection);
   const [settings, setSettings] = useState(initialSettings);
-  const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
+  const [selectedMatchIndex, setSelectedMatchIndex] = useState(initialSelectedMatchIndex);
   const [filters, setFilters] = useState<FilterState>({
     team: "all",
     player: "all",
@@ -169,7 +171,9 @@ export function HomeClient({
   const [isSyncingWorkspace, setIsSyncingWorkspace] = useState(false);
   const [shareStatus, setShareStatus] = useState<string>();
   const [storeProvider, setStoreProvider] = useState<WorkspaceStoreProvider>();
-  const [activeTab, setActiveTab] = useState<DashboardTab>("workspace");
+  const [activeTab, setActiveTab] = useState<DashboardTab>(
+    !allowEditing && initialWorkspaceId ? "review" : "workspace",
+  );
   const [selectedScoutFileId, setSelectedScoutFileId] = useState<string>();
 
   const hasMatches = collection.matches.length > 0;
@@ -177,6 +181,7 @@ export function HomeClient({
   const filteredMatch = getFilteredMatch(match, filters);
   const playCount = countPlays(filteredMatch);
   const filterOptions = getFilterOptions(match);
+  const showLandingPanel = !hasMatches;
   const shareUrl =
     typeof window !== "undefined" && remoteWorkspaceId
       ? (() => {
@@ -610,128 +615,86 @@ export function HomeClient({
         </div>
       </section>
 
-      {latestVideoLink && latestVideoId ? (
-        <section className="panel" style={{ marginTop: 24, marginBottom: 24 }}>
+      {showLandingPanel ? (
+        <section className="panel home-landing-panel" style={{ marginBottom: 24 }}>
           <div className="panel-inner stack">
-            <div>
-              <h2>最も直近に追加した動画</h2>
-              <p className="muted">
-                動画ライブラリで最後に追加された YouTube 動画をここから直接再生できます。
-              </p>
-            </div>
-            <div className="meta-grid">
-              <div className="meta-card">
-                <span className="muted">タイトル</span>
-                <strong>{latestVideoLink.name}</strong>
+            <div className="home-intro">
+              <div
+                className="logo-placeholder logo-placeholder-large"
+                aria-label="東大バレー部ロゴ"
+              >
+                <Image
+                  className="logo-image logo-image-large"
+                  src="/logo.png"
+                  alt="東大バレー部ロゴ"
+                  width={320}
+                  height={180}
+                  priority
+                />
               </div>
-              <div className="meta-card">
-                <span className="muted">追加日時</span>
-                <strong>
-                  {latestVideoLink.createdAt?.slice(0, 16).replace("T", " ") ?? "-"}
-                </strong>
+              <div>
+                <div className="hero-kicker">
+                  東京大学運動会バレー部
+                </div>
+                <h2>試合レビューの入口を、ひとつに。</h2>
+                <p className="muted">
+                  {landingMessage ??
+                    "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、東京大学運動会バレー部専用の環境です。"}
+                </p>
               </div>
             </div>
-            {latestVideoLink.note ? <p className="muted">{latestVideoLink.note}</p> : null}
-            <div className="video-embed-shell">
-              <iframe
-                className="video-embed"
-                src={`https://www.youtube.com/embed/${latestVideoId}`}
-                title={latestVideoLink.name}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
+
+            <div className="button-row">
+              <Link className="button" href="/workspaces">
+                試合一覧を見る
+              </Link>
             </div>
+
+            <div className="home-steps">
+              <article className="home-step">
+                <span className="home-step-index">01</span>
+                <div>
+                  <strong>試合一覧を開く</strong>
+                  <p className="muted">
+                    登録済みの試合を一覧から選び、見たい試合だけを開きます。
+                  </p>
+                </div>
+              </article>
+              <article className="home-step">
+                <span className="home-step-index">02</span>
+                <div>
+                  <strong>映像でレビューする</strong>
+                  <p className="muted">
+                    プレイ一覧から試合映像へ移動し、分析対象のラリーを短時間で確認できます。
+                  </p>
+                </div>
+              </article>
+              <article className="home-step">
+                <span className="home-step-index">03</span>
+                <div>
+                  <strong>動画ライブラリを見る</strong>
+                  <p className="muted">
+                    試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <div className="home-feature-band">
+              <div className="feature-chip">試合レビュー</div>
+              <div className="feature-chip">映像ジャンプ</div>
+              <div className="feature-chip">ローテーション確認</div>
+              <div className="feature-chip">共有ワークスペース</div>
+            </div>
+
+            {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
           </div>
         </section>
       ) : null}
 
-      <section className="panel home-landing-panel" style={{ marginBottom: 24 }}>
-        <div className="panel-inner stack">
-          <div className="home-intro">
-            <div
-              className="logo-placeholder logo-placeholder-large"
-              aria-label="東大バレー部ロゴ"
-            >
-              <Image
-                className="logo-image logo-image-large"
-                src="/logo.png"
-                alt="東大バレー部ロゴ"
-                width={320}
-                height={180}
-                priority
-              />
-            </div>
-            <div>
-              <div className="hero-kicker">
-                東京大学運動会バレー部
-              </div>
-              <h2>試合レビューの入口を、ひとつに。</h2>
-              <p className="muted">
-                {landingMessage ??
-                  "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、東京大学運動会バレー部専用の環境です。"}
-              </p>
-            </div>
-          </div>
-
-          <div className="button-row">
-            <Link className="button" href="/workspaces">
-              試合一覧を見る
-            </Link>
-          </div>
-
-          <div className="home-steps">
-            <article className="home-step">
-              <span className="home-step-index">01</span>
-              <div>
-                <strong>試合一覧を開く</strong>
-                <p className="muted">
-                  登録済みの試合を一覧から選び、見たい試合だけを開きます。
-                </p>
-              </div>
-            </article>
-            <article className="home-step">
-              <span className="home-step-index">02</span>
-              <div>
-                <strong>映像でレビューする</strong>
-                <p className="muted">
-                  プレイ一覧から試合映像へ移動し、分析対象のラリーを短時間で確認できます。
-                </p>
-              </div>
-            </article>
-            <article className="home-step">
-              <span className="home-step-index">03</span>
-              <div>
-                <strong>動画ライブラリを見る</strong>
-                <p className="muted">
-                  試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
-                </p>
-              </div>
-            </article>
-          </div>
-
-          <div className="home-feature-band">
-            <div className="feature-chip">試合レビュー</div>
-            <div className="feature-chip">映像ジャンプ</div>
-            <div className="feature-chip">ローテーション確認</div>
-            <div className="feature-chip">共有ワークスペース</div>
-          </div>
-
-          {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
-        </div>
-      </section>
-
       {hasMatches ? (
         <section className="dashboard-shell">
           <div className="dashboard-header">
-            <div>
-              <h2>試合ワークスペース</h2>
-              <p className="muted">
-                {allowEditing
-                  ? "主要機能をタブで切り替えながら、読み込み・同期・分析を進めます。"
-                  : "公開された試合ワークスペースを、閲覧と分析に集中できる形で表示します。"}
-              </p>
-            </div>
             <div className="tab-row" role="tablist" aria-label="画面切替">
               {[
                 ["workspace", "概要"],
@@ -961,6 +924,42 @@ export function HomeClient({
               </div>
             </section>
           ) : null}
+        </section>
+      ) : null}
+
+      {latestVideoLink && latestVideoId ? (
+        <section className="panel" style={{ marginTop: 24 }}>
+          <div className="panel-inner stack">
+            <div>
+              <h2>最も直近に追加した動画</h2>
+              <p className="muted">
+                動画ライブラリで最後に追加された YouTube 動画をここから直接再生できます。
+              </p>
+            </div>
+            <div className="meta-grid">
+              <div className="meta-card">
+                <span className="muted">タイトル</span>
+                <strong>{latestVideoLink.name}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">追加日時</span>
+                <strong>
+                  {latestVideoLink.createdAt?.slice(0, 16).replace("T", " ") ?? "-"}
+                </strong>
+              </div>
+            </div>
+            {latestVideoLink.note ? <p className="muted">{latestVideoLink.note}</p> : null}
+            <div className="video-embed-shell">
+              <iframe
+                className="video-embed"
+                src={`https://www.youtube.com/embed/${latestVideoId}`}
+                title={latestVideoLink.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
         </section>
       ) : null}
     </main>
