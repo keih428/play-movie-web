@@ -5,6 +5,8 @@ export const metadata = {
   title: "試合一覧 | 東大バレー部 試合ビューア",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkspacesPage() {
   const workspaces = await listSavedWorkspaces();
 

@@ -10,6 +10,11 @@ export async function GET() {
   try {
     const workspaces = await listSavedWorkspaces();
     const provider = await getWorkspaceStoreProvider();
+    console.log("[api/workspaces] GET", {
+      provider,
+      count: workspaces.length,
+      ids: workspaces.map((workspace) => workspace.id),
+    });
     return NextResponse.json({ provider, workspaces });
   } catch (error) {
     return NextResponse.json(
@@ -46,6 +51,12 @@ export async function POST(request: NextRequest) {
     });
 
     const provider = await getWorkspaceStoreProvider();
+    console.log("[api/workspaces] POST", {
+      provider,
+      id: record.id,
+      name: record.name,
+      matchCount: record.collection.matches.length,
+    });
     return NextResponse.json({ provider, workspace: record });
   } catch (error) {
     return NextResponse.json(

@@ -76,7 +76,6 @@ export function StaffSettingsClient({
   const [scoutFileId, setScoutFileId] = useState("");
   const [prerollSeconds, setPrerollSeconds] = useState("3");
   const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
-  const [selectedSetIndex, setSelectedSetIndex] = useState<number>();
   const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
   const [libraryStatus, setLibraryStatus] = useState<string>();
@@ -91,9 +90,6 @@ export function StaffSettingsClient({
   const matchVideos = useMemo(
     () => flattenVideoLinks(currentVideoLibrary.root),
     [currentVideoLibrary.root],
-  );
-  const selectedSetVideo = setVideos.find(
-    (entry) => entry.setIndex === selectedSetIndex,
   );
 
   async function refreshLibraries() {
@@ -165,16 +161,13 @@ export function StaffSettingsClient({
     };
   }, []);
 
-  function updateSelectedSetVideo(
+  function updateSetVideo(
+    setIndex: number,
     updater: (entry: VideoSyncSetSource) => VideoSyncSetSource,
   ) {
-    if (typeof selectedSetIndex !== "number") {
-      return;
-    }
-
     setSetVideos((current) =>
       current.map((entry) =>
-        entry.setIndex === selectedSetIndex ? updater(entry) : entry,
+        entry.setIndex === setIndex ? updater(entry) : entry,
       ),
     );
   }
@@ -182,7 +175,6 @@ export function StaffSettingsClient({
   useEffect(() => {
     if (!scoutFileId) {
       setSetVideos([]);
-      setSelectedSetIndex(undefined);
       return;
     }
 
@@ -219,12 +211,10 @@ export function StaffSettingsClient({
 
         if (!cancelled) {
           setSetVideos(nextSetVideos);
-          setSelectedSetIndex(nextSetVideos[0]?.setIndex);
         }
       } catch (error) {
         if (!cancelled) {
           setSetVideos([]);
-          setSelectedSetIndex(undefined);
           setRegisterStatus(
             error instanceof Error
               ? error.message
@@ -355,7 +345,6 @@ export function StaffSettingsClient({
       setMatchName("");
       setScoutFileId("");
       setSetVideos([]);
-      setSelectedSetIndex(undefined);
       setPrerollSeconds("3");
       setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
     } catch (error) {
@@ -458,68 +447,6 @@ export function StaffSettingsClient({
 
             {setVideos.length > 0 ? (
               <>
-              <div className="field">
-                <label htmlFor="selected-set-index">対象セット</label>
-                <select
-                  id="selected-set-index"
-                  value={selectedSetIndex ?? ""}
-                  onChange={(event) => setSelectedSetIndex(Number(event.target.value))}
-                >
-                  {setVideos.map((entry) => (
-                    <option key={entry.setIndex} value={entry.setIndex}>
-                      セット {entry.setIndex}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedSetVideo ? (
-                <div className="soft-panel">
-                  <div className="section-heading">
-                    <h3>セット {selectedSetVideo.setIndex} の設定</h3>
-                  </div>
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="selected-set-video">試合動画</label>
-                      <select
-                        id="selected-set-video"
-                        value={selectedSetVideo.youtubeUrl}
-                        onChange={(event) =>
-                          updateSelectedSetVideo((entry) => ({
-                            ...entry,
-                            youtubeUrl: event.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">試合動画を選択</option>
-                        {matchVideos.map((video) => (
-                          <option key={video.id} value={video.url}>
-                            {video.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="field">
-                      <label htmlFor="selected-set-offset">オフセット秒</label>
-                      <input
-                        id="selected-set-offset"
-                        type="number"
-                        step="any"
-                        inputMode="decimal"
-                        value={selectedSetVideo.offsetSeconds}
-                        onChange={(event) =>
-                          updateSelectedSetVideo((entry) => ({
-                            ...entry,
-                            offsetSeconds: Number(event.target.value) || 0,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
               <div className="workspace-list">
                 {setVideos.map((entry) => (
                   <article className="workspace-card" key={entry.setIndex}>
@@ -537,6 +464,49 @@ export function StaffSettingsClient({
                       <div className="meta-card">
                         <span className="muted">オフセット</span>
                         <strong>{entry.offsetSeconds}s</strong>
+                      </div>
+                    </div>
+                    <div className="field-grid">
+                      <div className="field">
+                        <label htmlFor={`selected-set-video-${entry.setIndex}`}>
+                          試合動画
+                        </label>
+                        <select
+                          id={`selected-set-video-${entry.setIndex}`}
+                          value={entry.youtubeUrl}
+                          onChange={(event) =>
+                            updateSetVideo(entry.setIndex, (current) => ({
+                              ...current,
+                              youtubeUrl: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">試合動画を選択</option>
+                          {matchVideos.map((video) => (
+                            <option key={video.id} value={video.url}>
+                              {video.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor={`selected-set-offset-${entry.setIndex}`}>
+                          オフセット秒
+                        </label>
+                        <input
+                          id={`selected-set-offset-${entry.setIndex}`}
+                          type="number"
+                          step="any"
+                          inputMode="decimal"
+                          value={entry.offsetSeconds}
+                          onChange={(event) =>
+                            updateSetVideo(entry.setIndex, (current) => ({
+                              ...current,
+                              offsetSeconds: Number(event.target.value) || 0,
+                            }))
+                          }
+                        />
                       </div>
                     </div>
                   </article>
