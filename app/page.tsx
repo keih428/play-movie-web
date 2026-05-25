@@ -1,11 +1,6 @@
 import { HomeClient } from "@/app/home-client";
 import { getStaffAppSettings } from "@/lib/server/app-settings-store";
-import { getSavedWorkspace } from "@/lib/server/workspace-store";
-import type {
-  ParsedCollection,
-  SavedWorkspaceRecord,
-  VideoSyncSettings,
-} from "@/lib/domain/types";
+import type { ParsedCollection, VideoSyncSettings } from "@/lib/domain/types";
 
 const demoSettings: VideoSyncSettings = {
   youtubeUrl: "https://www.youtube.com/watch?v=demo-video-id",
@@ -18,43 +13,18 @@ const emptyCollection: ParsedCollection = {
   matches: [],
 };
 
-type HomePageProps = {
-  searchParams: Promise<{
-    workspaceId?: string;
-  }>;
-};
-
-async function getInitialWorkspace(
-  workspaceId?: string,
-): Promise<SavedWorkspaceRecord | null> {
-  if (!workspaceId) {
-    return null;
-  }
-
-  return getSavedWorkspace(workspaceId);
-}
-
-export default async function HomePage({ searchParams }: HomePageProps) {
-  const { workspaceId } = await searchParams;
+export default async function HomePage() {
   const appSettings = await getStaffAppSettings();
-  const savedWorkspace = await getInitialWorkspace(workspaceId);
-  const parsedCollection = savedWorkspace?.collection ?? emptyCollection;
-  const initialSettings = savedWorkspace?.settings ?? demoSettings;
-  const initialStatus = savedWorkspace
-    ? `Loaded workspace ${savedWorkspace.name} from URL`
-    : appSettings.landingMessage ?? "現在公開中の試合データはまだ設定されていません。";
 
   return (
     <HomeClient
       allowEditing={false}
-      initialCollection={parsedCollection}
-      initialSettings={initialSettings}
-      initialSelectedMatchIndex={savedWorkspace?.selectedMatchIndex}
-      initialWorkspaceId={savedWorkspace?.id}
-      initialWorkspaceName={savedWorkspace?.name}
-      initialRemoteSavedAt={savedWorkspace?.updatedAt}
-      initialStatus={initialStatus}
-      skipLocalRestore={Boolean(savedWorkspace)}
+      initialCollection={emptyCollection}
+      initialSettings={demoSettings}
+      initialStatus={
+        appSettings.landingMessage ?? "現在公開中の試合データはまだ設定されていません。"
+      }
+      skipLocalRestore={false}
       landingMessage={appSettings.landingMessage}
     />
   );

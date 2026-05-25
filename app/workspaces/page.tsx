@@ -72,7 +72,7 @@ export default async function WorkspacesPage() {
                     {workspace.createdAt.slice(0, 16).replace("T", " ")}
                   </span>
                   <div className="workspace-row-action">
-                    <Link className="button" href={`/?workspaceId=${workspace.id}`}>
+                    <Link className="button" href={`/workspaces/${workspace.id}`}>
                       動画とプレイで見る
                     </Link>
                   </div>
