@@ -240,7 +240,7 @@ function TreeNode({
 
 export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) {
   const [library, setLibrary] = useState(initialLibrary);
-  const [parentId, setParentId] = useState<string>("system-match-videos");
+  const [parentId, setParentId] = useState<string>("");
   const [mode, setMode] = useState<"folder" | "link">("folder");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -382,7 +382,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
             <div>
               <h2>ライブラリ編集</h2>
               <p className="muted">
-                ルート直下の `試合動画` フォルダは固定です。スタッツ連動の試合動画は必ずこの中へ入れてください。
+                ルート直下の `試合動画` フォルダは固定です。スタッツ連動の試合動画は必ずこの中へ入れつつ、それ以外のフォルダはルート直下にも自由に追加できます。
               </p>
             </div>
 
@@ -405,6 +405,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
                 value={parentId}
                 onChange={(event) => setParentId(event.target.value)}
               >
+                <option value="">ルート</option>
                 {folders.map((folder) => (
                   <option key={folder.id} value={folder.id}>
                     {folder.label}
@@ -490,6 +491,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
                       )
                     }
                   >
+                    <option value="">ルート</option>
                     {folders.map((folder) => (
                       <option key={folder.id} value={folder.id}>
                         {folder.label}

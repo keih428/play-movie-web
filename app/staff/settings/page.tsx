@@ -1,83 +1,29 @@
-import { HomeClient } from "@/app/home-client";
 import { StaffSettingsClient } from "@/components/staff-settings-client";
 import {
   getScoutFileLibrary,
   getStaffAppSettings,
   getVideoLibrary,
 } from "@/lib/server/app-settings-store";
-import type {
-  ParsedCollection,
-  SavedWorkspaceRecord,
-  VideoSyncSettings,
-} from "@/lib/domain/types";
-import { listSavedWorkspaces, getSavedWorkspace } from "@/lib/server/workspace-store";
+import { listSavedWorkspaces } from "@/lib/server/workspace-store";
 
 export const metadata = {
   title: "スタッフ設定 | 東大バレー部 試合ビューア",
 };
 
-const emptyCollection: ParsedCollection = {
-  sourceType: "vsm",
-  matches: [],
-};
-
-const defaultSettings: VideoSyncSettings = {
-  youtubeUrl: "",
-  offsetSeconds: 0,
-  prerollSeconds: 0,
-  useOriginalTime: false,
-};
-
-type StaffSettingsPageProps = {
-  searchParams: Promise<{
-    workspaceId?: string;
-  }>;
-};
-
-async function resolveWorkspace(
-  workspaceId?: string,
-  fallbackId?: string,
-): Promise<SavedWorkspaceRecord | null> {
-  const resolved = workspaceId ?? fallbackId;
-  if (!resolved) {
-    return null;
-  }
-
-  return getSavedWorkspace(resolved);
-}
-
-export default async function StaffSettingsPage({
-  searchParams,
-}: StaffSettingsPageProps) {
-  const { workspaceId } = await searchParams;
+export default async function StaffSettingsPage() {
   const appSettings = await getStaffAppSettings();
   const scoutLibrary = await getScoutFileLibrary();
   const videoLibrary = await getVideoLibrary();
   const workspaces = await listSavedWorkspaces();
-  const workspace = await resolveWorkspace(
-    workspaceId,
-    appSettings.defaultWorkspaceId,
-  );
 
   return (
-    <div className="page-shell stack">
+    <main className="page-shell stack">
       <StaffSettingsClient
         initialSettings={appSettings}
         scoutLibrary={scoutLibrary}
         videoLibrary={videoLibrary}
         workspaces={workspaces}
       />
-      <HomeClient
-        allowEditing
-        initialCollection={workspace?.collection ?? emptyCollection}
-        initialSettings={workspace?.settings ?? defaultSettings}
-        initialWorkspaceId={workspace?.id}
-        initialWorkspaceName={workspace?.name}
-        initialRemoteSavedAt={workspace?.updatedAt}
-        initialStatus="スタッフ編集モード"
-        skipLocalRestore
-        landingMessage={appSettings.landingMessage}
-      />
-    </div>
+    </main>
   );
 }
