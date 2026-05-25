@@ -71,14 +71,7 @@ export async function readDocument<T>(key: string): Promise<T | null> {
       return null;
     }
 
-    const response = await fetch(blob.url, {
-      cache: "no-store",
-      headers: process.env.BLOB_READ_WRITE_TOKEN
-        ? {
-            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-          }
-        : undefined,
-    });
+    const response = await fetch(blob.downloadUrl, { cache: "no-store" });
     if (!response.ok) {
       return null;
     }

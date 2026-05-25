@@ -5,6 +5,7 @@ import {
   calculateSeekSeconds,
   extractYouTubeVideoId,
   formatSeconds,
+  getVideoSourceForSet,
 } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
 
@@ -55,7 +56,9 @@ export function VideoPlayer({
     getCurrentTime: () => number;
   } | null>(null);
   const pollingRef = useRef<number | null>(null);
-  const videoId = extractYouTubeVideoId(settings.youtubeUrl);
+  const activeSetIndex = selectedPlay?.setIndex ?? match?.sets[0]?.setIndex;
+  const activeVideoSource = getVideoSourceForSet(settings, activeSetIndex);
+  const videoId = extractYouTubeVideoId(activeVideoSource.youtubeUrl);
 
   useEffect(() => {
     if (!videoId) {
@@ -157,7 +160,9 @@ export function VideoPlayer({
         ) : (
           <div className="video-placeholder">
             <div>
-              <strong>{settings.youtubeUrl || "動画URLが設定されていません"}</strong>
+              <strong>
+                {activeVideoSource.youtubeUrl || "このセットの動画URLが設定されていません"}
+              </strong>
               <p className="muted">
                 プレイ選択時の再生位置 =
                 <span className="mono"> play.time + offset - preroll </span>
@@ -176,8 +181,12 @@ export function VideoPlayer({
             <strong>{match?.sets.length ?? 0}</strong>
           </div>
           <div className="meta-card">
+            <span className="muted">再生対象セット</span>
+            <strong>{activeSetIndex ?? "-"}</strong>
+          </div>
+          <div className="meta-card">
             <span className="muted">オフセット</span>
-            <strong>{settings.offsetSeconds}s</strong>
+            <strong>{activeVideoSource.offsetSeconds}s</strong>
           </div>
           <div className="meta-card">
             <span className="muted">プリロール</span>
@@ -186,6 +195,10 @@ export function VideoPlayer({
           <div className="meta-card">
             <span className="muted">時刻基準</span>
             <strong>{settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
+          </div>
+          <div className="meta-card">
+            <span className="muted">セット動画</span>
+            <strong>{activeVideoSource.youtubeUrl || "-"}</strong>
           </div>
           <div className="meta-card">
             <span className="muted">動画パス</span>

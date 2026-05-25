@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ScoutFileLibrary, ScoutFileNode } from "@/lib/domain/types";
 
 type ScoutFileLibraryClientProps = {
@@ -238,6 +238,7 @@ export function ScoutFileLibraryClient({
   const [status, setStatus] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
 
@@ -333,6 +334,9 @@ export function ScoutFileLibraryClient({
       setUploadFile(null);
       setUploadName("");
       setNote("");
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
       setStatus("試合データを登録しました。");
     } catch (error) {
       setStatus(
@@ -489,6 +493,7 @@ export function ScoutFileLibraryClient({
                 <label htmlFor="upload-file">試合データファイル</label>
                 <input
                   id="upload-file"
+                  ref={uploadInputRef}
                   type="file"
                   accept=".vsm,.vsdb"
                   onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}

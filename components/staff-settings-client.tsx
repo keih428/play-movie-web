@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   ParsedCollection,
   SavedWorkspaceSummary,
@@ -9,6 +9,7 @@ import type {
   StaffAppSettings,
   VideoLibrary,
   VideoLibraryNode,
+  VideoSyncSetSource,
   VideoSyncSettings,
 } from "@/lib/domain/types";
 
@@ -59,10 +60,9 @@ export function StaffSettingsClient({
   );
   const [matchName, setMatchName] = useState("");
   const [scoutFileId, setScoutFileId] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [offsetSeconds, setOffsetSeconds] = useState("0");
   const [prerollSeconds, setPrerollSeconds] = useState("3");
   const [useOriginalTime, setUseOriginalTime] = useState(false);
+  const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
   const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
@@ -73,6 +73,57 @@ export function StaffSettingsClient({
     [scoutLibrary.root],
   );
   const matchVideos = useMemo(() => getMatchVideos(videoLibrary), [videoLibrary]);
+
+  useEffect(() => {
+    if (!scoutFileId) {
+      setSetVideos([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadScoutFile() {
+      try {
+        const response = await fetch(`/api/scout-files/${scoutFileId}`);
+        const payload = (await response.json()) as {
+          record?: {
+            parsedCollection: ParsedCollection;
+          };
+          error?: string;
+        };
+
+        if (!response.ok || !payload.record) {
+          throw new Error(payload.error || "試合データの読込に失敗しました。");
+        }
+
+        const firstMatch = payload.record.parsedCollection.matches[0];
+        const nextSetVideos =
+          firstMatch?.sets.map((set) => ({
+            setIndex: set.setIndex,
+            youtubeUrl: "",
+            offsetSeconds: 0,
+          })) ?? [];
+
+        if (!cancelled) {
+          setSetVideos(nextSetVideos);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSetVideos([]);
+          setRegisterStatus(
+            error instanceof Error
+              ? error.message
+              : "試合データの読込に失敗しました。",
+          );
+        }
+      }
+    }
+
+    void loadScoutFile();
+    return () => {
+      cancelled = true;
+    };
+  }, [scoutFileId]);
 
   async function handleSave() {
     setIsSaving(true);
@@ -116,8 +167,12 @@ export function StaffSettingsClient({
       setRegisterStatus("試合データを選択してください。");
       return;
     }
-    if (!videoUrl) {
-      setRegisterStatus("試合動画を選択してください。");
+    if (setVideos.length === 0) {
+      setRegisterStatus("セット情報を取得できませんでした。");
+      return;
+    }
+    if (setVideos.some((entry) => !entry.youtubeUrl)) {
+      setRegisterStatus("各セットに試合動画を設定してください。");
       return;
     }
 
@@ -139,10 +194,11 @@ export function StaffSettingsClient({
       }
 
       const workspaceSettings: VideoSyncSettings = {
-        youtubeUrl: videoUrl,
-        offsetSeconds: Number(offsetSeconds) || 0,
+        youtubeUrl: setVideos[0]?.youtubeUrl ?? "",
+        offsetSeconds: setVideos[0]?.offsetSeconds ?? 0,
         prerollSeconds: Number(prerollSeconds) || 0,
         useOriginalTime,
+        setVideos,
       };
 
       const workspaceResponse = await fetch("/api/workspaces", {
@@ -177,8 +233,7 @@ export function StaffSettingsClient({
       setSelectedWorkspaceId(workspacePayload.workspace.id);
       setMatchName("");
       setScoutFileId("");
-      setVideoUrl("");
-      setOffsetSeconds("0");
+      setSetVideos([]);
       setPrerollSeconds("3");
       setUseOriginalTime(false);
       setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
@@ -220,51 +275,93 @@ export function StaffSettingsClient({
             />
           </div>
 
-          <div className="field-grid">
-            <div className="field">
-              <label htmlFor="staff-scout-file">試合データ</label>
-              <select
-                id="staff-scout-file"
-                value={scoutFileId}
-                onChange={(event) => setScoutFileId(event.target.value)}
-              >
-                <option value="">試合データを選択</option>
-                {scoutFileOptions.map((file) => (
-                  <option key={file.fileId} value={file.fileId}>
-                    {file.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="staff-video-url">試合動画</label>
-              <select
-                id="staff-video-url"
-                value={videoUrl}
-                onChange={(event) => setVideoUrl(event.target.value)}
-              >
-                <option value="">試合動画を選択</option>
-                {matchVideos.map((video) => (
-                  <option key={video.id} value={video.url}>
-                    {video.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="field">
+            <label htmlFor="staff-scout-file">試合データ</label>
+            <select
+              id="staff-scout-file"
+              value={scoutFileId}
+              onChange={(event) => {
+                setRegisterStatus(undefined);
+                setScoutFileId(event.target.value);
+              }}
+            >
+              <option value="">試合データを選択</option>
+              {scoutFileOptions.map((file) => (
+                <option key={file.fileId} value={file.fileId}>
+                  {file.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="field-grid">
-            <div className="field">
-              <label htmlFor="staff-offset-seconds">オフセット秒</label>
-              <input
-                id="staff-offset-seconds"
-                type="number"
-                value={offsetSeconds}
-                onChange={(event) => setOffsetSeconds(event.target.value)}
-              />
-            </div>
+          {setVideos.length > 0 ? (
+            <section className="panel-section soft-panel">
+              <div className="section-heading">
+                <h3>セットごとの試合動画</h3>
+                <p className="muted">
+                  1つの vsm / vsdb は試合単位で扱うため、各セットに対応する動画とオフセットを設定します。
+                </p>
+              </div>
 
+              <div className="stack">
+                {setVideos.map((entry, index) => (
+                  <div className="soft-panel" key={entry.setIndex}>
+                    <div className="section-heading">
+                      <h3>セット {entry.setIndex}</h3>
+                    </div>
+                    <div className="field-grid">
+                      <div className="field">
+                        <label htmlFor={`set-video-${entry.setIndex}`}>試合動画</label>
+                        <select
+                          id={`set-video-${entry.setIndex}`}
+                          value={entry.youtubeUrl}
+                          onChange={(event) =>
+                            setSetVideos((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? { ...item, youtubeUrl: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="">試合動画を選択</option>
+                          {matchVideos.map((video) => (
+                            <option key={video.id} value={video.url}>
+                              {video.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor={`set-offset-${entry.setIndex}`}>オフセット秒</label>
+                        <input
+                          id={`set-offset-${entry.setIndex}`}
+                          type="number"
+                          value={entry.offsetSeconds}
+                          onChange={(event) =>
+                            setSetVideos((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? {
+                                      ...item,
+                                      offsetSeconds: Number(event.target.value) || 0,
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <div className="field-grid">
             <div className="field">
               <label htmlFor="staff-preroll-seconds">プリロール秒</label>
               <input
@@ -274,18 +371,20 @@ export function StaffSettingsClient({
                 onChange={(event) => setPrerollSeconds(event.target.value)}
               />
             </div>
-          </div>
 
-          <div className="field">
-            <label htmlFor="staff-time-mode">同期時刻の基準</label>
-            <select
-              id="staff-time-mode"
-              value={useOriginalTime ? "original" : "time"}
-              onChange={(event) => setUseOriginalTime(event.target.value === "original")}
-            >
-              <option value="time">再生時刻</option>
-              <option value="original">元時刻</option>
-            </select>
+            <div className="field">
+              <label htmlFor="staff-time-mode">同期時刻の基準</label>
+              <select
+                id="staff-time-mode"
+                value={useOriginalTime ? "original" : "time"}
+                onChange={(event) =>
+                  setUseOriginalTime(event.target.value === "original")
+                }
+              >
+                <option value="time">再生時刻</option>
+                <option value="original">元時刻</option>
+              </select>
+            </div>
           </div>
 
           <div className="button-row">

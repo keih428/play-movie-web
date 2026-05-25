@@ -140,7 +140,33 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
                 <span className="muted">時刻基準</span>
                 <strong>{workspace.settings.useOriginalTime ? "元時刻" : "再生時刻"}</strong>
               </div>
+              <div className="meta-card">
+                <span className="muted">セット別動画</span>
+                <strong>{workspace.settings.setVideos?.length ?? 0} 件</strong>
+              </div>
             </div>
+
+            {workspace.settings.setVideos?.length ? (
+              <div className="workspace-list">
+                {workspace.settings.setVideos.map((entry) => (
+                  <article className="workspace-card" key={entry.setIndex}>
+                    <div className="list-item-header">
+                      <strong>セット {entry.setIndex}</strong>
+                    </div>
+                    <div className="meta-grid">
+                      <div className="meta-card">
+                        <span className="muted">動画</span>
+                        <strong>{entry.youtubeUrl || "-"}</strong>
+                      </div>
+                      <div className="meta-card">
+                        <span className="muted">オフセット</span>
+                        <strong>{entry.offsetSeconds}s</strong>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
       </section>

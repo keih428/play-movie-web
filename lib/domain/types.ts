@@ -14,6 +14,7 @@ export type MatchLineup = {
 export type ParsedPlay = {
   id: string;
   team: string;
+  setIndex?: number;
   player?: string;
   skill?: string;
   hitType?: string;
@@ -77,11 +78,18 @@ export type ParsedCollection = {
   matches: ParsedMatch[];
 };
 
+export type VideoSyncSetSource = {
+  setIndex: number;
+  youtubeUrl: string;
+  offsetSeconds: number;
+};
+
 export type VideoSyncSettings = {
   youtubeUrl: string;
   offsetSeconds: number;
   prerollSeconds: number;
   useOriginalTime: boolean;
+  setVideos?: VideoSyncSetSource[];
 };
 
 export type PersistedWorkspace = {

@@ -1,4 +1,8 @@
-import type { ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
+import type {
+  ParsedPlay,
+  VideoSyncSetSource,
+  VideoSyncSettings,
+} from "@/lib/domain/types";
 
 export function getBasePlayTime(
   play: ParsedPlay,
@@ -24,7 +28,29 @@ export function calculateSeekSeconds(
     return undefined;
   }
 
-  return Math.max(0, baseTime + settings.offsetSeconds - settings.prerollSeconds);
+  const source = getVideoSourceForSet(settings, play.setIndex);
+  return Math.max(
+    0,
+    baseTime + source.offsetSeconds - settings.prerollSeconds,
+  );
+}
+
+export function getVideoSourceForSet(
+  settings: VideoSyncSettings,
+  setIndex?: number,
+): VideoSyncSetSource {
+  if (typeof setIndex === "number") {
+    const found = settings.setVideos?.find((entry) => entry.setIndex === setIndex);
+    if (found) {
+      return found;
+    }
+  }
+
+  return {
+    setIndex: setIndex ?? 1,
+    youtubeUrl: settings.youtubeUrl,
+    offsetSeconds: settings.offsetSeconds,
+  };
 }
 
 export function extractYouTubeVideoId(url: string): string | undefined {

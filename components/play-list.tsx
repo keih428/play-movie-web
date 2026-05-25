@@ -78,7 +78,12 @@ export function PlayList({
                   <button
                     className="button secondary"
                     type="button"
-                    onClick={() => onSelectPlay(item.play)}
+                    onClick={() =>
+                      onSelectPlay({
+                        ...item.play,
+                        setIndex: item.setIndex,
+                      })
+                    }
                   >
                     このプレイへ移動
                   </button>

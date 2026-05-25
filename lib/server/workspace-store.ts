@@ -135,14 +135,7 @@ async function createBlobStore(): Promise<WorkspaceStore> {
       return null;
     }
 
-    const response = await fetch(blob.url, {
-      cache: "no-store",
-      headers: process.env.BLOB_READ_WRITE_TOKEN
-        ? {
-            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-          }
-        : undefined,
-    });
+    const response = await fetch(blob.downloadUrl, { cache: "no-store" });
     if (!response.ok) {
       return null;
     }
@@ -158,13 +151,8 @@ async function createBlobStore(): Promise<WorkspaceStore> {
         result.blobs
           .filter((blob) => blob.pathname.endsWith(".json"))
           .map(async (blob) => {
-            const response = await fetch(blob.url, {
+            const response = await fetch(blob.downloadUrl, {
               cache: "no-store",
-              headers: process.env.BLOB_READ_WRITE_TOKEN
-                ? {
-                    Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-                  }
-                : undefined,
             });
             const record = (await response.json()) as SavedWorkspaceRecord;
             return normalizeSummary(record);
