@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   SavedWorkspaceSummary,
+  ScoutFileLibrary,
+  ScoutFileNode,
+  VideoLibrary,
+  VideoLibraryNode,
   VideoSyncSettings,
   WorkspaceStoreProvider,
 } from "@/lib/domain/types";
@@ -28,7 +32,9 @@ type SetupPanelProps = {
   storeProvider?: WorkspaceStoreProvider;
   savedWorkspaces: SavedWorkspaceSummary[];
   isSyncingWorkspace: boolean;
-  onParseFile: (file: File) => Promise<void>;
+  selectedScoutFileId?: string;
+  onScoutFileChange: (fileId: string) => void;
+  onLoadScoutFile: (fileId: string) => Promise<void>;
   onMatchChange: (index: number) => void;
   onSettingsChange: (settings: VideoSyncSettings) => void;
   onCaptureOffset: () => void;
@@ -41,6 +47,24 @@ type SetupPanelProps = {
   onRefreshWorkspaces: () => Promise<void>;
   onCopyShareUrl: () => Promise<void>;
 };
+
+function flattenScoutFiles(
+  nodes: ScoutFileNode[],
+  depth = 0,
+): ScoutFileNode[] {
+  return nodes.flatMap((node) => {
+    if (node.type === "file" && node.fileId) {
+      return [
+        {
+          ...node,
+          name: `${"  ".repeat(depth)}${node.name}`,
+        },
+      ];
+    }
+
+    return flattenScoutFiles(node.children ?? [], depth + 1);
+  });
+}
 
 export function SetupPanel({
   settings,
@@ -60,7 +84,9 @@ export function SetupPanel({
   storeProvider,
   savedWorkspaces,
   isSyncingWorkspace,
-  onParseFile,
+  selectedScoutFileId,
+  onScoutFileChange,
+  onLoadScoutFile,
   onMatchChange,
   onSettingsChange,
   onCaptureOffset,
@@ -73,7 +99,49 @@ export function SetupPanel({
   onRefreshWorkspaces,
   onCopyShareUrl,
 }: SetupPanelProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [matchVideoOptions, setMatchVideoOptions] = useState<VideoLibraryNode[]>([]);
+  const [scoutFileOptions, setScoutFileOptions] = useState<ScoutFileNode[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLibraries() {
+      try {
+        const [videoResponse, scoutResponse] = await Promise.all([
+          fetch("/api/video-library"),
+          fetch("/api/scout-files"),
+        ]);
+        const videoPayload = (await videoResponse.json()) as {
+          library?: VideoLibrary;
+        };
+        const scoutPayload = (await scoutResponse.json()) as {
+          library?: ScoutFileLibrary;
+        };
+        const fixedFolder = videoPayload.library?.root.find(
+          (node) => node.systemKey === "match-videos",
+        );
+        if (!cancelled) {
+          setMatchVideoOptions(
+            (fixedFolder?.children ?? []).filter(
+              (node): node is VideoLibraryNode =>
+                node.type === "link" && Boolean(node.url),
+            ),
+          );
+          setScoutFileOptions(flattenScoutFiles(scoutPayload.library?.root ?? []));
+        }
+      } catch {
+        if (!cancelled) {
+          setMatchVideoOptions([]);
+          setScoutFileOptions([]);
+        }
+      }
+    }
+
+    void loadLibraries();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section className="panel">
@@ -88,33 +156,43 @@ export function SetupPanel({
         <section className="panel-section soft-panel">
           <div className="section-heading">
             <h3>試合データ読込</h3>
-            <p className="muted">最初に試合データを選択して解析を開始します。</p>
+            <p className="muted">試合データライブラリから選択して、解析済み内容を反映します。</p>
           </div>
 
           <div className="field">
-            <label htmlFor="data-file">試合データファイル</label>
-            <input
-              id="data-file"
-              type="file"
-              accept=".vsm,.vsdb"
-              onChange={(event) => {
-                setSelectedFile(event.target.files?.[0] ?? null);
-              }}
-            />
+            <label htmlFor="scout-file">試合データ</label>
+            <select
+              id="scout-file"
+              value={selectedScoutFileId ?? ""}
+              onChange={(event) => onScoutFileChange(event.target.value)}
+            >
+              <option value="">試合データを選択</option>
+              {scoutFileOptions.map((file) => (
+                <option key={file.fileId} value={file.fileId}>
+                  {file.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {scoutFileOptions.length === 0 ? (
+            <p className="muted">
+              スタッフ用の `試合データ管理` ページで vsm / vsdb ファイルを登録すると、ここで選択できます。
+            </p>
+          ) : null}
 
           <div className="button-row">
             <button
               className="button"
               type="button"
-              disabled={!selectedFile || isParsing}
+              disabled={!selectedScoutFileId || isParsing}
               onClick={() => {
-                if (selectedFile) {
-                  void onParseFile(selectedFile);
+                if (selectedScoutFileId) {
+                  void onLoadScoutFile(selectedScoutFileId);
                 }
               }}
             >
-              {isParsing ? "解析中..." : "解析して反映"}
+              {isParsing ? "反映中..." : "読込して反映"}
             </button>
           </div>
         </section>
@@ -126,10 +204,9 @@ export function SetupPanel({
           </div>
 
           <div className="field">
-            <label htmlFor="youtube-url">YouTube リンク</label>
-            <input
+            <label htmlFor="youtube-url">試合動画</label>
+            <select
               id="youtube-url"
-              type="url"
               value={settings.youtubeUrl}
               onChange={(event) =>
                 onSettingsChange({
@@ -137,8 +214,21 @@ export function SetupPanel({
                   youtubeUrl: event.target.value,
                 })
               }
-            />
+            >
+              <option value="">試合動画を選択</option>
+              {matchVideoOptions.map((video) => (
+                <option key={video.id} value={video.url}>
+                  {video.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {matchVideoOptions.length === 0 ? (
+            <p className="muted">
+              動画ライブラリの `試合動画` フォルダに YouTube リンクを追加すると、ここで選択できます。
+            </p>
+          ) : null}
 
           <div className="field-grid">
             <div className="field">

@@ -103,7 +103,11 @@ export type SavedWorkspaceSummary = {
   name: string;
   sourceType: ParsedCollection["sourceType"];
   matchCount: number;
+  createdAt: string;
   updatedAt: string;
+  matchLabel?: string;
+  resultLabel?: string;
+  setScoreLabel?: string;
 };
 
 export type WorkspaceStoreProvider = "local" | "vercel-blob";
@@ -122,9 +126,34 @@ export type VideoLibraryNode = {
   children?: VideoLibraryNode[];
   url?: string;
   note?: string;
+  systemKey?: "match-videos";
 };
 
 export type VideoLibrary = {
   root: VideoLibraryNode[];
   updatedAt: string;
+};
+
+export type ScoutFileNode = {
+  id: string;
+  type: "folder" | "file";
+  name: string;
+  children?: ScoutFileNode[];
+  fileId?: string;
+  extension?: ".vsm" | ".vsdb";
+  note?: string;
+};
+
+export type ScoutFileLibrary = {
+  root: ScoutFileNode[];
+  updatedAt: string;
+};
+
+export type ScoutFileRecord = {
+  id: string;
+  fileName: string;
+  extension: ".vsm" | ".vsdb";
+  text: string;
+  parsedCollection: ParsedCollection;
+  uploadedAt: string;
 };

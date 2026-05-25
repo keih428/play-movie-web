@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { startTransition, useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analysis-panel";
 import { Filters } from "@/components/filters";
@@ -155,6 +156,7 @@ export function HomeClient({
   const [shareStatus, setShareStatus] = useState<string>();
   const [storeProvider, setStoreProvider] = useState<WorkspaceStoreProvider>();
   const [activeTab, setActiveTab] = useState<DashboardTab>("workspace");
+  const [selectedScoutFileId, setSelectedScoutFileId] = useState<string>();
 
   const hasMatches = collection.matches.length > 0;
   const match = collection.matches[selectedMatchIndex];
@@ -269,34 +271,33 @@ export function HomeClient({
     }
   }, [collection, settings, selectedMatchIndex, hasHydratedWorkspace]);
 
-  async function handleParseFile(file: File) {
+  async function handleLoadScoutFile(fileId: string) {
     setError(null);
-    setStatus(`Parsing ${file.name} ...`);
+    setStatus("試合データを反映しています...");
     setIsParsing(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const response = await fetch("/api/parse", {
-        method: "POST",
-        body: formData,
-      });
-
-      const payload = (await response.json()) as ParsedCollection & {
+      const response = await fetch(`/api/scout-files/${fileId}`);
+      const payload = (await response.json()) as {
+        record?: {
+          id: string;
+          fileName: string;
+          parsedCollection: ParsedCollection;
+        };
         error?: string;
-        detail?: string;
       };
 
-      if (!response.ok) {
-        throw new Error(payload.detail || payload.error || "parse failed");
+      if (!response.ok || !payload.record) {
+        throw new Error(payload.error || "load failed");
       }
 
+      const record = payload.record;
+
       startTransition(() => {
-        setCollection(payload);
+        setCollection(record.parsedCollection);
         setSelectedMatchIndex(0);
         setSelectedPlay(undefined);
-        setWorkspaceName(file.name.replace(/\.[^.]+$/, ""));
+        setWorkspaceName(record.fileName.replace(/\.[^.]+$/, ""));
         setActiveTab("video");
         setFilters({
           team: "all",
@@ -304,10 +305,10 @@ export function HomeClient({
           skill: "all",
         });
       });
-      setStatus(`Parsed ${file.name}`);
-    } catch (parseError) {
-      setError(parseError instanceof Error ? parseError.message : "parse failed");
-      setStatus("Parse failed");
+      setStatus(`試合データを反映しました: ${record.fileName}`);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "load failed");
+      setStatus("試合データの反映に失敗しました");
     } finally {
       setIsParsing(false);
     }
@@ -539,7 +540,9 @@ export function HomeClient({
     storeProvider,
     savedWorkspaces,
     isSyncingWorkspace,
-    onParseFile: handleParseFile,
+    selectedScoutFileId,
+    onScoutFileChange: setSelectedScoutFileId,
+    onLoadScoutFile: handleLoadScoutFile,
     onMatchChange: handleMatchChange,
     onSettingsChange: setSettings,
     onCaptureOffset: handleCaptureOffset,
@@ -625,7 +628,9 @@ export function HomeClient({
           </div>
 
           {activeTab === "workspace" ? (
-            <section className="workspace-grid">
+            <section
+              className={`workspace-grid${allowEditing ? "" : " workspace-grid-wide"}`}
+            >
               {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
               <section className="panel">
                 <div className="panel-inner stack">
@@ -783,7 +788,14 @@ export function HomeClient({
                   className="logo-placeholder logo-placeholder-large"
                   aria-label="東大バレー部ロゴ"
                 >
-                  <img className="logo-image logo-image-large" src="/logo.png" alt="東大バレー部ロゴ" />
+                  <Image
+                    className="logo-image logo-image-large"
+                    src="/logo.png"
+                    alt="東大バレー部ロゴ"
+                    width={320}
+                    height={180}
+                    priority
+                  />
                 </div>
                 <div>
                   <div className="hero-kicker">
@@ -850,22 +862,22 @@ export function HomeClient({
                 </div>
 
                 <div className="overview-grid">
-                  <div className="meta-card">
-                    <span className="muted">Saved Workspaces</span>
-                    <strong>{savedWorkspaces.length}</strong>
-                  </div>
+                    <div className="meta-card">
+                      <span className="muted">保存済みワークスペース</span>
+                      <strong>{savedWorkspaces.length}</strong>
+                    </div>
                   <div className="meta-card">
                     <span className="muted">保存先</span>
                     <strong>{storeProvider ?? "ローカル"}</strong>
                   </div>
-                  <div className="meta-card">
-                    <span className="muted">Status</span>
-                    <strong>{status}</strong>
-                  </div>
-                  <div className="meta-card">
-                    <span className="muted">Workspace</span>
-                    <strong>{workspaceName}</strong>
-                  </div>
+                    <div className="meta-card">
+                      <span className="muted">状態</span>
+                      <strong>{status}</strong>
+                    </div>
+                    <div className="meta-card">
+                      <span className="muted">ワークスペース</span>
+                      <strong>{workspaceName}</strong>
+                    </div>
                 </div>
 
                 {error ? <p className="error-text">{error}</p> : null}

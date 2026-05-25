@@ -7,6 +7,7 @@ import type {
   SavedWorkspaceRecord,
   SavedWorkspaceSummary,
 } from "@/lib/domain/types";
+import { enrichWorkspaceSummary } from "@/lib/domain/summary";
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), ".data", "workspaces");
 const WORKSPACE_PREFIX = "workspaces/";
@@ -24,13 +25,14 @@ type WorkspaceStore = {
 };
 
 function normalizeSummary(record: SavedWorkspaceRecord): SavedWorkspaceSummary {
-  return {
+  return enrichWorkspaceSummary(record, {
     id: record.id,
     name: record.name,
     sourceType: record.collection.sourceType,
     matchCount: record.collection.matches.length,
+    createdAt: record.createdAt,
     updatedAt: record.updatedAt,
-  };
+  });
 }
 
 async function ensureWorkspaceDir() {
@@ -67,7 +69,7 @@ async function createLocalStore(): Promise<WorkspaceStore> {
           }),
       );
 
-      return summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      return summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     getWorkspace,
     async saveWorkspace(input) {
@@ -77,7 +79,7 @@ async function createLocalStore(): Promise<WorkspaceStore> {
       const id = existing?.id ?? input.id ?? crypto.randomUUID();
       const record: SavedWorkspaceRecord = {
         id,
-        name: input.name?.trim() || existing?.name || "Untitled workspace",
+        name: input.name?.trim() || existing?.name || "名称未設定の試合",
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         ...input.workspace,
@@ -129,7 +131,7 @@ async function createBlobStore(): Promise<WorkspaceStore> {
           }),
       );
 
-      return summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      return summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     getWorkspace,
     async saveWorkspace(input) {
@@ -138,7 +140,7 @@ async function createBlobStore(): Promise<WorkspaceStore> {
       const id = existing?.id ?? input.id ?? crypto.randomUUID();
       const record: SavedWorkspaceRecord = {
         id,
-        name: input.name?.trim() || existing?.name || "Untitled workspace",
+        name: input.name?.trim() || existing?.name || "名称未設定の試合",
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         ...input.workspace,

@@ -23,6 +23,7 @@ export default function RootLayout({
             <nav className="site-nav" aria-label="Global">
               <Link href="/">ホーム</Link>
               <Link href="/videos">動画ライブラリ</Link>
+              <Link href="/staff/data-library">試合データ管理</Link>
               <Link href="/workspaces">試合一覧</Link>
               <Link href="/staff/settings">スタッフ設定</Link>
             </nav>

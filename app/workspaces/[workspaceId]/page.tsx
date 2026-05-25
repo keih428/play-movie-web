@@ -5,7 +5,10 @@ import {
   countWorkspaceEvents,
   countWorkspacePlays,
   countWorkspaceSets,
+  getMatchResultLabel,
+  getMatchSetScore,
   getTopSkillsForMatch,
+  getWorkspacePrimaryMatch,
 } from "@/lib/domain/summary";
 import { getSavedWorkspace } from "@/lib/server/workspace-store";
 import { CopyShareLinkButton } from "@/components/copy-share-link-button";
@@ -27,6 +30,9 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
   const totalPlays = countWorkspacePlays(workspace);
   const totalSets = countWorkspaceSets(workspace);
   const totalEvents = countWorkspaceEvents(workspace);
+  const primaryMatch = getWorkspacePrimaryMatch(workspace);
+  const primaryMatchScore = primaryMatch ? getMatchSetScore(primaryMatch) : null;
+  const primaryMatchResult = primaryMatch ? getMatchResultLabel(primaryMatch) : null;
 
   return (
     <main className="page-shell">
@@ -35,7 +41,7 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
           <div>
             <h1>{workspace.name}</h1>
             <p>
-              保存済みワークスペースの試合サマリです。ホーム画面へ戻れば、この ID を選択してワークスペース本体を再読込できます。
+              登録済み試合の詳細です。ここから試合概要を確認し、ホーム画面で映像付きの閲覧に移れます。
             </p>
             <div className="badge-row">
               <Link className="badge badge-link" href="/workspaces">
@@ -52,6 +58,10 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
             <div className="meta-card">
               <span className="muted">試合数</span>
               <strong>{workspace.collection.matches.length}</strong>
+            </div>
+            <div className="meta-card">
+              <span className="muted">勝敗</span>
+              <strong>{primaryMatchResult ?? "-"}</strong>
             </div>
             <div className="meta-card">
               <span className="muted">セット数</span>
@@ -81,16 +91,32 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
                 <strong>{workspace.collection.sourceType.toUpperCase()}</strong>
               </div>
               <div className="meta-card">
+                <span className="muted">対戦カード</span>
+                <strong>
+                  {primaryMatch
+                    ? `${primaryMatch.teams.home.name} vs ${primaryMatch.teams.away.name}`
+                    : "-"}
+                </strong>
+              </div>
+              <div className="meta-card">
                 <span className="muted">選択試合番号</span>
-                <strong>{workspace.selectedMatchIndex}</strong>
+                <strong>{workspace.selectedMatchIndex + 1}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">セットスコア</span>
+                <strong>
+                  {primaryMatchScore
+                    ? `${primaryMatchScore.home}-${primaryMatchScore.away}`
+                    : "-"}
+                </strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">登録日時</span>
+                <strong>{workspace.createdAt.slice(0, 16).replace("T", " ")}</strong>
               </div>
               <div className="meta-card">
                 <span className="muted">更新日時</span>
                 <strong>{workspace.updatedAt.slice(0, 16).replace("T", " ")}</strong>
-              </div>
-              <div className="meta-card">
-                <span className="muted">YouTubeリンク</span>
-                <strong>{workspace.settings.youtubeUrl || "-"}</strong>
               </div>
             </div>
           </div>

@@ -1,16 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { VideoLibrary, VideoLibraryNode } from "@/lib/domain/types";
+import type { ScoutFileLibrary, ScoutFileNode } from "@/lib/domain/types";
 
-type VideoLibraryClientProps = {
-  initialLibrary: VideoLibrary;
+type ScoutFileLibraryClientProps = {
+  initialLibrary: ScoutFileLibrary;
 };
 
 type EditState = {
   id: string;
   name: string;
-  url: string;
   note: string;
   parentId: string;
 };
@@ -20,10 +19,10 @@ function makeId() {
 }
 
 function addNode(
-  nodes: VideoLibraryNode[],
+  nodes: ScoutFileNode[],
   parentId: string | null,
-  node: VideoLibraryNode,
-): VideoLibraryNode[] {
+  node: ScoutFileNode,
+): ScoutFileNode[] {
   if (!parentId) {
     return [...nodes, node];
   }
@@ -47,7 +46,7 @@ function addNode(
   });
 }
 
-function removeNode(nodes: VideoLibraryNode[], targetId: string): VideoLibraryNode[] {
+function removeNode(nodes: ScoutFileNode[], targetId: string): ScoutFileNode[] {
   return nodes
     .filter((entry) => entry.id !== targetId)
     .map((entry) => ({
@@ -57,10 +56,10 @@ function removeNode(nodes: VideoLibraryNode[], targetId: string): VideoLibraryNo
 }
 
 function findNode(
-  nodes: VideoLibraryNode[],
+  nodes: ScoutFileNode[],
   targetId: string,
   parentId = "",
-): { node: VideoLibraryNode; parentId: string } | null {
+): { node: ScoutFileNode; parentId: string } | null {
   for (const node of nodes) {
     if (node.id === targetId) {
       return { node, parentId };
@@ -78,10 +77,10 @@ function findNode(
 }
 
 function updateNode(
-  nodes: VideoLibraryNode[],
+  nodes: ScoutFileNode[],
   targetId: string,
-  updater: (node: VideoLibraryNode) => VideoLibraryNode,
-): VideoLibraryNode[] {
+  updater: (node: ScoutFileNode) => ScoutFileNode,
+): ScoutFileNode[] {
   return nodes.map((node) => {
     if (node.id === targetId) {
       return updater(node);
@@ -99,7 +98,7 @@ function updateNode(
 }
 
 function collectFolders(
-  nodes: VideoLibraryNode[],
+  nodes: ScoutFileNode[],
   depth = 0,
 ): Array<{ id: string; label: string }> {
   return nodes.flatMap((entry) => {
@@ -118,10 +117,10 @@ function collectFolders(
 }
 
 function moveNode(
-  root: VideoLibraryNode[],
+  root: ScoutFileNode[],
   targetId: string,
   nextParentId: string,
-): VideoLibraryNode[] {
+): ScoutFileNode[] {
   const found = findNode(root, targetId);
   if (!found) {
     return root;
@@ -132,10 +131,10 @@ function moveNode(
 }
 
 function reorderAtLevel(
-  nodes: VideoLibraryNode[],
+  nodes: ScoutFileNode[],
   targetId: string,
   direction: "up" | "down",
-): VideoLibraryNode[] {
+): ScoutFileNode[] {
   const index = nodes.findIndex((node) => node.id === targetId);
   if (index !== -1) {
     const nextIndex = direction === "up" ? index - 1 : index + 1;
@@ -163,26 +162,19 @@ function TreeNode({
   onEdit,
   onMove,
 }: {
-  node: VideoLibraryNode;
+  node: ScoutFileNode;
   onDelete: (id: string) => void;
-  onEdit: (node: VideoLibraryNode) => void;
+  onEdit: (node: ScoutFileNode) => void;
   onMove: (id: string, direction: "up" | "down") => void;
 }) {
-  const isFixed = node.systemKey === "match-videos";
-
   return (
     <article className="tree-node">
       <div className="tree-node-header">
         <div>
           <strong>{node.name}</strong>
           <div className="tag-row">
-            <span className="tag">{node.type === "folder" ? "フォルダ" : "リンク"}</span>
-            {isFixed ? <span className="tag">固定</span> : null}
-            {node.url ? (
-              <a className="tag tag-link" href={node.url} target="_blank" rel="noreferrer">
-                開く
-              </a>
-            ) : null}
+            <span className="tag">{node.type === "folder" ? "フォルダ" : "試合データ"}</span>
+            {node.extension ? <span className="tag">{node.extension}</span> : null}
           </div>
           {node.note ? <p className="muted">{node.note}</p> : null}
         </div>
@@ -201,24 +193,20 @@ function TreeNode({
           >
             下へ
           </button>
-          {!isFixed ? (
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => onEdit(node)}
-            >
-              編集
-            </button>
-          ) : null}
-          {!isFixed ? (
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => onDelete(node.id)}
-            >
-              削除
-            </button>
-          ) : null}
+          <button
+            className="button secondary"
+            type="button"
+            onClick={() => onEdit(node)}
+          >
+            編集
+          </button>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={() => onDelete(node.id)}
+          >
+            削除
+          </button>
         </div>
       </div>
       {node.children?.length ? (
@@ -238,25 +226,27 @@ function TreeNode({
   );
 }
 
-export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) {
+export function ScoutFileLibraryClient({
+  initialLibrary,
+}: ScoutFileLibraryClientProps) {
   const [library, setLibrary] = useState(initialLibrary);
-  const [parentId, setParentId] = useState<string>("system-match-videos");
-  const [mode, setMode] = useState<"folder" | "link">("folder");
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [folderName, setFolderName] = useState("");
+  const [uploadName, setUploadName] = useState("");
   const [note, setNote] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
 
-  async function saveLibrary(nextRoot: VideoLibraryNode[]) {
+  async function saveLibrary(nextRoot: ScoutFileNode[]) {
     setIsSaving(true);
     setStatus(undefined);
 
     try {
-      const response = await fetch("/api/video-library", {
+      const response = await fetch("/api/scout-files", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -265,58 +255,96 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       });
 
       if (!response.ok) {
-        throw new Error("failed to save");
+        throw new Error("save failed");
       }
 
       const payload = (await response.json()) as {
-        library: VideoLibrary;
+        library: ScoutFileLibrary;
       };
-
       setLibrary(payload.library);
-      setStatus("ライブラリを保存しました。");
+      setStatus("試合データライブラリを保存しました。");
     } catch {
-      setStatus("ライブラリの保存に失敗しました。");
+      setStatus("試合データライブラリの保存に失敗しました。");
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function handleAdd() {
-    if (!name.trim()) {
-      setStatus("名前を入力してください。");
-      return;
-    }
-
-    if (mode === "link" && !url.trim()) {
-      setStatus("リンクURLを入力してください。");
+  async function handleAddFolder() {
+    if (!folderName.trim()) {
+      setStatus("フォルダ名を入力してください。");
       return;
     }
 
     const nextRoot = addNode(library.root, parentId || null, {
       id: makeId(),
-      type: mode,
-      name: name.trim(),
-      url: mode === "link" ? url.trim() : undefined,
+      type: "folder",
+      name: folderName.trim(),
       note: note.trim() || undefined,
-      children: mode === "folder" ? [] : undefined,
+      children: [],
     });
 
     await saveLibrary(nextRoot);
-    setName("");
-    setUrl("");
+    setFolderName("");
     setNote("");
+  }
+
+  async function handleUpload() {
+    if (!uploadFile) {
+      setStatus("アップロードするファイルを選択してください。");
+      return;
+    }
+
+    setIsSaving(true);
+    setStatus(undefined);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("parentId", parentId);
+      if (uploadName.trim()) {
+        formData.append("displayName", uploadName.trim());
+      }
+      if (note.trim()) {
+        formData.append("note", note.trim());
+      }
+
+      const response = await fetch("/api/scout-files", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as {
+        library?: ScoutFileLibrary;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.library) {
+        throw new Error(payload.error || "upload failed");
+      }
+
+      setLibrary(payload.library);
+      setUploadFile(null);
+      setUploadName("");
+      setNote("");
+      setStatus("試合データを登録しました。");
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : "試合データの登録に失敗しました。",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function handleDelete(id: string) {
     await saveLibrary(removeNode(library.root, id));
   }
 
-  function handleEdit(node: VideoLibraryNode) {
+  function handleEdit(node: ScoutFileNode) {
     const found = findNode(library.root, node.id);
     setEditing({
       id: node.id,
       name: node.name,
-      url: node.url ?? "",
       note: node.note ?? "",
       parentId: found?.parentId ?? "",
     });
@@ -336,7 +364,6 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
     let nextRoot = updateNode(library.root, editing.id, (node) => ({
       ...node,
       name: editing.name.trim(),
-      url: node.type === "link" ? editing.url.trim() : undefined,
       note: editing.note.trim() || undefined,
     }));
 
@@ -357,10 +384,10 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
       <section className="hero">
         <div className="hero-grid">
           <div>
-            <div className="hero-kicker">部内動画ライブラリ</div>
-            <h1>YouTubeリンク集</h1>
+            <div className="hero-kicker">スタッフ用 試合データ管理</div>
+            <h1>VSM / VSDB ライブラリ</h1>
             <p>
-              試合外の参考動画、戦術動画、練習メニューなどをフォルダ構造で蓄積していくためのページです。
+              試合データを動画リンクとは別のフォルダ構造で整理し、設定画面から参照してワークスペースへ反映します。
             </p>
           </div>
           <div className="meta-grid">
@@ -380,31 +407,20 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
         <section className="panel">
           <div className="panel-inner stack">
             <div>
-              <h2>ライブラリ編集</h2>
+              <h2>試合データを追加</h2>
               <p className="muted">
-                ルート直下の `試合動画` フォルダは固定です。スタッツ連動の試合動画は必ずこの中へ入れてください。
+                フォルダを作成して試合データを整理し、vsm / vsdb ファイルを登録します。
               </p>
             </div>
 
             <div className="field">
-              <label htmlFor="node-type">追加種別</label>
+              <label htmlFor="scout-parent-folder">親フォルダ</label>
               <select
-                id="node-type"
-                value={mode}
-                onChange={(event) => setMode(event.target.value as "folder" | "link")}
-              >
-                <option value="folder">フォルダ</option>
-                <option value="link">リンク</option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="parent-folder">親フォルダ</label>
-              <select
-                id="parent-folder"
+                id="scout-parent-folder"
                 value={parentId}
                 onChange={(event) => setParentId(event.target.value)}
               >
+                <option value="">ルート</option>
                 {folders.map((folder) => (
                   <option key={folder.id} value={folder.id}>
                     {folder.label}
@@ -413,62 +429,100 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
               </select>
             </div>
 
-            <div className="field">
-              <label htmlFor="node-name">名前</label>
-              <input
-                id="node-name"
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </div>
+            <section className="panel-section soft-panel">
+              <div className="section-heading">
+                <h3>フォルダ作成</h3>
+                <p className="muted">年度、大会、相手校などで整理できます。</p>
+              </div>
 
-            {mode === "link" ? (
               <div className="field">
-                <label htmlFor="node-url">YouTube リンク</label>
+                <label htmlFor="folder-name">フォルダ名</label>
                 <input
-                  id="node-url"
-                  type="url"
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
+                  id="folder-name"
+                  type="text"
+                  value={folderName}
+                  onChange={(event) => setFolderName(event.target.value)}
                 />
               </div>
-            ) : null}
 
-            <div className="field">
-              <label htmlFor="node-note">メモ</label>
-              <textarea
-                id="node-note"
-                rows={4}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-              />
-            </div>
+              <div className="button-row">
+                <button
+                  className="button"
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => {
+                    void handleAddFolder();
+                  }}
+                >
+                  {isSaving ? "保存中..." : "フォルダを追加"}
+                </button>
+              </div>
+            </section>
 
-            <div className="button-row">
-              <button
-                className="button"
-                type="button"
-                disabled={isSaving}
-                onClick={() => {
-                  void handleAdd();
-                }}
-              >
-                {isSaving ? "保存中..." : "追加して保存"}
-              </button>
-            </div>
+            <section className="panel-section soft-panel">
+              <div className="section-heading">
+                <h3>試合データ登録</h3>
+                <p className="muted">
+                  登録時に解析も行うため、設定画面ではすぐに選択して反映できます。
+                </p>
+              </div>
+
+              <div className="field">
+                <label htmlFor="upload-name">表示名</label>
+                <input
+                  id="upload-name"
+                  type="text"
+                  value={uploadName}
+                  onChange={(event) => setUploadName(event.target.value)}
+                  placeholder="未入力ならファイル名を利用"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="upload-file">試合データファイル</label>
+                <input
+                  id="upload-file"
+                  type="file"
+                  accept=".vsm,.vsdb"
+                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="upload-note">メモ</label>
+                <textarea
+                  id="upload-note"
+                  rows={4}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </div>
+
+              <div className="button-row">
+                <button
+                  className="button"
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => {
+                    void handleUpload();
+                  }}
+                >
+                  {isSaving ? "登録中..." : "試合データを登録"}
+                </button>
+              </div>
+            </section>
 
             {editing ? (
               <section className="panel-section soft-panel">
                 <div className="section-heading">
                   <h3>項目編集</h3>
-                  <p className="muted">名前変更、リンク更新、フォルダ移動を行います。</p>
+                  <p className="muted">名前変更、親フォルダ変更、メモ更新ができます。</p>
                 </div>
 
                 <div className="field">
-                  <label htmlFor="edit-name">名前</label>
+                  <label htmlFor="edit-scout-name">名前</label>
                   <input
-                    id="edit-name"
+                    id="edit-scout-name"
                     type="text"
                     value={editing.name}
                     onChange={(event) =>
@@ -480,9 +534,9 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
                 </div>
 
                 <div className="field">
-                  <label htmlFor="edit-parent">親フォルダ</label>
+                  <label htmlFor="edit-scout-parent">親フォルダ</label>
                   <select
-                    id="edit-parent"
+                    id="edit-scout-parent"
                     value={editing.parentId}
                     onChange={(event) =>
                       setEditing((current) =>
@@ -490,32 +544,21 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
                       )
                     }
                   >
-                    {folders.map((folder) => (
-                      <option key={folder.id} value={folder.id}>
-                        {folder.label}
-                      </option>
-                    ))}
+                    <option value="">ルート</option>
+                    {folders
+                      .filter((folder) => folder.id !== editing.id)
+                      .map((folder) => (
+                        <option key={folder.id} value={folder.id}>
+                          {folder.label}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
                 <div className="field">
-                  <label htmlFor="edit-url">YouTube リンク</label>
-                  <input
-                    id="edit-url"
-                    type="url"
-                    value={editing.url}
-                    onChange={(event) =>
-                      setEditing((current) =>
-                        current ? { ...current, url: event.target.value } : current,
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="edit-note">メモ</label>
+                  <label htmlFor="edit-scout-note">メモ</label>
                   <textarea
-                    id="edit-note"
+                    id="edit-scout-note"
                     rows={3}
                     value={editing.note}
                     onChange={(event) =>
@@ -555,14 +598,16 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
         <section className="panel">
           <div className="panel-inner stack">
             <div>
-              <h2>ライブラリ構造</h2>
-              <p className="muted">現在保存されているフォルダと動画リンクの構造です。</p>
+              <h2>保存済みツリー</h2>
+              <p className="muted">
+                登録済みの試合データはこのツリーから設定画面で参照されます。
+              </p>
             </div>
 
             {library.root.length === 0 ? (
               <div className="list-item">
-                <strong>ライブラリは空です。</strong>
-                <p className="muted">左側から最初のフォルダまたはリンクを追加してください。</p>
+                <strong>試合データはまだありません。</strong>
+                <p className="muted">左側からフォルダ作成またはファイル登録を行ってください。</p>
               </div>
             ) : (
               <div className="tree-list">

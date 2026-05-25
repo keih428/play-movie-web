@@ -1,6 +1,10 @@
 import { HomeClient } from "@/app/home-client";
 import { StaffSettingsClient } from "@/components/staff-settings-client";
-import { getStaffAppSettings } from "@/lib/server/app-settings-store";
+import {
+  getScoutFileLibrary,
+  getStaffAppSettings,
+  getVideoLibrary,
+} from "@/lib/server/app-settings-store";
 import type {
   ParsedCollection,
   SavedWorkspaceRecord,
@@ -9,7 +13,7 @@ import type {
 import { listSavedWorkspaces, getSavedWorkspace } from "@/lib/server/workspace-store";
 
 export const metadata = {
-  title: "Staff Settings | Play Movie Web",
+  title: "スタッフ設定 | 東大バレー部 試合ビューア",
 };
 
 const emptyCollection: ParsedCollection = {
@@ -47,6 +51,8 @@ export default async function StaffSettingsPage({
 }: StaffSettingsPageProps) {
   const { workspaceId } = await searchParams;
   const appSettings = await getStaffAppSettings();
+  const scoutLibrary = await getScoutFileLibrary();
+  const videoLibrary = await getVideoLibrary();
   const workspaces = await listSavedWorkspaces();
   const workspace = await resolveWorkspace(
     workspaceId,
@@ -57,6 +63,8 @@ export default async function StaffSettingsPage({
     <div className="page-shell stack">
       <StaffSettingsClient
         initialSettings={appSettings}
+        scoutLibrary={scoutLibrary}
+        videoLibrary={videoLibrary}
         workspaces={workspaces}
       />
       <HomeClient

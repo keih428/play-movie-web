@@ -1,31 +1,84 @@
 "use client";
 
-import { useState } from "react";
-import type { SavedWorkspaceSummary, StaffAppSettings } from "@/lib/domain/types";
+import { useMemo, useState } from "react";
+import type {
+  ParsedCollection,
+  SavedWorkspaceSummary,
+  ScoutFileLibrary,
+  ScoutFileNode,
+  StaffAppSettings,
+  VideoLibrary,
+  VideoLibraryNode,
+  VideoSyncSettings,
+} from "@/lib/domain/types";
 
 type StaffSettingsClientProps = {
   initialSettings: StaffAppSettings;
+  scoutLibrary: ScoutFileLibrary;
+  videoLibrary: VideoLibrary;
   workspaces: SavedWorkspaceSummary[];
 };
 
+function flattenScoutFiles(
+  nodes: ScoutFileNode[],
+  depth = 0,
+): Array<{ fileId: string; label: string }> {
+  return nodes.flatMap((node) => {
+    if (node.type === "file" && node.fileId) {
+      return [
+        {
+          fileId: node.fileId,
+          label: `${"  ".repeat(depth)}${node.name}`,
+        },
+      ];
+    }
+
+    return flattenScoutFiles(node.children ?? [], depth + 1);
+  });
+}
+
+function getMatchVideos(library: VideoLibrary): VideoLibraryNode[] {
+  const fixedFolder = library.root.find((node) => node.systemKey === "match-videos");
+  return (fixedFolder?.children ?? []).filter(
+    (node): node is VideoLibraryNode => node.type === "link" && Boolean(node.url),
+  );
+}
+
 export function StaffSettingsClient({
   initialSettings,
+  scoutLibrary,
+  videoLibrary,
   workspaces,
 }: StaffSettingsClientProps) {
+  const [workspaceList, setWorkspaceList] = useState(workspaces);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(
     initialSettings.defaultWorkspaceId ?? "",
   );
   const [landingMessage, setLandingMessage] = useState(
     initialSettings.landingMessage ?? "",
   );
+  const [matchName, setMatchName] = useState("");
+  const [scoutFileId, setScoutFileId] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [offsetSeconds, setOffsetSeconds] = useState("0");
+  const [prerollSeconds, setPrerollSeconds] = useState("0");
+  const [useOriginalTime, setUseOriginalTime] = useState(false);
   const [status, setStatus] = useState<string>();
+  const [registerStatus, setRegisterStatus] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const scoutFileOptions = useMemo(
+    () => flattenScoutFiles(scoutLibrary.root),
+    [scoutLibrary.root],
+  );
+  const matchVideos = useMemo(() => getMatchVideos(videoLibrary), [videoLibrary]);
 
   async function handleSave() {
     setIsSaving(true);
     setStatus(undefined);
 
-    const selectedWorkspace = workspaces.find(
+    const selectedWorkspace = workspaceList.find(
       (workspace) => workspace.id === selectedWorkspaceId,
     );
 
@@ -54,15 +107,202 @@ export function StaffSettingsClient({
     }
   }
 
+  async function handleRegisterMatch() {
+    if (!matchName.trim()) {
+      setRegisterStatus("試合名を入力してください。");
+      return;
+    }
+    if (!scoutFileId) {
+      setRegisterStatus("試合データを選択してください。");
+      return;
+    }
+    if (!videoUrl) {
+      setRegisterStatus("試合動画を選択してください。");
+      return;
+    }
+
+    setIsRegistering(true);
+    setRegisterStatus(undefined);
+
+    try {
+      const scoutResponse = await fetch(`/api/scout-files/${scoutFileId}`);
+      const scoutPayload = (await scoutResponse.json()) as {
+        record?: {
+          parsedCollection: ParsedCollection;
+          fileName: string;
+        };
+        error?: string;
+      };
+
+      if (!scoutResponse.ok || !scoutPayload.record) {
+        throw new Error(scoutPayload.error || "試合データの読込に失敗しました。");
+      }
+
+      const workspaceSettings: VideoSyncSettings = {
+        youtubeUrl: videoUrl,
+        offsetSeconds: Number(offsetSeconds) || 0,
+        prerollSeconds: Number(prerollSeconds) || 0,
+        useOriginalTime,
+      };
+
+      const workspaceResponse = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: matchName.trim(),
+          workspace: {
+            collection: scoutPayload.record.parsedCollection,
+            settings: workspaceSettings,
+            selectedMatchIndex: 0,
+          },
+        }),
+      });
+      const workspacePayload = (await workspaceResponse.json()) as {
+        workspace?: SavedWorkspaceSummary & { id: string; createdAt: string; updatedAt: string };
+        error?: string;
+      };
+
+      if (!workspaceResponse.ok || !workspacePayload.workspace) {
+        throw new Error(workspacePayload.error || "試合の登録に失敗しました。");
+      }
+
+      const refreshResponse = await fetch("/api/workspaces");
+      const refreshPayload = (await refreshResponse.json()) as {
+        workspaces?: SavedWorkspaceSummary[];
+      };
+      const nextWorkspaces = refreshPayload.workspaces ?? workspaceList;
+      setWorkspaceList(nextWorkspaces);
+      setSelectedWorkspaceId(workspacePayload.workspace.id);
+      setMatchName("");
+      setScoutFileId("");
+      setVideoUrl("");
+      setOffsetSeconds("0");
+      setPrerollSeconds("0");
+      setUseOriginalTime(false);
+      setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
+    } catch (error) {
+      setRegisterStatus(
+        error instanceof Error ? error.message : "試合の登録に失敗しました。",
+      );
+    } finally {
+      setIsRegistering(false);
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel-inner stack">
         <div>
           <h2>スタッフ公開設定</h2>
           <p className="muted">
-            一般部員向けホームで公開する試合ワークスペースとメッセージをここで設定します。
+            試合の登録と、一般部員向けホームで公開する試合の設定をここで行います。
           </p>
         </div>
+
+        <section className="panel-section soft-panel">
+          <div className="section-heading">
+            <h3>試合を登録する</h3>
+            <p className="muted">
+              試合名、試合データ、試合動画を紐づけて、試合一覧から閲覧できる形で保存します。
+            </p>
+          </div>
+
+          <div className="field">
+            <label htmlFor="match-name">試合名</label>
+            <input
+              id="match-name"
+              type="text"
+              value={matchName}
+              onChange={(event) => setMatchName(event.target.value)}
+              placeholder="例: 2026 春季リーグ vs 慶應"
+            />
+          </div>
+
+          <div className="field-grid">
+            <div className="field">
+              <label htmlFor="staff-scout-file">試合データ</label>
+              <select
+                id="staff-scout-file"
+                value={scoutFileId}
+                onChange={(event) => setScoutFileId(event.target.value)}
+              >
+                <option value="">試合データを選択</option>
+                {scoutFileOptions.map((file) => (
+                  <option key={file.fileId} value={file.fileId}>
+                    {file.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="staff-video-url">試合動画</label>
+              <select
+                id="staff-video-url"
+                value={videoUrl}
+                onChange={(event) => setVideoUrl(event.target.value)}
+              >
+                <option value="">試合動画を選択</option>
+                {matchVideos.map((video) => (
+                  <option key={video.id} value={video.url}>
+                    {video.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="field-grid">
+            <div className="field">
+              <label htmlFor="staff-offset-seconds">オフセット秒</label>
+              <input
+                id="staff-offset-seconds"
+                type="number"
+                value={offsetSeconds}
+                onChange={(event) => setOffsetSeconds(event.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="staff-preroll-seconds">プリロール秒</label>
+              <input
+                id="staff-preroll-seconds"
+                type="number"
+                value={prerollSeconds}
+                onChange={(event) => setPrerollSeconds(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="staff-time-mode">同期時刻の基準</label>
+            <select
+              id="staff-time-mode"
+              value={useOriginalTime ? "original" : "time"}
+              onChange={(event) => setUseOriginalTime(event.target.value === "original")}
+            >
+              <option value="time">再生時刻</option>
+              <option value="original">元時刻</option>
+            </select>
+          </div>
+
+          <div className="button-row">
+            <button
+              className="button"
+              type="button"
+              disabled={isRegistering}
+              onClick={() => {
+                void handleRegisterMatch();
+              }}
+            >
+              {isRegistering ? "登録中..." : "試合を登録"}
+            </button>
+          </div>
+
+          {registerStatus ? <p className="muted">{registerStatus}</p> : null}
+        </section>
 
         <section className="panel-section soft-panel">
           <div className="section-heading">
@@ -80,9 +320,9 @@ export function StaffSettingsClient({
               onChange={(event) => setSelectedWorkspaceId(event.target.value)}
             >
               <option value="">ワークスペースを選択</option>
-              {workspaces.map((workspace) => (
+              {workspaceList.map((workspace) => (
                 <option key={workspace.id} value={workspace.id}>
-                  {workspace.name} ({workspace.matchCount} matches)
+                  {workspace.name}
                 </option>
               ))}
             </select>
