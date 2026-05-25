@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatJstDate, formatJstDateTime } from "@/lib/domain/datetime";
 import { listSavedWorkspaces } from "@/lib/server/workspace-store";
 
 export const metadata = {
@@ -32,7 +33,7 @@ export default async function WorkspacesPage() {
             </div>
             <div className="meta-card">
               <span className="muted">最新更新日</span>
-              <strong>{workspaces[0]?.createdAt?.slice(0, 10) ?? "-"}</strong>
+              <strong>{formatJstDate(workspaces[0]?.createdAt)}</strong>
             </div>
           </div>
         </div>
@@ -69,7 +70,7 @@ export default async function WorkspacesPage() {
                     {workspace.setScoreLabel ?? "-"}
                   </span>
                   <span className="workspace-row-cell mono">
-                    {workspace.createdAt.slice(0, 16).replace("T", " ")}
+                    {formatJstDateTime(workspace.createdAt)}
                   </span>
                   <div className="workspace-row-action">
                     <Link className="button" href={`/workspaces/${workspace.id}`}>

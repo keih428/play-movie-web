@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatJstDateTime } from "@/lib/domain/datetime";
 import type { VideoLibrary, VideoLibraryNode } from "@/lib/domain/types";
 
 type VideoLibraryClientProps = {
@@ -443,7 +444,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
             </div>
             <div className="meta-card">
               <span className="muted">更新日時</span>
-              <strong>{library.updatedAt.slice(0, 16).replace("T", " ")}</strong>
+              <strong>{formatJstDateTime(library.updatedAt)}</strong>
             </div>
           </div>
         </div>

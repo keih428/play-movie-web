@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatJstDateTime } from "@/lib/domain/datetime";
 import type {
   SavedWorkspaceSummary,
   ScoutFileLibrary,
@@ -417,11 +418,13 @@ export function SetupPanel({
             </div>
             <div className="status-row">
               <span>ローカル保存</span>
-              <strong>{lastSavedAt ?? "未保存"}</strong>
+              <strong>{lastSavedAt ? formatJstDateTime(lastSavedAt) : "未保存"}</strong>
             </div>
             <div className="status-row">
               <span>サーバー保存</span>
-              <strong>{remoteSavedAt ?? "未保存"}</strong>
+              <strong>
+                {remoteSavedAt ? formatJstDateTime(remoteSavedAt) : "未保存"}
+              </strong>
             </div>
             <div className="status-row">
               <span>保存先</span>

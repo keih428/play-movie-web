@@ -585,42 +585,44 @@ export function HomeClient({
 
   return (
     <main className="page-shell">
-      <section className="hero hero-home">
-        <div className="hero-grid">
-          <div>
-            <div className="hero-kicker">東京大学運動会バレー部 専用</div>
-            <h1>東大バレー部 試合ビューア</h1>
-            <p>
-              東京大学運動会バレー部の試合データを整理し、動画同期、プレイ確認、
-              ローテーション分析までをひとつのワークスペースで扱うための専用ツールです。
-            </p>
-            <div className="badge-row">
-              <span className="badge">部内向けツール</span>
-              <span className="badge">試合レビュー</span>
-              <span className="badge">映像連動分析</span>
+      {hasMatches ? (
+        <section className="hero hero-home">
+          <div className="hero-grid">
+            <div>
+              <div className="hero-kicker">東京大学運動会バレー部 専用</div>
+              <h1>東大バレー部 試合ビューア</h1>
+              <p>
+                東京大学運動会バレー部の試合データを整理し、動画同期、プレイ確認、
+                ローテーション分析までをひとつのワークスペースで扱うための専用ツールです。
+              </p>
+              <div className="badge-row">
+                <span className="badge">部内向けツール</span>
+                <span className="badge">試合レビュー</span>
+                <span className="badge">映像連動分析</span>
+              </div>
             </div>
-          </div>
 
-          <div className="meta-grid">
-            <div className="meta-card">
-              <span className="muted">試合数</span>
-              <strong>{collection.matches.length}</strong>
-            </div>
-            <div className="meta-card">
-              <span className="muted">セット数</span>
-              <strong>{filteredMatch?.sets.length ?? 0}</strong>
-            </div>
-            <div className="meta-card">
-              <span className="muted">表示プレイ数</span>
-              <strong>{playCount}</strong>
-            </div>
-            <div className="meta-card">
-              <span className="muted">表示モード</span>
-              <strong>{hasMatches ? collection.sourceType.toUpperCase() : "ホーム"}</strong>
+            <div className="meta-grid">
+              <div className="meta-card">
+                <span className="muted">試合数</span>
+                <strong>{collection.matches.length}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">セット数</span>
+                <strong>{filteredMatch?.sets.length ?? 0}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">表示プレイ数</span>
+                <strong>{playCount}</strong>
+              </div>
+              <div className="meta-card">
+                <span className="muted">表示モード</span>
+                <strong>{collection.sourceType.toUpperCase()}</strong>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {showLandingPanel ? (
         <section className="panel home-landing-panel" style={{ marginBottom: 24 }}>

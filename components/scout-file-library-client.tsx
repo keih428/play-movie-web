@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatJstDateTime } from "@/lib/domain/datetime";
 import type { ScoutFileLibrary, ScoutFileNode } from "@/lib/domain/types";
 
 type ScoutFileLibraryClientProps = {
@@ -487,7 +488,7 @@ export function ScoutFileLibraryClient({
             </div>
             <div className="meta-card">
               <span className="muted">更新日時</span>
-              <strong>{library.updatedAt.slice(0, 16).replace("T", " ")}</strong>
+              <strong>{formatJstDateTime(library.updatedAt)}</strong>
             </div>
           </div>
         </div>
