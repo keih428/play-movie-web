@@ -17,10 +17,15 @@ function hasBlobToken() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function wantsBlobProvider() {
+  return process.env.WORKSPACE_STORE_PROVIDER === "vercel-blob";
+}
+
 function assertWritableDocumentStore() {
-  if (isRunningOnVercel() && !hasBlobToken()) {
+  if ((isRunningOnVercel() || wantsBlobProvider()) && !hasBlobToken()) {
     debugLog("writable store assertion failed", {
       vercel: isRunningOnVercel(),
+      wantsBlobProvider: wantsBlobProvider(),
       hasBlobToken: hasBlobToken(),
     });
     throw new Error(
@@ -39,22 +44,12 @@ function getDocumentPath(key: string) {
 
 function shouldUseBlob() {
   const provider = process.env.WORKSPACE_STORE_PROVIDER;
-  if (isRunningOnVercel()) {
-    const useBlob = hasBlobToken();
-    debugLog("resolve document store", {
-      vercel: true,
-      envProvider: provider ?? null,
-      hasBlobToken: hasBlobToken(),
-      useBlob,
-    });
-    return useBlob;
-  }
-
-  const useBlob = provider === "vercel-blob" || (!provider && hasBlobToken());
+  const useBlob = hasBlobToken() || wantsBlobProvider();
   debugLog("resolve document store", {
-    vercel: false,
+    vercel: isRunningOnVercel(),
     envProvider: provider ?? null,
     hasBlobToken: hasBlobToken(),
+    wantsBlobProvider: wantsBlobProvider(),
     useBlob,
   });
   return useBlob;

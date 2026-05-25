@@ -36,10 +36,15 @@ function hasBlobToken() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function wantsBlobProvider() {
+  return process.env.WORKSPACE_STORE_PROVIDER === "vercel-blob";
+}
+
 function assertPersistentWorkspaceStore() {
-  if (isRunningOnVercel() && !hasBlobToken()) {
+  if ((isRunningOnVercel() || wantsBlobProvider()) && !hasBlobToken()) {
     debugLog("persistent store assertion failed", {
       vercel: isRunningOnVercel(),
+      wantsBlobProvider: wantsBlobProvider(),
       hasBlobToken: hasBlobToken(),
     });
     throw new Error(
@@ -273,19 +278,18 @@ let storePromise: Promise<WorkspaceStore> | undefined;
 
 async function resolveStore(): Promise<WorkspaceStore> {
   const provider = process.env.WORKSPACE_STORE_PROVIDER;
-  const useBlob = isRunningOnVercel()
-    ? hasBlobToken()
-    : provider === "vercel-blob" ||
-      (!provider && Boolean(process.env.BLOB_READ_WRITE_TOKEN));
+  const useBlob = hasBlobToken() || wantsBlobProvider();
 
   debugLog("resolve store", {
     vercel: isRunningOnVercel(),
     envProvider: provider ?? null,
     hasBlobToken: hasBlobToken(),
+    wantsBlobProvider: wantsBlobProvider(),
     useBlob,
   });
 
   if (useBlob) {
+    assertPersistentWorkspaceStore();
     return createBlobStore();
   }
 
