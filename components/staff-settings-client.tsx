@@ -65,20 +65,11 @@ export function StaffSettingsClient({
 }: StaffSettingsClientProps) {
   const [currentScoutLibrary, setCurrentScoutLibrary] = useState(scoutLibrary);
   const [currentVideoLibrary, setCurrentVideoLibrary] = useState(videoLibrary);
-  const [workspaceList, setWorkspaceList] = useState(workspaces);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(
-    initialSettings.defaultWorkspaceId ?? "",
-  );
-  const [landingMessage, setLandingMessage] = useState(
-    initialSettings.landingMessage ?? "",
-  );
   const [matchName, setMatchName] = useState("");
   const [scoutFileId, setScoutFileId] = useState("");
   const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
-  const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
   const [libraryStatus, setLibraryStatus] = useState<string>();
-  const [isSaving, setIsSaving] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isRefreshingLibraries, setIsRefreshingLibraries] = useState(false);
 
@@ -228,39 +219,6 @@ export function StaffSettingsClient({
       cancelled = true;
     };
   }, [scoutFileId]);
-
-  async function handleSave() {
-    setIsSaving(true);
-    setStatus(undefined);
-
-    const selectedWorkspace = workspaceList.find(
-      (workspace) => workspace.id === selectedWorkspaceId,
-    );
-
-    try {
-      const response = await fetch("/api/settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          defaultWorkspaceId: selectedWorkspaceId || undefined,
-          defaultWorkspaceName: selectedWorkspace?.name,
-          landingMessage: landingMessage.trim() || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("failed to save settings");
-      }
-
-      setStatus("スタッフ設定を保存しました。");
-    } catch {
-      setStatus("スタッフ設定の保存に失敗しました。");
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   async function handleRegisterMatch() {
     if (!matchName.trim()) {
@@ -538,64 +496,6 @@ export function StaffSettingsClient({
           {registerStatus ? <p className="muted">{registerStatus}</p> : null}
         </section>
 
-        <section className="panel-section soft-panel">
-          <div className="section-heading">
-            <h3>現在の試合</h3>
-            <p className="muted">
-              ホームで既定表示する保存済みワークスペースを選択します。
-            </p>
-          </div>
-
-          <div className="field">
-            <label htmlFor="default-workspace">公開ワークスペース</label>
-            <select
-              id="default-workspace"
-              value={selectedWorkspaceId}
-              onChange={(event) => setSelectedWorkspaceId(event.target.value)}
-            >
-              <option value="">ワークスペースを選択</option>
-              {workspaceList.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
-
-        <section className="panel-section soft-panel">
-          <div className="section-heading">
-            <h3>ホーム文言</h3>
-            <p className="muted">
-              一般部員が最初に見るホームメッセージを任意で差し替えます。
-            </p>
-          </div>
-
-          <div className="field">
-            <label htmlFor="landing-message">ホームメッセージ</label>
-            <textarea
-              id="landing-message"
-              rows={4}
-              value={landingMessage}
-              onChange={(event) => setLandingMessage(event.target.value)}
-            />
-          </div>
-        </section>
-
-        <div className="button-row">
-          <button
-            className="button"
-            type="button"
-            disabled={isSaving}
-            onClick={() => {
-              void handleSave();
-            }}
-          >
-            {isSaving ? "保存中..." : "公開設定を保存"}
-          </button>
-        </div>
-
-        {status ? <p className="muted">{status}</p> : null}
       </div>
     </section>
   );

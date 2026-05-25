@@ -74,24 +74,34 @@ export function VideoPlayer({
         return;
       }
 
-      playerRef.current = new window.YT.Player(PLAYER_ELEMENT_ID, {
-        videoId,
-        playerVars: {
-          rel: 0,
-        },
-        events: {
-          onReady: () => {
-            onPlayerTimeChange(0);
+      try {
+        playerRef.current = new window.YT.Player(PLAYER_ELEMENT_ID, {
+          videoId,
+          playerVars: {
+            rel: 0,
           },
-        },
-      });
+          events: {
+            onReady: () => {
+              onPlayerTimeChange(0);
+            },
+          },
+        });
 
-      pollingRef.current = window.setInterval(() => {
-        if (!playerRef.current) {
-          return;
-        }
-        onPlayerTimeChange(playerRef.current.getCurrentTime());
-      }, 500);
+        pollingRef.current = window.setInterval(() => {
+          if (!playerRef.current) {
+            return;
+          }
+
+          try {
+            onPlayerTimeChange(playerRef.current.getCurrentTime());
+          } catch {
+            onPlayerTimeChange(undefined);
+          }
+        }, 500);
+      } catch {
+        onPlayerTimeChange(undefined);
+        playerRef.current = null;
+      }
     };
 
     if (window.YT?.Player) {
@@ -123,8 +133,12 @@ export function VideoPlayer({
       return;
     }
 
-    playerRef.current.cueVideoById(videoId);
-  }, [videoId]);
+    try {
+      playerRef.current.cueVideoById(videoId);
+    } catch {
+      onPlayerTimeChange(undefined);
+    }
+  }, [onPlayerTimeChange, videoId]);
 
   useEffect(() => {
     if (!playerRef.current || !selectedPlay) {
@@ -136,9 +150,13 @@ export function VideoPlayer({
       return;
     }
 
-    playerRef.current.seekTo(seekSeconds, true);
-    playerRef.current.playVideo();
-  }, [selectedPlay, settings]);
+    try {
+      playerRef.current.seekTo(seekSeconds, true);
+      playerRef.current.playVideo();
+    } catch {
+      onPlayerTimeChange(undefined);
+    }
+  }, [onPlayerTimeChange, selectedPlay, settings]);
 
   const selectedSeek = selectedPlay
     ? calculateSeekSeconds(selectedPlay, settings)

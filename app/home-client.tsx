@@ -8,6 +8,7 @@ import { Filters } from "@/components/filters";
 import { PlayList } from "@/components/play-list";
 import { RotationPanel } from "@/components/rotation-panel";
 import { SetupPanel } from "@/components/setup-panel";
+import { TabErrorBoundary } from "@/components/tab-error-boundary";
 import { VideoPlayer } from "@/components/video-player";
 import { getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { getMatchResultLabel, getMatchSetScore } from "@/lib/domain/summary";
@@ -182,6 +183,22 @@ export function HomeClient({
           return url.toString();
         })()
       : undefined;
+
+  useEffect(() => {
+    if (collection.matches.length === 0) {
+      if (selectedMatchIndex !== 0) {
+        setSelectedMatchIndex(0);
+      }
+      return;
+    }
+
+    if (selectedMatchIndex < 0 || selectedMatchIndex >= collection.matches.length) {
+      setSelectedMatchIndex(
+        Math.max(0, Math.min(selectedMatchIndex, collection.matches.length - 1)),
+      );
+    }
+  }, [collection.matches.length, selectedMatchIndex]);
+
   async function refreshSavedWorkspaces() {
     const response = await fetch("/api/workspaces");
     const payload = (await response.json()) as {
@@ -706,46 +723,46 @@ export function HomeClient({
           </div>
 
           {activeTab === "workspace" ? (
-            <section
-              className={`workspace-grid${allowEditing ? "" : " workspace-grid-wide"}`}
-            >
-              {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
-              <section className="panel">
-                <div className="panel-inner stack">
-                  <div>
-                    <h2>{allowEditing ? "ワークスペース概要" : "試合概要"}</h2>
-                    <p className="muted">
-                      {allowEditing
-                        ? "現在の試合データとワークスペース名だけを簡潔に確認します。"
-                        : "現在公開されている試合データの概要だけを確認します。"}
-                    </p>
-                  </div>
+            <TabErrorBoundary tabLabel="概要">
+              <section
+                className={`workspace-grid${allowEditing ? "" : " workspace-grid-wide"}`}
+              >
+                {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
+                <section className="panel">
+                  <div className="panel-inner stack">
+                    <div>
+                      <h2>{allowEditing ? "ワークスペース概要" : "試合概要"}</h2>
+                      <p className="muted">
+                        {allowEditing
+                          ? "現在の試合データとワークスペース名だけを簡潔に確認します。"
+                          : "現在公開されている試合データの概要だけを確認します。"}
+                      </p>
+                    </div>
 
-                  <div className="overview-grid">
-                    <div className="meta-card">
-                      <span className="muted">現在の試合</span>
-                      <strong>
-                        {match
-                          ? `${match.teams.home.name} vs ${match.teams.away.name}`
-                          : "試合未設定"}
-                      </strong>
+                    <div className="overview-grid">
+                      <div className="meta-card">
+                        <span className="muted">現在の試合</span>
+                        <strong>
+                          {match
+                            ? `${match.teams.home.name} vs ${match.teams.away.name}`
+                            : "試合未設定"}
+                        </strong>
+                      </div>
+                      <div className="meta-card">
+                        <span className="muted">ワークスペース</span>
+                        <strong>{workspaceName}</strong>
+                      </div>
+                      <div className="meta-card">
+                        <span className="muted">セット数</span>
+                        <strong>{match?.sets.length ?? 0}</strong>
+                      </div>
+                      <div className="meta-card">
+                        <span className="muted">プレイ数</span>
+                        <strong>{countPlays(match)}</strong>
+                      </div>
                     </div>
-                    <div className="meta-card">
-                      <span className="muted">ワークスペース</span>
-                      <strong>{workspaceName}</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">セット数</span>
-                      <strong>{match?.sets.length ?? 0}</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">プレイ数</span>
-                      <strong>{countPlays(match)}</strong>
-                    </div>
-                  </div>
 
-                  {match ? (
-                    <>
+                    {match ? (
                       <section className="panel-section soft-panel">
                         <div className="section-heading">
                           <h3>試合結果</h3>
@@ -778,125 +795,129 @@ export function HomeClient({
                               </tr>
                             </thead>
                             <tbody>
-                          {match.sets.map((set) => {
-                            const winner =
-                              set.score.home === set.score.away
-                                ? "引き分け"
-                                : set.score.home > set.score.away
-                                  ? `${match.teams.home.name} セット先取`
-                                  : `${match.teams.away.name} セット先取`;
-                            const setPlayCount = set.events.reduce(
-                              (sum, event) => sum + event.plays.length,
-                              0,
-                            );
+                              {match.sets.map((set) => {
+                                const winner =
+                                  set.score.home === set.score.away
+                                    ? "引き分け"
+                                    : set.score.home > set.score.away
+                                      ? `${match.teams.home.name} セット先取`
+                                      : `${match.teams.away.name} セット先取`;
+                                const setPlayCount = set.events.reduce(
+                                  (sum, event) => sum + event.plays.length,
+                                  0,
+                                );
 
-                            return (
-                              <tr key={set.id}>
-                                <td>セット {set.setIndex}</td>
-                                <td>{set.score.home}</td>
-                                <td>{set.score.away}</td>
-                                <td>{winner}</td>
-                                <td>{set.events.length}</td>
-                                <td>{setPlayCount}</td>
-                              </tr>
-                            );
-                          })}
+                                return (
+                                  <tr key={set.id}>
+                                    <td>セット {set.setIndex}</td>
+                                    <td>{set.score.home}</td>
+                                    <td>{set.score.away}</td>
+                                    <td>{winner}</td>
+                                    <td>{set.events.length}</td>
+                                    <td>{setPlayCount}</td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
                       </section>
-                    </>
-                  ) : null}
-                </div>
+                    ) : null}
+                  </div>
+                </section>
               </section>
-            </section>
+            </TabErrorBoundary>
           ) : null}
 
           {activeTab === "review" ? (
-            <section className="dashboard-content-stack">
-              <Filters
-                teamOptions={filterOptions.teams}
-                playerOptions={filterOptions.players}
-                skillOptions={filterOptions.skills}
-                filters={filters}
-                onChange={handleFiltersChange}
-              />
+            <TabErrorBoundary tabLabel="レビュー">
+              <section className="dashboard-content-stack">
+                <Filters
+                  teamOptions={filterOptions.teams}
+                  playerOptions={filterOptions.players}
+                  skillOptions={filterOptions.skills}
+                  filters={filters}
+                  onChange={handleFiltersChange}
+                />
 
-              <div className="review-layout">
-                <div className="review-primary">
-                  <VideoPlayer
-                    match={filteredMatch}
-                    settings={settings}
-                    selectedPlay={selectedPlay}
-                    onPlayerTimeChange={setCurrentPlayerSeconds}
-                  />
-                  <section className="panel">
-                    <div className="panel-inner stack">
-                      <div>
-                        <h2>同期情報</h2>
-                        <p className="muted">
-                          動画とプレイの同期調整に必要な項目だけをまとめています。
-                        </p>
-                      </div>
-                      <div className="overview-grid">
-                        <div className="meta-card">
-                          <span className="muted">オフセット</span>
-                          <strong>{settings.offsetSeconds}s</strong>
+                <div className="review-layout">
+                  <div className="review-primary">
+                    <VideoPlayer
+                      match={filteredMatch}
+                      settings={settings}
+                      selectedPlay={selectedPlay}
+                      onPlayerTimeChange={setCurrentPlayerSeconds}
+                    />
+                    <section className="panel">
+                      <div className="panel-inner stack">
+                        <div>
+                          <h2>同期情報</h2>
+                          <p className="muted">
+                            動画とプレイの同期調整に必要な項目だけをまとめています。
+                          </p>
                         </div>
-                        <div className="meta-card">
-                          <span className="muted">プリロール</span>
-                          <strong>{settings.prerollSeconds}s</strong>
-                          <div className="field" style={{ marginTop: 10 }}>
-                            <input
-                              id="review-preroll-seconds"
-                              type="number"
-                              step="any"
-                              inputMode="decimal"
-                              value={settings.prerollSeconds}
-                              onChange={(event) =>
-                                setSettings((current) => ({
-                                  ...current,
-                                  prerollSeconds: Number(event.target.value) || 0,
-                                }))
-                              }
-                            />
+                        <div className="overview-grid">
+                          <div className="meta-card">
+                            <span className="muted">オフセット</span>
+                            <strong>{settings.offsetSeconds}s</strong>
+                          </div>
+                          <div className="meta-card">
+                            <span className="muted">プリロール</span>
+                            <strong>{settings.prerollSeconds}s</strong>
+                            <div className="field" style={{ marginTop: 10 }}>
+                              <input
+                                id="review-preroll-seconds"
+                                type="number"
+                                step="any"
+                                inputMode="decimal"
+                                value={settings.prerollSeconds}
+                                onChange={(event) =>
+                                  setSettings((current) => ({
+                                    ...current,
+                                    prerollSeconds: Number(event.target.value) || 0,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="meta-card">
+                            <span className="muted">時刻基準</span>
+                            <strong>originalTime / 30</strong>
+                          </div>
+                          <div className="meta-card">
+                            <span className="muted">選択中プレイ</span>
+                            <strong>
+                              {selectedPlay ? getSkillLabel(selectedPlay.skill) : "なし"}
+                            </strong>
                           </div>
                         </div>
-                        <div className="meta-card">
-                          <span className="muted">時刻基準</span>
-                          <strong>originalTime / 30</strong>
-                        </div>
-                        <div className="meta-card">
-                          <span className="muted">選択中プレイ</span>
-                          <strong>
-                            {selectedPlay ? getSkillLabel(selectedPlay.skill) : "なし"}
-                          </strong>
-                        </div>
                       </div>
-                    </div>
-                  </section>
-                </div>
+                    </section>
+                  </div>
 
-                <PlayList
-                  match={filteredMatch}
-                  settings={settings}
-                  selectedPlayId={selectedPlay?.id}
-                  onSelectPlay={setSelectedPlay}
-                />
-              </div>
-            </section>
+                  <PlayList
+                    match={filteredMatch}
+                    settings={settings}
+                    selectedPlayId={selectedPlay?.id}
+                    onSelectPlay={setSelectedPlay}
+                  />
+                </div>
+              </section>
+            </TabErrorBoundary>
           ) : null}
 
           {activeTab === "analysis" ? (
-            <section className="dashboard-content-stack">
-              <div className="detail-grid">
-                <AnalysisPanel match={filteredMatch} />
-                <RotationPanel
-                  match={filteredMatch}
-                  selectedPlayId={selectedPlay?.id}
-                />
-              </div>
-            </section>
+            <TabErrorBoundary tabLabel="分析">
+              <section className="dashboard-content-stack">
+                <div className="detail-grid">
+                  <AnalysisPanel match={filteredMatch} />
+                  <RotationPanel
+                    match={filteredMatch}
+                    selectedPlayId={selectedPlay?.id}
+                  />
+                </div>
+              </section>
+            </TabErrorBoundary>
           ) : null}
         </section>
       ) : null}
