@@ -25,7 +25,7 @@ type FilterState = {
   skill: string;
 };
 
-type DashboardTab = "workspace" | "video" | "plays" | "analysis";
+type DashboardTab = "workspace" | "review" | "analysis";
 
 type HomeClientProps = {
   allowEditing?: boolean;
@@ -298,7 +298,7 @@ export function HomeClient({
         setSelectedMatchIndex(0);
         setSelectedPlay(undefined);
         setWorkspaceName(record.fileName.replace(/\.[^.]+$/, ""));
-        setActiveTab("video");
+        setActiveTab("review");
         setFilters({
           team: "all",
           player: "all",
@@ -609,8 +609,7 @@ export function HomeClient({
             <div className="tab-row" role="tablist" aria-label="画面切替">
               {[
                 ["workspace", "概要"],
-                ["video", "動画"],
-                ["plays", "プレイ"],
+                ["review", "レビュー"],
                 ["analysis", "分析"],
               ].map(([value, label]) => (
                 <button
@@ -710,47 +709,8 @@ export function HomeClient({
             </section>
           ) : null}
 
-          {activeTab === "video" ? (
+          {activeTab === "review" ? (
             <section className="dashboard-content-stack">
-              <VideoPlayer
-                match={filteredMatch}
-                settings={settings}
-                selectedPlay={selectedPlay}
-                onPlayerTimeChange={setCurrentPlayerSeconds}
-              />
-              <section className="panel">
-                <div className="panel-inner stack">
-                  <div>
-                    <h2>同期情報</h2>
-                    <p className="muted">
-                      動画とプレイの同期調整に必要な項目だけをまとめています。
-                    </p>
-                  </div>
-                  <div className="overview-grid">
-                    <div className="meta-card">
-                      <span className="muted">オフセット</span>
-                      <strong>{settings.offsetSeconds}s</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">プリロール</span>
-                      <strong>{settings.prerollSeconds}s</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">時刻基準</span>
-                      <strong>originalTime / 30</strong>
-                    </div>
-                    <div className="meta-card">
-                      <span className="muted">選択中プレイ</span>
-                      <strong>{selectedPlay?.skill ?? "なし"}</strong>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </section>
-          ) : null}
-
-          {activeTab === "plays" ? (
-            <section className="workspace-grid">
               <Filters
                 teamOptions={filterOptions.teams}
                 playerOptions={filterOptions.players}
@@ -758,12 +718,52 @@ export function HomeClient({
                 filters={filters}
                 onChange={handleFiltersChange}
               />
-              <PlayList
-                match={filteredMatch}
-                settings={settings}
-                selectedPlayId={selectedPlay?.id}
-                onSelectPlay={setSelectedPlay}
-              />
+
+              <div className="review-layout">
+                <div className="review-primary">
+                  <VideoPlayer
+                    match={filteredMatch}
+                    settings={settings}
+                    selectedPlay={selectedPlay}
+                    onPlayerTimeChange={setCurrentPlayerSeconds}
+                  />
+                  <section className="panel">
+                    <div className="panel-inner stack">
+                      <div>
+                        <h2>同期情報</h2>
+                        <p className="muted">
+                          動画とプレイの同期調整に必要な項目だけをまとめています。
+                        </p>
+                      </div>
+                      <div className="overview-grid">
+                        <div className="meta-card">
+                          <span className="muted">オフセット</span>
+                          <strong>{settings.offsetSeconds}s</strong>
+                        </div>
+                        <div className="meta-card">
+                          <span className="muted">プリロール</span>
+                          <strong>{settings.prerollSeconds}s</strong>
+                        </div>
+                        <div className="meta-card">
+                          <span className="muted">時刻基準</span>
+                          <strong>originalTime / 30</strong>
+                        </div>
+                        <div className="meta-card">
+                          <span className="muted">選択中プレイ</span>
+                          <strong>{selectedPlay?.skill ?? "なし"}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <PlayList
+                  match={filteredMatch}
+                  settings={settings}
+                  selectedPlayId={selectedPlay?.id}
+                  onSelectPlay={setSelectedPlay}
+                />
+              </div>
             </section>
           ) : null}
 

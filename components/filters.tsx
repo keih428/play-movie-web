@@ -38,8 +38,9 @@ export function Filters({
             value={filters.team}
             onChange={(event) =>
               onChange({
-                ...filters,
                 team: event.target.value,
+                player: "all",
+                skill: "all",
               })
             }
           >
@@ -92,6 +93,9 @@ export function Filters({
               </option>
             ))}
           </select>
+          <p className="muted">
+            スキルはプレー種別です。例: `S` = サーブ、`R` = レセプション、`A` = アタック、`B` = ブロック、`D` = ディグ、`E` = セット。
+          </p>
         </div>
       </div>
     </section>

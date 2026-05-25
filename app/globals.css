@@ -200,6 +200,18 @@ textarea {
   gap: 20px;
 }
 
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.review-primary {
+  display: grid;
+  gap: 20px;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
@@ -405,11 +417,12 @@ textarea {
   border-radius: 24px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.68);
+  min-height: 560px;
 }
 
 .video-embed {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  min-height: 560px;
 }
 
 .video-embed iframe {
@@ -798,7 +811,8 @@ textarea {
   .layout-grid,
   .home-grid,
   .home-grid-polished,
-  .workspace-grid {
+  .workspace-grid,
+  .review-layout {
     grid-template-columns: 1fr;
   }
 
@@ -996,6 +1010,11 @@ textarea {
 
   .video-embed-shell {
     border-radius: 18px;
+    min-height: 320px;
+  }
+
+  .video-embed {
+    min-height: 320px;
   }
 
   .timeline-chart {
