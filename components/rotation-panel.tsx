@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import type { ParsedEvent, ParsedMatch, TeamSide } from "@/lib/domain/types";
 
@@ -43,34 +46,6 @@ function findFocusEvent(
   return { setIndex: firstSet.setIndex, event: firstEvent };
 }
 
-function countRotationChanges(
-  match: ParsedMatch | undefined,
-  side: TeamSide,
-): number {
-  if (!match) {
-    return 0;
-  }
-
-  let changes = 0;
-  let previousSignature: string | undefined;
-
-  match.sets.forEach((set) => {
-    set.events.forEach((event) => {
-      const positions = event.lineup[side].positions;
-      const signature = ["1", "2", "3", "4", "5", "6"]
-        .map((key) => positions[key] ?? "-")
-        .join("|");
-
-      if (previousSignature && previousSignature !== signature) {
-        changes += 1;
-      }
-      previousSignature = signature;
-    });
-  });
-
-  return changes;
-}
-
 function RotationCourt({
   side,
   event,
@@ -111,8 +86,26 @@ function RotationCourt({
 
 export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
   const focus = findFocusEvent(match, selectedPlayId);
-  const homeChanges = countRotationChanges(match, "home");
-  const awayChanges = countRotationChanges(match, "away");
+  const initialSetIndex = focus?.setIndex ?? match?.sets[0]?.setIndex ?? 1;
+  const [selectedSetIndex, setSelectedSetIndex] = useState(initialSetIndex);
+  const [selectedEventId, setSelectedEventId] = useState<string | undefined>(focus?.event.id);
+
+  useEffect(() => {
+    setSelectedSetIndex(initialSetIndex);
+    setSelectedEventId(focus?.event.id);
+  }, [focus?.event.id, initialSetIndex]);
+
+  const selectedSet = useMemo(
+    () => match?.sets.find((set) => set.setIndex === selectedSetIndex) ?? match?.sets[0],
+    [match, selectedSetIndex],
+  );
+
+  const selectedEvent = useMemo(
+    () =>
+      selectedSet?.events.find((event) => event.id === selectedEventId) ??
+      selectedSet?.events[0],
+    [selectedEventId, selectedSet],
+  );
 
   return (
     <section className="panel">
@@ -120,11 +113,11 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
         <div>
           <h2>ローテーション</h2>
           <p className="muted">
-            選択中プレイが属するイベントのラインナップを表示します。未選択時は最初のイベントを基準にします。
+            セットとラリーを選びながら、その時点のラインナップを確認できます。
           </p>
         </div>
 
-        {!focus || !match ? (
+        {!selectedSet || !selectedEvent || !match ? (
           <div className="analysis-block">
             <p className="muted">ローテーションを表示できるイベントがありません。</p>
           </div>
@@ -133,43 +126,70 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
             <div className="rotation-summary">
               <div className="meta-card">
                 <span className="muted">注目位置</span>
-                <strong>
-                  セット {focus.setIndex} / ラリー {focus.event.eventIndex}
-                </strong>
+                <strong>セット {selectedSet.setIndex}</strong>
               </div>
               <div className="meta-card">
                 <span className="muted">スコア</span>
                 <strong>
-                  {focus.event.score.home}-{focus.event.score.away}
+                  {selectedEvent.score.home}-{selectedEvent.score.away}
                 </strong>
               </div>
-              <div className="meta-card">
-                <span className="muted">ホーム変化回数</span>
-                <strong>{homeChanges}</strong>
+            </div>
+
+            <div className="field-grid">
+              <div className="field">
+                <label htmlFor="rotation-set-selector">セット</label>
+                <select
+                  id="rotation-set-selector"
+                  value={selectedSet.setIndex}
+                  onChange={(event) => {
+                    const nextSetIndex = Number(event.target.value);
+                    const nextSet = match.sets.find((set) => set.setIndex === nextSetIndex);
+                    setSelectedSetIndex(nextSetIndex);
+                    setSelectedEventId(nextSet?.events[0]?.id);
+                  }}
+                >
+                  {match.sets.map((set) => (
+                    <option key={set.id} value={set.setIndex}>
+                      セット {set.setIndex}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="meta-card">
-                <span className="muted">アウェイ変化回数</span>
-                <strong>{awayChanges}</strong>
+
+              <div className="field">
+                <label htmlFor="rotation-event-selector">ラリー</label>
+                <select
+                  id="rotation-event-selector"
+                  value={selectedEvent.id}
+                  onChange={(event) => setSelectedEventId(event.target.value)}
+                >
+                  {selectedSet.events.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      ラリー {event.eventIndex} ({event.score.home}-{event.score.away})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="rotation-grid">
               <RotationCourt
                 side="home"
-                event={focus.event}
+                event={selectedEvent}
                 teamName={match.teams.home.name}
               />
               <RotationCourt
                 side="away"
-                event={focus.event}
+                event={selectedEvent}
                 teamName={match.teams.away.name}
               />
             </div>
 
             <div className="analysis-block">
-              <h3>注目ラリーのプレイ</h3>
+              <h3>選択ラリーのプレイ</h3>
               <div className="tag-row">
-                {focus.event.plays.map((play) => (
+                {selectedEvent.plays.map((play) => (
                   <span className="tag" key={play.id}>
                     {getTeamLabel(play.team, match)}:{play.player ?? "-"}:
                     {getSkillLabel(play.skill)}:{getEffectGrade(play.effect)}

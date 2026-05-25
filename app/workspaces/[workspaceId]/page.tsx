@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { HomeClient } from "@/app/home-client";
 import { getSavedWorkspace } from "@/lib/server/workspace-store";
+import { WorkspaceClient } from "@/app/workspaces/[workspaceId]/workspace-client";
 
 type PageProps = {
   params: Promise<{
@@ -19,7 +19,7 @@ export default async function WorkspaceViewerPage({ params }: PageProps) {
   }
 
   return (
-    <HomeClient
+    <WorkspaceClient
       allowEditing={false}
       initialCollection={workspace.collection}
       initialSettings={workspace.settings}

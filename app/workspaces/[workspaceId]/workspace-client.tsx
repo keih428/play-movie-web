@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analysis-panel";
 import { Filters } from "@/components/filters";
@@ -31,7 +29,7 @@ type FilterState = {
 
 type DashboardTab = "workspace" | "review" | "analysis";
 
-type HomeClientProps = {
+type WorkspaceClientProps = {
   allowEditing?: boolean;
   initialCollection: ParsedCollection;
   initialSettings: VideoSyncSettings;
@@ -41,7 +39,6 @@ type HomeClientProps = {
   initialRemoteSavedAt?: string;
   initialStatus?: string;
   skipLocalRestore?: boolean;
-  landingMessage?: string;
 };
 
 const WORKSPACE_STORAGE_KEY = "play-movie-web.workspace.v1";
@@ -124,7 +121,7 @@ function getFilteredMatch(
   };
 }
 
-export function HomeClient({
+export function WorkspaceClient({
   allowEditing = false,
   initialCollection,
   initialSettings,
@@ -134,8 +131,7 @@ export function HomeClient({
   initialRemoteSavedAt,
   initialStatus,
   skipLocalRestore,
-  landingMessage,
-}: HomeClientProps) {
+}: WorkspaceClientProps) {
   const [collection, setCollection] = useState(initialCollection);
   const [settings, setSettings] = useState(initialSettings);
   const [selectedMatchIndex, setSelectedMatchIndex] = useState(initialSelectedMatchIndex);
@@ -169,12 +165,10 @@ export function HomeClient({
   );
   const [selectedScoutFileId, setSelectedScoutFileId] = useState<string>();
 
-  const hasMatches = collection.matches.length > 0;
   const match = collection.matches[selectedMatchIndex];
   const filteredMatch = getFilteredMatch(match, filters);
   const playCount = countPlays(filteredMatch);
   const filterOptions = getFilterOptions(match);
-  const showLandingPanel = !hasMatches;
   const shareUrl =
     typeof window !== "undefined" && remoteWorkspaceId
       ? (() => {
@@ -284,10 +278,7 @@ export function HomeClient({
     };
 
     try {
-      window.localStorage.setItem(
-        WORKSPACE_STORAGE_KEY,
-        JSON.stringify(persisted),
-      );
+      window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(persisted));
       window.setTimeout(() => {
         setLastSavedAt(persisted.savedAt);
       }, 0);
@@ -522,9 +513,7 @@ export function HomeClient({
       await refreshSavedWorkspaces();
       setStatus("Workspace deleted");
     } catch (deleteError) {
-      setError(
-        deleteError instanceof Error ? deleteError.message : "delete failed",
-      );
+      setError(deleteError instanceof Error ? deleteError.message : "delete failed");
       setStatus("Server delete failed");
     } finally {
       setIsSyncingWorkspace(false);
@@ -583,6 +572,8 @@ export function HomeClient({
     onCopyShareUrl: handleCopyShareUrl,
   };
 
+  const hasMatches = collection.matches.length > 0;
+
   return (
     <main className="page-shell">
       {hasMatches ? (
@@ -613,90 +604,13 @@ export function HomeClient({
               </div>
               <div className="meta-card">
                 <span className="muted">表示プレイ数</span>
-                <strong>{playCount}</strong>
+                <strong>{countPlays(filteredMatch)}</strong>
               </div>
               <div className="meta-card">
                 <span className="muted">表示モード</span>
                 <strong>{collection.sourceType.toUpperCase()}</strong>
               </div>
             </div>
-          </div>
-        </section>
-      ) : null}
-
-      {showLandingPanel ? (
-        <section className="panel home-landing-panel" style={{ marginBottom: 24 }}>
-          <div className="panel-inner stack">
-            <div className="home-intro">
-              <div
-                className="logo-placeholder logo-placeholder-large"
-                aria-label="東大バレー部ロゴ"
-              >
-                <Image
-                  className="logo-image logo-image-large"
-                  src="/logo.png"
-                  alt="東大バレー部ロゴ"
-                  width={320}
-                  height={180}
-                  priority
-                />
-              </div>
-              <div>
-                <div className="hero-kicker">
-                  東京大学運動会バレー部
-                </div>
-                <h2>試合レビューの入口を、ひとつに。</h2>
-                <p className="muted">
-                  {landingMessage ??
-                    "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、東京大学運動会バレー部専用の環境です。"}
-                </p>
-              </div>
-            </div>
-
-            <div className="button-row">
-              <Link className="button" href="/workspaces">
-                試合一覧を見る
-              </Link>
-            </div>
-
-            <div className="home-steps">
-              <article className="home-step">
-                <span className="home-step-index">01</span>
-                <div>
-                  <strong>試合一覧を開く</strong>
-                  <p className="muted">
-                    登録済みの試合を一覧から選び、見たい試合だけを開きます。
-                  </p>
-                </div>
-              </article>
-              <article className="home-step">
-                <span className="home-step-index">02</span>
-                <div>
-                  <strong>映像でレビューする</strong>
-                  <p className="muted">
-                    プレイ一覧から試合映像へ移動し、分析対象のラリーを短時間で確認できます。
-                  </p>
-                </div>
-              </article>
-              <article className="home-step">
-                <span className="home-step-index">03</span>
-                <div>
-                  <strong>動画ライブラリを見る</strong>
-                  <p className="muted">
-                    試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
-                  </p>
-                </div>
-              </article>
-            </div>
-
-            <div className="home-feature-band">
-              <div className="feature-chip">試合レビュー</div>
-              <div className="feature-chip">映像ジャンプ</div>
-              <div className="feature-chip">ローテーション確認</div>
-              <div className="feature-chip">共有ワークスペース</div>
-            </div>
-
-            {allowEditing ? <SetupPanel {...setupPanelProps} /> : null}
           </div>
         </section>
       ) : null}
@@ -923,7 +837,6 @@ export function HomeClient({
           ) : null}
         </section>
       ) : null}
-
     </main>
   );
 }
