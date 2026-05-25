@@ -286,8 +286,9 @@ export function StaffSettingsClient({
       setRegisterStatus("セット情報を取得できませんでした。");
       return;
     }
-    if (setVideos.some((entry) => !entry.youtubeUrl)) {
-      setRegisterStatus("各セットに試合動画を設定してください。");
+    const configuredSetVideos = setVideos.filter((entry) => entry.youtubeUrl);
+    if (configuredSetVideos.length === 0) {
+      setRegisterStatus("少なくとも1つのセットに試合動画を設定してください。");
       return;
     }
 
@@ -309,10 +310,10 @@ export function StaffSettingsClient({
       }
 
       const workspaceSettings: VideoSyncSettings = {
-        youtubeUrl: setVideos[0]?.youtubeUrl ?? "",
-        offsetSeconds: setVideos[0]?.offsetSeconds ?? 0,
+        youtubeUrl: configuredSetVideos[0]?.youtubeUrl ?? "",
+        offsetSeconds: configuredSetVideos[0]?.offsetSeconds ?? 0,
         prerollSeconds: Number(prerollSeconds) || 0,
-        setVideos,
+        setVideos: configuredSetVideos,
       };
 
       const workspaceResponse = await fetch("/api/workspaces", {
@@ -450,10 +451,10 @@ export function StaffSettingsClient({
           <section className="panel-section soft-panel">
             <div className="section-heading">
               <h3>セットごとの試合動画</h3>
-              <p className="muted">
-                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。各セットに YouTube リンクとオフセット秒を設定してください。
-              </p>
-            </div>
+                <p className="muted">
+                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。必要なセットだけ YouTube リンクとオフセット秒を設定してください。
+                </p>
+              </div>
 
             {setVideos.length > 0 ? (
               <>
@@ -504,6 +505,8 @@ export function StaffSettingsClient({
                       <input
                         id="selected-set-offset"
                         type="number"
+                        step="any"
+                        inputMode="decimal"
                         value={selectedSetVideo.offsetSeconds}
                         onChange={(event) =>
                           updateSelectedSetVideo((entry) => ({

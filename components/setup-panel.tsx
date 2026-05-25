@@ -250,6 +250,8 @@ export function SetupPanel({
               <input
                 id="offset-seconds"
                 type="number"
+                step="any"
+                inputMode="decimal"
                 value={settings.offsetSeconds}
                 onChange={(event) =>
                   onSettingsChange({
