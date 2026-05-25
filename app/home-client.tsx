@@ -10,12 +10,7 @@ import { RotationPanel } from "@/components/rotation-panel";
 import { SetupPanel } from "@/components/setup-panel";
 import { VideoPlayer } from "@/components/video-player";
 import { getSkillLabel, getTeamLabel } from "@/lib/domain/display";
-import {
-  getMatchResultLabel,
-  getMatchSetScore,
-  getTopSkillsForMatch,
-} from "@/lib/domain/summary";
-import { extractYouTubeVideoId } from "@/lib/domain/video";
+import { getMatchResultLabel, getMatchSetScore } from "@/lib/domain/summary";
 import type {
   ParsedCollection,
   ParsedMatch,
@@ -23,7 +18,6 @@ import type {
   PersistedWorkspace,
   SavedWorkspaceRecord,
   SavedWorkspaceSummary,
-  VideoLibraryNode,
   VideoSyncSettings,
   WorkspaceStoreProvider,
 } from "@/lib/domain/types";
@@ -47,7 +41,6 @@ type HomeClientProps = {
   initialStatus?: string;
   skipLocalRestore?: boolean;
   landingMessage?: string;
-  latestVideoLink?: VideoLibraryNode | null;
 };
 
 const WORKSPACE_STORAGE_KEY = "play-movie-web.workspace.v1";
@@ -141,7 +134,6 @@ export function HomeClient({
   initialStatus,
   skipLocalRestore,
   landingMessage,
-  latestVideoLink,
 }: HomeClientProps) {
   const [collection, setCollection] = useState(initialCollection);
   const [settings, setSettings] = useState(initialSettings);
@@ -190,8 +182,6 @@ export function HomeClient({
           return url.toString();
         })()
       : undefined;
-  const latestVideoId = extractYouTubeVideoId(latestVideoLink?.url ?? "");
-
   async function refreshSavedWorkspaces() {
     const response = await fetch("/api/workspaces");
     const payload = (await response.json()) as {
@@ -775,7 +765,19 @@ export function HomeClient({
                             </strong>
                           </div>
                         </div>
-                        <div className="workspace-list">
+                        <div className="score-table-wrap">
+                          <table className="score-table">
+                            <thead>
+                              <tr>
+                                <th>セット</th>
+                                <th>ホーム</th>
+                                <th>アウェイ</th>
+                                <th>勝敗</th>
+                                <th>ラリー</th>
+                                <th>プレイ</th>
+                              </tr>
+                            </thead>
+                            <tbody>
                           {match.sets.map((set) => {
                             const winner =
                               set.score.home === set.score.away
@@ -789,46 +791,18 @@ export function HomeClient({
                             );
 
                             return (
-                              <article className="workspace-card" key={set.id}>
-                                <div className="list-item-header">
-                                  <strong>セット {set.setIndex}</strong>
-                                  <span className="tag">{winner}</span>
-                                </div>
-                                <div className="meta-grid">
-                                  <div className="meta-card">
-                                    <span className="muted">スコア</span>
-                                    <strong>
-                                      {set.score.home}-{set.score.away}
-                                    </strong>
-                                  </div>
-                                  <div className="meta-card">
-                                    <span className="muted">ラリー数</span>
-                                    <strong>{set.events.length}</strong>
-                                  </div>
-                                  <div className="meta-card">
-                                    <span className="muted">プレイ数</span>
-                                    <strong>{setPlayCount}</strong>
-                                  </div>
-                                </div>
-                              </article>
+                              <tr key={set.id}>
+                                <td>セット {set.setIndex}</td>
+                                <td>{set.score.home}</td>
+                                <td>{set.score.away}</td>
+                                <td>{winner}</td>
+                                <td>{set.events.length}</td>
+                                <td>{setPlayCount}</td>
+                              </tr>
                             );
                           })}
-                        </div>
-                      </section>
-
-                      <section className="panel-section soft-panel">
-                        <div className="section-heading">
-                          <h3>簡易分析</h3>
-                          <p className="muted">
-                            試合全体で多かったスキルを上位から表示します。
-                          </p>
-                        </div>
-                        <div className="tag-row">
-                          {getTopSkillsForMatch(match, 6).map((entry) => (
-                            <span className="tag" key={entry.skill}>
-                              {getSkillLabel(entry.skill)}: {entry.count}
-                            </span>
-                          ))}
+                            </tbody>
+                          </table>
                         </div>
                       </section>
                     </>
@@ -927,41 +901,6 @@ export function HomeClient({
         </section>
       ) : null}
 
-      {latestVideoLink && latestVideoId ? (
-        <section className="panel" style={{ marginTop: 24 }}>
-          <div className="panel-inner stack">
-            <div>
-              <h2>最も直近に追加した動画</h2>
-              <p className="muted">
-                動画ライブラリで最後に追加された YouTube 動画をここから直接再生できます。
-              </p>
-            </div>
-            <div className="meta-grid">
-              <div className="meta-card">
-                <span className="muted">タイトル</span>
-                <strong>{latestVideoLink.name}</strong>
-              </div>
-              <div className="meta-card">
-                <span className="muted">追加日時</span>
-                <strong>
-                  {latestVideoLink.createdAt?.slice(0, 16).replace("T", " ") ?? "-"}
-                </strong>
-              </div>
-            </div>
-            {latestVideoLink.note ? <p className="muted">{latestVideoLink.note}</p> : null}
-            <div className="video-embed-shell">
-              <iframe
-                className="video-embed"
-                src={`https://www.youtube.com/embed/${latestVideoId}`}
-                title={latestVideoLink.name}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
-            </div>
-          </div>
-        </section>
-      ) : null}
     </main>
   );
 }
