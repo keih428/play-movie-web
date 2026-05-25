@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { del, list, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 import type {
   PersistedWorkspace,
   SavedWorkspaceRecord,
@@ -183,29 +183,19 @@ async function createLocalStore(): Promise<WorkspaceStore> {
 
 async function createBlobStore(): Promise<WorkspaceStore> {
   async function getWorkspace(id: string) {
-    const result = await list({ prefix: `${WORKSPACE_PREFIX}${id}.json` });
-    const blob = result.blobs[0];
-    debugLog("blob get workspace list", {
+    const pathname = `${WORKSPACE_PREFIX}${id}.json`;
+    const result = await get(pathname, { access: "private" });
+    debugLog("blob get workspace", {
       id,
-      prefix: `${WORKSPACE_PREFIX}${id}.json`,
-      count: result.blobs.length,
+      pathname,
+      found: Boolean(result),
+      statusCode: result?.statusCode ?? null,
     });
-    if (!blob) {
+    if (!result || result.statusCode !== 200 || !result.stream) {
       return null;
     }
-
-    const response = await fetch(blob.downloadUrl, { cache: "no-store" });
-    debugLog("blob get workspace fetch", {
-      id,
-      pathname: blob.pathname,
-      ok: response.ok,
-      status: response.status,
-    });
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as SavedWorkspaceRecord;
+    const raw = await new Response(result.stream).text();
+    return JSON.parse(raw) as SavedWorkspaceRecord;
   }
 
   return {
@@ -220,10 +210,19 @@ async function createBlobStore(): Promise<WorkspaceStore> {
         result.blobs
           .filter((blob) => blob.pathname.endsWith(".json"))
           .map(async (blob) => {
-            const response = await fetch(blob.downloadUrl, {
-              cache: "no-store",
+            const entry = await get(blob.pathname, {
+              access: "private",
             });
-            const record = (await response.json()) as SavedWorkspaceRecord;
+            debugLog("blob list workspace get", {
+              pathname: blob.pathname,
+              found: Boolean(entry),
+              statusCode: entry?.statusCode ?? null,
+            });
+            if (!entry || entry.statusCode !== 200 || !entry.stream) {
+              throw new Error(`failed to read workspace blob: ${blob.pathname}`);
+            }
+            const raw = await new Response(entry.stream).text();
+            const record = JSON.parse(raw) as SavedWorkspaceRecord;
             return normalizeSummary(record);
           }),
       );

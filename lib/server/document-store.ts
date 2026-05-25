@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { list, put } from "@vercel/blob";
+import { get, list, put } from "@vercel/blob";
 
 const DOCUMENT_DIR = path.resolve(process.cwd(), ".data", "documents");
 const DOCUMENT_PREFIX = "documents/";
@@ -97,29 +97,19 @@ export async function readDocument<T>(key: string): Promise<T | null> {
   assertWritableDocumentStore();
 
   if (shouldUseBlob()) {
-    const result = await list({ prefix: `${DOCUMENT_PREFIX}${key}.json` });
-    const blob = result.blobs[0];
-    debugLog("blob read document list", {
+    const pathname = `${DOCUMENT_PREFIX}${key}.json`;
+    const result = await get(pathname, { access: "private" });
+    debugLog("blob read document get", {
       key,
-      prefix: `${DOCUMENT_PREFIX}${key}.json`,
-      count: result.blobs.length,
+      pathname,
+      found: Boolean(result),
+      statusCode: result?.statusCode ?? null,
     });
-    if (!blob) {
+    if (!result || result.statusCode !== 200 || !result.stream) {
       return null;
     }
-
-    const response = await fetch(blob.downloadUrl, { cache: "no-store" });
-    debugLog("blob read document fetch", {
-      key,
-      pathname: blob.pathname,
-      ok: response.ok,
-      status: response.status,
-    });
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as T;
+    const raw = await new Response(result.stream).text();
+    return JSON.parse(raw) as T;
   }
 
   await ensureDocumentDir();
