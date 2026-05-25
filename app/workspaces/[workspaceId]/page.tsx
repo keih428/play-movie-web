@@ -10,6 +10,7 @@ import {
   getTopSkillsForMatch,
   getWorkspacePrimaryMatch,
 } from "@/lib/domain/summary";
+import { getSkillLabel } from "@/lib/domain/display";
 import { getSavedWorkspace } from "@/lib/server/workspace-store";
 import { CopyShareLinkButton } from "@/components/copy-share-link-button";
 
@@ -50,7 +51,7 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
                 一覧へ戻る
               </Link>
               <Link className="badge badge-link" href={`/?workspaceId=${workspace.id}`}>
-                ホームで開く
+                動画とプレイで見る
               </Link>
               <CopyShareLinkButton workspaceId={workspace.id} />
             </div>
@@ -219,7 +220,7 @@ export default async function WorkspaceDetailPage({ params }: PageProps) {
                   <div className="tag-row">
                     {topSkills.map((entry) => (
                       <span className="tag" key={`${match.id}-${entry.skill}`}>
-                        {entry.skill}: {entry.count}
+                        {getSkillLabel(entry.skill)}: {entry.count}
                       </span>
                     ))}
                   </div>

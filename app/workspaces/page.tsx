@@ -42,7 +42,9 @@ export default async function WorkspacesPage() {
         <div className="panel-inner stack">
           <div>
             <h2>登録済み試合</h2>
-            <p className="muted">新しく追加された試合から順に表示しています。</p>
+            <p className="muted">
+              新しく追加された試合から順に表示しています。各試合はここから直接、動画とプレイを見比べるレビュー画面で開けます。
+            </p>
           </div>
 
           {workspaces.length === 0 ? (
@@ -78,11 +80,11 @@ export default async function WorkspacesPage() {
                     </div>
                   </div>
                   <div className="button-row">
-                    <Link className="button" href={`/workspaces/${workspace.id}`}>
-                      閲覧する
+                    <Link className="button" href={`/?workspaceId=${workspace.id}`}>
+                      動画とプレイで見る
                     </Link>
-                    <Link className="button secondary" href={`/?workspaceId=${workspace.id}`}>
-                      ホームで開く
+                    <Link className="button secondary" href={`/workspaces/${workspace.id}`}>
+                      概要を見る
                     </Link>
                   </div>
                 </article>

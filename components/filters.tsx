@@ -1,3 +1,5 @@
+import { getSkillLabel } from "@/lib/domain/display";
+
 type FiltersProps = {
   teamOptions: string[];
   playerOptions: string[];
@@ -89,12 +91,12 @@ export function Filters({
             <option value="all">すべてのスキル</option>
             {skillOptions.map((skill) => (
               <option key={skill} value={skill}>
-                {skill}
+                {getSkillLabel(skill)}
               </option>
             ))}
           </select>
           <p className="muted">
-            スキルはプレー種別です。例: `S` = サーブ、`R` = レセプション、`A` = アタック、`B` = ブロック、`D` = ディグ、`E` = セット。
+            スキルはプレー種別です。サーブ、レセプション、アタック、ブロック、ディグ、セットなどに対応します。
           </p>
         </div>
       </div>

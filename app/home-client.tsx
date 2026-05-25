@@ -8,6 +8,7 @@ import { PlayList } from "@/components/play-list";
 import { RotationPanel } from "@/components/rotation-panel";
 import { SetupPanel } from "@/components/setup-panel";
 import { VideoPlayer } from "@/components/video-player";
+import { getTeamLabel } from "@/lib/domain/display";
 import type {
   ParsedCollection,
   ParsedMatch,
@@ -62,7 +63,7 @@ function getFilterOptions(match: ParsedMatch | undefined) {
     set.events.forEach((event) => {
       event.plays.forEach((play) => {
         if (play.team) {
-          teams.add(play.team);
+          teams.add(getTeamLabel(play.team, match));
         }
         if (play.player) {
           players.add(play.player);
@@ -98,7 +99,10 @@ function getFilteredMatch(
           .map((event) => ({
             ...event,
             plays: event.plays.filter((play) => {
-              if (filters.team !== "all" && play.team !== filters.team) {
+              if (
+                filters.team !== "all" &&
+                getTeamLabel(play.team, match) !== filters.team
+              ) {
                 return false;
               }
               if (filters.player !== "all" && play.player !== filters.player) {
@@ -743,6 +747,21 @@ export function HomeClient({
                         <div className="meta-card">
                           <span className="muted">プリロール</span>
                           <strong>{settings.prerollSeconds}s</strong>
+                          <div className="field" style={{ marginTop: 10 }}>
+                            <input
+                              id="review-preroll-seconds"
+                              type="number"
+                              step="any"
+                              inputMode="decimal"
+                              value={settings.prerollSeconds}
+                              onChange={(event) =>
+                                setSettings((current) => ({
+                                  ...current,
+                                  prerollSeconds: Number(event.target.value) || 0,
+                                }))
+                              }
+                            />
+                          </div>
                         </div>
                         <div className="meta-card">
                           <span className="muted">時刻基準</span>

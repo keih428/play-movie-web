@@ -1,3 +1,4 @@
+import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
 
@@ -61,17 +62,17 @@ export function PlayList({
                   </small>
                 </div>
                 <div>
-                  <strong>{item.play.skill ?? "-"}</strong>
+                  <strong>{getSkillLabel(item.play.skill)}</strong>
                   {" / "}
                   <span>{item.play.player ?? "不明な選手"}</span>
                   {" / "}
-                  <span>{item.play.effect ?? "-"}</span>
+                  <span>{getEffectGrade(item.play.effect)}</span>
                 </div>
                 <small>
                   スコア {item.score.home} - {item.score.away}
                 </small>
                 <div className="tag-row">
-                  <span className="tag">チーム: {item.play.team || "-"}</span>
+                  <span className="tag">チーム: {getTeamLabel(item.play.team, match)}</span>
                   <span className="tag">コード: {item.play.code || "-"}</span>
                 </div>
                 <div className="button-row" style={{ marginTop: 10 }}>

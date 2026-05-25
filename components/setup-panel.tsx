@@ -244,42 +244,25 @@ export function SetupPanel({
             </p>
           ) : null}
 
-          <div className="field-grid">
-            <div className="field">
-              <label htmlFor="offset-seconds">オフセット秒</label>
-              <input
-                id="offset-seconds"
-                type="number"
-                step="any"
-                inputMode="decimal"
-                value={settings.offsetSeconds}
-                onChange={(event) =>
-                  onSettingsChange({
-                    ...settings,
-                    offsetSeconds: Number(event.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="preroll-seconds">プリロール秒</label>
-              <input
-                id="preroll-seconds"
-                type="number"
-                value={settings.prerollSeconds}
-                onChange={(event) =>
-                  onSettingsChange({
-                    ...settings,
-                    prerollSeconds: Number(event.target.value) || 0,
-                  })
-                }
-              />
-            </div>
+          <div className="field">
+            <label htmlFor="offset-seconds">オフセット秒</label>
+            <input
+              id="offset-seconds"
+              type="number"
+              step="any"
+              inputMode="decimal"
+              value={settings.offsetSeconds}
+              onChange={(event) =>
+                onSettingsChange({
+                  ...settings,
+                  offsetSeconds: Number(event.target.value) || 0,
+                })
+              }
+            />
           </div>
 
           <p className="muted">
-            動画同期は `.vsm` / `.vsdb` 内の `originalTime` を 30fps で秒換算して計算します。
+            動画同期は `.vsm` / `.vsdb` 内の `originalTime` を 30fps で秒換算して計算します。プリロール秒は動画レビュー画面で各ユーザーが調整します。
           </p>
 
           <div className="button-row">

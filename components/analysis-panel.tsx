@@ -1,3 +1,4 @@
+import { getSkillLabel } from "@/lib/domain/display";
 import type { ParsedMatch } from "@/lib/domain/types";
 
 type AnalysisPanelProps = {
@@ -98,7 +99,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 {skillSummary.map((row) => (
                   <div className="skill-bar-row" key={row.skill}>
                     <div className="skill-bar-meta">
-                      <strong>{row.skill}</strong>
+                      <strong>{getSkillLabel(row.skill)}</strong>
                       <span className="mono">{row.count}</span>
                     </div>
                     <div className="skill-bar-track">

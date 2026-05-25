@@ -74,7 +74,6 @@ export function StaffSettingsClient({
   );
   const [matchName, setMatchName] = useState("");
   const [scoutFileId, setScoutFileId] = useState("");
-  const [prerollSeconds, setPrerollSeconds] = useState("3");
   const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
   const [status, setStatus] = useState<string>();
   const [registerStatus, setRegisterStatus] = useState<string>();
@@ -302,7 +301,7 @@ export function StaffSettingsClient({
       const workspaceSettings: VideoSyncSettings = {
         youtubeUrl: configuredSetVideos[0]?.youtubeUrl ?? "",
         offsetSeconds: configuredSetVideos[0]?.offsetSeconds ?? 0,
-        prerollSeconds: Number(prerollSeconds) || 0,
+        prerollSeconds: 0,
         setVideos: configuredSetVideos,
       };
 
@@ -345,7 +344,6 @@ export function StaffSettingsClient({
       setMatchName("");
       setScoutFileId("");
       setSetVideos([]);
-      setPrerollSeconds("3");
       setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
     } catch (error) {
       setRegisterStatus(
@@ -520,21 +518,9 @@ export function StaffSettingsClient({
             )}
           </section>
 
-          <div className="field-grid">
-            <div className="field">
-              <label htmlFor="staff-preroll-seconds">プリロール秒</label>
-              <input
-                id="staff-preroll-seconds"
-                type="number"
-                value={prerollSeconds}
-                onChange={(event) => setPrerollSeconds(event.target.value)}
-              />
-            </div>
-
-            <p className="muted">
-              動画同期は `originalTime` を 30fps で秒換算して計算します。
-            </p>
-          </div>
+          <p className="muted">
+            動画同期は `originalTime` を 30fps で秒換算して計算します。プリロール秒は登録時ではなく、動画レビュー画面で各ユーザーが調整します。
+          </p>
 
           <div className="button-row">
             <button
