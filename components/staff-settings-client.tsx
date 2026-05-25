@@ -292,17 +292,10 @@ export function StaffSettingsClient({
         throw new Error(workspacePayload.error || "試合の登録に失敗しました。");
       }
 
-      const refreshResponse = await fetch("/api/workspaces");
-      const refreshPayload = (await refreshResponse.json()) as {
-        workspaces?: SavedWorkspaceSummary[];
-      };
-      const nextWorkspaces = refreshPayload.workspaces ?? workspaceList;
-      setWorkspaceList(nextWorkspaces);
-      setSelectedWorkspaceId(workspacePayload.workspace.id);
       setMatchName("");
       setScoutFileId("");
       setSetVideos([]);
-      setRegisterStatus("試合を登録しました。必要ならこのまま公開設定も保存してください。");
+      setRegisterStatus("試合を登録しました。");
     } catch (error) {
       setRegisterStatus(
         error instanceof Error ? error.message : "試合の登録に失敗しました。",
