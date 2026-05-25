@@ -38,11 +38,22 @@ function flattenScoutFiles(
   });
 }
 
-function getMatchVideos(library: VideoLibrary): VideoLibraryNode[] {
-  const fixedFolder = library.root.find((node) => node.systemKey === "match-videos");
-  return (fixedFolder?.children ?? []).filter(
-    (node): node is VideoLibraryNode => node.type === "link" && Boolean(node.url),
-  );
+function flattenVideoLinks(
+  nodes: VideoLibraryNode[],
+  depth = 0,
+): Array<VideoLibraryNode & { label: string }> {
+  return nodes.flatMap((node) => {
+    if (node.type === "link" && node.url) {
+      return [
+        {
+          ...node,
+          label: `${"  ".repeat(depth)}${node.name}`,
+        },
+      ];
+    }
+
+    return flattenVideoLinks(node.children ?? [], depth + 1);
+  });
 }
 
 export function StaffSettingsClient({
@@ -51,6 +62,8 @@ export function StaffSettingsClient({
   videoLibrary,
   workspaces,
 }: StaffSettingsClientProps) {
+  const [currentScoutLibrary, setCurrentScoutLibrary] = useState(scoutLibrary);
+  const [currentVideoLibrary, setCurrentVideoLibrary] = useState(videoLibrary);
   const [workspaceList, setWorkspaceList] = useState(workspaces);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(
     initialSettings.defaultWorkspaceId ?? "",
@@ -69,13 +82,51 @@ export function StaffSettingsClient({
   const [isRegistering, setIsRegistering] = useState(false);
 
   const scoutFileOptions = useMemo(
-    () => flattenScoutFiles(scoutLibrary.root),
-    [scoutLibrary.root],
+    () => flattenScoutFiles(currentScoutLibrary.root),
+    [currentScoutLibrary.root],
   );
-  const matchVideos = useMemo(() => getMatchVideos(videoLibrary), [videoLibrary]);
+  const matchVideos = useMemo(
+    () => flattenVideoLinks(currentVideoLibrary.root),
+    [currentVideoLibrary.root],
+  );
   const selectedSetVideo = setVideos.find(
     (entry) => entry.setIndex === selectedSetIndex,
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLibraries() {
+      try {
+        const [scoutResponse, videoResponse] = await Promise.all([
+          fetch("/api/scout-files", { cache: "no-store" }),
+          fetch("/api/video-library", { cache: "no-store" }),
+        ]);
+        const scoutPayload = (await scoutResponse.json()) as {
+          library?: ScoutFileLibrary;
+        };
+        const videoPayload = (await videoResponse.json()) as {
+          library?: VideoLibrary;
+        };
+
+        if (!cancelled) {
+          if (scoutPayload.library) {
+            setCurrentScoutLibrary(scoutPayload.library);
+          }
+          if (videoPayload.library) {
+            setCurrentVideoLibrary(videoPayload.library);
+          }
+        }
+      } catch {
+        // Keep server-rendered fallback values when live refresh fails.
+      }
+    }
+
+    void loadLibraries();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function updateSelectedSetVideo(
     updater: (entry: VideoSyncSetSource) => VideoSyncSetSource,
@@ -358,7 +409,7 @@ export function StaffSettingsClient({
                         <option value="">試合動画を選択</option>
                         {matchVideos.map((video) => (
                           <option key={video.id} value={video.url}>
-                            {video.name}
+                            {video.label}
                           </option>
                         ))}
                       </select>

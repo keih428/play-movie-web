@@ -66,6 +66,24 @@ function flattenScoutFiles(
   });
 }
 
+function flattenVideoLinks(
+  nodes: VideoLibraryNode[],
+  depth = 0,
+): Array<VideoLibraryNode & { label: string }> {
+  return nodes.flatMap((node) => {
+    if (node.type === "link" && node.url) {
+      return [
+        {
+          ...node,
+          label: `${"  ".repeat(depth)}${node.name}`,
+        },
+      ];
+    }
+
+    return flattenVideoLinks(node.children ?? [], depth + 1);
+  });
+}
+
 export function SetupPanel({
   settings,
   matchCount,
@@ -117,16 +135,8 @@ export function SetupPanel({
         const scoutPayload = (await scoutResponse.json()) as {
           library?: ScoutFileLibrary;
         };
-        const fixedFolder = videoPayload.library?.root.find(
-          (node) => node.systemKey === "match-videos",
-        );
         if (!cancelled) {
-          setMatchVideoOptions(
-            (fixedFolder?.children ?? []).filter(
-              (node): node is VideoLibraryNode =>
-                node.type === "link" && Boolean(node.url),
-            ),
-          );
+          setMatchVideoOptions(flattenVideoLinks(videoPayload.library?.root ?? []));
           setScoutFileOptions(flattenScoutFiles(scoutPayload.library?.root ?? []));
         }
       } catch {
@@ -218,7 +228,7 @@ export function SetupPanel({
               <option value="">試合動画を選択</option>
               {matchVideoOptions.map((video) => (
                 <option key={video.id} value={video.url}>
-                  {video.name}
+                  {"label" in video ? video.label : video.name}
                 </option>
               ))}
             </select>

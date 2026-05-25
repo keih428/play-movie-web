@@ -10,6 +10,8 @@ export const metadata = {
   title: "スタッフ設定 | 東大バレー部 試合ビューア",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function StaffSettingsPage() {
   const appSettings = await getStaffAppSettings();
   const scoutLibrary = await getScoutFileLibrary();

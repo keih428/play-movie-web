@@ -24,6 +24,22 @@ type WorkspaceStore = {
   }) => Promise<SavedWorkspaceRecord>;
 };
 
+function isRunningOnVercel() {
+  return process.env.VERCEL === "1";
+}
+
+function hasBlobToken() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+function assertPersistentWorkspaceStore() {
+  if (isRunningOnVercel() && !hasBlobToken()) {
+    throw new Error(
+      "Vercel 本番ではワークスペース保存に Vercel Blob が必要です。環境変数 `BLOB_READ_WRITE_TOKEN` と `WORKSPACE_STORE_PROVIDER=vercel-blob` を設定してください。",
+    );
+  }
+}
+
 function normalizeSummary(record: SavedWorkspaceRecord): SavedWorkspaceSummary {
   return enrichWorkspaceSummary(record, {
     id: record.id,
@@ -205,6 +221,8 @@ async function resolveStore(): Promise<WorkspaceStore> {
   if (useBlob) {
     return createBlobStore();
   }
+
+  assertPersistentWorkspaceStore();
 
   return createLocalStore();
 }

@@ -5,6 +5,8 @@ export const metadata = {
   title: "試合データ管理 | 東大バレー部 試合ビューア",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function StaffDataLibraryPage() {
   const library = await getScoutFileLibrary();
 

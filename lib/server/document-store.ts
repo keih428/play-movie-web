@@ -16,7 +16,7 @@ function hasBlobToken() {
 function assertWritableDocumentStore() {
   if (isRunningOnVercel() && !hasBlobToken()) {
     throw new Error(
-      "Vercel Blob の書き込みトークンが未設定です。Vercel の環境変数 `BLOB_READ_WRITE_TOKEN` を設定してください。",
+      "Vercel 本番ではドキュメント保存に Vercel Blob が必要です。環境変数 `BLOB_READ_WRITE_TOKEN` と `WORKSPACE_STORE_PROVIDER=vercel-blob` を設定してください。",
     );
   }
 }
@@ -64,6 +64,8 @@ async function putDocument(pathname: string, body: string) {
 }
 
 export async function readDocument<T>(key: string): Promise<T | null> {
+  assertWritableDocumentStore();
+
   if (shouldUseBlob()) {
     const result = await list({ prefix: `${DOCUMENT_PREFIX}${key}.json` });
     const blob = result.blobs[0];
@@ -89,6 +91,8 @@ export async function readDocument<T>(key: string): Promise<T | null> {
 }
 
 export async function writeDocument<T>(key: string, value: T): Promise<T> {
+  assertWritableDocumentStore();
+
   if (shouldUseBlob()) {
     await putDocument(
       `${DOCUMENT_PREFIX}${key}.json`,
@@ -97,7 +101,6 @@ export async function writeDocument<T>(key: string, value: T): Promise<T> {
     return value;
   }
 
-  assertWritableDocumentStore();
   await ensureDocumentDir();
   await writeFile(getDocumentPath(key), JSON.stringify(value, null, 2), "utf8");
   return value;
