@@ -37,6 +37,32 @@ function shouldUseBlob() {
   );
 }
 
+async function putDocument(pathname: string, body: string) {
+  try {
+    await put(pathname, body, {
+      access: "private",
+      addRandomSuffix: false,
+      contentType: "application/json; charset=utf-8",
+      allowOverwrite: true,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Cannot use private access on a public store")
+    ) {
+      await put(pathname, body, {
+        access: "public",
+        addRandomSuffix: false,
+        contentType: "application/json; charset=utf-8",
+        allowOverwrite: true,
+      });
+      return;
+    }
+
+    throw error;
+  }
+}
+
 export async function readDocument<T>(key: string): Promise<T | null> {
   if (shouldUseBlob()) {
     const result = await list({ prefix: `${DOCUMENT_PREFIX}${key}.json` });
@@ -45,7 +71,14 @@ export async function readDocument<T>(key: string): Promise<T | null> {
       return null;
     }
 
-    const response = await fetch(blob.url, { cache: "no-store" });
+    const response = await fetch(blob.url, {
+      cache: "no-store",
+      headers: process.env.BLOB_READ_WRITE_TOKEN
+        ? {
+            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+          }
+        : undefined,
+    });
     if (!response.ok) {
       return null;
     }
@@ -64,12 +97,10 @@ export async function readDocument<T>(key: string): Promise<T | null> {
 
 export async function writeDocument<T>(key: string, value: T): Promise<T> {
   if (shouldUseBlob()) {
-    await put(`${DOCUMENT_PREFIX}${key}.json`, JSON.stringify(value, null, 2), {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json; charset=utf-8",
-      allowOverwrite: true,
-    });
+    await putDocument(
+      `${DOCUMENT_PREFIX}${key}.json`,
+      JSON.stringify(value, null, 2),
+    );
     return value;
   }
 

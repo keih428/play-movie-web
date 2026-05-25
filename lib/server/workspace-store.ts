@@ -43,6 +43,32 @@ function getWorkspacePath(id: string) {
   return path.join(WORKSPACE_DIR, `${id}.json`);
 }
 
+async function putWorkspace(pathname: string, body: string) {
+  try {
+    await put(pathname, body, {
+      access: "private",
+      addRandomSuffix: false,
+      contentType: "application/json; charset=utf-8",
+      allowOverwrite: true,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Cannot use private access on a public store")
+    ) {
+      await put(pathname, body, {
+        access: "public",
+        addRandomSuffix: false,
+        contentType: "application/json; charset=utf-8",
+        allowOverwrite: true,
+      });
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function createLocalStore(): Promise<WorkspaceStore> {
   async function getWorkspace(id: string) {
     await ensureWorkspaceDir();
@@ -109,7 +135,14 @@ async function createBlobStore(): Promise<WorkspaceStore> {
       return null;
     }
 
-    const response = await fetch(blob.url, { cache: "no-store" });
+    const response = await fetch(blob.url, {
+      cache: "no-store",
+      headers: process.env.BLOB_READ_WRITE_TOKEN
+        ? {
+            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+          }
+        : undefined,
+    });
     if (!response.ok) {
       return null;
     }
@@ -125,7 +158,14 @@ async function createBlobStore(): Promise<WorkspaceStore> {
         result.blobs
           .filter((blob) => blob.pathname.endsWith(".json"))
           .map(async (blob) => {
-            const response = await fetch(blob.url, { cache: "no-store" });
+            const response = await fetch(blob.url, {
+              cache: "no-store",
+              headers: process.env.BLOB_READ_WRITE_TOKEN
+                ? {
+                    Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+                  }
+                : undefined,
+            });
             const record = (await response.json()) as SavedWorkspaceRecord;
             return normalizeSummary(record);
           }),
@@ -147,12 +187,10 @@ async function createBlobStore(): Promise<WorkspaceStore> {
         savedAt: now,
       };
 
-      await put(`${WORKSPACE_PREFIX}${id}.json`, JSON.stringify(record, null, 2), {
-        access: "public",
-        addRandomSuffix: false,
-        contentType: "application/json; charset=utf-8",
-        allowOverwrite: true,
-      });
+      await putWorkspace(
+        `${WORKSPACE_PREFIX}${id}.json`,
+        JSON.stringify(record, null, 2),
+      );
       return record;
     },
     async deleteWorkspace(id: string) {
