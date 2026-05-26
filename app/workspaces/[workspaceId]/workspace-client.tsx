@@ -63,7 +63,7 @@ function countPlays(match: ParsedMatch | undefined): number {
   );
 }
 
-function getFilterOptions(match: ParsedMatch | undefined) {
+function getFilterOptions(match: ParsedMatch | undefined, filters?: FilterState) {
   const teams = new Set<string>();
   const players = new Set<string>();
   const skills = new Set<string>();
@@ -71,12 +71,21 @@ function getFilterOptions(match: ParsedMatch | undefined) {
 
   match?.sets.forEach((set) => {
     set.events.forEach((event) => {
-      rotations.add(getRotationLabel(event.lineup.home));
+      const rotationLabel = getRotationLabel(event.lineup.home);
+      rotations.add(rotationLabel);
       event.plays.forEach((play) => {
+        const teamLabel = getTeamLabel(play.team, match);
         if (play.team) {
-          teams.add(getTeamLabel(play.team, match));
+          teams.add(teamLabel);
         }
-        if (play.player) {
+        if (
+          play.player &&
+          (filters?.team === undefined || filters.team === "all" || teamLabel === filters.team) &&
+          (filters?.rotation === undefined ||
+            filters.rotation === "all" ||
+            rotationLabel === filters.rotation) &&
+          (filters?.skill === undefined || filters.skill === "all" || play.skill === filters.skill)
+        ) {
           players.add(play.player);
         }
         if (play.skill) {
@@ -191,7 +200,7 @@ export function WorkspaceClient({
   const match = collection.matches[selectedMatchIndex];
   const filteredMatch = getFilteredMatch(match, filters);
   const playCount = countPlays(filteredMatch);
-  const filterOptions = getFilterOptions(match);
+  const filterOptions = getFilterOptions(match, filters);
   const teamOptions = getTeamOptionsForMatch(match);
   const shareUrl =
     typeof window !== "undefined" && remoteWorkspaceId
