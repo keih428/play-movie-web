@@ -38,6 +38,7 @@ type VideoPlayerProps = {
   match?: ParsedMatch;
   settings: VideoSyncSettings;
   selectedPlay?: ParsedPlay;
+  activeSetIndex?: number;
   onPlayerTimeChange: (seconds: number | undefined) => void;
 };
 
@@ -47,6 +48,7 @@ export function VideoPlayer({
   match,
   settings,
   selectedPlay,
+  activeSetIndex,
   onPlayerTimeChange,
 }: VideoPlayerProps) {
   const playerRef = useRef<{
@@ -57,8 +59,9 @@ export function VideoPlayer({
     getCurrentTime: () => number;
   } | null>(null);
   const pollingRef = useRef<number | null>(null);
-  const activeSetIndex = selectedPlay?.setIndex ?? match?.sets[0]?.setIndex;
-  const activeVideoSource = getVideoSourceForSet(settings, activeSetIndex);
+  const effectiveSetIndex =
+    activeSetIndex ?? selectedPlay?.setIndex ?? match?.sets[0]?.setIndex;
+  const activeVideoSource = getVideoSourceForSet(settings, effectiveSetIndex);
   const videoId = extractYouTubeVideoId(activeVideoSource.youtubeUrl);
 
   useEffect(() => {
@@ -145,7 +148,7 @@ export function VideoPlayer({
       return;
     }
 
-    const seekSeconds = calculateSeekSeconds(selectedPlay, settings);
+    const seekSeconds = calculateSeekSeconds(selectedPlay, settings, match);
     if (typeof seekSeconds !== "number") {
       return;
     }
@@ -156,10 +159,10 @@ export function VideoPlayer({
     } catch {
       onPlayerTimeChange(undefined);
     }
-  }, [onPlayerTimeChange, selectedPlay, settings]);
+  }, [match, onPlayerTimeChange, selectedPlay, settings]);
 
   const selectedSeek = selectedPlay
-    ? calculateSeekSeconds(selectedPlay, settings)
+    ? calculateSeekSeconds(selectedPlay, settings, match)
     : undefined;
 
   return (
@@ -184,7 +187,10 @@ export function VideoPlayer({
               </strong>
               <p className="muted">
                 プレイ選択時の再生位置 =
-                <span className="mono"> play.originalTime / 30 + offset - preroll </span>
+                <span className="mono">
+                  {" "}
+                  (play.originalTime / 30 - sourceSetStart) + offset - preroll{" "}
+                </span>
               </p>
             </div>
           </div>
@@ -201,7 +207,7 @@ export function VideoPlayer({
           </div>
           <div className="meta-card">
             <span className="muted">再生対象セット</span>
-            <strong>{activeSetIndex ?? "-"}</strong>
+            <strong>{effectiveSetIndex ?? "-"}</strong>
           </div>
           <div className="meta-card">
             <span className="muted">オフセット</span>

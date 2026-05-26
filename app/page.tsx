@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { buildTeamRootPath } from "@/lib/domain/team";
+import { TEAM_CATALOG } from "@/lib/domain/team-catalog";
 import { getStaffAppSettings } from "@/lib/server/app-settings-store";
 
 export default async function HomePage() {
@@ -34,9 +36,11 @@ export default async function HomePage() {
           </div>
 
           <div className="button-row">
-            <Link className="button" href="/workspaces">
-              試合一覧を見る
-            </Link>
+            {TEAM_CATALOG.map((team) => (
+              <Link key={team.slug} className="button" href={buildTeamRootPath(team.slug)}>
+                {team.name}
+              </Link>
+            ))}
           </div>
 
           <div className="home-steps">

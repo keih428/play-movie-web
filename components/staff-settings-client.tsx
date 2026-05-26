@@ -64,6 +64,16 @@ function flattenVideoLinks(
   });
 }
 
+function getInheritedSetVideo(
+  setVideos: VideoSyncSetSource[],
+  setIndex: number,
+): VideoSyncSetSource | undefined {
+  return setVideos
+    .filter((entry) => entry.youtubeUrl && entry.setIndex <= setIndex)
+    .sort((left, right) => left.setIndex - right.setIndex)
+    .at(-1);
+}
+
 export function StaffSettingsClient({
   initialSettings,
   scoutLibrary,
@@ -487,29 +497,37 @@ export function StaffSettingsClient({
             <div className="section-heading">
               <h3>セットごとの試合動画</h3>
                 <p className="muted">
-                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。必要なセットだけ YouTube リンクとオフセット秒を設定してください。
+                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。動画が切り替わるセットだけ YouTube リンクとオフセット秒を設定すると、未設定のセットは直前の設定を引き継ぎます。
                 </p>
               </div>
 
             {setVideos.length > 0 ? (
               <>
               <div className="workspace-list">
-                {setVideos.map((entry) => (
+                {setVideos.map((entry) => {
+                  const inheritedEntry = getInheritedSetVideo(setVideos, entry.setIndex);
+                  const effectiveEntry = entry.youtubeUrl ? entry : inheritedEntry;
+
+                  return (
                   <article className="workspace-card" key={entry.setIndex}>
                     <div className="list-item-header">
                       <strong>セット {entry.setIndex}</strong>
                       <span className="tag">
-                        {entry.youtubeUrl ? "設定済み" : "未設定"}
+                        {entry.youtubeUrl
+                          ? "このセットから切替"
+                          : effectiveEntry?.youtubeUrl
+                            ? `セット ${effectiveEntry.setIndex} を継承`
+                            : "未設定"}
                       </span>
                     </div>
                     <div className="meta-grid">
                       <div className="meta-card">
                         <span className="muted">動画</span>
-                        <strong>{entry.youtubeUrl || "未選択"}</strong>
+                        <strong>{effectiveEntry?.youtubeUrl || "未選択"}</strong>
                       </div>
                       <div className="meta-card">
                         <span className="muted">オフセット</span>
-                        <strong>{entry.offsetSeconds}s</strong>
+                        <strong>{effectiveEntry?.offsetSeconds ?? 0}s</strong>
                       </div>
                     </div>
                     <div className="field-grid">
@@ -556,7 +574,7 @@ export function StaffSettingsClient({
                       </div>
                     </div>
                   </article>
-                ))}
+                )})}
               </div>
               </>
             ) : (
@@ -567,7 +585,7 @@ export function StaffSettingsClient({
           </section>
 
           <p className="muted">
-            動画同期は `originalTime` を 30fps で秒換算して計算します。プリロール秒は登録時ではなく、動画レビュー画面で各ユーザーが調整します。
+            動画同期は `originalTime` を 30fps で秒換算し、動画ソース開始セットの先頭時刻との差分から再生秒を計算します。プリロール秒は登録時ではなく、動画レビュー画面で各ユーザーが調整します。
           </p>
 
           <div className="button-row">

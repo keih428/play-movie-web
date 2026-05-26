@@ -164,6 +164,7 @@ export function WorkspaceClient({
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [selectedPlay, setSelectedPlay] = useState<ParsedPlay | undefined>();
+  const [selectedReviewSetIndex, setSelectedReviewSetIndex] = useState<number | undefined>();
   const [currentPlayerSeconds, setCurrentPlayerSeconds] = useState<number>();
   const [lastSavedAt, setLastSavedAt] = useState<string>();
   const [hasHydratedWorkspace, setHasHydratedWorkspace] = useState(false);
@@ -219,6 +220,15 @@ export function WorkspaceClient({
       );
     }
   }, [collection.matches.length, selectedMatchIndex]);
+
+  useEffect(() => {
+    if (
+      typeof selectedReviewSetIndex === "number" &&
+      !filteredMatch?.sets.some((set) => set.setIndex === selectedReviewSetIndex)
+    ) {
+      setSelectedReviewSetIndex(undefined);
+    }
+  }, [filteredMatch, selectedReviewSetIndex]);
 
   useEffect(() => {
     if (teamOptions.length === 0) {
@@ -401,6 +411,7 @@ export function WorkspaceClient({
   function handleMatchChange(index: number) {
     setSelectedMatchIndex(index);
     setSelectedPlay(undefined);
+    setSelectedReviewSetIndex(undefined);
     setFilters({
       team: "all",
       player: "all",
@@ -417,6 +428,12 @@ export function WorkspaceClient({
 
   function handleFiltersChange(nextFilters: FilterState) {
     setFilters(nextFilters);
+    setSelectedPlay(undefined);
+    setSelectedReviewSetIndex(undefined);
+  }
+
+  function handleReviewSetChange(setIndex: number) {
+    setSelectedReviewSetIndex(setIndex);
     setSelectedPlay(undefined);
   }
 
@@ -535,6 +552,7 @@ export function WorkspaceClient({
         setSettings(workspace.settings);
         setSelectedMatchIndex(workspace.selectedMatchIndex);
         setSelectedPlay(undefined);
+        setSelectedReviewSetIndex(undefined);
         setActiveTab("workspace");
         setFilters({
           team: "all",
@@ -844,6 +862,7 @@ export function WorkspaceClient({
                     <VideoPlayer
                       match={filteredMatch}
                       settings={settings}
+                      activeSetIndex={selectedReviewSetIndex}
                       selectedPlay={selectedPlay}
                       onPlayerTimeChange={setCurrentPlayerSeconds}
                     />
@@ -853,6 +872,8 @@ export function WorkspaceClient({
                     match={filteredMatch}
                     settings={settings}
                     selectedPlayId={selectedPlay?.id}
+                    selectedSetIndex={selectedReviewSetIndex}
+                    onSelectedSetIndexChange={handleReviewSetChange}
                     onSelectPlay={setSelectedPlay}
                   />
                 </div>

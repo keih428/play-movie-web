@@ -10,6 +10,8 @@ type PlayListProps = {
   match?: ParsedMatch;
   settings: VideoSyncSettings;
   selectedPlayId?: string;
+  selectedSetIndex?: number;
+  onSelectedSetIndexChange: (setIndex: number) => void;
   onSelectPlay: (play: ParsedPlay) => void;
 };
 
@@ -17,10 +19,11 @@ export function PlayList({
   match,
   settings,
   selectedPlayId,
+  selectedSetIndex,
+  onSelectedSetIndexChange,
   onSelectPlay,
 }: PlayListProps) {
   const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
-  const [selectedSetIndex, setSelectedSetIndex] = useState<number | undefined>(undefined);
 
   const availableSetIndices = match?.sets.map((set) => set.setIndex) ?? [];
   const effectiveSetIndex =
@@ -49,7 +52,7 @@ export function PlayList({
                 plays: event.plays.map((play, index) => ({
                   key: `${set.id}-${event.id}-${play.id}-${index}`,
                   play,
-                  seekSeconds: calculateSeekSeconds(play, settings),
+                  seekSeconds: calculateSeekSeconds(play, settings, match),
                 })),
               },
             ],
@@ -72,7 +75,7 @@ export function PlayList({
             <select
               id="play-list-set-filter"
               value={effectiveSetIndex}
-              onChange={(event) => setSelectedSetIndex(Number(event.target.value))}
+              onChange={(event) => onSelectedSetIndexChange(Number(event.target.value))}
             >
               {availableSetIndices.map((setIndex) => (
                 <option key={setIndex} value={setIndex}>

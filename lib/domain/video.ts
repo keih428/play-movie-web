@@ -1,4 +1,5 @@
 import type {
+  ParsedMatch,
   ParsedPlay,
   VideoSyncSetSource,
   VideoSyncSettings,
@@ -17,6 +18,7 @@ export function getBasePlayTimeSeconds(play: ParsedPlay): number | undefined {
 export function calculateSeekSeconds(
   play: ParsedPlay,
   settings: VideoSyncSettings,
+  match?: ParsedMatch,
 ): number | undefined {
   const baseTime = getBasePlayTimeSeconds(play);
   if (typeof baseTime !== "number") {
@@ -24,9 +26,16 @@ export function calculateSeekSeconds(
   }
 
   const source = getVideoSourceForSet(settings, play.setIndex);
+  if (!source.youtubeUrl) {
+    return undefined;
+  }
+  const sourceBaseTime = getVideoSourceStartSeconds(source, match);
   return Math.max(
     0,
-    baseTime + source.offsetSeconds - settings.prerollSeconds,
+    baseTime -
+      (typeof sourceBaseTime === "number" ? sourceBaseTime : 0) +
+      source.offsetSeconds -
+      settings.prerollSeconds,
   );
 }
 
@@ -34,18 +43,65 @@ export function getVideoSourceForSet(
   settings: VideoSyncSettings,
   setIndex?: number,
 ): VideoSyncSetSource {
+  const configuredSources = (settings.setVideos ?? [])
+    .filter((entry) => entry.youtubeUrl)
+    .sort((left, right) => left.setIndex - right.setIndex);
+
   if (typeof setIndex === "number") {
-    const found = settings.setVideos?.find((entry) => entry.setIndex === setIndex);
+    const found = configuredSources
+      .filter((entry) => entry.setIndex <= setIndex)
+      .at(-1);
     if (found) {
       return found;
+    }
+
+    if (configuredSources.length > 0) {
+      return {
+        setIndex,
+        youtubeUrl: "",
+        offsetSeconds: 0,
+      };
     }
   }
 
   return {
-    setIndex: setIndex ?? 1,
+    setIndex: configuredSources[0]?.setIndex ?? 1,
     youtubeUrl: settings.youtubeUrl,
     offsetSeconds: settings.offsetSeconds,
   };
+}
+
+function getSetStartSeconds(
+  match: ParsedMatch | undefined,
+  setIndex: number,
+): number | undefined {
+  const set = match?.sets.find((entry) => entry.setIndex === setIndex);
+  if (!set) {
+    return undefined;
+  }
+
+  let earliestTime: number | undefined;
+  for (const event of set.events) {
+    for (const play of event.plays) {
+      const baseTime = getBasePlayTimeSeconds(play);
+      if (typeof baseTime !== "number") {
+        continue;
+      }
+
+      if (typeof earliestTime !== "number" || baseTime < earliestTime) {
+        earliestTime = baseTime;
+      }
+    }
+  }
+
+  return earliestTime;
+}
+
+function getVideoSourceStartSeconds(
+  source: VideoSyncSetSource,
+  match: ParsedMatch | undefined,
+): number | undefined {
+  return getSetStartSeconds(match, source.setIndex);
 }
 
 export function extractYouTubeVideoId(url: string): string | undefined {

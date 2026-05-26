@@ -1,11 +1,27 @@
 import type { ParsedMatch, SavedWorkspaceSummary } from "@/lib/domain/types";
+import { TEAM_CATALOG } from "@/lib/domain/team-catalog";
 
 export type TeamOption = {
   name: string;
   slug: string;
 };
 
+function findCatalogEntryByAlias(value: string) {
+  const normalized = value.trim().toLocaleLowerCase();
+  return TEAM_CATALOG.find(
+    (entry) =>
+      entry.slug.toLocaleLowerCase() === normalized ||
+      entry.code.toLocaleLowerCase() === normalized ||
+      entry.aliases.some((alias) => alias.trim().toLocaleLowerCase() === normalized),
+  );
+}
+
 export function slugifyTeamName(name: string): string {
+  const catalogEntry = findCatalogEntryByAlias(name);
+  if (catalogEntry) {
+    return catalogEntry.slug;
+  }
+
   const slug = name
     .trim()
     .toLocaleLowerCase()
@@ -77,6 +93,11 @@ export function getWorkspaceSummaryPath(workspace: SavedWorkspaceSummary): strin
 }
 
 export function formatTeamSlugLabel(teamSlug: string): string {
+  const catalogEntry = findCatalogEntryByAlias(teamSlug);
+  if (catalogEntry) {
+    return catalogEntry.name;
+  }
+
   return teamSlug
     .split("-")
     .filter(Boolean)
