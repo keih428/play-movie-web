@@ -108,9 +108,9 @@ export function PlayList({
                   <div className="list-item-header">
                     <div className="play-list-title">
                       <strong>
-                        セット {rally.setIndex} / ラリー {rally.eventIndex}
+                        ラリー{rally.eventIndex}
                       </strong>
-                      <span>{rally.plays.length} プレイ</span>
+                      <span>{rally.plays.length}プレイ</span>
                     </div>
                     <small className="mono">{formatSeconds(firstSeekSeconds)}</small>
                   </div>
