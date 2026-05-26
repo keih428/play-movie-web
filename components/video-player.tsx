@@ -197,34 +197,6 @@ export function VideoPlayer({
             <span className="muted">セット数</span>
             <strong>{match?.sets.length ?? 0}</strong>
           </div>
-          <div className="meta-card video-meta-card">
-            <span className="muted">再生対象セット</span>
-            <strong>{effectiveSetIndex ?? "-"}</strong>
-          </div>
-          <div className="meta-card video-meta-card">
-            <span className="muted">オフセット</span>
-            <strong>{activeVideoSource.offsetSeconds}s</strong>
-          </div>
-          <div className="meta-card video-meta-card">
-            <span className="muted">プリロール</span>
-            <strong>{settings.prerollSeconds}s</strong>
-          </div>
-          <div className="meta-card video-meta-card">
-            <span className="muted">セット動画</span>
-            <strong>{activeVideoSource.youtubeUrl || "-"}</strong>
-          </div>
-          <div className="meta-card video-meta-card">
-            <span className="muted">選択中プレイ</span>
-            <strong>
-              {selectedPlay
-                ? `${getSkillLabel(selectedPlay.skill)} / ${selectedPlay.player ?? "-"}`
-                : "-"}
-            </strong>
-          </div>
-          <div className="meta-card video-meta-card">
-            <span className="muted">移動先</span>
-            <strong>{formatSeconds(selectedSeek)}</strong>
-          </div>
         </div>
       </div>
     </section>
