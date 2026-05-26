@@ -227,14 +227,16 @@ function TreeNode({
   onDelete,
   onEdit,
   onMove,
+  depth = 0,
 }: {
   node: VideoLibraryNode;
   onDelete: (id: string) => void;
   onEdit: (node: VideoLibraryNode) => void;
   onMove: (id: string, direction: "up" | "down") => void;
+  depth?: number;
 }) {
   const isFixed = node.systemKey === "match-videos";
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(depth === 0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasChildren = Boolean(node.children?.length);
 
@@ -338,6 +340,7 @@ function TreeNode({
               onDelete={onDelete}
               onEdit={onEdit}
               onMove={onMove}
+              depth={depth + 1}
             />
           ))}
         </div>

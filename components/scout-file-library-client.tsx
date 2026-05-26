@@ -226,13 +226,15 @@ function TreeNode({
   onDelete,
   onEdit,
   onMove,
+  depth = 0,
 }: {
   node: ScoutFileNode;
   onDelete: (id: string) => void;
   onEdit: (node: ScoutFileNode) => void;
   onMove: (id: string, direction: "up" | "down") => void;
+  depth?: number;
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(depth === 0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasChildren = Boolean(node.children?.length);
 
@@ -327,6 +329,7 @@ function TreeNode({
               onDelete={onDelete}
               onEdit={onEdit}
               onMove={onMove}
+              depth={depth + 1}
             />
           ))}
         </div>
