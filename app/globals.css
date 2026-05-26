@@ -1509,9 +1509,35 @@ iframe {
     display: none;
   }
 
+  .page-shell {
+    width: 100dvw;
+    max-width: 100dvw;
+    padding: 0;
+  }
+
+  .dashboard-shell {
+    gap: 0;
+  }
+
+  .dashboard-content-stack {
+    gap: 0;
+  }
+
+  .panel {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .panel-inner {
+    padding: 10px 12px;
+  }
+
   .review-layout {
     grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
     align-items: start;
+    gap: 10px;
   }
 
   .review-primary,
