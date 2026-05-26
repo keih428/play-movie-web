@@ -32,9 +32,6 @@ export function Filters({
       <div className="panel-inner stack">
         <div>
           <h3>絞り込み</h3>
-          <p className="muted">
-            MVP ではチーム、選手、スキル、セット単位の絞り込みをここに実装します。
-          </p>
         </div>
 
         <div className="field">
@@ -100,9 +97,6 @@ export function Filters({
               </option>
             ))}
           </select>
-          <p className="muted">
-            スキルはプレー種別です。サーブ、レセプション、アタック、ブロック、ディグ、セットなどに対応します。
-          </p>
         </div>
 
         <div className="field">
