@@ -29,6 +29,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text);
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(31, 94, 168, 0.08), transparent 34%),
     radial-gradient(circle at bottom right, rgba(240, 196, 25, 0.12), transparent 26%),
@@ -83,6 +84,12 @@ textarea {
   width: min(1440px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 24px 0 48px;
+}
+
+img,
+svg,
+iframe {
+  max-width: 100%;
 }
 
 .hero {
@@ -250,6 +257,7 @@ textarea {
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(10px);
+  min-width: 0;
 }
 
 .panel-inner {
@@ -477,7 +485,7 @@ textarea {
 
 .workspace-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 1.4fr) 120px 100px 160px 180px;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 1.4fr) 120px 120px 100px 160px 180px;
   gap: 12px;
   align-items: center;
   padding: 14px 16px;
@@ -500,6 +508,7 @@ textarea {
 .workspace-row-action {
   display: flex;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .tree-list {
@@ -859,8 +868,53 @@ textarea {
   background: linear-gradient(90deg, var(--accent), #5d99dc);
 }
 
+.skill-bar-track-stacked {
+  display: flex;
+}
+
+.skill-bar-segment {
+  height: 100%;
+}
+
+.skill-bar-grade-A,
+.skill-grade-tag-A {
+  background: #1f8f4c;
+  color: white;
+}
+
+.skill-bar-grade-B,
+.skill-grade-tag-B {
+  background: #5ca956;
+  color: white;
+}
+
+.skill-bar-grade-C,
+.skill-grade-tag-C {
+  background: #d0b122;
+  color: #10233c;
+}
+
+.skill-bar-grade-D,
+.skill-grade-tag-D {
+  background: #e28d2c;
+  color: white;
+}
+
+.skill-bar-grade-E,
+.skill-grade-tag-E {
+  background: #d45a3d;
+  color: white;
+}
+
+.skill-bar-grade-F,
+.skill-grade-tag-F {
+  background: #a63d32;
+  color: white;
+}
+
 .timeline-stack {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -878,7 +932,7 @@ textarea {
 
 .timeline-chart {
   width: 100%;
-  height: 140px;
+  height: 116px;
   overflow: visible;
 }
 
@@ -990,6 +1044,7 @@ textarea {
 
 .mono {
   font-family: "SFMono-Regular", Consolas, monospace;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1120px) {
@@ -1047,8 +1102,12 @@ textarea {
   }
 
   .site-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 10px 14px;
     font-size: 0.92rem;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
   }
 
   .page-shell {
@@ -1106,6 +1165,18 @@ textarea {
 
   .panel-inner {
     padding: 18px;
+  }
+
+  .panel-inner,
+  .hero-grid,
+  .meta-grid,
+  .overview-grid,
+  .detail-grid,
+  .review-layout,
+  .workspace-grid,
+  .rotation-grid,
+  .analysis-grid {
+    min-width: 0;
   }
 
   .soft-panel,
@@ -1166,6 +1237,14 @@ textarea {
     align-items: stretch;
   }
 
+  .workspace-row-title,
+  .workspace-row-cell {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    overflow-wrap: anywhere;
+  }
+
   .workspace-row-action {
     justify-content: stretch;
   }
@@ -1215,6 +1294,34 @@ textarea {
 
   .timeline-chart {
     height: 120px;
+  }
+
+  .score-table th,
+  .score-table td {
+    padding: 8px 10px;
+    font-size: 0.88rem;
+  }
+
+  .tag {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .status-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .tree-menu-popover {
+    left: auto;
+    right: 0;
+    max-width: min(180px, calc(100vw - 48px));
+  }
+
+  .play-rally-detail-row {
+    display: grid;
+    gap: 6px;
+    justify-content: stretch;
   }
 
   .court-cell {

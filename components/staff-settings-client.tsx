@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  buildTeamApiPath,
+  buildTeamDataLibraryPath,
+  buildTeamVideosPath,
+} from "@/lib/domain/team";
 import type {
   ParsedCollection,
   SavedWorkspaceSummary,
@@ -19,6 +24,8 @@ type StaffSettingsClientProps = {
   scoutLibrary: ScoutFileLibrary;
   videoLibrary: VideoLibrary;
   workspaces: SavedWorkspaceSummary[];
+  teamName?: string;
+  teamSlug?: string;
 };
 
 function flattenScoutFiles(
@@ -62,9 +69,12 @@ export function StaffSettingsClient({
   scoutLibrary,
   videoLibrary,
   workspaces,
+  teamName,
+  teamSlug,
 }: StaffSettingsClientProps) {
   const [currentScoutLibrary, setCurrentScoutLibrary] = useState(scoutLibrary);
   const [currentVideoLibrary, setCurrentVideoLibrary] = useState(videoLibrary);
+  const [currentWorkspaces, setCurrentWorkspaces] = useState(workspaces);
   const [matchName, setMatchName] = useState("");
   const [scoutFileId, setScoutFileId] = useState("");
   const [setVideos, setSetVideos] = useState<VideoSyncSetSource[]>([]);
@@ -72,6 +82,9 @@ export function StaffSettingsClient({
   const [libraryStatus, setLibraryStatus] = useState<string>();
   const [isRegistering, setIsRegistering] = useState(false);
   const [isRefreshingLibraries, setIsRefreshingLibraries] = useState(false);
+  const [editingWorkspaceId, setEditingWorkspaceId] = useState<string>();
+  const [editingWorkspaceName, setEditingWorkspaceName] = useState("");
+  const [isUpdatingWorkspace, setIsUpdatingWorkspace] = useState(false);
 
   const scoutFileOptions = useMemo(
     () => flattenScoutFiles(currentScoutLibrary.root),
@@ -82,13 +95,31 @@ export function StaffSettingsClient({
     [currentVideoLibrary.root],
   );
 
-  async function refreshLibraries() {
+  const refreshWorkspaces = useCallback(async () => {
+    const response = await fetch("/api/workspaces", { cache: "no-store" });
+    const payload = (await response.json()) as {
+      workspaces?: SavedWorkspaceSummary[];
+      error?: string;
+    };
+
+    if (!response.ok) {
+      throw new Error(payload.error || "試合一覧の取得に失敗しました。");
+    }
+
+    setCurrentWorkspaces(
+      (payload.workspaces ?? []).filter((workspace) =>
+        teamSlug ? workspace.teamSlug === teamSlug : true,
+      ),
+    );
+  }, [teamSlug]);
+
+  const refreshLibraries = useCallback(async () => {
     setIsRefreshingLibraries(true);
 
     try {
       const [scoutResponse, videoResponse] = await Promise.all([
-        fetch("/api/scout-files", { cache: "no-store" }),
-        fetch("/api/video-library", { cache: "no-store" }),
+        fetch(buildTeamApiPath("/api/scout-files", teamSlug), { cache: "no-store" }),
+        fetch(buildTeamApiPath("/api/video-library", teamSlug), { cache: "no-store" }),
       ]);
       const scoutPayload = (await scoutResponse.json()) as {
         library?: ScoutFileLibrary;
@@ -133,23 +164,11 @@ export function StaffSettingsClient({
     } finally {
       setIsRefreshingLibraries(false);
     }
-  }
+  }, [teamSlug]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadLibraries() {
-      await refreshLibraries();
-      if (cancelled) {
-        return;
-      }
-    }
-
-    void loadLibraries();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void refreshLibraries();
+  }, [refreshLibraries]);
 
   function updateSetVideo(
     setIndex: number,
@@ -172,20 +191,22 @@ export function StaffSettingsClient({
 
     async function loadScoutFile() {
       try {
-      const response = await fetch(`/api/scout-files/${scoutFileId}`);
-      const payload = (await response.json()) as {
-        record?: {
-          parsedCollection: ParsedCollection;
+        const response = await fetch(
+          buildTeamApiPath(`/api/scout-files/${scoutFileId}`, teamSlug),
+        );
+        const payload = (await response.json()) as {
+          record?: {
+            parsedCollection: ParsedCollection;
+          };
+          error?: string;
         };
-        error?: string;
-      };
 
-      console.log("[staff-settings] loadScoutFile", {
-        scoutFileId,
-        status: response.status,
-        hasRecord: Boolean(payload.record),
-        error: payload.error ?? null,
-      });
+        console.log("[staff-settings] loadScoutFile", {
+          scoutFileId,
+          status: response.status,
+          hasRecord: Boolean(payload.record),
+          error: payload.error ?? null,
+        });
 
         if (!response.ok || !payload.record) {
           throw new Error(payload.error || "試合データの読込に失敗しました。");
@@ -218,7 +239,7 @@ export function StaffSettingsClient({
     return () => {
       cancelled = true;
     };
-  }, [scoutFileId]);
+  }, [scoutFileId, teamSlug]);
 
   async function handleRegisterMatch() {
     if (!matchName.trim()) {
@@ -243,7 +264,9 @@ export function StaffSettingsClient({
     setRegisterStatus(undefined);
 
     try {
-      const scoutResponse = await fetch(`/api/scout-files/${scoutFileId}`);
+      const scoutResponse = await fetch(
+        buildTeamApiPath(`/api/scout-files/${scoutFileId}`, teamSlug),
+      );
       const scoutPayload = (await scoutResponse.json()) as {
         record?: {
           parsedCollection: ParsedCollection;
@@ -274,6 +297,8 @@ export function StaffSettingsClient({
             collection: scoutPayload.record.parsedCollection,
             settings: workspaceSettings,
             selectedMatchIndex: 0,
+            teamName,
+            teamSlug,
           },
         }),
       });
@@ -295,6 +320,7 @@ export function StaffSettingsClient({
       setMatchName("");
       setScoutFileId("");
       setSetVideos([]);
+      await refreshWorkspaces();
       setRegisterStatus("試合を登録しました。");
     } catch (error) {
       setRegisterStatus(
@@ -305,13 +331,84 @@ export function StaffSettingsClient({
     }
   }
 
+  async function handleDeleteWorkspace(workspaceId: string) {
+    setIsUpdatingWorkspace(true);
+    setRegisterStatus(undefined);
+
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || "試合の削除に失敗しました。");
+      }
+
+      await refreshWorkspaces();
+      setRegisterStatus("試合を削除しました。");
+    } catch (error) {
+      setRegisterStatus(
+        error instanceof Error ? error.message : "試合の削除に失敗しました。",
+      );
+    } finally {
+      setIsUpdatingWorkspace(false);
+    }
+  }
+
+  async function handleRenameWorkspace(workspaceId: string) {
+    if (!editingWorkspaceName.trim()) {
+      setRegisterStatus("試合名を入力してください。");
+      return;
+    }
+
+    setIsUpdatingWorkspace(true);
+    setRegisterStatus(undefined);
+
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editingWorkspaceName.trim(),
+        }),
+      });
+      const payload = (await response.json()) as {
+        workspace?: SavedWorkspaceSummary;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.workspace) {
+        throw new Error(payload.error || "試合名の更新に失敗しました。");
+      }
+
+      await refreshWorkspaces();
+      setEditingWorkspaceId(undefined);
+      setEditingWorkspaceName("");
+      setRegisterStatus("試合名を更新しました。");
+    } catch (error) {
+      setRegisterStatus(
+        error instanceof Error ? error.message : "試合名の更新に失敗しました。",
+      );
+    } finally {
+      setIsUpdatingWorkspace(false);
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel-inner stack">
         <div>
           <h2>スタッフ公開設定</h2>
           <p className="muted">
-            試合の登録と、一般部員向けホームで公開する試合の設定をここで行います。
+            {teamName
+              ? `${teamName} の試合登録と動画紐づけをここで行います。`
+              : "試合の登録と動画紐づけをここで行います。"}
           </p>
         </div>
 
@@ -374,14 +471,14 @@ export function StaffSettingsClient({
 
           {scoutFileOptions.length === 0 ? (
             <p className="muted">
-              まだ候補がありません。<Link href="/staff/data-library">試合データ管理</Link>
+              まだ候補がありません。<Link href={teamSlug ? buildTeamDataLibraryPath(teamSlug) : "/staff/data-library"}>試合データ管理</Link>
               で `.vsm` / `.vsdb` を登録したあと、この画面で `候補を再読込` を押してください。
             </p>
           ) : null}
 
           {matchVideos.length === 0 ? (
             <p className="muted">
-              まだ動画リンク候補がありません。<Link href="/videos">動画ライブラリ</Link>
+              まだ動画リンク候補がありません。<Link href={teamSlug ? buildTeamVideosPath(teamSlug) : "/videos"}>動画ライブラリ</Link>
               で YouTube リンクを追加したあと、この画面で `候補を再読込` を押してください。
             </p>
           ) : null}
@@ -487,6 +584,94 @@ export function StaffSettingsClient({
           </div>
 
           {registerStatus ? <p className="muted">{registerStatus}</p> : null}
+        </section>
+
+        <section className="panel-section soft-panel">
+          <div className="section-heading">
+            <h3>登録済み試合を管理する</h3>
+            <p className="muted">
+              ここから試合名の編集と削除ができます。
+            </p>
+          </div>
+
+          {currentWorkspaces.length === 0 ? (
+            <p className="muted">このチームで登録済みの試合はまだありません。</p>
+          ) : (
+            <div className="workspace-list">
+              {currentWorkspaces.map((workspace) => (
+                <article className="workspace-card" key={workspace.id}>
+                  {editingWorkspaceId === workspace.id ? (
+                    <div className="stack">
+                      <div className="field">
+                        <label htmlFor={`edit-workspace-${workspace.id}`}>試合名</label>
+                        <input
+                          id={`edit-workspace-${workspace.id}`}
+                          type="text"
+                          value={editingWorkspaceName}
+                          onChange={(event) => setEditingWorkspaceName(event.target.value)}
+                        />
+                      </div>
+                      <div className="button-row">
+                        <button
+                          className="button"
+                          type="button"
+                          disabled={isUpdatingWorkspace}
+                          onClick={() => {
+                            void handleRenameWorkspace(workspace.id);
+                          }}
+                        >
+                          保存
+                        </button>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          onClick={() => {
+                            setEditingWorkspaceId(undefined);
+                            setEditingWorkspaceName("");
+                          }}
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="list-item-header">
+                        <strong>{workspace.name}</strong>
+                        <span className="tag">{workspace.setScoreLabel ?? "-"}</span>
+                      </div>
+                      <p className="muted">
+                        {workspace.matchLabel ?? "対戦カード未設定"} / {workspace.resultLabel ?? "結果未取得"}
+                      </p>
+                      <div className="button-row">
+                        <button
+                          className="button secondary"
+                          type="button"
+                          disabled={isUpdatingWorkspace}
+                          onClick={() => {
+                            setEditingWorkspaceId(workspace.id);
+                            setEditingWorkspaceName(workspace.name);
+                          }}
+                        >
+                          名前を編集
+                        </button>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          disabled={isUpdatingWorkspace}
+                          onClick={() => {
+                            void handleDeleteWorkspace(workspace.id);
+                          }}
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
       </div>

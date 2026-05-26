@@ -1,29 +1,40 @@
 import Link from "next/link";
 import { formatJstDate, formatJstDateTime } from "@/lib/domain/datetime";
-import { getWorkspaceSummaryPath } from "@/lib/domain/team";
+import {
+  buildTeamRootPath,
+  buildWorkspacePath,
+  formatTeamSlugLabel,
+} from "@/lib/domain/team";
 import { listSavedWorkspaces } from "@/lib/server/workspace-store";
 
-export const metadata = {
-  title: "試合一覧 | バレーボール 試合ビューア",
+type PageProps = {
+  params: Promise<{
+    teamSlug: string;
+  }>;
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function WorkspacesPage() {
-  const workspaces = await listSavedWorkspaces();
+export default async function TeamWorkspacesPage({ params }: PageProps) {
+  const { teamSlug } = await params;
+  const workspaces = (await listSavedWorkspaces()).filter(
+    (workspace) => workspace.teamSlug === teamSlug,
+  );
+  const teamName =
+    workspaces[0]?.teamName ?? formatTeamSlugLabel(teamSlug) ?? teamSlug;
 
   return (
     <main className="page-shell">
       <section className="hero">
         <div className="hero-grid">
           <div>
-            <h1>試合一覧</h1>
+            <h1>{teamName} の試合一覧</h1>
             <p>
-              スタッフが登録した試合を新しい順に表示しています。試合名、勝敗、登録日時を見ながら閲覧する試合を選べます。
+              {teamName} 向けに公開された試合を新しい順に表示しています。ここから直接レビュー画面へ入れます。
             </p>
             <div className="badge-row">
-              <Link className="badge badge-link" href="/">
-                ホームへ戻る
+              <Link className="badge badge-link" href={buildTeamRootPath(teamSlug)}>
+                チームページへ戻る
               </Link>
             </div>
           </div>
@@ -43,18 +54,14 @@ export default async function WorkspacesPage() {
       <section className="panel">
         <div className="panel-inner stack">
           <div>
-            <h2>登録済み試合</h2>
-            <p className="muted">
-              新しく追加された試合から順に表示しています。各試合はここから直接、動画とプレイを見比べるレビュー画面で開けます。
-            </p>
+            <h2>公開中の試合</h2>
+            <p className="muted">このチーム向けに共有された試合だけを表示しています。</p>
           </div>
 
           {workspaces.length === 0 ? (
             <div className="list-item">
-              <strong>登録済みの試合はありません。</strong>
-              <p className="muted">
-                スタッフ設定画面で試合データと動画を紐づけて、試合を登録してください。
-              </p>
+              <strong>公開中の試合はありません。</strong>
+              <p className="muted">スタッフ設定画面でこのチーム向けに試合を保存すると、ここに表示されます。</p>
             </div>
           ) : (
             <div className="workspace-row-list">
@@ -67,9 +74,6 @@ export default async function WorkspacesPage() {
                   <span className="workspace-row-cell">
                     {workspace.resultLabel ?? "結果未取得"}
                   </span>
-                  <span className="workspace-row-cell muted">
-                    {workspace.teamName ?? "-"}
-                  </span>
                   <span className="workspace-row-cell">
                     {workspace.setScoreLabel ?? "-"}
                   </span>
@@ -77,7 +81,13 @@ export default async function WorkspacesPage() {
                     {formatJstDateTime(workspace.createdAt)}
                   </span>
                   <div className="workspace-row-action">
-                    <Link className="button" href={getWorkspaceSummaryPath(workspace)}>
+                    <Link
+                      className="button"
+                      href={buildWorkspacePath({
+                        teamSlug,
+                        workspaceId: workspace.id,
+                      })}
+                    >
                       動画とプレイで見る
                     </Link>
                   </div>

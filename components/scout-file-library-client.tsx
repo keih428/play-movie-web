@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJstDateTime } from "@/lib/domain/datetime";
+import { buildTeamApiPath } from "@/lib/domain/team";
 import type { ScoutFileLibrary, ScoutFileNode } from "@/lib/domain/types";
 
 type ScoutFileLibraryClientProps = {
   initialLibrary: ScoutFileLibrary;
+  teamName?: string;
+  teamSlug?: string;
 };
 
 type EditState = {
@@ -333,6 +336,8 @@ function TreeNode({
 
 export function ScoutFileLibraryClient({
   initialLibrary,
+  teamName,
+  teamSlug,
 }: ScoutFileLibraryClientProps) {
   const [library, setLibrary] = useState(initialLibrary);
   const [parentId, setParentId] = useState("");
@@ -357,7 +362,9 @@ export function ScoutFileLibraryClient({
     async function loadLatestLibrary() {
       try {
         console.log("[scout-file-library-client] load latest start");
-        const response = await fetch("/api/scout-files", { cache: "no-store" });
+        const response = await fetch(buildTeamApiPath("/api/scout-files", teamSlug), {
+          cache: "no-store",
+        });
         const payload = (await response.json()) as {
           library?: ScoutFileLibrary;
           error?: string;
@@ -394,7 +401,7 @@ export function ScoutFileLibraryClient({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [teamSlug]);
 
   async function saveLibrary(nextRoot: ScoutFileNode[]) {
     setIsSaving(true);
@@ -404,7 +411,7 @@ export function ScoutFileLibraryClient({
     });
 
     try {
-      const response = await fetch("/api/scout-files", {
+      const response = await fetch(buildTeamApiPath("/api/scout-files", teamSlug), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -495,6 +502,9 @@ export function ScoutFileLibraryClient({
       const formData = new FormData();
       formData.append("file", uploadFile);
       formData.append("parentId", parentId);
+      if (teamSlug) {
+        formData.append("team", teamSlug);
+      }
       if (uploadName.trim()) {
         formData.append("displayName", uploadName.trim());
       }
@@ -502,7 +512,7 @@ export function ScoutFileLibraryClient({
         formData.append("note", note.trim());
       }
 
-      const response = await fetch("/api/scout-files", {
+      const response = await fetch(buildTeamApiPath("/api/scout-files", teamSlug), {
         method: "POST",
         body: formData,
       });
@@ -607,9 +617,9 @@ export function ScoutFileLibraryClient({
         <div className="hero-grid">
           <div>
             <div className="hero-kicker">スタッフ用 試合データ管理</div>
-            <h1>VSM / VSDB ライブラリ</h1>
+            <h1>{teamName ? `${teamName} 試合データ管理` : "VSM / VSDB ライブラリ"}</h1>
             <p>
-              試合データを動画リンクとは別のフォルダ構造で整理し、設定画面から参照してワークスペースへ反映します。
+              試合データを動画リンクとは別のフォルダ構造で整理し、チームごとの設定画面から参照してワークスペースへ反映します。
             </p>
           </div>
           <div className="meta-grid">

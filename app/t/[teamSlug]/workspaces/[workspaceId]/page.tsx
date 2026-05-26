@@ -1,20 +1,21 @@
 import { notFound } from "next/navigation";
-import { getSavedWorkspace } from "@/lib/server/workspace-store";
 import { WorkspaceClient } from "@/app/workspaces/[workspaceId]/workspace-client";
+import { getSavedWorkspace } from "@/lib/server/workspace-store";
 
 type PageProps = {
   params: Promise<{
+    teamSlug: string;
     workspaceId: string;
   }>;
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function WorkspaceViewerPage({ params }: PageProps) {
-  const { workspaceId } = await params;
+export default async function TeamWorkspaceViewerPage({ params }: PageProps) {
+  const { teamSlug, workspaceId } = await params;
   const workspace = await getSavedWorkspace(workspaceId);
 
-  if (!workspace) {
+  if (!workspace || workspace.teamSlug !== teamSlug) {
     notFound();
   }
 

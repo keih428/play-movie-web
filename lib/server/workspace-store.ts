@@ -59,6 +59,8 @@ function normalizeSummary(record: SavedWorkspaceRecord): SavedWorkspaceSummary {
     name: record.name,
     sourceType: record.collection.sourceType,
     matchCount: record.collection.matches.length,
+    teamName: record.teamName,
+    teamSlug: record.teamSlug,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   });

@@ -14,6 +14,10 @@ const SCOUT_FILE_LIBRARY_KEY = "scout-file-library";
 const SCOUT_FILE_RECORD_KEY_PREFIX = "scout-file-record";
 export const MATCH_VIDEOS_FOLDER_ID = "system-match-videos";
 
+function getScopedKey(baseKey: string, teamSlug?: string) {
+  return teamSlug ? `${baseKey}-${teamSlug}` : baseKey;
+}
+
 function getMatchVideosFolder(): VideoLibraryNode {
   return {
     id: MATCH_VIDEOS_FOLDER_ID,
@@ -73,9 +77,9 @@ export async function saveStaffAppSettings(
   });
 }
 
-export async function getVideoLibrary(): Promise<VideoLibrary> {
+export async function getVideoLibrary(teamSlug?: string): Promise<VideoLibrary> {
   const library =
-    (await readDocument<VideoLibrary>(VIDEO_LIBRARY_KEY)) ?? {
+    (await readDocument<VideoLibrary>(getScopedKey(VIDEO_LIBRARY_KEY, teamSlug))) ?? {
       root: [],
       updatedAt: new Date().toISOString(),
     };
@@ -88,15 +92,16 @@ export async function getVideoLibrary(): Promise<VideoLibrary> {
 
 export async function saveVideoLibrary(
   input: Pick<VideoLibrary, "root">,
+  teamSlug?: string,
 ): Promise<VideoLibrary> {
-  return writeDocument(VIDEO_LIBRARY_KEY, {
+  return writeDocument(getScopedKey(VIDEO_LIBRARY_KEY, teamSlug), {
     root: normalizeVideoLibraryRoot(input.root),
     updatedAt: new Date().toISOString(),
   });
 }
 
-export async function getLatestVideoLibraryLink(): Promise<VideoLibraryNode | null> {
-  const library = await getVideoLibrary();
+export async function getLatestVideoLibraryLink(teamSlug?: string): Promise<VideoLibraryNode | null> {
+  const library = await getVideoLibrary(teamSlug);
   const links = collectVideoLinks(library.root);
   if (links.length === 0) {
     return null;
@@ -130,9 +135,13 @@ function getScoutFileRecordKey(fileId: string) {
   return `${SCOUT_FILE_RECORD_KEY_PREFIX}-${fileId}`;
 }
 
-export async function getScoutFileLibrary(): Promise<ScoutFileLibrary> {
+function getTeamScoutFileRecordKey(fileId: string, teamSlug?: string) {
+  return getScopedKey(getScoutFileRecordKey(fileId), teamSlug);
+}
+
+export async function getScoutFileLibrary(teamSlug?: string): Promise<ScoutFileLibrary> {
   const library =
-    (await readDocument<ScoutFileLibrary>(SCOUT_FILE_LIBRARY_KEY)) ?? {
+    (await readDocument<ScoutFileLibrary>(getScopedKey(SCOUT_FILE_LIBRARY_KEY, teamSlug))) ?? {
       root: [],
       updatedAt: new Date().toISOString(),
     };
@@ -145,8 +154,9 @@ export async function getScoutFileLibrary(): Promise<ScoutFileLibrary> {
 
 export async function saveScoutFileLibrary(
   input: Pick<ScoutFileLibrary, "root">,
+  teamSlug?: string,
 ): Promise<ScoutFileLibrary> {
-  return writeDocument(SCOUT_FILE_LIBRARY_KEY, {
+  return writeDocument(getScopedKey(SCOUT_FILE_LIBRARY_KEY, teamSlug), {
     root: normalizeScoutFileLibraryRoot(input.root),
     updatedAt: new Date().toISOString(),
   });
@@ -154,12 +164,14 @@ export async function saveScoutFileLibrary(
 
 export async function getScoutFileRecord(
   fileId: string,
+  teamSlug?: string,
 ): Promise<ScoutFileRecord | null> {
-  return readDocument<ScoutFileRecord>(getScoutFileRecordKey(fileId));
+  return readDocument<ScoutFileRecord>(getTeamScoutFileRecordKey(fileId, teamSlug));
 }
 
 export async function saveScoutFileRecord(
   record: ScoutFileRecord,
+  teamSlug?: string,
 ): Promise<ScoutFileRecord> {
-  return writeDocument(getScoutFileRecordKey(record.id), record);
+  return writeDocument(getTeamScoutFileRecordKey(record.id, teamSlug), record);
 }

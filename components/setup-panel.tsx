@@ -20,6 +20,11 @@ type SetupPanelProps = {
     label: string;
   }>;
   selectedMatchIndex: number;
+  teamOptions: Array<{
+    label: string;
+    value: string;
+  }>;
+  selectedTeamSlug: string;
   status: string;
   error: string | null;
   isParsing: boolean;
@@ -37,6 +42,7 @@ type SetupPanelProps = {
   onScoutFileChange: (fileId: string) => void;
   onLoadScoutFile: (fileId: string) => Promise<void>;
   onMatchChange: (index: number) => void;
+  onTeamChange: (teamSlug: string) => void;
   onSettingsChange: (settings: VideoSyncSettings) => void;
   onCaptureOffset: () => void;
   onClearSavedWorkspace: () => void;
@@ -94,6 +100,8 @@ export function SetupPanel({
   matchCount,
   matchOptions,
   selectedMatchIndex,
+  teamOptions,
+  selectedTeamSlug,
   status,
   error,
   isParsing,
@@ -111,6 +119,7 @@ export function SetupPanel({
   onScoutFileChange,
   onLoadScoutFile,
   onMatchChange,
+  onTeamChange,
   onSettingsChange,
   onCaptureOffset,
   onClearSavedWorkspace,
@@ -311,6 +320,22 @@ export function SetupPanel({
           </div>
 
           <div className="field">
+            <label htmlFor="workspace-team">公開チーム</label>
+            <select
+              id="workspace-team"
+              value={selectedTeamSlug}
+              onChange={(event) => onTeamChange(event.target.value)}
+            >
+              <option value="">チームを選択</option>
+              {teamOptions.map((team) => (
+                <option key={team.value} value={team.value}>
+                  {team.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
             <label htmlFor="saved-workspace-selector">保存済みワークスペース</label>
             <select
               id="saved-workspace-selector"
@@ -320,7 +345,9 @@ export function SetupPanel({
               <option value="">ワークスペースを選択</option>
               {savedWorkspaces.map((workspace) => (
                 <option key={workspace.id} value={workspace.id}>
-                  {workspace.name} ({workspace.matchCount} matches)
+                  {workspace.name}
+                  {workspace.teamName ? ` / ${workspace.teamName}` : ""}
+                  {` (${workspace.matchCount} matches)`}
                 </option>
               ))}
             </select>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getSkillLabel } from "@/lib/domain/display";
+import { getEffectGrade, getSkillLabel } from "@/lib/domain/display";
 import type { ParsedEvent, ParsedMatch, ParsedPlay, TeamSide } from "@/lib/domain/types";
 
 type AnalysisPanelProps = {
@@ -11,12 +11,17 @@ type AnalysisPanelProps = {
 type SkillSummaryRow = {
   skill: string;
   count: number;
+  gradeCounts: Record<string, number>;
 };
 
 type RotationRow = {
   rotationLabel: string;
   attempts: number;
   wins: number;
+  sideoutAttempts: number;
+  sideoutWins: number;
+  breakAttempts: number;
+  breakWins: number;
 };
 
 type PlayerRow = {
@@ -70,29 +75,71 @@ function getFirstPlayForSide(event: ParsedEvent, side: TeamSide): ParsedPlay | u
 }
 
 function buildSkillSummary(plays: ParsedPlay[]): SkillSummaryRow[] {
-  const counts = new Map<string, number>();
+  const counts = new Map<string, SkillSummaryRow>();
 
   plays.forEach((play) => {
     const skill = play.skill ?? "不明";
-    counts.set(skill, (counts.get(skill) ?? 0) + 1);
+    const grade = getEffectGrade(play.effect);
+    const current =
+      counts.get(skill) ??
+      {
+        skill,
+        count: 0,
+        gradeCounts: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
+      };
+
+    current.count += 1;
+    if (current.gradeCounts[grade] !== undefined) {
+      current.gradeCounts[grade] += 1;
+    }
+    counts.set(skill, current);
   });
 
-  return [...counts.entries()]
-    .map(([skill, count]) => ({ skill, count }))
-    .sort((a, b) => b.count - a.count);
+  return [...counts.values()].sort((a, b) => b.count - a.count);
 }
 
 function buildRotationRows(match: ParsedMatch, side: TeamSide): RotationRow[] {
-  const rows = new Map<string, { attempts: number; wins: number }>();
+  const rows = new Map<
+    string,
+    {
+      attempts: number;
+      wins: number;
+      sideoutAttempts: number;
+      sideoutWins: number;
+      breakAttempts: number;
+      breakWins: number;
+    }
+  >();
 
   match.sets.forEach((set) => {
     set.events.forEach((event) => {
       const setterAt = event.lineup[side].setterAt ?? 0;
       const key = `ローテ${setterAt || "-"}`;
-      const current = rows.get(key) ?? { attempts: 0, wins: 0 };
+      const current = rows.get(key) ?? {
+        attempts: 0,
+        wins: 0,
+        sideoutAttempts: 0,
+        sideoutWins: 0,
+        breakAttempts: 0,
+        breakWins: 0,
+      };
       current.attempts += 1;
-      if (getWinningSide(event) === side) {
+      const winningSide = getWinningSide(event);
+      if (winningSide === side) {
         current.wins += 1;
+      }
+      const firstPlay = getFirstPlayForSide(event, side);
+      if (firstPlay?.skill === "R") {
+        current.sideoutAttempts += 1;
+        if (winningSide === side) {
+          current.sideoutWins += 1;
+        }
+      }
+      if (firstPlay?.skill === "S") {
+        current.breakAttempts += 1;
+        if (winningSide === side) {
+          current.breakWins += 1;
+        }
       }
       rows.set(key, current);
     });
@@ -103,6 +150,10 @@ function buildRotationRows(match: ParsedMatch, side: TeamSide): RotationRow[] {
       rotationLabel,
       attempts: value.attempts,
       wins: value.wins,
+      sideoutAttempts: value.sideoutAttempts,
+      sideoutWins: value.sideoutWins,
+      breakAttempts: value.breakAttempts,
+      breakWins: value.breakWins,
     }))
     .sort((a, b) => a.rotationLabel.localeCompare(b.rotationLabel, "ja"));
 }
@@ -261,7 +312,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
 
   const activeAnalysis =
     activeSide === "home" ? homeAnalysis ?? awayAnalysis : awayAnalysis ?? homeAnalysis;
-  const maxSkillCount = activeAnalysis?.skillSummary[0]?.count ?? 1;
+  const gradeOrder = ["A", "B", "C", "D", "E", "F"];
 
   return (
     <section className="panel">
@@ -325,9 +376,9 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               ) : (
                 <div className="timeline-stack">
                   {scoreTimeline.map((setTimeline) => {
-                    const width = 640;
-                    const height = 140;
-                    const padding = { top: 12, right: 16, bottom: 20, left: 16 };
+                    const width = 360;
+                    const height = 116;
+                    const padding = { top: 10, right: 12, bottom: 16, left: 12 };
                     const chartWidth = width - padding.left - padding.right;
                     const chartHeight = height - padding.top - padding.bottom;
                     const maxRally = Math.max(
@@ -406,13 +457,27 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                           <strong>{getSkillLabel(row.skill)}</strong>
                           <span className="mono">{row.count}</span>
                         </div>
-                        <div className="skill-bar-track">
-                          <div
-                            className="skill-bar-fill"
-                            style={{
-                              width: `${(row.count / Math.max(1, maxSkillCount)) * 100}%`,
-                            }}
-                          />
+                        <div className="skill-bar-track skill-bar-track-stacked">
+                          {gradeOrder.map((grade) => {
+                            const count = row.gradeCounts[grade] ?? 0;
+                            return count > 0 ? (
+                              <div
+                                className={`skill-bar-segment skill-bar-grade-${grade}`}
+                                key={grade}
+                                style={{
+                                  width: `${(count / Math.max(1, row.count)) * 100}%`,
+                                }}
+                                title={`${grade}: ${count}`}
+                              />
+                            ) : null;
+                          })}
+                        </div>
+                        <div className="tag-row">
+                          {gradeOrder.map((grade) => (
+                            <span className={`tag skill-grade-tag skill-grade-tag-${grade}`} key={grade}>
+                              {grade} {row.gradeCounts[grade] ?? 0}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -430,6 +495,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                         <th>得点</th>
                         <th>ラリー</th>
                         <th>得点率</th>
+                        <th>Sideout%</th>
+                        <th>Break%</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -439,6 +506,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                           <td>{row.wins}</td>
                           <td>{row.attempts}</td>
                           <td>{formatRate(row.wins, row.attempts)}</td>
+                          <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
+                          <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
                         </tr>
                       ))}
                     </tbody>

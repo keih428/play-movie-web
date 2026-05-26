@@ -1,13 +1,30 @@
-import { VideoLibraryClient } from "@/components/video-library-client";
-import { getVideoLibrary } from "@/lib/server/app-settings-store";
+import Link from "next/link";
 
 export const metadata = {
-  title: "Video Library | Play Movie Web",
+  title: "動画ライブラリ | バレーボール 試合ビューア",
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function VideosPage() {
-  const library = await getVideoLibrary();
-  return <VideoLibraryClient initialLibrary={library} />;
+export default function VideosPage() {
+  return (
+    <main className="page-shell">
+      <section className="panel">
+        <div className="panel-inner stack">
+          <div>
+            <h2>チーム別ページを使ってください</h2>
+            <p className="muted">
+              動画ライブラリはチームごとに分かれています。`/t/[teamSlug]/videos`
+              の形式で開いてください。
+            </p>
+          </div>
+          <div className="button-row">
+            <Link className="button" href="/">
+              ホームへ戻る
+            </Link>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

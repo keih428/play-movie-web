@@ -20,9 +20,21 @@ export function PlayList({
   onSelectPlay,
 }: PlayListProps) {
   const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
+  const [selectedSetIndex, setSelectedSetIndex] = useState<number | undefined>(undefined);
+
+  const availableSetIndices = match?.sets.map((set) => set.setIndex) ?? [];
+  const effectiveSetIndex =
+    selectedSetIndex ??
+    match?.sets.find((set) =>
+      set.events.some((event) => event.plays.some((play) => play.id === selectedPlayId)),
+    )?.setIndex ??
+    availableSetIndices[0];
 
   const rallyItems =
     match?.sets.flatMap((set) =>
+      typeof effectiveSetIndex === "number" && set.setIndex !== effectiveSetIndex
+        ? []
+        :
       set.events.flatMap((event) =>
         event.plays.length === 0
           ? []
@@ -53,6 +65,23 @@ export function PlayList({
             ラリー単位で一覧表示し、必要なときだけ各プレーの詳細を展開できます。
           </p>
         </div>
+
+        {availableSetIndices.length > 1 ? (
+          <div className="field">
+            <label htmlFor="play-list-set-filter">セット</label>
+            <select
+              id="play-list-set-filter"
+              value={effectiveSetIndex}
+              onChange={(event) => setSelectedSetIndex(Number(event.target.value))}
+            >
+              {availableSetIndices.map((setIndex) => (
+                <option key={setIndex} value={setIndex}>
+                  セット {setIndex}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="list">
           {rallyItems.length === 0 ? (

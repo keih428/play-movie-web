@@ -99,9 +99,11 @@ function hasNameConflict(
   return siblings.some((node) => normalizeName(node.name) === normalizeName(name));
 }
 
-export async function GET() {
-  const library = await getScoutFileLibrary();
+export async function GET(request: NextRequest) {
+  const teamSlug = request.nextUrl.searchParams.get("team") ?? undefined;
+  const library = await getScoutFileLibrary(teamSlug);
   console.log("[api/scout-files] GET", {
+    teamSlug: teamSlug ?? null,
     rootCount: library.root.length,
     updatedAt: library.updatedAt,
   });
@@ -115,6 +117,7 @@ export async function POST(request: NextRequest) {
     const parentIdValue = formData.get("parentId");
     const noteValue = formData.get("note");
     const displayNameValue = formData.get("displayName");
+    const teamSlugValue = formData.get("team");
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -135,11 +138,15 @@ export async function POST(request: NextRequest) {
       typeof parentIdValue === "string" && parentIdValue.trim()
         ? parentIdValue
         : null;
+    const teamSlug =
+      typeof teamSlugValue === "string" && teamSlugValue.trim()
+        ? teamSlugValue
+        : undefined;
     const displayName =
       typeof displayNameValue === "string" && displayNameValue.trim()
         ? displayNameValue.trim()
         : file.name.replace(/\.[^.]+$/, "");
-    const library = await getScoutFileLibrary();
+    const library = await getScoutFileLibrary(teamSlug);
     if (hasNameConflict(library.root, parentId, displayName)) {
       return NextResponse.json(
         { error: "同じフォルダ内に同名のフォルダまたは試合データは追加できません" },
@@ -156,6 +163,7 @@ export async function POST(request: NextRequest) {
       extension,
       size: text.length,
       fileId,
+      teamSlug: teamSlug ?? null,
       parentId,
     });
 
@@ -166,7 +174,7 @@ export async function POST(request: NextRequest) {
       text,
       parsedCollection,
       uploadedAt,
-    });
+    }, teamSlug);
 
     const nextRoot = addNode(library.root, parentId, {
       id: makeId(),
@@ -179,9 +187,10 @@ export async function POST(request: NextRequest) {
           ? noteValue.trim()
           : undefined,
     });
-    const savedLibrary = await saveScoutFileLibrary({ root: nextRoot });
+    const savedLibrary = await saveScoutFileLibrary({ root: nextRoot }, teamSlug);
     console.log("[api/scout-files] POST saved", {
       fileId,
+      teamSlug: teamSlug ?? null,
       rootCount: savedLibrary.root.length,
       updatedAt: savedLibrary.updatedAt,
     });
@@ -203,6 +212,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const teamSlug = request.nextUrl.searchParams.get("team") ?? undefined;
     const payload = (await request.json()) as {
       root?: ScoutFileNode[];
     };
@@ -214,8 +224,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const library = await saveScoutFileLibrary({ root: payload.root });
+    const library = await saveScoutFileLibrary({ root: payload.root }, teamSlug);
     console.log("[api/scout-files] PUT", {
+      teamSlug: teamSlug ?? null,
       rootCount: library.root.length,
       updatedAt: library.updatedAt,
     });

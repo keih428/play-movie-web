@@ -11,6 +11,10 @@ import { VideoPlayer } from "@/components/video-player";
 import { getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { getRotationLabel } from "@/lib/domain/rotation";
 import { getMatchResultLabel, getMatchSetScore } from "@/lib/domain/summary";
+import {
+  buildWorkspacePath,
+  getTeamOptionsForMatch,
+} from "@/lib/domain/team";
 import type {
   ParsedCollection,
   ParsedMatch,
@@ -39,6 +43,8 @@ type WorkspaceClientProps = {
   initialWorkspaceId?: string;
   initialWorkspaceName?: string;
   initialRemoteSavedAt?: string;
+  initialTeamName?: string;
+  initialTeamSlug?: string;
   initialStatus?: string;
   skipLocalRestore?: boolean;
 };
@@ -140,6 +146,8 @@ export function WorkspaceClient({
   initialWorkspaceId,
   initialWorkspaceName,
   initialRemoteSavedAt,
+  initialTeamName,
+  initialTeamSlug,
   initialStatus,
   skipLocalRestore,
 }: WorkspaceClientProps) {
@@ -160,8 +168,10 @@ export function WorkspaceClient({
   const [lastSavedAt, setLastSavedAt] = useState<string>();
   const [hasHydratedWorkspace, setHasHydratedWorkspace] = useState(false);
   const [workspaceName, setWorkspaceName] = useState(
-    initialWorkspaceName ?? "東大バレー部ワークスペース",
+    initialWorkspaceName ?? "試合ワークスペース",
   );
+  const [teamName, setTeamName] = useState<string | undefined>(initialTeamName);
+  const [teamSlug, setTeamSlug] = useState<string>(initialTeamSlug ?? "");
   const [remoteWorkspaceId, setRemoteWorkspaceId] = useState<string | undefined>(
     initialWorkspaceId,
   );
@@ -181,11 +191,16 @@ export function WorkspaceClient({
   const filteredMatch = getFilteredMatch(match, filters);
   const playCount = countPlays(filteredMatch);
   const filterOptions = getFilterOptions(match);
+  const teamOptions = getTeamOptionsForMatch(match);
   const shareUrl =
     typeof window !== "undefined" && remoteWorkspaceId
       ? (() => {
           const url = new URL(window.location.href);
-          url.searchParams.set("workspaceId", remoteWorkspaceId);
+          url.pathname = buildWorkspacePath({
+            teamSlug: teamSlug || undefined,
+            workspaceId: remoteWorkspaceId,
+          });
+          url.search = "";
           return url.toString();
         })()
       : undefined;
@@ -204,6 +219,27 @@ export function WorkspaceClient({
       );
     }
   }, [collection.matches.length, selectedMatchIndex]);
+
+  useEffect(() => {
+    if (teamOptions.length === 0) {
+      if (teamSlug) {
+        setTeamSlug("");
+        setTeamName(undefined);
+      }
+      return;
+    }
+
+    const matchedOption = teamOptions.find((option) => option.slug === teamSlug);
+    if (matchedOption) {
+      if (teamName !== matchedOption.name) {
+        setTeamName(matchedOption.name);
+      }
+      return;
+    }
+
+    setTeamSlug(teamOptions[0].slug);
+    setTeamName(teamOptions[0].name);
+  }, [teamOptions, teamSlug, teamName]);
 
   async function refreshSavedWorkspaces() {
     const response = await fetch("/api/workspaces");
@@ -250,6 +286,8 @@ export function WorkspaceClient({
       window.setTimeout(() => {
         setCollection(persisted.collection);
         setSettings(persisted.settings);
+        setTeamSlug(persisted.teamSlug ?? "");
+        setTeamName(persisted.teamName);
         setSelectedMatchIndex(
           Math.max(
             0,
@@ -286,6 +324,8 @@ export function WorkspaceClient({
       collection,
       settings,
       selectedMatchIndex,
+      teamName,
+      teamSlug: teamSlug || undefined,
       savedAt: new Date().toISOString(),
     };
 
@@ -299,7 +339,7 @@ export function WorkspaceClient({
         setError("failed to save workspace to localStorage");
       }, 0);
     }
-  }, [collection, settings, selectedMatchIndex, hasHydratedWorkspace]);
+  }, [collection, settings, selectedMatchIndex, teamName, teamSlug, hasHydratedWorkspace]);
 
   async function handleLoadScoutFile(fileId: string) {
     setError(null);
@@ -369,6 +409,12 @@ export function WorkspaceClient({
     });
   }
 
+  function handleTeamChange(nextTeamSlug: string) {
+    setTeamSlug(nextTeamSlug);
+    const nextTeam = teamOptions.find((option) => option.slug === nextTeamSlug);
+    setTeamName(nextTeam?.name);
+  }
+
   function handleFiltersChange(nextFilters: FilterState) {
     setFilters(nextFilters);
     setSelectedPlay(undefined);
@@ -390,6 +436,8 @@ export function WorkspaceClient({
       setLastSavedAt(undefined);
       setRemoteWorkspaceId(undefined);
       setRemoteSavedAt(undefined);
+      setTeamSlug(initialTeamSlug ?? "");
+      setTeamName(initialTeamName);
       setActiveTab("workspace");
       setStatus("Saved workspace cleared");
       setError(null);
@@ -403,11 +451,19 @@ export function WorkspaceClient({
       collection,
       settings,
       selectedMatchIndex,
+      teamName,
+      teamSlug: teamSlug || undefined,
       savedAt: new Date().toISOString(),
     };
   }
 
   async function handleSaveWorkspace() {
+    if (!teamSlug) {
+      setError("公開チームを選択してください");
+      setStatus("公開チームの選択が必要です");
+      return;
+    }
+
     setError(null);
     setIsSyncingWorkspace(true);
     setStatus("Saving workspace to server ...");
@@ -437,6 +493,8 @@ export function WorkspaceClient({
       setRemoteWorkspaceId(payload.workspace.id);
       setRemoteSavedAt(payload.workspace.updatedAt);
       setWorkspaceName(payload.workspace.name);
+      setTeamName(payload.workspace.teamName);
+      setTeamSlug(payload.workspace.teamSlug ?? "");
       setShareStatus("ready to copy");
       setStoreProvider(payload.provider);
       await refreshSavedWorkspaces();
@@ -485,6 +543,8 @@ export function WorkspaceClient({
           rotation: "all",
         });
         setWorkspaceName(workspace.name);
+        setTeamName(workspace.teamName);
+        setTeamSlug(workspace.teamSlug ?? "");
         setRemoteSavedAt(workspace.updatedAt);
         setLastSavedAt(workspace.savedAt);
         setShareStatus("ready to copy");
@@ -559,6 +619,11 @@ export function WorkspaceClient({
       label: `${index + 1}. ${entry.teams.home.name} vs ${entry.teams.away.name}`,
     })),
     selectedMatchIndex,
+    teamOptions: teamOptions.map((option) => ({
+      label: option.name,
+      value: option.slug,
+    })),
+    selectedTeamSlug: teamSlug,
     status,
     error,
     isParsing,
@@ -576,6 +641,7 @@ export function WorkspaceClient({
     onScoutFileChange: setSelectedScoutFileId,
     onLoadScoutFile: handleLoadScoutFile,
     onMatchChange: handleMatchChange,
+    onTeamChange: handleTeamChange,
     onSettingsChange: setSettings,
     onCaptureOffset: handleCaptureOffset,
     onClearSavedWorkspace: handleClearSavedWorkspace,
@@ -596,11 +662,11 @@ export function WorkspaceClient({
         <section className="hero hero-home">
           <div className="hero-grid">
             <div>
-              <div className="hero-kicker">東京大学運動会バレー部 専用</div>
-              <h1>東大バレー部 試合ビューア</h1>
+              <div className="hero-kicker">{teamName ?? "チーム共有ビュー"}</div>
+              <h1>{teamName ? `${teamName} 試合ビューア` : "試合ビューア"}</h1>
               <p>
-                東京大学運動会バレー部の試合データを整理し、動画同期、プレイ確認、
-                ローテーション分析までをひとつのワークスペースで扱うための専用ツールです。
+                試合データを整理し、動画同期、プレイ確認、ローテーション分析までを
+                ひとつのワークスペースで扱うための共有ビューです。
               </p>
               <div className="badge-row">
                 <span className="badge">部内向けツール</span>

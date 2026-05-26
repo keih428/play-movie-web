@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatJstDateTime } from "@/lib/domain/datetime";
+import { buildTeamApiPath } from "@/lib/domain/team";
 import type { VideoLibrary, VideoLibraryNode } from "@/lib/domain/types";
 
 type VideoLibraryClientProps = {
   initialLibrary: VideoLibrary;
+  teamName?: string;
+  teamSlug?: string;
 };
 
 type EditState = {
@@ -342,7 +345,11 @@ function TreeNode({
   );
 }
 
-export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) {
+export function VideoLibraryClient({
+  initialLibrary,
+  teamName,
+  teamSlug,
+}: VideoLibraryClientProps) {
   const [library, setLibrary] = useState(initialLibrary);
   const [parentId, setParentId] = useState<string>("");
   const [mode, setMode] = useState<"folder" | "link">("folder");
@@ -365,7 +372,9 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
     async function loadLatestLibrary() {
       try {
         console.log("[video-library-client] load latest start");
-        const response = await fetch("/api/video-library", { cache: "no-store" });
+        const response = await fetch(buildTeamApiPath("/api/video-library", teamSlug), {
+          cache: "no-store",
+        });
         const payload = (await response.json()) as {
           library?: VideoLibrary;
           error?: string;
@@ -400,7 +409,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [teamSlug]);
 
   async function saveLibrary(nextRoot: VideoLibraryNode[]) {
     setIsSaving(true);
@@ -410,7 +419,7 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
     });
 
     try {
-      const response = await fetch("/api/video-library", {
+      const response = await fetch(buildTeamApiPath("/api/video-library", teamSlug), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -556,9 +565,9 @@ export function VideoLibraryClient({ initialLibrary }: VideoLibraryClientProps) 
         <div className="hero-grid">
           <div>
             <div className="hero-kicker">部内動画ライブラリ</div>
-            <h1>YouTubeリンク集</h1>
+            <h1>{teamName ? `${teamName} 動画ライブラリ` : "YouTubeリンク集"}</h1>
             <p>
-              試合外の参考動画、戦術動画、練習メニューなどをフォルダ構造で蓄積していくためのページです。
+              試合外の参考動画、戦術動画、練習メニューなどを、チームごとのフォルダ構造で蓄積していくためのページです。
             </p>
           </div>
           <div className="meta-grid">

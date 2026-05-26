@@ -95,6 +95,8 @@ export type PersistedWorkspace = {
   collection: ParsedCollection;
   settings: VideoSyncSettings;
   selectedMatchIndex: number;
+  teamName?: string;
+  teamSlug?: string;
   savedAt: string;
 };
 
@@ -110,6 +112,8 @@ export type SavedWorkspaceSummary = {
   name: string;
   sourceType: ParsedCollection["sourceType"];
   matchCount: number;
+  teamName?: string;
+  teamSlug?: string;
   createdAt: string;
   updatedAt: string;
   matchLabel?: string;

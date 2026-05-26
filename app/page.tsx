@@ -12,23 +12,23 @@ export default async function HomePage() {
           <div className="home-intro">
             <div
               className="logo-placeholder logo-placeholder-large"
-              aria-label="東大バレー部ロゴ"
+              aria-label="チームロゴ"
             >
               <Image
                 className="logo-image logo-image-large"
                 src="/logo.png"
-                alt="東大バレー部ロゴ"
+                alt="チームロゴ"
                 width={320}
                 height={180}
                 priority
               />
             </div>
             <div>
-              <div className="hero-kicker">東京大学運動会バレー部</div>
+              <div className="hero-kicker">大学・チーム共通</div>
               <h2>試合レビューの入口を、ひとつに。</h2>
               <p className="muted">
                 {appSettings.landingMessage ??
-                  "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、東京大学運動会バレー部専用の環境です。"}
+                  "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、チーム共通の環境です。"}
               </p>
             </div>
           </div>

@@ -7,9 +7,10 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { fileId } = await context.params;
-  const record = await getScoutFileRecord(fileId);
+  const teamSlug = new URL(request.url).searchParams.get("team") ?? undefined;
+  const record = await getScoutFileRecord(fileId, teamSlug);
 
   if (!record) {
     return NextResponse.json(
