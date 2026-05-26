@@ -879,6 +879,13 @@ export function WorkspaceClient({
                   <RotationPanel
                     match={filteredMatch}
                     selectedPlayId={selectedPlay?.id}
+                    selectedRotation={filters.rotation}
+                    onSelectedRotationChange={(rotation) =>
+                      handleFiltersChange({
+                        ...filters,
+                        rotation,
+                      })
+                    }
                   />
                 </div>
               </section>

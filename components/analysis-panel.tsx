@@ -320,8 +320,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
         <div>
           <h2>分析</h2>
           <p className="muted">
-            チーム別に、スキル内訳、ローテーション別得点率、Sideout% / Break%、
-            個人成績を表示します。
+            チーム別に、スキル内訳、Sideout% / Break%、個人成績を表示します。
           </p>
         </div>
 
@@ -444,76 +443,44 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               )}
             </div>
 
-            <div className="analysis-grid">
-              <div className="analysis-block">
-                <h3>スキル内訳</h3>
-                {activeAnalysis.skillSummary.length === 0 ? (
-                  <p className="muted">表示できるプレイがありません。</p>
-                ) : (
-                  <div className="skill-bars">
-                    {activeAnalysis.skillSummary.map((row) => (
-                      <div className="skill-bar-row" key={row.skill}>
-                        <div className="skill-bar-meta">
-                          <strong>{getSkillLabel(row.skill)}</strong>
-                          <span className="mono">{row.count}</span>
-                        </div>
-                        <div className="skill-bar-track skill-bar-track-stacked">
-                          {gradeOrder.map((grade) => {
-                            const count = row.gradeCounts[grade] ?? 0;
-                            return count > 0 ? (
-                              <div
-                                className={`skill-bar-segment skill-bar-grade-${grade}`}
-                                key={grade}
-                                style={{
-                                  width: `${(count / Math.max(1, row.count)) * 100}%`,
-                                }}
-                                title={`${grade}: ${count}`}
-                              />
-                            ) : null;
-                          })}
-                        </div>
-                        <div className="tag-row">
-                          {gradeOrder.map((grade) => (
-                            <span className={`tag skill-grade-tag skill-grade-tag-${grade}`} key={grade}>
-                              {grade} {row.gradeCounts[grade] ?? 0}
-                            </span>
-                          ))}
-                        </div>
+            <div className="analysis-block">
+              <h3>スキル内訳</h3>
+              {activeAnalysis.skillSummary.length === 0 ? (
+                <p className="muted">表示できるプレイがありません。</p>
+              ) : (
+                <div className="skill-bars">
+                  {activeAnalysis.skillSummary.map((row) => (
+                    <div className="skill-bar-row" key={row.skill}>
+                      <div className="skill-bar-meta">
+                        <strong>{getSkillLabel(row.skill)}</strong>
+                        <span className="mono">{row.count}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="analysis-block">
-                <h3>ローテーション別得点率</h3>
-                <div className="score-table-wrap">
-                  <table className="score-table">
-                    <thead>
-                      <tr>
-                        <th>ローテーション</th>
-                        <th>得点</th>
-                        <th>ラリー</th>
-                        <th>得点率</th>
-                        <th>Sideout%</th>
-                        <th>Break%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeAnalysis.rotations.map((row) => (
-                        <tr key={row.rotationLabel}>
-                          <td>{row.rotationLabel}</td>
-                          <td>{row.wins}</td>
-                          <td>{row.attempts}</td>
-                          <td>{formatRate(row.wins, row.attempts)}</td>
-                          <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
-                          <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      <div className="skill-bar-track skill-bar-track-stacked">
+                        {gradeOrder.map((grade) => {
+                          const count = row.gradeCounts[grade] ?? 0;
+                          return count > 0 ? (
+                            <div
+                              className={`skill-bar-segment skill-bar-grade-${grade}`}
+                              key={grade}
+                              style={{
+                                width: `${(count / Math.max(1, row.count)) * 100}%`,
+                              }}
+                              title={`${grade}: ${count}`}
+                            />
+                          ) : null;
+                        })}
+                      </div>
+                      <div className="tag-row">
+                        {gradeOrder.map((grade) => (
+                          <span className={`tag skill-grade-tag skill-grade-tag-${grade}`} key={grade}>
+                            {grade} {row.gradeCounts[grade] ?? 0}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="analysis-block">

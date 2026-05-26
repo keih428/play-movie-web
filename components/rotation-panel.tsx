@@ -8,6 +8,8 @@ import type { ParsedEvent, ParsedMatch, TeamSide } from "@/lib/domain/types";
 type RotationPanelProps = {
   match?: ParsedMatch;
   selectedPlayId?: string;
+  selectedRotation: string;
+  onSelectedRotationChange: (rotation: string) => void;
 };
 
 type RotationFocus = {
@@ -15,10 +17,102 @@ type RotationFocus = {
   event: ParsedEvent;
 };
 
+type RotationRateRow = {
+  rotationLabel: string;
+  attempts: number;
+  wins: number;
+  sideoutAttempts: number;
+  sideoutWins: number;
+  breakAttempts: number;
+  breakWins: number;
+};
+
 const COURT_LAYOUT = [
   ["4", "3", "2"],
   ["5", "6", "1"],
 ];
+
+function formatRate(wins: number, attempts: number): string {
+  if (attempts === 0) {
+    return "-";
+  }
+
+  return `${((wins / attempts) * 100).toFixed(1)}%`;
+}
+
+function getWinningSide(event: ParsedEvent): TeamSide | undefined {
+  if (event.point === "*") {
+    return "home";
+  }
+  if (event.point === "a") {
+    return "away";
+  }
+  return undefined;
+}
+
+function getFirstPlayForSide(event: ParsedEvent, side: TeamSide) {
+  const teamCode = side === "home" ? "*" : "a";
+  return event.plays.find((play) => play.team === teamCode);
+}
+
+function buildRotationRows(match: ParsedMatch, side: TeamSide): RotationRateRow[] {
+  const rows = new Map<string, RotationRateRow>();
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      const rotationLabel = getRotationLabel(event.lineup[side]);
+      const current = rows.get(rotationLabel) ?? {
+        rotationLabel,
+        attempts: 0,
+        wins: 0,
+        sideoutAttempts: 0,
+        sideoutWins: 0,
+        breakAttempts: 0,
+        breakWins: 0,
+      };
+
+      current.attempts += 1;
+      if (getWinningSide(event) === side) {
+        current.wins += 1;
+      }
+
+      const firstPlay = getFirstPlayForSide(event, side);
+      if (firstPlay?.skill === "R") {
+        current.sideoutAttempts += 1;
+        if (getWinningSide(event) === side) {
+          current.sideoutWins += 1;
+        }
+      }
+      if (firstPlay?.skill === "S") {
+        current.breakAttempts += 1;
+        if (getWinningSide(event) === side) {
+          current.breakWins += 1;
+        }
+      }
+
+      rows.set(rotationLabel, current);
+    });
+  });
+
+  return [...rows.values()].sort((a, b) =>
+    a.rotationLabel.localeCompare(b.rotationLabel, "ja"),
+  );
+}
+
+function getScoreBeforeRally(score: { home: number; away: number }, point?: string) {
+  if (point === "*") {
+    return { home: Math.max(0, score.home - 1), away: score.away };
+  }
+  if (point === "a") {
+    return { home: score.home, away: Math.max(0, score.away - 1) };
+  }
+  return score;
+}
+
+function getRallyNumber(event: ParsedEvent) {
+  const score = getScoreBeforeRally(event.score, event.point);
+  return score.home + score.away + 1;
+}
 
 function findFocusEvent(
   match: ParsedMatch | undefined,
@@ -87,11 +181,17 @@ function RotationCourt({
   );
 }
 
-export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
+export function RotationPanel({
+  match,
+  selectedPlayId,
+  selectedRotation,
+  onSelectedRotationChange,
+}: RotationPanelProps) {
   const focus = findFocusEvent(match, selectedPlayId);
   const initialSetIndex = focus?.setIndex ?? match?.sets[0]?.setIndex ?? 1;
   const [selectedSetIndex, setSelectedSetIndex] = useState(initialSetIndex);
   const [selectedEventId, setSelectedEventId] = useState<string | undefined>(focus?.event.id);
+  const [activeSide, setActiveSide] = useState<TeamSide>("home");
 
   useEffect(() => {
     setSelectedSetIndex(initialSetIndex);
@@ -103,12 +203,43 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
     [match, selectedSetIndex],
   );
 
+  const rotationOptions = useMemo(() => {
+    const values = new Set<string>();
+    selectedSet?.events.forEach((event) => {
+      const label = getRotationLabel(event.lineup.home);
+      if (label !== "-") {
+        values.add(label);
+      }
+    });
+    return [...values].sort((a, b) => a.localeCompare(b, "ja"));
+  }, [selectedSet]);
+
+  const filteredEvents = useMemo(() => {
+    if (!selectedSet) {
+      return [];
+    }
+
+    return selectedSet.events.filter((event) =>
+      selectedRotation === "all"
+        ? true
+        : getRotationLabel(event.lineup.home) === selectedRotation,
+    );
+  }, [selectedRotation, selectedSet]);
+
   const selectedEvent = useMemo(
     () =>
-      selectedSet?.events.find((event) => event.id === selectedEventId) ??
-      selectedSet?.events[0],
-    [selectedEventId, selectedSet],
+      filteredEvents.find((event) => event.id === selectedEventId) ??
+      filteredEvents[0],
+    [filteredEvents, selectedEventId],
   );
+
+  useEffect(() => {
+    if (!filteredEvents.some((event) => event.id === selectedEventId)) {
+      setSelectedEventId(filteredEvents[0]?.id);
+    }
+  }, [filteredEvents, selectedEventId]);
+
+  const rotationRows = useMemo(() => (match ? buildRotationRows(match, activeSide) : []), [activeSide, match]);
 
   return (
     <section className="panel">
@@ -169,15 +300,31 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
               </div>
 
               <div className="field">
+                <label htmlFor="rotation-filter-selector">自チームローテーション</label>
+                <select
+                  id="rotation-filter-selector"
+                  value={selectedRotation}
+                  onChange={(event) => onSelectedRotationChange(event.target.value)}
+                >
+                  <option value="all">すべて</option>
+                  {rotationOptions.map((rotation) => (
+                    <option key={rotation} value={rotation}>
+                      {rotation}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
                 <label htmlFor="rotation-event-selector">ラリー</label>
                 <select
                   id="rotation-event-selector"
                   value={selectedEvent.id}
                   onChange={(event) => setSelectedEventId(event.target.value)}
                 >
-                  {selectedSet.events.map((event) => (
+                  {filteredEvents.map((event) => (
                     <option key={event.id} value={event.id}>
-                      ラリー {event.eventIndex} ({event.score.home}-{event.score.away})
+                      ラリー {getRallyNumber(event)} ({event.score.home}-{event.score.away})
                     </option>
                   ))}
                 </select>
@@ -195,6 +342,50 @@ export function RotationPanel({ match, selectedPlayId }: RotationPanelProps) {
                 event={selectedEvent}
                 teamName={match.teams.away.name}
               />
+            </div>
+
+            <div className="analysis-block">
+              <h3>ローテーション別得点率</h3>
+              <div className="tab-row" role="tablist" aria-label="ローテーション分析チーム切替">
+                {(["home", "away"] as TeamSide[]).map((side) => (
+                  <button
+                    key={side}
+                    className={`tab-button${activeSide === side ? " tab-button-active" : ""}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSide === side}
+                    onClick={() => setActiveSide(side)}
+                  >
+                    {side === "home" ? match.teams.home.name : match.teams.away.name}
+                  </button>
+                ))}
+              </div>
+              <div className="score-table-wrap">
+                <table className="score-table">
+                  <thead>
+                    <tr>
+                      <th>ローテーション</th>
+                      <th>得点</th>
+                      <th>ラリー</th>
+                      <th>得点率</th>
+                      <th>Sideout%</th>
+                      <th>Break%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rotationRows.map((row) => (
+                      <tr key={row.rotationLabel}>
+                        <td>{row.rotationLabel}</td>
+                        <td>{row.wins}</td>
+                        <td>{row.attempts}</td>
+                        <td>{formatRate(row.wins, row.attempts)}</td>
+                        <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
+                        <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="analysis-block">
