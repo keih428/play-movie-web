@@ -726,7 +726,7 @@ textarea {
 }
 
 .list-item {
-  padding: 14px;
+  padding: 12px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--border);
@@ -742,11 +742,25 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 6px;
+  align-items: center;
 }
 
 .list-item small {
   color: var(--muted);
+}
+
+.play-list-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.play-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .tag-row {
@@ -754,6 +768,10 @@ textarea {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+.play-list-tags {
+  margin-top: 8px;
 }
 
 .tag {
@@ -766,6 +784,36 @@ textarea {
 
 .tag-link {
   border: 1px solid rgba(240, 196, 25, 0.24);
+}
+
+.play-list-jump {
+  border: 0;
+  cursor: pointer;
+}
+
+.play-rally-detail-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.play-rally-detail {
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(24, 72, 132, 0.1);
+  background: rgba(246, 249, 253, 0.88);
+}
+
+.play-rally-detail-active {
+  border-color: rgba(31, 94, 168, 0.4);
+  background: rgba(239, 246, 255, 0.9);
+}
+
+.play-rally-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
 }
 
 .analysis-grid {

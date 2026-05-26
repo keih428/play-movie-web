@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { getRotationLabel } from "@/lib/domain/rotation";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
@@ -16,19 +19,28 @@ export function PlayList({
   selectedPlayId,
   onSelectPlay,
 }: PlayListProps) {
-  const playItems =
+  const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
+
+  const rallyItems =
     match?.sets.flatMap((set) =>
       set.events.flatMap((event) =>
-        event.plays.map((play, index) => ({
-          key: `${set.id}-${event.id}-${play.id}-${index}`,
-          setIndex: set.setIndex,
-          eventIndex: event.eventIndex,
-          play,
-          seekSeconds: calculateSeekSeconds(play, settings),
-          score: event.score,
-          homeRotation: getRotationLabel(event.lineup.home),
-          awayRotation: getRotationLabel(event.lineup.away),
-        })),
+        event.plays.length === 0
+          ? []
+          : [
+              {
+                key: `${set.id}-${event.id}`,
+                setIndex: set.setIndex,
+                eventIndex: event.eventIndex,
+                score: event.score,
+                homeRotation: getRotationLabel(event.lineup.home),
+                awayRotation: getRotationLabel(event.lineup.away),
+                plays: event.plays.map((play, index) => ({
+                  key: `${set.id}-${event.id}-${play.id}-${index}`,
+                  play,
+                  seekSeconds: calculateSeekSeconds(play, settings),
+                })),
+              },
+            ],
       ),
     ) ?? [];
 
@@ -38,12 +50,12 @@ export function PlayList({
         <div>
           <h2>プレイ一覧</h2>
           <p className="muted">
-            クリック時に YouTube シークへつなぐ前提で、正規化済みプレイを一覧表示します。
+            ラリー単位で一覧表示し、必要なときだけ各プレーの詳細を展開できます。
           </p>
         </div>
 
         <div className="list">
-          {playItems.length === 0 ? (
+          {rallyItems.length === 0 ? (
             <div className="list-item">
               <strong>解析結果なし</strong>
               <p className="muted">
@@ -51,51 +63,107 @@ export function PlayList({
               </p>
             </div>
           ) : (
-            playItems.map((item) => (
-              <article
-                className={`list-item${selectedPlayId === item.play.id ? " list-item-active" : ""}`}
-                key={item.key}
-              >
-                <div className="list-item-header">
-                  <strong>
-                    セット {item.setIndex} / ラリー {item.eventIndex}
-                  </strong>
-                  <small className="mono">
-                    {formatSeconds(item.seekSeconds)}
-                  </small>
-                </div>
-                <div>
-                  <strong>{getSkillLabel(item.play.skill)}</strong>
-                  {" / "}
-                  <span>{item.play.player ?? "不明な選手"}</span>
-                  {" / "}
-                  <span>{getEffectGrade(item.play.effect)}</span>
-                </div>
-                <small>
-                  スコア {item.score.home} - {item.score.away}
-                </small>
-                <div className="tag-row">
-                  <span className="tag">チーム: {getTeamLabel(item.play.team, match)}</span>
-                  <span className="tag">自チーム: {item.homeRotation}</span>
-                  <span className="tag">相手チーム: {item.awayRotation}</span>
-                  <span className="tag">コード: {item.play.code || "-"}</span>
-                </div>
-                <div className="button-row" style={{ marginTop: 10 }}>
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={() =>
-                      onSelectPlay({
-                        ...item.play,
-                        setIndex: item.setIndex,
-                      })
-                    }
-                  >
-                    このプレイへ移動
-                  </button>
-                </div>
-              </article>
-            ))
+            rallyItems.map((rally) => {
+              const firstPlay = rally.plays[0]?.play;
+              const firstSeekSeconds = rally.plays[0]?.seekSeconds;
+              const isExpanded = expandedRallies[rally.key] ?? false;
+              const hasSelectedPlay = rally.plays.some(
+                (item) => item.play.id === selectedPlayId,
+              );
+
+              return (
+                <article
+                  className={`list-item${hasSelectedPlay ? " list-item-active" : ""}`}
+                  key={rally.key}
+                >
+                  <div className="list-item-header">
+                    <div className="play-list-title">
+                      <strong>
+                        セット {rally.setIndex} / ラリー {rally.eventIndex}
+                      </strong>
+                      <span>{rally.plays.length} プレイ</span>
+                    </div>
+                    <small className="mono">{formatSeconds(firstSeekSeconds)}</small>
+                  </div>
+                  <div className="play-list-meta">
+                    <small>
+                      スコア {rally.score.home} - {rally.score.away}
+                    </small>
+                    <small>自チーム {rally.homeRotation}</small>
+                    <small>相手チーム {rally.awayRotation}</small>
+                  </div>
+                  <div className="tag-row play-list-tags">
+                    <button
+                      className="tag play-list-jump"
+                      type="button"
+                      onClick={() => {
+                        if (!firstPlay) {
+                          return;
+                        }
+
+                        onSelectPlay({
+                          ...firstPlay,
+                          setIndex: rally.setIndex,
+                        });
+                      }}
+                    >
+                      このプレイに移動
+                    </button>
+                    <button
+                      className="tag play-list-jump"
+                      type="button"
+                      onClick={() =>
+                        setExpandedRallies((current) => ({
+                          ...current,
+                          [rally.key]: !isExpanded,
+                        }))
+                      }
+                    >
+                      {isExpanded ? "詳細を隠す" : "詳細を表示"}
+                    </button>
+                  </div>
+
+                  {isExpanded ? (
+                    <div className="play-rally-detail-list">
+                      {rally.plays.map((item) => (
+                        <div
+                          className={`play-rally-detail${selectedPlayId === item.play.id ? " play-rally-detail-active" : ""}`}
+                          key={item.key}
+                        >
+                          <div className="play-rally-detail-row">
+                            <div className="play-list-title">
+                              <strong>{getSkillLabel(item.play.skill)}</strong>
+                              <span>{item.play.player ?? "不明な選手"}</span>
+                              <span>{getEffectGrade(item.play.effect)}</span>
+                            </div>
+                            <small className="mono">
+                              {formatSeconds(item.seekSeconds)}
+                            </small>
+                          </div>
+                          <div className="tag-row play-list-tags">
+                            <span className="tag">
+                              チーム: {getTeamLabel(item.play.team, match)}
+                            </span>
+                            <button
+                              className="tag play-list-jump"
+                              type="button"
+                              onClick={() =>
+                                onSelectPlay({
+                                  ...item.play,
+                                  setIndex: rally.setIndex,
+                                })
+                              }
+                            >
+                              このプレイに移動
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })
           )}
         </div>
       </div>
