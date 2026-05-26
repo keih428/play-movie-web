@@ -443,6 +443,29 @@ iframe {
   overflow-wrap: anywhere;
 }
 
+.video-meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.video-meta-card {
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.video-meta-card .muted {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.video-meta-card strong {
+  margin-top: 2px;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
 .workspaces-meta-grid .meta-card:last-child strong {
   font-size: 1.3rem;
 }
@@ -1285,6 +1308,26 @@ iframe {
   .overview-grid,
   .rotation-summary {
     grid-template-columns: 1fr;
+  }
+
+  .video-meta-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-right: -2px;
+    scrollbar-width: thin;
+  }
+
+  .video-meta-card {
+    flex: 0 0 148px;
+    min-width: 148px;
+    padding: 9px 10px;
+  }
+
+  .video-meta-card strong {
+    font-size: 0.9rem;
   }
 
   .workspaces-meta-grid {
