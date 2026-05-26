@@ -28,17 +28,12 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
       <section className="hero">
         <div className="hero-grid">
           <div>
-            <h1>{teamName} の試合一覧</h1>
+            <h1>試合一覧</h1>
             <p>
-              {teamName} 向けに公開された試合を新しい順に表示しています。ここから直接レビュー画面へ入れます。
+              YoutubeとVSMファイルを紐付けた試合を新しい順に表示しています。
             </p>
-            <div className="badge-row">
-              <Link className="badge badge-link" href={buildTeamRootPath(teamSlug)}>
-                チームページへ戻る
-              </Link>
-            </div>
           </div>
-          <div className="meta-grid">
+          <div className="meta-grid workspaces-meta-grid">
             <div className="meta-card">
               <span className="muted">件数</span>
               <strong>{workspaces.length}</strong>
@@ -53,15 +48,11 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
 
       <section className="panel">
         <div className="panel-inner stack">
-          <div>
-            <h2>公開中の試合</h2>
-            <p className="muted">このチーム向けに共有された試合だけを表示しています。</p>
-          </div>
 
           {workspaces.length === 0 ? (
             <div className="list-item">
-              <strong>公開中の試合はありません。</strong>
-              <p className="muted">スタッフ設定画面でこのチーム向けに試合を保存すると、ここに表示されます。</p>
+              <strong>登録された試合はありません。</strong>
+              <p className="muted">設定画面でチーム向けに試合を登録すると、ここに表示されます。</p>
             </div>
           ) : (
             <div className="workspace-row-list">

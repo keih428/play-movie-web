@@ -414,11 +414,9 @@ export function StaffSettingsClient({
     <section className="panel">
       <div className="panel-inner stack">
         <div>
-          <h2>スタッフ公開設定</h2>
+          <h2>設定</h2>
           <p className="muted">
-            {teamName
-              ? `${teamName} の試合登録と動画紐づけをここで行います。`
-              : "試合の登録と動画紐づけをここで行います。"}
+            試合の登録と動画紐づけをここで行います。
           </p>
         </div>
 
@@ -583,10 +581,6 @@ export function StaffSettingsClient({
               </p>
             )}
           </section>
-
-          <p className="muted">
-            動画同期は `originalTime` を 30fps で秒換算し、動画ソース開始セットの先頭時刻との差分から再生秒を計算します。プリロール秒は登録時ではなく、動画レビュー画面で各ユーザーが調整します。
-          </p>
 
           <div className="button-row">
             <button

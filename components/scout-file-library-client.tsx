@@ -7,6 +7,7 @@ import type { ScoutFileLibrary, ScoutFileNode } from "@/lib/domain/types";
 
 type ScoutFileLibraryClientProps = {
   initialLibrary: ScoutFileLibrary;
+  initialLatestUploadedAt?: string;
   teamName?: string;
   teamSlug?: string;
 };
@@ -336,10 +337,12 @@ function TreeNode({
 
 export function ScoutFileLibraryClient({
   initialLibrary,
+  initialLatestUploadedAt,
   teamName,
   teamSlug,
 }: ScoutFileLibraryClientProps) {
   const [library, setLibrary] = useState(initialLibrary);
+  const [latestUploadedAt, setLatestUploadedAt] = useState(initialLatestUploadedAt);
   const [parentId, setParentId] = useState("");
   const [folderName, setFolderName] = useState("");
   const [uploadName, setUploadName] = useState("");
@@ -367,6 +370,7 @@ export function ScoutFileLibraryClient({
         });
         const payload = (await response.json()) as {
           library?: ScoutFileLibrary;
+          latestUploadedAt?: string;
           error?: string;
         };
         console.log("[scout-file-library-client] load latest response", {
@@ -384,6 +388,7 @@ export function ScoutFileLibraryClient({
 
         if (!cancelled) {
           setLibrary(payload.library);
+          setLatestUploadedAt(payload.latestUploadedAt);
         }
       } catch (error) {
         console.error("[scout-file-library-client] load latest failed", error);
@@ -421,6 +426,7 @@ export function ScoutFileLibraryClient({
 
       const payload = (await response.json()) as {
         library: ScoutFileLibrary;
+        latestUploadedAt?: string;
         error?: string;
       };
       console.log("[scout-file-library-client] save response", {
@@ -436,6 +442,7 @@ export function ScoutFileLibraryClient({
         );
       }
       setLibrary(payload.library);
+      setLatestUploadedAt(payload.latestUploadedAt);
       setStatus("試合データライブラリを保存しました。");
     } catch (error) {
       console.error("[scout-file-library-client] save failed", error);
@@ -518,6 +525,7 @@ export function ScoutFileLibraryClient({
       });
       const payload = (await response.json()) as {
         library?: ScoutFileLibrary;
+        latestUploadedAt?: string;
         error?: string;
       };
       console.log("[scout-file-library-client] upload response", {
@@ -532,6 +540,7 @@ export function ScoutFileLibraryClient({
       }
 
       setLibrary(payload.library);
+      setLatestUploadedAt(payload.latestUploadedAt);
       setUploadFile(null);
       setUploadName("");
       setNote("");
@@ -616,20 +625,20 @@ export function ScoutFileLibraryClient({
       <section className="hero">
         <div className="hero-grid">
           <div>
-            <div className="hero-kicker">スタッフ用 試合データ管理</div>
-            <h1>{teamName ? `${teamName} 試合データ管理` : "VSM / VSDB ライブラリ"}</h1>
+            <div className="hero-kicker">VSM/VSDBデータライブラリ</div>
+            <h1>試合データ管理</h1>
             <p>
-              試合データを動画リンクとは別のフォルダ構造で整理し、チームごとの設定画面から参照してワークスペースへ反映します。
+              試合データを動画リンクとは別のフォルダ構造で整理し、設定画面へ反映します。
             </p>
           </div>
-          <div className="meta-grid">
+          <div className="meta-grid workspaces-meta-grid">
             <div className="meta-card">
               <span className="muted">直下項目数</span>
               <strong>{library.root.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">更新日時</span>
-              <strong>{formatJstDateTime(library.updatedAt)}</strong>
+              <span className="muted">最新更新日</span>
+              <strong>{formatJstDateTime(latestUploadedAt)}</strong>
             </div>
           </div>
         </div>
@@ -663,40 +672,7 @@ export function ScoutFileLibraryClient({
 
             <section className="panel-section soft-panel">
               <div className="section-heading">
-                <h3>フォルダ作成</h3>
-                <p className="muted">年度、大会、相手校などで整理できます。</p>
-              </div>
-
-              <div className="field">
-                <label htmlFor="folder-name">フォルダ名</label>
-                <input
-                  id="folder-name"
-                  type="text"
-                  value={folderName}
-                  onChange={(event) => setFolderName(event.target.value)}
-                />
-              </div>
-
-              <div className="button-row">
-                <button
-                  className="button"
-                  type="button"
-                  disabled={isSaving}
-                  onClick={() => {
-                    void handleAddFolder();
-                  }}
-                >
-                  {isSaving ? "保存中..." : "フォルダを追加"}
-                </button>
-              </div>
-            </section>
-
-            <section className="panel-section soft-panel">
-              <div className="section-heading">
                 <h3>試合データ登録</h3>
-                <p className="muted">
-                  登録時に解析も行うため、設定画面ではすぐに選択して反映できます。
-                </p>
               </div>
 
               <div className="field">
@@ -741,6 +717,36 @@ export function ScoutFileLibraryClient({
                   }}
                 >
                   {isSaving ? "登録中..." : "試合データを登録"}
+                </button>
+              </div>
+            </section>
+
+            <section className="panel-section soft-panel">
+              <div className="section-heading">
+                <h3>フォルダ作成</h3>
+                <p className="muted">年度、大会、相手校などで整理できます。</p>
+              </div>
+
+              <div className="field">
+                <label htmlFor="folder-name">フォルダ名</label>
+                <input
+                  id="folder-name"
+                  type="text"
+                  value={folderName}
+                  onChange={(event) => setFolderName(event.target.value)}
+                />
+              </div>
+
+              <div className="button-row">
+                <button
+                  className="button"
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => {
+                    void handleAddFolder();
+                  }}
+                >
+                  {isSaving ? "保存中..." : "フォルダを追加"}
                 </button>
               </div>
             </section>
@@ -831,9 +837,9 @@ export function ScoutFileLibraryClient({
         <section className="panel">
           <div className="panel-inner stack">
             <div>
-              <h2>保存済みツリー</h2>
+              <h2>保存済みデータ</h2>
               <p className="muted">
-                登録済みの試合データはこのツリーから設定画面で参照されます。
+                登録済みの試合データは設定画面で参照されます。
               </p>
             </div>
 

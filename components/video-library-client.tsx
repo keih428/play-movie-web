@@ -7,6 +7,7 @@ import type { VideoLibrary, VideoLibraryNode } from "@/lib/domain/types";
 
 type VideoLibraryClientProps = {
   initialLibrary: VideoLibrary;
+  initialLatestCreatedAt?: string;
   teamName?: string;
   teamSlug?: string;
 };
@@ -347,12 +348,13 @@ function TreeNode({
 
 export function VideoLibraryClient({
   initialLibrary,
+  initialLatestCreatedAt,
   teamName,
   teamSlug,
 }: VideoLibraryClientProps) {
   const [library, setLibrary] = useState(initialLibrary);
   const [parentId, setParentId] = useState<string>("");
-  const [mode, setMode] = useState<"folder" | "link">("folder");
+  const [mode, setMode] = useState<"folder" | "link">("link");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
@@ -361,6 +363,27 @@ export function VideoLibraryClient({
   const [editing, setEditing] = useState<EditState | null>(null);
 
   const folders = useMemo(() => collectFolders(library.root), [library.root]);
+  const latestCreatedAt = useMemo(() => {
+    const collectLatest = (nodes: VideoLibraryNode[]): string | undefined => {
+      let latest: string | undefined;
+
+      nodes.forEach((node) => {
+        if (node.type === "link" && node.createdAt) {
+          latest = !latest || node.createdAt > latest ? node.createdAt : latest;
+        }
+        if (node.children?.length) {
+          const childLatest = collectLatest(node.children);
+          if (childLatest && (!latest || childLatest > latest)) {
+            latest = childLatest;
+          }
+        }
+      });
+
+      return latest;
+    };
+
+    return collectLatest(library.root) ?? initialLatestCreatedAt;
+  }, [initialLatestCreatedAt, library.root]);
   const editingBlockedFolderIds = useMemo(
     () => (editing ? [editing.id, ...collectDescendantFolderIds(library.root, editing.id)] : []),
     [editing, library.root],
@@ -565,19 +588,19 @@ export function VideoLibraryClient({
         <div className="hero-grid">
           <div>
             <div className="hero-kicker">部内動画ライブラリ</div>
-            <h1>{teamName ? `${teamName} 動画ライブラリ` : "YouTubeリンク集"}</h1>
+            <h1>動画ライブラリ</h1>
             <p>
-              試合外の参考動画、戦術動画、練習メニューなどを、チームごとのフォルダ構造で蓄積していくためのページです。
+              試合動画、参考動画、練習メニューなどを、フォルダ構造で蓄積していくためのページです。
             </p>
           </div>
-          <div className="meta-grid">
+          <div className="meta-grid workspaces-meta-grid">
             <div className="meta-card">
               <span className="muted">直下項目数</span>
               <strong>{library.root.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">更新日時</span>
-              <strong>{formatJstDateTime(library.updatedAt)}</strong>
+              <span className="muted">最新更新日</span>
+              <strong>{formatJstDateTime(latestCreatedAt)}</strong>
             </div>
           </div>
         </div>
@@ -598,10 +621,10 @@ export function VideoLibraryClient({
               <select
                 id="node-type"
                 value={mode}
-                onChange={(event) => setMode(event.target.value as "folder" | "link")}
+                onChange={(event) => setMode(event.target.value as "link" | "folder")}
               >
-                <option value="folder">フォルダ</option>
                 <option value="link">リンク</option>
+                <option value="folder">フォルダ</option>
               </select>
             </div>
 

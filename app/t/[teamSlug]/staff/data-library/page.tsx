@@ -1,6 +1,6 @@
 import { ScoutFileLibraryClient } from "@/components/scout-file-library-client";
 import { formatTeamSlugLabel } from "@/lib/domain/team";
-import { getScoutFileLibrary } from "@/lib/server/app-settings-store";
+import { getLatestScoutFileRecord, getScoutFileLibrary } from "@/lib/server/app-settings-store";
 
 type PageProps = {
   params: Promise<{
@@ -13,10 +13,12 @@ export const dynamic = "force-dynamic";
 export default async function TeamStaffDataLibraryPage({ params }: PageProps) {
   const { teamSlug } = await params;
   const library = await getScoutFileLibrary(teamSlug);
+  const latestRecord = await getLatestScoutFileRecord(teamSlug);
 
   return (
     <ScoutFileLibraryClient
       initialLibrary={library}
+      initialLatestUploadedAt={latestRecord?.uploadedAt}
       teamName={formatTeamSlugLabel(teamSlug)}
       teamSlug={teamSlug}
     />

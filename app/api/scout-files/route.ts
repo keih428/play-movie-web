@@ -4,6 +4,7 @@ import { parseVsmText } from "@/lib/parsers/vsm";
 import { parseVsdbText } from "@/lib/parsers/vsdb";
 import {
   getScoutFileLibrary,
+  getLatestScoutFileRecord,
   saveScoutFileLibrary,
   saveScoutFileRecord,
 } from "@/lib/server/app-settings-store";
@@ -102,12 +103,13 @@ function hasNameConflict(
 export async function GET(request: NextRequest) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? undefined;
   const library = await getScoutFileLibrary(teamSlug);
+  const latestRecord = await getLatestScoutFileRecord(teamSlug);
   console.log("[api/scout-files] GET", {
     teamSlug: teamSlug ?? null,
     rootCount: library.root.length,
     updatedAt: library.updatedAt,
   });
-  return NextResponse.json({ library });
+  return NextResponse.json({ library, latestUploadedAt: latestRecord?.uploadedAt });
 }
 
 export async function POST(request: NextRequest) {
@@ -195,7 +197,7 @@ export async function POST(request: NextRequest) {
       updatedAt: savedLibrary.updatedAt,
     });
 
-    return NextResponse.json({ library: savedLibrary });
+    return NextResponse.json({ library: savedLibrary, latestUploadedAt: uploadedAt });
   } catch (error) {
     console.error("scout-files POST failed", error);
     return NextResponse.json(
@@ -230,7 +232,8 @@ export async function PUT(request: NextRequest) {
       rootCount: library.root.length,
       updatedAt: library.updatedAt,
     });
-    return NextResponse.json({ library });
+    const latestRecord = await getLatestScoutFileRecord(teamSlug);
+    return NextResponse.json({ library, latestUploadedAt: latestRecord?.uploadedAt });
   } catch (error) {
     console.error("scout-files PUT failed", error);
     return NextResponse.json(

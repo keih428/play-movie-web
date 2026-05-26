@@ -189,7 +189,7 @@ export function VideoPlayer({
                 プレイ選択時の再生位置 =
                 <span className="mono">
                   {" "}
-                  (play.originalTime / 30 - sourceSetStart) + offset - preroll{" "}
+                  (play.originalTime / 10 - sourceSetStart) + offset - preroll{" "}
                 </span>
               </p>
             </div>

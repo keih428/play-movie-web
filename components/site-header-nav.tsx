@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -21,18 +22,18 @@ export function SiteHeaderNav() {
 
   const links = teamSlug
     ? [
-        { href: buildTeamRootPath(teamSlug), label: "ホーム" },
-        { href: buildTeamVideosPath(teamSlug), label: "動画ライブラリ" },
-        { href: buildTeamDataLibraryPath(teamSlug), label: "試合データ管理" },
-        { href: buildTeamWorkspacesPath(teamSlug), label: "試合一覧" },
-        { href: buildTeamStaffSettingsPath(teamSlug), label: "スタッフ設定" },
+        { href: buildTeamRootPath(teamSlug), label: "ホーム", shortLabel: "ホーム" },
+        { href: buildTeamWorkspacesPath(teamSlug), label: "試合一覧", shortLabel: "試合一覧" },
+        { href: buildTeamVideosPath(teamSlug), label: "動画ライブラリ", shortLabel: "動画" },
+        { href: buildTeamDataLibraryPath(teamSlug), label: "試合データ管理", shortLabel: "データ" },
+        { href: buildTeamStaffSettingsPath(teamSlug), label: "設定", shortLabel: "設定" },
       ]
     : [
-        { href: "/", label: "ホーム" },
-        { href: "/videos", label: "動画ライブラリ" },
-        { href: "/staff/data-library", label: "試合データ管理" },
-        { href: "/workspaces", label: "試合一覧" },
-        { href: "/staff/settings", label: "スタッフ設定" },
+        { href: "/", label: "ホーム", shortLabel: "ホーム" },
+        { href: "/workspaces", label: "試合一覧", shortLabel: "試合一覧" },
+        { href: "/videos", label: "動画ライブラリ", shortLabel: "動画" },
+        { href: "/staff/data-library", label: "試合データ管理", shortLabel: "データ" },
+        { href: "/staff/settings", label: "設定", shortLabel: "設定" },
       ];
 
   const brandHref = teamSlug ? buildTeamRootPath(teamSlug) : "/";
@@ -40,12 +41,22 @@ export function SiteHeaderNav() {
   return (
     <div className="site-header-inner">
       <Link className="site-brand" href={brandHref}>
+        <Image
+          src="/logo-top.png"
+          alt=""
+          width={150}
+          height={36}
+          className="site-brand-logo"
+          sizes="(max-width: 720px) 130px, 150px"
+          priority
+        />
         バレーボール 試合ビューア
       </Link>
       <nav className="site-nav" aria-label="Global">
         {links.map((link) => (
-          <Link key={link.href} href={link.href}>
-            {link.label}
+          <Link key={link.href} href={link.href} className="site-nav-link">
+            <span className="site-nav-label">{link.label}</span>
+            <span className="site-nav-label-short">{link.shortLabel}</span>
           </Link>
         ))}
       </nav>

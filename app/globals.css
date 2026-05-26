@@ -56,9 +56,19 @@ body {
 }
 
 .site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.05rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.site-brand-logo {
+  flex: none;
+  width: auto;
+  border-radius: 10px;
+  object-fit: contain;
 }
 
 .site-nav {
@@ -66,6 +76,17 @@ body {
   flex-wrap: wrap;
   gap: 16px;
   color: var(--muted);
+}
+
+.site-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.site-nav-label-short {
+  display: none;
 }
 
 a {
@@ -422,6 +443,10 @@ iframe {
   overflow-wrap: anywhere;
 }
 
+.workspaces-meta-grid .meta-card:last-child strong {
+  font-size: 1.3rem;
+}
+
 .video-stage {
   display: grid;
   gap: 16px;
@@ -619,10 +644,12 @@ iframe {
 }
 
 .logo-placeholder {
+  position: relative;
   display: grid;
   place-items: center;
   gap: 6px;
   min-height: 160px;
+  overflow: hidden;
   border-radius: 28px;
   border: 1px dashed rgba(31, 94, 168, 0.32);
   background:
@@ -635,15 +662,13 @@ iframe {
 
 .logo-image {
   display: block;
-  max-width: 100%;
-  max-height: 120px;
-  width: auto;
-  height: auto;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .logo-image-large {
-  max-height: 180px;
+  min-height: 100%;
 }
 
 .logo-placeholder-large {
@@ -1099,15 +1124,36 @@ iframe {
   .site-brand {
     font-size: 0.95rem;
     letter-spacing: 0.03em;
+    gap: 8px;
+  }
+
+  .site-brand-logo {
+    height: 32px;
+    width: auto;
   }
 
   .site-nav {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 10px 14px;
-    font-size: 0.92rem;
-    padding-bottom: 4px;
-    scrollbar-width: thin;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    font-size: 0.84rem;
+    width: 100%;
+  }
+
+  .site-nav-link {
+    min-height: 36px;
+    padding: 0 8px;
+    border: 1px solid rgba(24, 72, 132, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .site-nav-label {
+    display: none;
+  }
+
+  .site-nav-label-short {
+    display: inline;
   }
 
   .page-shell {
@@ -1203,6 +1249,10 @@ iframe {
   .overview-grid,
   .rotation-summary {
     grid-template-columns: 1fr;
+  }
+
+  .workspaces-meta-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
   }
 
   .meta-card strong {

@@ -681,7 +681,7 @@ export function WorkspaceClient({
           <div className="hero-grid">
             <div>
               <div className="hero-kicker">{teamName ?? "チーム共有ビュー"}</div>
-              <h1>{teamName ? `${teamName} 試合ビューア` : "試合ビューア"}</h1>
+              <h1>試合ビューア</h1>
               <p>
                 試合データを整理し、動画同期、プレイ確認、ローテーション分析までを
                 ひとつのワークスペースで扱うための共有ビューです。

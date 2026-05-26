@@ -26,11 +26,11 @@ export default async function HomePage() {
               />
             </div>
             <div>
-              <div className="hero-kicker">大学・チーム共通</div>
-              <h2>試合レビューの入口を、ひとつに。</h2>
+              <div className="hero-kicker">共通</div>
+              <h2>試合レビューを1つの場所で。</h2>
               <p className="muted">
                 {appSettings.landingMessage ??
-                  "公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、チーム共通の環境です。"}
+                  "試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、バレーチーム向けの環境です。"}
               </p>
             </div>
           </div>
@@ -49,7 +49,7 @@ export default async function HomePage() {
               <div>
                 <strong>試合一覧を開く</strong>
                 <p className="muted">
-                  登録済みの試合を一覧から選び、見たい試合だけを開きます。
+                  登録済みの試合を一覧から選びます。
                 </p>
               </div>
             </article>
@@ -67,17 +67,17 @@ export default async function HomePage() {
               <div>
                 <strong>動画ライブラリを見る</strong>
                 <p className="muted">
-                  試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
+                  試合外の参考動画は動画ライブラリに蓄積し、テーマごとに参照できます。
                 </p>
               </div>
             </article>
           </div>
 
           <div className="home-feature-band">
-            <div className="feature-chip">試合レビュー</div>
-            <div className="feature-chip">映像ジャンプ</div>
-            <div className="feature-chip">ローテーション確認</div>
-            <div className="feature-chip">共有ワークスペース</div>
+            <div className="feature-chip">#試合レビュー</div>
+            <div className="feature-chip">#映像ジャンプ</div>
+            <div className="feature-chip">#ローテーション確認</div>
+            <div className="feature-chip">#共有ワークスペース</div>
           </div>
         </div>
       </section>

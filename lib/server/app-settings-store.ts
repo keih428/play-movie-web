@@ -131,6 +131,22 @@ function normalizeScoutFileLibraryRoot(root: ScoutFileNode[]): ScoutFileNode[] {
   }));
 }
 
+function collectScoutFileIds(
+  nodes: ScoutFileNode[],
+  bucket: string[] = [],
+): string[] {
+  nodes.forEach((node) => {
+    if (node.type === "file" && node.fileId) {
+      bucket.push(node.fileId);
+    }
+    if (node.children?.length) {
+      collectScoutFileIds(node.children, bucket);
+    }
+  });
+
+  return bucket;
+}
+
 function getScoutFileRecordKey(fileId: string) {
   return `${SCOUT_FILE_RECORD_KEY_PREFIX}-${fileId}`;
 }
@@ -174,4 +190,28 @@ export async function saveScoutFileRecord(
   teamSlug?: string,
 ): Promise<ScoutFileRecord> {
   return writeDocument(getTeamScoutFileRecordKey(record.id, teamSlug), record);
+}
+
+export async function getLatestScoutFileRecord(
+  teamSlug?: string,
+): Promise<ScoutFileRecord | null> {
+  const library = await getScoutFileLibrary(teamSlug);
+  const fileIds = collectScoutFileIds(library.root);
+  if (fileIds.length === 0) {
+    return null;
+  }
+
+  const records = (
+    await Promise.all(fileIds.map((fileId) => getScoutFileRecord(fileId, teamSlug)))
+  ).filter((record): record is ScoutFileRecord => Boolean(record));
+
+  if (records.length === 0) {
+    return null;
+  }
+
+  return records.slice(1).reduce<ScoutFileRecord>(
+    (latest, current) =>
+      current.uploadedAt > latest.uploadedAt ? current : latest,
+    records[0],
+  );
 }

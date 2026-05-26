@@ -44,10 +44,10 @@ export default async function TeamHomePage({ params }: PageProps) {
             </div>
             <div>
               <div className="hero-kicker">{teamName}</div>
-              <h2>試合レビューの入口を、ひとつに。</h2>
+              <h2>試合レビューを1つの場所で。</h2>
               <p className="muted">
-                公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、
-                {teamName} の環境です。
+                試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、
+                {teamName}専用の環境です。
               </p>
             </div>
           </div>
@@ -56,17 +56,8 @@ export default async function TeamHomePage({ params }: PageProps) {
             <Link className="button" href={buildTeamWorkspacesPath(teamSlug)}>
               試合一覧を見る
             </Link>
-            <Link className="button secondary" href={buildTeamStaffSettingsPath(teamSlug)}>
-              スタッフ設定
-            </Link>
-          </div>
-
-          <div className="button-row">
             <Link className="button secondary" href={buildTeamVideosPath(teamSlug)}>
               動画ライブラリ
-            </Link>
-            <Link className="button secondary" href={buildTeamDataLibraryPath(teamSlug)}>
-              試合データ管理
             </Link>
           </div>
 
@@ -76,7 +67,7 @@ export default async function TeamHomePage({ params }: PageProps) {
               <div>
                 <strong>試合一覧を開く</strong>
                 <p className="muted">
-                  {teamName} に公開された試合を一覧から選び、見たい試合だけを開きます。
+                  見たい試合を一覧から選びます。
                 </p>
               </div>
             </article>
@@ -94,17 +85,17 @@ export default async function TeamHomePage({ params }: PageProps) {
               <div>
                 <strong>動画ライブラリを見る</strong>
                 <p className="muted">
-                  試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
+                  試合外の参考動画は動画ライブラリに蓄積し、テーマごとに参照できます。
                 </p>
               </div>
             </article>
           </div>
 
           <div className="home-feature-band">
-            <div className="feature-chip">公開試合 {teamWorkspaces.length} 件</div>
-            <div className="feature-chip">映像ジャンプ</div>
-            <div className="feature-chip">ローテーション確認</div>
-            <div className="feature-chip">共有ワークスペース</div>
+            <div className="feature-chip">試合データ {teamWorkspaces.length} 件</div>
+            <div className="feature-chip">#映像ジャンプ</div>
+            <div className="feature-chip">#ローテーション確認</div>
+            <div className="feature-chip">#共有ワークスペース</div>
           </div>
         </div>
       </section>
