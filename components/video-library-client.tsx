@@ -256,7 +256,6 @@ function TreeNode({
               </button>
             ) : (
               <span className="tree-toggle tree-toggle-placeholder" aria-hidden="true">
-                •
               </span>
             )}
             <strong className="tree-node-title">{node.name}</strong>

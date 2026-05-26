@@ -1358,11 +1358,17 @@ iframe {
 
   .list-item-header,
   .timeline-header,
-  .rotation-team-header,
-  .tree-node-header {
+  .rotation-team-header {
     display: grid;
     gap: 8px;
     justify-content: stretch;
+  }
+
+  .tree-node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
   }
 
   .tree-children {
