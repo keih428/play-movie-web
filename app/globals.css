@@ -564,6 +564,11 @@ iframe {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tree-node-title {
+  min-width: 0;
 }
 
 .tree-toggle {
@@ -802,6 +807,11 @@ iframe {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+.tree-node-tags {
+  margin-top: 0;
+  align-items: center;
 }
 
 .play-list-tags {

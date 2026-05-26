@@ -257,16 +257,16 @@ function TreeNode({
                 •
               </span>
             )}
-            <strong>{node.name}</strong>
-          </div>
-          <div className="tag-row">
-            <span className="tag">{node.type === "folder" ? "フォルダ" : "リンク"}</span>
-            {isFixed ? <span className="tag">固定</span> : null}
-            {node.url ? (
-              <a className="tag tag-link" href={node.url} target="_blank" rel="noreferrer">
-                開く
-              </a>
-            ) : null}
+            <strong className="tree-node-title">{node.name}</strong>
+            <div className="tag-row tree-node-tags">
+              <span className="tag">{node.type === "folder" ? "フォルダ" : "リンク"}</span>
+              {isFixed ? <span className="tag">固定</span> : null}
+              {node.url ? (
+                <a className="tag tag-link" href={node.url} target="_blank" rel="noreferrer">
+                  開く
+                </a>
+              ) : null}
+            </div>
           </div>
           {node.note ? <p className="muted">{node.note}</p> : null}
         </div>
