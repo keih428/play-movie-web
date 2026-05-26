@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   buildTeamDataLibraryPath,
@@ -27,18 +28,27 @@ export default async function TeamHomePage({ params }: PageProps) {
     <main className="page-shell">
       <section className="panel home-landing-panel">
         <div className="panel-inner stack">
-          <div>
-            <div className="hero-kicker">チーム別レビューリンク</div>
-            <h2>{teamName} の試合レビュー</h2>
-            <p className="muted">
-              このページから {teamName} 向けに公開された試合レビューを開けます。
-            </p>
-          </div>
-
-          <div className="meta-grid">
-            <div className="meta-card">
-              <span className="muted">公開試合数</span>
-              <strong>{teamWorkspaces.length}</strong>
+          <div className="home-intro">
+            <div
+              className="logo-placeholder logo-placeholder-large"
+              aria-label={`${teamName} ロゴ`}
+            >
+              <Image
+                className="logo-image logo-image-large"
+                src="/logo.png"
+                alt={`${teamName} ロゴ`}
+                width={320}
+                height={180}
+                priority
+              />
+            </div>
+            <div>
+              <div className="hero-kicker">{teamName}</div>
+              <h2>試合レビューの入口を、ひとつに。</h2>
+              <p className="muted">
+                公開中の試合ワークスペースを確認し、プレイと映像を行き来しながらレビューできる、
+                {teamName} の環境です。
+              </p>
             </div>
           </div>
 
@@ -58,6 +68,43 @@ export default async function TeamHomePage({ params }: PageProps) {
             <Link className="button secondary" href={buildTeamDataLibraryPath(teamSlug)}>
               試合データ管理
             </Link>
+          </div>
+
+          <div className="home-steps">
+            <article className="home-step">
+              <span className="home-step-index">01</span>
+              <div>
+                <strong>試合一覧を開く</strong>
+                <p className="muted">
+                  {teamName} に公開された試合を一覧から選び、見たい試合だけを開きます。
+                </p>
+              </div>
+            </article>
+            <article className="home-step">
+              <span className="home-step-index">02</span>
+              <div>
+                <strong>映像でレビューする</strong>
+                <p className="muted">
+                  プレイ一覧から試合映像へ移動し、分析対象のラリーを短時間で確認できます。
+                </p>
+              </div>
+            </article>
+            <article className="home-step">
+              <span className="home-step-index">03</span>
+              <div>
+                <strong>動画ライブラリを見る</strong>
+                <p className="muted">
+                  試合外の参考動画は専用ライブラリに蓄積し、テーマごとに参照できます。
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <div className="home-feature-band">
+            <div className="feature-chip">公開試合 {teamWorkspaces.length} 件</div>
+            <div className="feature-chip">映像ジャンプ</div>
+            <div className="feature-chip">ローテーション確認</div>
+            <div className="feature-chip">共有ワークスペース</div>
           </div>
         </div>
       </section>
