@@ -15,6 +15,36 @@ type PlayListProps = {
   onSelectPlay: (play: ParsedPlay) => void;
 };
 
+function getScoreBeforeRally(score: { home: number; away: number }, point?: string) {
+  if (point === "*") {
+    return {
+      home: Math.max(0, score.home - 1),
+      away: score.away,
+    };
+  }
+
+  if (point === "a") {
+    return {
+      home: score.home,
+      away: Math.max(0, score.away - 1),
+    };
+  }
+
+  return score;
+}
+
+function getRallyResultClass(point?: string) {
+  if (point === "*") {
+    return " list-item-won";
+  }
+
+  if (point === "a") {
+    return " list-item-lost";
+  }
+
+  return "";
+}
+
 export function PlayList({
   match,
   settings,
@@ -46,7 +76,8 @@ export function PlayList({
                 key: `${set.id}-${event.id}`,
                 setIndex: set.setIndex,
                 eventIndex: event.eventIndex,
-                score: event.score,
+                point: event.point,
+                score: getScoreBeforeRally(event.score, event.point),
                 homeRotation: getRotationLabel(event.lineup.home),
                 awayRotation: getRotationLabel(event.lineup.away),
                 plays: event.plays.map((play, index) => ({
@@ -99,10 +130,11 @@ export function PlayList({
               const hasSelectedPlay = rally.plays.some(
                 (item) => item.play.id === selectedPlayId,
               );
+              const rallyResultClass = getRallyResultClass(rally.point);
 
               return (
                 <article
-                  className={`list-item${hasSelectedPlay ? " list-item-active" : ""}`}
+                  className={`list-item${rallyResultClass}${hasSelectedPlay ? " list-item-active" : ""}`}
                   key={rally.key}
                 >
                   <div className="list-item-header">

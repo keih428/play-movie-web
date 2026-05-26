@@ -815,6 +815,16 @@ iframe {
   background: rgba(239, 246, 255, 0.96);
 }
 
+.list-item-won {
+  border-color: rgba(31, 94, 168, 0.22);
+  background: rgba(238, 246, 255, 0.9);
+}
+
+.list-item-lost {
+  border-color: rgba(180, 58, 45, 0.18);
+  background: rgba(255, 242, 240, 0.92);
+}
+
 .list-item-header {
   display: flex;
   justify-content: space-between;
