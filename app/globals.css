@@ -324,6 +324,10 @@ iframe {
   border-bottom: 0;
 }
 
+.score-table-row-highlight td {
+  background: rgba(31, 94, 168, 0.1);
+}
+
 .panel h2,
 .panel h3 {
   margin: 0 0 14px;
@@ -346,6 +350,12 @@ iframe {
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rotation-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1167,6 +1177,10 @@ iframe {
     grid-template-columns: 1fr;
   }
 
+  .rotation-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .rotation-summary,
   .rotation-grid {
     grid-template-columns: 1fr;
@@ -1416,6 +1430,10 @@ iframe {
 
   .filters-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rotation-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .logo-placeholder-large {

@@ -877,7 +877,7 @@ export function WorkspaceClient({
                 <div className="detail-grid">
                   <AnalysisPanel match={filteredMatch} />
                   <RotationPanel
-                    match={filteredMatch}
+                    match={match}
                     selectedPlayId={selectedPlay?.id}
                     selectedRotation={filters.rotation}
                     onSelectedRotationChange={(rotation) =>

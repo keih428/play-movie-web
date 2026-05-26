@@ -101,7 +101,7 @@ export function Filters({
           </div>
 
           <div className="field">
-            <label htmlFor="rotation-filter">自チームローテーション</label>
+            <label htmlFor="rotation-filter">自チームローテ</label>
             <select
               id="rotation-filter"
               value={filters.rotation}
@@ -112,7 +112,7 @@ export function Filters({
                 })
               }
             >
-              <option value="all">すべてのローテーション</option>
+              <option value="all">すべてのローテ</option>
               {rotationOptions.map((rotation) => (
                 <option key={rotation} value={rotation}>
                   {rotation}

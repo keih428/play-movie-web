@@ -278,7 +278,7 @@ export function RotationPanel({
               </div>
             </div>
 
-            <div className="field-grid">
+            <div className="rotation-filter-grid">
               <div className="field">
                 <label htmlFor="rotation-set-selector">セット</label>
                 <select
@@ -372,20 +372,28 @@ export function RotationPanel({
                       <th>Break%</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {rotationRows.map((row) => (
-                      <tr key={row.rotationLabel}>
-                        <td>{row.rotationLabel}</td>
-                        <td>{row.wins}</td>
-                        <td>{row.attempts}</td>
-                        <td>{formatRate(row.wins, row.attempts)}</td>
-                        <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
-                        <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    <tbody>
+                      {rotationRows.map((row) => (
+                        <tr
+                          className={
+                            selectedRotation !== "all" &&
+                            row.rotationLabel === selectedRotation
+                              ? "score-table-row-highlight"
+                              : undefined
+                          }
+                          key={row.rotationLabel}
+                        >
+                          <td>{row.rotationLabel}</td>
+                          <td>{row.wins}</td>
+                          <td>{row.attempts}</td>
+                          <td>{formatRate(row.wins, row.attempts)}</td>
+                          <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
+                          <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
             </div>
 
             <div className="analysis-block">
