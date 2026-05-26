@@ -692,25 +692,6 @@ export function WorkspaceClient({
                 <span className="badge">映像連動分析</span>
               </div>
             </div>
-
-            <div className="meta-grid">
-              <div className="meta-card">
-                <span className="muted">試合数</span>
-                <strong>{collection.matches.length}</strong>
-              </div>
-              <div className="meta-card">
-                <span className="muted">セット数</span>
-                <strong>{filteredMatch?.sets.length ?? 0}</strong>
-              </div>
-              <div className="meta-card">
-                <span className="muted">表示プレイ数</span>
-                <strong>{countPlays(filteredMatch)}</strong>
-              </div>
-              <div className="meta-card">
-                <span className="muted">表示モード</span>
-                <strong>{collection.sourceType.toUpperCase()}</strong>
-              </div>
-            </div>
           </div>
         </section>
       ) : null}
