@@ -1515,12 +1515,6 @@ iframe {
   }
 }
 
-@media (max-width: 420px) {
-  .filters-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 960px) and (orientation: landscape) {
   .site-header {
     display: none;
