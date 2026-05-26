@@ -48,20 +48,31 @@ function flattenScoutFiles(
 
 function flattenVideoLinks(
   nodes: VideoLibraryNode[],
-  depth = 0,
 ): Array<VideoLibraryNode & { label: string }> {
-  return nodes.flatMap((node) => {
-    if (node.type === "link" && node.url) {
-      return [
-        {
-          ...node,
-          label: `${"  ".repeat(depth)}${node.name}`,
-        },
-      ];
-    }
+  const matchVideosFolder = nodes.find((node) => node.systemKey === "match-videos");
+  if (!matchVideosFolder || matchVideosFolder.type !== "folder") {
+    return [];
+  }
 
-    return flattenVideoLinks(node.children ?? [], depth + 1);
-  });
+  function walk(
+    entries: VideoLibraryNode[],
+    parents: string[] = [],
+  ): Array<VideoLibraryNode & { label: string }> {
+    return entries.flatMap((node) => {
+      if (node.type === "link" && node.url) {
+        return [
+          {
+            ...node,
+            label: [...parents, node.name].join("/"),
+          },
+        ];
+      }
+
+      return walk(node.children ?? [], [...parents, node.name]);
+    });
+  }
+
+  return walk(matchVideosFolder.children ?? []);
 }
 
 function getInheritedSetVideo(

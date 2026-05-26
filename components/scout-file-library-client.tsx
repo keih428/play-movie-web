@@ -257,11 +257,11 @@ function TreeNode({
                 •
               </span>
             )}
-            <strong>{node.name}</strong>
-          </div>
-          <div className="tag-row">
-            <span className="tag">{node.type === "folder" ? "フォルダ" : "試合データ"}</span>
-            {node.extension ? <span className="tag">{node.extension}</span> : null}
+            <strong className="tree-node-title">{node.name}</strong>
+            <div className="tag-row tree-node-tags">
+              <span className="tag">{node.type === "folder" ? "フォルダ" : "試合データ"}</span>
+              {node.extension ? <span className="tag">{node.extension}</span> : null}
+            </div>
           </div>
           {node.note ? <p className="muted">{node.note}</p> : null}
         </div>

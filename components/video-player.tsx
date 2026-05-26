@@ -143,36 +143,28 @@ export function VideoPlayer({
     }
   }, [onPlayerTimeChange, videoId]);
 
-  useEffect(() => {
-    if (!playerRef.current || !selectedPlay) {
-      return;
-    }
+  const selectedSeek = selectedPlay
+    ? calculateSeekSeconds(selectedPlay, settings, match)
+    : undefined;
 
-    const seekSeconds = calculateSeekSeconds(selectedPlay, settings, match);
-    if (typeof seekSeconds !== "number") {
+  useEffect(() => {
+    if (!playerRef.current || !selectedPlay || typeof selectedSeek !== "number") {
       return;
     }
 
     try {
-      playerRef.current.seekTo(seekSeconds, true);
+      playerRef.current.seekTo(selectedSeek, true);
       playerRef.current.playVideo();
     } catch {
       onPlayerTimeChange(undefined);
     }
-  }, [match, onPlayerTimeChange, selectedPlay, settings]);
-
-  const selectedSeek = selectedPlay
-    ? calculateSeekSeconds(selectedPlay, settings, match)
-    : undefined;
+  }, [onPlayerTimeChange, selectedPlay, selectedSeek, videoId]);
 
   return (
     <section className="panel">
       <div className="panel-inner video-stage">
         <div>
-          <h2>動画プレーヤー</h2>
-          <p className="muted">
-            YouTube IFrame Player API に接続し、選択したプレイへシークできる状態です。
-          </p>
+          <h2>動画プレーヤー</h2> {/* YouTube IFrame Player API に接続 */}
         </div>
 
         {videoId ? (

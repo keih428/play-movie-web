@@ -79,7 +79,7 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
                         workspaceId: workspace.id,
                       })}
                     >
-                      動画とプレイで見る
+                      動画を見る
                     </Link>
                   </div>
                 </article>
