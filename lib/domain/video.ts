@@ -5,11 +5,11 @@ import type {
   VideoSyncSettings,
 } from "@/lib/domain/types";
 
-const VSM_FRAME_RATE = 60;
+const VSM_TIME_SCALE = 10;
 
 export function getBasePlayTimeSeconds(play: ParsedPlay): number | undefined {
-  if (typeof play.originalTime === "number") {
-    return play.originalTime / VSM_FRAME_RATE;
+  if (typeof play.time === "number") {
+    return play.time / VSM_TIME_SCALE;
   }
 
   return undefined;
