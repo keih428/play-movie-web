@@ -45,6 +45,10 @@ function getRallyResultClass(point?: string) {
   return "";
 }
 
+function getRallyNumber(score: { home: number; away: number }) {
+  return score.home + score.away + 1;
+}
+
 export function PlayList({
   match,
   settings,
@@ -131,6 +135,7 @@ export function PlayList({
                 (item) => item.play.id === selectedPlayId,
               );
               const rallyResultClass = getRallyResultClass(rally.point);
+              const rallyNumber = getRallyNumber(rally.score);
 
               return (
                 <article
@@ -140,7 +145,7 @@ export function PlayList({
                   <div className="list-item-header">
                     <div className="play-list-title">
                       <strong>
-                        ラリー{rally.eventIndex}
+                        ラリー{rallyNumber}
                       </strong>
                       <span>{rally.plays.length}プレイ</span>
                     </div>
