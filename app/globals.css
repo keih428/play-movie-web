@@ -1505,8 +1505,12 @@ iframe {
 }
 
 @media (max-width: 960px) and (orientation: landscape) {
+  .site-header {
+    display: none;
+  }
+
   .review-layout {
-    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
     align-items: start;
   }
 

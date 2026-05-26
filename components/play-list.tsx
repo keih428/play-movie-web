@@ -64,9 +64,6 @@ export function PlayList({
       <div className="panel-inner stack">
         <div>
           <h2>プレイ一覧</h2>
-          <p className="muted">
-            ラリー単位で一覧表示し、必要なときだけ各プレーの詳細を展開できます。
-          </p>
         </div>
 
         {availableSetIndices.length > 1 ? (
