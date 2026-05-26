@@ -255,8 +255,9 @@ function TreeNode({
                 {isExpanded ? "▾" : "▸"}
               </button>
             ) : (
-              <span className="tree-toggle tree-toggle-placeholder" aria-hidden="true">
-              </span>
+              // <span className="tree-toggle tree-toggle-placeholder" aria-hidden="true">
+              // </span>
+              <span></span>
             )}
             <strong className="tree-node-title">{node.name}</strong>
             <div className="tag-row tree-node-tags">
