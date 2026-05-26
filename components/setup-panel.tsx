@@ -283,7 +283,7 @@ export function SetupPanel({
           </div>
 
           <p className="muted">
-            動画同期は `.vsm` / `.vsdb` 内の `originalTime` を 10fps で秒換算して計算します。プリロール秒は動画レビュー画面で各ユーザーが調整します。
+            動画同期は `.vsm` / `.vsdb` 内の `originalTime` を 60fps で秒換算して計算します。プリロール秒は動画レビュー画面で各ユーザーが調整します。
           </p>
 
           <div className="button-row">
