@@ -362,6 +362,7 @@ iframe {
 .field {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .filters-grid {
@@ -931,6 +932,25 @@ iframe {
   background: rgba(255, 255, 255, 0.92);
 }
 
+.analysis-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analysis-summary-card {
+  padding: 12px;
+}
+
+.analysis-summary-card .muted {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.analysis-summary-card strong {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
 .skill-bars {
   display: grid;
   gap: 12px;
@@ -1134,6 +1154,7 @@ iframe {
 
 .muted {
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .mono {
@@ -1341,6 +1362,23 @@ iframe {
     grid-template-columns: 1fr;
   }
 
+  .analysis-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .analysis-summary-card {
+    padding: 10px;
+  }
+
+  .analysis-summary-card .muted {
+    font-size: 0.74rem;
+  }
+
+  .analysis-summary-card strong {
+    font-size: 0.92rem;
+  }
+
   .video-meta-grid {
     display: flex;
     flex-wrap: nowrap;
@@ -1378,6 +1416,15 @@ iframe {
   .workspace-card,
   .soft-panel {
     padding: 14px;
+  }
+
+  .analysis-section-block {
+    padding: 12px;
+  }
+
+  .analysis-panel h2,
+  .analysis-panel h3 {
+    overflow-wrap: anywhere;
   }
 
   .list-item-header,
@@ -1456,7 +1503,16 @@ iframe {
   }
 
   .analysis-block .tab-row {
+    flex-wrap: wrap;
+    overflow: visible;
+    padding-bottom: 0;
     margin-right: 0;
+  }
+
+  .analysis-block .tab-button {
+    min-width: 0;
+    white-space: normal;
+    padding: 8px 12px;
   }
 
   .analysis-player-table {

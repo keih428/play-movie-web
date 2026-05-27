@@ -315,7 +315,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const gradeOrder = ["A", "B", "C", "D", "E", "F"];
 
   return (
-    <section className="panel">
+    <section className="panel analysis-panel">
       <div className="panel-inner stack">
         <div>
           <h2>分析</h2>
@@ -345,30 +345,30 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               ))}
             </div>
 
-            <div className="meta-grid">
-              <div className="meta-card">
+            <div className="meta-grid analysis-summary-grid">
+              <div className="meta-card analysis-summary-card">
                 <span className="muted">総得点率</span>
                 <strong>{formatRate(activeAnalysis.wonRallies, activeAnalysis.rallyCount)}</strong>
               </div>
-              <div className="meta-card">
+              <div className="meta-card analysis-summary-card">
                 <span className="muted">Sideout%</span>
                 <strong>
                   {formatRate(activeAnalysis.sideoutWins, activeAnalysis.sideoutAttempts)}
                 </strong>
               </div>
-              <div className="meta-card">
+              <div className="meta-card analysis-summary-card">
                 <span className="muted">Break%</span>
                 <strong>
                   {formatRate(activeAnalysis.breakWins, activeAnalysis.breakAttempts)}
                 </strong>
               </div>
-              <div className="meta-card">
+              <div className="meta-card analysis-summary-card">
                 <span className="muted">ラリー数</span>
                 <strong>{activeAnalysis.rallyCount}</strong>
               </div>
             </div>
 
-            <div className="analysis-block">
+            <div className="analysis-block analysis-section-block">
               <h3>スコア推移</h3>
               {scoreTimeline.length === 0 ? (
                 <p className="muted">スコア推移を表示できるラリーがありません。</p>
@@ -443,7 +443,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               )}
             </div>
 
-            <div className="analysis-block">
+            <div className="analysis-block analysis-section-block">
               <h3>スキル内訳</h3>
               {activeAnalysis.skillSummary.length === 0 ? (
                 <p className="muted">表示できるプレイがありません。</p>
@@ -483,7 +483,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               )}
             </div>
 
-            <div className="analysis-block">
+            <div className="analysis-block analysis-section-block">
               <h3>個人成績</h3>
               <div className="score-table-wrap">
                 <table className="score-table analysis-player-table">
