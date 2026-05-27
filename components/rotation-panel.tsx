@@ -383,12 +383,12 @@ export function RotationPanel({
                           }
                           key={row.rotationLabel}
                         >
-                          <td>{row.rotationLabel}</td>
-                          <td>{row.wins}</td>
-                          <td>{row.attempts}</td>
-                          <td>{formatRate(row.wins, row.attempts)}</td>
-                          <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
-                          <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
+                          <td data-label="ローテーション">{row.rotationLabel}</td>
+                          <td data-label="得点">{row.wins}</td>
+                          <td data-label="ラリー">{row.attempts}</td>
+                          <td data-label="得点率">{formatRate(row.wins, row.attempts)}</td>
+                          <td data-label="Sideout%">{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
+                          <td data-label="Break%">{formatRate(row.breakWins, row.breakAttempts)}</td>
                         </tr>
                       ))}
                     </tbody>

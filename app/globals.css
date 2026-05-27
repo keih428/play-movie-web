@@ -1516,11 +1516,11 @@ iframe {
   }
 
   .analysis-player-table {
-    min-width: 620px;
+    min-width: 0;
   }
 
   .rotation-rate-table {
-    min-width: 460px;
+    min-width: 0;
   }
 
   .logo-placeholder-large {
@@ -1586,8 +1586,8 @@ iframe {
   }
 
   .score-table-wrap {
-    margin: 0 -4px;
-    padding-bottom: 2px;
+    margin: 0;
+    padding-bottom: 0;
   }
 
   .score-table {
@@ -1598,6 +1598,63 @@ iframe {
   .score-table td {
     padding: 8px 10px;
     font-size: 0.82rem;
+  }
+
+  .analysis-player-table,
+  .rotation-rate-table,
+  .analysis-player-table thead,
+  .rotation-rate-table thead,
+  .analysis-player-table tbody,
+  .rotation-rate-table tbody,
+  .analysis-player-table tr,
+  .rotation-rate-table tr,
+  .analysis-player-table td,
+  .rotation-rate-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .analysis-player-table thead,
+  .rotation-rate-table thead {
+    display: none;
+  }
+
+  .analysis-player-table tbody,
+  .rotation-rate-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .analysis-player-table tr,
+  .rotation-rate-table tr {
+    border: 1px solid rgba(24, 72, 132, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+  }
+
+  .analysis-player-table td,
+  .rotation-rate-table td {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 8px 10px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    border-bottom: 1px solid rgba(24, 72, 132, 0.08);
+  }
+
+  .analysis-player-table td:last-child,
+  .rotation-rate-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .analysis-player-table td::before,
+  .rotation-rate-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-weight: 600;
   }
 
   .tag {

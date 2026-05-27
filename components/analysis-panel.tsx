@@ -502,14 +502,14 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                   <tbody>
                     {activeAnalysis.players.map((row) => (
                       <tr key={row.player}>
-                        <td>{row.player}</td>
-                        <td>{row.total}</td>
-                        <td>{row.serve}</td>
-                        <td>{row.receive}</td>
-                        <td>{row.attack}</td>
-                        <td>{row.block}</td>
-                        <td>{row.directPoints}</td>
-                        <td>{row.errors}</td>
+                        <td data-label="背番号">{row.player}</td>
+                        <td data-label="総プレイ">{row.total}</td>
+                        <td data-label="サーブ">{row.serve}</td>
+                        <td data-label="レセプション">{row.receive}</td>
+                        <td data-label="アタック">{row.attack}</td>
+                        <td data-label="ブロック">{row.block}</td>
+                        <td data-label="直接得点">{row.directPoints}</td>
+                        <td data-label="ミス">{row.errors}</td>
                       </tr>
                     ))}
                   </tbody>
