@@ -361,7 +361,7 @@ export function RotationPanel({
                 ))}
               </div>
               <div className="score-table-wrap">
-                <table className="score-table">
+                <table className="score-table rotation-rate-table">
                   <thead>
                     <tr>
                       <th>ローテーション</th>

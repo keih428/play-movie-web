@@ -486,7 +486,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
             <div className="analysis-block">
               <h3>個人成績</h3>
               <div className="score-table-wrap">
-                <table className="score-table">
+                <table className="score-table analysis-player-table">
                   <thead>
                     <tr>
                       <th>背番号</th>

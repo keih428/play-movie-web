@@ -875,7 +875,7 @@ export function WorkspaceClient({
             <TabErrorBoundary tabLabel="分析">
               <section className="dashboard-content-stack">
                 <div className="detail-grid">
-                  <AnalysisPanel match={filteredMatch} />
+                  <AnalysisPanel match={match} />
                   <RotationPanel
                     match={match}
                     selectedPlayId={selectedPlay?.id}
