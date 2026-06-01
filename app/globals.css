@@ -1488,18 +1488,13 @@ iframe {
   }
 
   .rotation-summary {
-    display: flex;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    margin-right: -2px;
-    scrollbar-width: thin;
   }
 
   .rotation-summary .meta-card {
-    flex: 0 0 132px;
-    min-width: 132px;
+    min-width: 0;
   }
 
   .analysis-block .tab-row {
@@ -1727,6 +1722,21 @@ iframe {
     grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
     align-items: start;
     gap: 10px;
+  }
+
+  .rotation-summary {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-right: -2px;
+    scrollbar-width: thin;
+  }
+
+  .rotation-summary .meta-card {
+    flex: 0 0 132px;
+    min-width: 132px;
   }
 
   .review-primary,
