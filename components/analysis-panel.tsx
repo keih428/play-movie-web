@@ -332,6 +332,22 @@ function formatRate(wins: number, attempts: number): string {
   return `${((wins / attempts) * 100).toFixed(1)}%`;
 }
 
+function getRate(wins: number, attempts: number): number | undefined {
+  if (attempts === 0) {
+    return undefined;
+  }
+
+  return (wins / attempts) * 100;
+}
+
+function formatPercent(value: number | undefined): string {
+  if (value === undefined) {
+    return "-";
+  }
+
+  return `${value.toFixed(1)}%`;
+}
+
 function buildTimelinePath(
   points: Array<{ x: number; y: number }>,
 ): string {
@@ -391,6 +407,15 @@ function formatSignedRateDiff(leftWins: number, leftAttempts: number, rightWins:
   return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`;
 }
 
+function formatSignedPercentDiff(left: number | undefined, right: number | undefined) {
+  if (left === undefined || right === undefined) {
+    return "-";
+  }
+
+  const diff = left - right;
+  return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`;
+}
+
 export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const homeAnalysis = buildTeamAnalysis(match, "home");
   const awayAnalysis = buildTeamAnalysis(match, "away");
@@ -417,6 +442,12 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
         ]),
       ].sort((left, right) => left.localeCompare(right, "ja"))
     : [];
+  const wonComparisonPlayCount = setOutcomeComparison
+    ? setOutcomeComparison.won.skillSummary.reduce((sum, row) => sum + row.count, 0)
+    : 0;
+  const lostComparisonPlayCount = setOutcomeComparison
+    ? setOutcomeComparison.lost.skillSummary.reduce((sum, row) => sum + row.count, 0)
+    : 0;
 
   return (
     <section className="panel analysis-panel">
@@ -483,114 +514,172 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 <div className="comparison-stack">
                   <div>
                     <h4>スキル内訳</h4>
-                    <div className="score-table-wrap">
-                      <table className="score-table comparison-table">
-                        <thead>
-                          <tr>
-                            <th>スキル</th>
-                            <th>勝ちセット</th>
-                            <th>負けセット</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {comparisonSkills.map((skill) => {
-                            const won = getSkillSummaryRow(
-                              setOutcomeComparison.won.skillSummary,
-                              skill,
-                            );
-                            const lost = getSkillSummaryRow(
-                              setOutcomeComparison.lost.skillSummary,
-                              skill,
-                            );
+                    <div className="comparison-chart" aria-label="勝ちセットと負けセットのスキル構成比">
+                      {comparisonSkills.map((skill) => {
+                        const won = getSkillSummaryRow(
+                          setOutcomeComparison.won.skillSummary,
+                          skill,
+                        );
+                        const lost = getSkillSummaryRow(
+                          setOutcomeComparison.lost.skillSummary,
+                          skill,
+                        );
+                        const wonPercent =
+                          wonComparisonPlayCount > 0
+                            ? (won.count / wonComparisonPlayCount) * 100
+                            : undefined;
+                        const lostPercent =
+                          lostComparisonPlayCount > 0
+                            ? (lost.count / lostComparisonPlayCount) * 100
+                            : undefined;
 
-                            return (
-                              <tr key={skill}>
-                                <td data-label="スキル">{getSkillLabel(skill)}</td>
-                                <td data-label="勝ちセット">
-                                  <span className="mono">{won.count}</span>
-                                  <span className="comparison-grade-row">
-                                    {gradeOrder.map((grade) => (
-                                      <span
-                                        className={`tag skill-grade-tag skill-grade-tag-${grade}`}
-                                        key={grade}
-                                      >
-                                        {grade} {won.gradeCounts[grade] ?? 0}
-                                      </span>
-                                    ))}
-                                  </span>
-                                </td>
-                                <td data-label="負けセット">
-                                  <span className="mono">{lost.count}</span>
-                                  <span className="comparison-grade-row">
-                                    {gradeOrder.map((grade) => (
-                                      <span
-                                        className={`tag skill-grade-tag skill-grade-tag-${grade}`}
-                                        key={grade}
-                                      >
-                                        {grade} {lost.gradeCounts[grade] ?? 0}
-                                      </span>
-                                    ))}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                        return (
+                          <div className="comparison-chart-row" key={skill}>
+                            <div className="comparison-chart-label">
+                              <strong>{getSkillLabel(skill)}</strong>
+                              <span className="muted">
+                                差分 {formatSignedPercentDiff(wonPercent, lostPercent)}
+                              </span>
+                            </div>
+                            <div className="comparison-bars">
+                              <div className="comparison-bar-line">
+                                <span className="comparison-bar-name">勝ち</span>
+                                <div className="comparison-bar-track">
+                                  <div
+                                    className="comparison-bar-fill comparison-bar-fill-won"
+                                    style={{ width: `${wonPercent ?? 0}%` }}
+                                  />
+                                </div>
+                                <span className="mono comparison-bar-value">
+                                  {formatPercent(wonPercent)}
+                                </span>
+                                <span className="muted comparison-count">{won.count}</span>
+                              </div>
+                              <div className="comparison-bar-line">
+                                <span className="comparison-bar-name">負け</span>
+                                <div className="comparison-bar-track">
+                                  <div
+                                    className="comparison-bar-fill comparison-bar-fill-lost"
+                                    style={{ width: `${lostPercent ?? 0}%` }}
+                                  />
+                                </div>
+                                <span className="mono comparison-bar-value">
+                                  {formatPercent(lostPercent)}
+                                </span>
+                                <span className="muted comparison-count">{lost.count}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div>
                     <h4>ローテーション別得点率</h4>
-                    <div className="score-table-wrap">
-                      <table className="score-table comparison-table rotation-rate-table">
-                        <thead>
-                          <tr>
-                            <th>ローテーション</th>
-                            <th>勝ちセット</th>
-                            <th>負けセット</th>
-                            <th>差分</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {comparisonRotations.map((rotationLabel) => {
-                            const won = getRotationRow(
-                              setOutcomeComparison.won.rotations,
-                              rotationLabel,
-                            );
-                            const lost = getRotationRow(
-                              setOutcomeComparison.lost.rotations,
-                              rotationLabel,
-                            );
+                    <div className="comparison-chart" aria-label="勝ちセットと負けセットのローテーション別得点率">
+                      {comparisonRotations.map((rotationLabel) => {
+                        const won = getRotationRow(
+                          setOutcomeComparison.won.rotations,
+                          rotationLabel,
+                        );
+                        const lost = getRotationRow(
+                          setOutcomeComparison.lost.rotations,
+                          rotationLabel,
+                        );
+                        const metrics = [
+                          {
+                            label: "得点率",
+                            wonRate: getRate(won.wins, won.attempts),
+                            lostRate: getRate(lost.wins, lost.attempts),
+                            wonValue: `${won.wins}/${won.attempts}`,
+                            lostValue: `${lost.wins}/${lost.attempts}`,
+                            diff: formatSignedRateDiff(
+                              won.wins,
+                              won.attempts,
+                              lost.wins,
+                              lost.attempts,
+                            ),
+                          },
+                          {
+                            label: "Sideout%",
+                            wonRate: getRate(won.sideoutWins, won.sideoutAttempts),
+                            lostRate: getRate(lost.sideoutWins, lost.sideoutAttempts),
+                            wonValue: `${won.sideoutWins}/${won.sideoutAttempts}`,
+                            lostValue: `${lost.sideoutWins}/${lost.sideoutAttempts}`,
+                            diff: formatSignedRateDiff(
+                              won.sideoutWins,
+                              won.sideoutAttempts,
+                              lost.sideoutWins,
+                              lost.sideoutAttempts,
+                            ),
+                          },
+                          {
+                            label: "Break%",
+                            wonRate: getRate(won.breakWins, won.breakAttempts),
+                            lostRate: getRate(lost.breakWins, lost.breakAttempts),
+                            wonValue: `${won.breakWins}/${won.breakAttempts}`,
+                            lostValue: `${lost.breakWins}/${lost.breakAttempts}`,
+                            diff: formatSignedRateDiff(
+                              won.breakWins,
+                              won.breakAttempts,
+                              lost.breakWins,
+                              lost.breakAttempts,
+                            ),
+                          },
+                        ];
 
-                            return (
-                              <tr key={rotationLabel}>
-                                <td data-label="ローテーション">{rotationLabel}</td>
-                                <td data-label="勝ちセット">
-                                  {formatRate(won.wins, won.attempts)}
-                                  <span className="muted comparison-subvalue">
-                                    {won.wins}/{won.attempts}
-                                  </span>
-                                </td>
-                                <td data-label="負けセット">
-                                  {formatRate(lost.wins, lost.attempts)}
-                                  <span className="muted comparison-subvalue">
-                                    {lost.wins}/{lost.attempts}
-                                  </span>
-                                </td>
-                                <td data-label="差分">
-                                  {formatSignedRateDiff(
-                                    won.wins,
-                                    won.attempts,
-                                    lost.wins,
-                                    lost.attempts,
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                        return (
+                          <div className="comparison-chart-row" key={rotationLabel}>
+                            <div className="comparison-chart-label">
+                              <strong>{rotationLabel}</strong>
+                              <span className="muted">勝ちセット / 負けセット</span>
+                            </div>
+                            <div className="comparison-metric-stack">
+                              {metrics.map((metric) => (
+                                <div className="comparison-metric-block" key={metric.label}>
+                                  <div className="comparison-metric-heading">
+                                    <strong>{metric.label}</strong>
+                                    <span className="muted">差分 {metric.diff}</span>
+                                  </div>
+                                  <div className="comparison-bars">
+                                    <div className="comparison-bar-line">
+                                      <span className="comparison-bar-name">勝ち</span>
+                                      <div className="comparison-bar-track">
+                                        <div
+                                          className="comparison-bar-fill comparison-bar-fill-won"
+                                          style={{ width: `${metric.wonRate ?? 0}%` }}
+                                        />
+                                      </div>
+                                      <span className="mono comparison-bar-value">
+                                        {formatPercent(metric.wonRate)}
+                                      </span>
+                                      <span className="muted comparison-count">
+                                        {metric.wonValue}
+                                      </span>
+                                    </div>
+                                    <div className="comparison-bar-line">
+                                      <span className="comparison-bar-name">負け</span>
+                                      <div className="comparison-bar-track">
+                                        <div
+                                          className="comparison-bar-fill comparison-bar-fill-lost"
+                                          style={{ width: `${metric.lostRate ?? 0}%` }}
+                                        />
+                                      </div>
+                                      <span className="mono comparison-bar-value">
+                                        {formatPercent(metric.lostRate)}
+                                      </span>
+                                      <span className="muted comparison-count">
+                                        {metric.lostValue}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

@@ -1084,6 +1084,94 @@ iframe {
   font-size: 0.98rem;
 }
 
+.comparison-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.comparison-chart-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.32fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(24, 72, 132, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.comparison-chart-label {
+  display: grid;
+  gap: 4px;
+}
+
+.comparison-bars {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.comparison-metric-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.comparison-metric-block {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.comparison-metric-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.comparison-metric-heading strong {
+  font-size: 0.9rem;
+}
+
+.comparison-bar-line {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(5rem, 1fr) 4.2rem 3.2rem;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.comparison-bar-name {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.comparison-bar-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(31, 94, 168, 0.1);
+}
+
+.comparison-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.comparison-bar-fill-won {
+  background: #1f8f4c;
+}
+
+.comparison-bar-fill-lost {
+  background: #d45a3d;
+}
+
+.comparison-bar-value,
+.comparison-count {
+  text-align: right;
+}
+
 .comparison-grade-row {
   display: flex;
   flex-wrap: wrap;
@@ -1502,6 +1590,19 @@ iframe {
   .analysis-panel h2,
   .analysis-panel h3 {
     overflow-wrap: anywhere;
+  }
+
+  .comparison-chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-bar-line {
+    grid-template-columns: 2.5rem minmax(0, 1fr) 3.8rem;
+  }
+
+  .comparison-count {
+    grid-column: 3;
+    font-size: 0.75rem;
   }
 
   .list-item-header,
