@@ -14,11 +14,13 @@ type ClipBuilderProps = {
   onPauseRequest: () => void;
 };
 
-type GradeFilter = "all" | "A" | "D_OR_LOWER";
+type GradeFilter = "all" | "A" | "D_OR_LOWER" | "F";
 
 type ClipCandidate = {
   key: string;
   play: ParsedPlay;
+  title: string;
+  subtitle: string;
   setIndex: number;
   eventIndex: number;
   score: {
@@ -27,7 +29,11 @@ type ClipCandidate = {
   };
   point?: string;
   seekSeconds: number;
+  durationSeconds: number;
+  concededTeamLabel?: string;
 };
+
+const RALLY_TAIL_SECONDS = 3;
 
 function getGradeMatches(effect: string | undefined, gradeFilter: GradeFilter) {
   if (gradeFilter === "all") {
@@ -39,11 +45,23 @@ function getGradeMatches(effect: string | undefined, gradeFilter: GradeFilter) {
     return grade === "A";
   }
 
+  if (gradeFilter === "F") {
+    return grade === "F";
+  }
+
   return grade === "D" || grade === "E" || grade === "F";
 }
 
-function isConcededPlay(play: ParsedPlay, point?: string) {
-  return Boolean(play.team && point && play.team !== point);
+function getConcededTeamCode(point?: string) {
+  if (point === "*") {
+    return "a";
+  }
+
+  if (point === "a") {
+    return "*";
+  }
+
+  return undefined;
 }
 
 export function ClipBuilder({
@@ -99,8 +117,74 @@ export function ClipBuilder({
     }
 
     return match.sets.flatMap((set) =>
-      set.events.flatMap((event) =>
-        event.plays.flatMap((play, playIndex) => {
+      set.events.flatMap((event) => {
+        const concededTeamCode = getConcededTeamCode(event.point);
+        const concededTeamLabel = getTeamLabel(concededTeamCode, match);
+
+        if (concededOnly) {
+          if (!concededTeamCode || event.plays.length === 0) {
+            return [];
+          }
+          if (teamFilter !== "all" && concededTeamLabel !== teamFilter) {
+            return [];
+          }
+
+          const timedPlays = event.plays
+            .map((play, playIndex) => {
+              const seekSeconds = calculateSeekSeconds(
+                {
+                  ...play,
+                  setIndex: set.setIndex,
+                },
+                settings,
+                match,
+              );
+
+              return typeof seekSeconds === "number"
+                ? {
+                    play,
+                    playIndex,
+                    seekSeconds,
+                  }
+                : undefined;
+            })
+            .filter((entry): entry is {
+              play: ParsedPlay;
+              playIndex: number;
+              seekSeconds: number;
+            } => Boolean(entry))
+            .sort((left, right) => left.seekSeconds - right.seekSeconds);
+
+          const firstTimedPlay = timedPlays[0];
+          const lastTimedPlay = timedPlays.at(-1);
+          if (!firstTimedPlay || !lastTimedPlay) {
+            return [];
+          }
+
+          return [
+            {
+              key: `${set.id}-${event.id}-conceded-rally`,
+              play: {
+                ...firstTimedPlay.play,
+                setIndex: set.setIndex,
+              },
+              title: "失点ラリー",
+              subtitle: `${event.plays.length}プレイ`,
+              setIndex: set.setIndex,
+              eventIndex: event.eventIndex,
+              score: event.score,
+              point: event.point,
+              seekSeconds: firstTimedPlay.seekSeconds,
+              durationSeconds: Math.max(
+                RALLY_TAIL_SECONDS,
+                lastTimedPlay.seekSeconds - firstTimedPlay.seekSeconds + RALLY_TAIL_SECONDS,
+              ),
+              concededTeamLabel,
+            },
+          ];
+        }
+
+        return event.plays.flatMap((play, playIndex) => {
           const teamLabel = getTeamLabel(play.team, match);
           const seekSeconds = calculateSeekSeconds(
             {
@@ -123,9 +207,6 @@ export function ClipBuilder({
           if (!getGradeMatches(play.effect, gradeFilter)) {
             return [];
           }
-          if (concededOnly && !isConcededPlay(play, event.point)) {
-            return [];
-          }
           if (typeof seekSeconds !== "number") {
             return [];
           }
@@ -137,17 +218,34 @@ export function ClipBuilder({
                 ...play,
                 setIndex: set.setIndex,
               },
+              title: getSkillLabel(play.skill),
+              subtitle: `${play.player ?? "不明な選手"} / ${getEffectGrade(play.effect)}`,
               setIndex: set.setIndex,
               eventIndex: event.eventIndex,
               score: event.score,
               point: event.point,
               seekSeconds,
+              durationSeconds: clipSeconds,
             },
           ];
-        }),
-      ),
+        });
+      }),
     );
-  }, [concededOnly, gradeFilter, match, playerFilter, settings, skillFilter, teamFilter]);
+  }, [
+    clipSeconds,
+    concededOnly,
+    gradeFilter,
+    match,
+    playerFilter,
+    settings,
+    skillFilter,
+    teamFilter,
+  ]);
+
+  const totalClipSeconds = clips.reduce(
+    (sum, clip) => sum + clip.durationSeconds,
+    0,
+  );
 
   const clipsKey = clips.map((clip) => clip.key).join("|");
 
@@ -168,7 +266,7 @@ export function ClipBuilder({
       return;
     }
 
-    const clipEndSeconds = activeClip.seekSeconds + clipSeconds;
+    const clipEndSeconds = activeClip.seekSeconds + activeClip.durationSeconds;
     if (!activeClipReady) {
       if (
         currentPlayerSeconds >= activeClip.seekSeconds - 0.2 &&
@@ -198,7 +296,6 @@ export function ClipBuilder({
   }, [
     activeClipIndex,
     activeClipReady,
-    clipSeconds,
     clips,
     currentPlayerSeconds,
     isPlaying,
@@ -232,7 +329,7 @@ export function ClipBuilder({
           <div>
             <h2>クリップ抽出</h2>
             <p className="muted">
-              {clips.length}件 / {clips.length * clipSeconds}秒
+              {clips.length}件 / {Math.round(totalClipSeconds)}秒
             </p>
           </div>
           <div className="button-row">
@@ -280,6 +377,7 @@ export function ClipBuilder({
             <select
               id="clip-player-filter"
               value={playerFilter}
+              disabled={concededOnly}
               onChange={(event) => setPlayerFilter(event.target.value)}
             >
               <option value="all">すべての選手</option>
@@ -296,6 +394,7 @@ export function ClipBuilder({
             <select
               id="clip-skill-filter"
               value={skillFilter}
+              disabled={concededOnly}
               onChange={(event) => setSkillFilter(event.target.value)}
             >
               <option value="all">すべてのスキル</option>
@@ -312,10 +411,12 @@ export function ClipBuilder({
             <select
               id="clip-grade-filter"
               value={gradeFilter}
+              disabled={concededOnly}
               onChange={(event) => setGradeFilter(event.target.value as GradeFilter)}
             >
               <option value="A">A評価</option>
               <option value="D_OR_LOWER">D評価以下</option>
+              <option value="F">Fのみ</option>
               <option value="all">すべての評価</option>
             </select>
           </div>
@@ -338,6 +439,7 @@ export function ClipBuilder({
               min={3}
               max={30}
               value={clipSeconds}
+              disabled={concededOnly}
               onChange={(event) =>
                 setClipSeconds(Math.max(3, Math.min(30, Number(event.target.value) || 8)))
               }
@@ -360,12 +462,13 @@ export function ClipBuilder({
                 <div className="list-item-header">
                   <div className="play-list-title">
                     <strong>
-                      {index + 1}. {getSkillLabel(clip.play.skill)}
+                      {index + 1}. {clip.title}
                     </strong>
-                    <span>{clip.play.player ?? "不明な選手"}</span>
-                    <span>{getEffectGrade(clip.play.effect)}</span>
+                    <span>{clip.subtitle}</span>
                   </div>
-                  <small className="mono">{formatSeconds(clip.seekSeconds)}</small>
+                  <small className="mono">
+                    {formatSeconds(clip.seekSeconds)} / {Math.round(clip.durationSeconds)}秒
+                  </small>
                 </div>
                 <div className="play-list-meta">
                   <small>セット {clip.setIndex}</small>
@@ -373,7 +476,11 @@ export function ClipBuilder({
                   <small>
                     スコア {clip.score.home} - {clip.score.away}
                   </small>
-                  <small>チーム {getTeamLabel(clip.play.team, match)}</small>
+                  {clip.concededTeamLabel ? (
+                    <small>失点 {clip.concededTeamLabel}</small>
+                  ) : (
+                    <small>チーム {getTeamLabel(clip.play.team, match)}</small>
+                  )}
                 </div>
                 <div className="tag-row play-list-tags">
                   <button
