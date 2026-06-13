@@ -1074,6 +1074,29 @@ iframe {
   color: white;
 }
 
+.comparison-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.comparison-stack h4 {
+  margin: 0 0 10px;
+  font-size: 0.98rem;
+}
+
+.comparison-grade-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.comparison-subvalue {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+}
+
 .timeline-stack {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1658,31 +1681,39 @@ iframe {
   }
 
   .analysis-player-table,
+  .comparison-table,
   .rotation-rate-table,
   .analysis-player-table thead,
+  .comparison-table thead,
   .rotation-rate-table thead,
   .analysis-player-table tbody,
+  .comparison-table tbody,
   .rotation-rate-table tbody,
   .analysis-player-table tr,
+  .comparison-table tr,
   .rotation-rate-table tr,
   .analysis-player-table td,
+  .comparison-table td,
   .rotation-rate-table td {
     display: block;
     width: 100%;
   }
 
   .analysis-player-table thead,
+  .comparison-table thead,
   .rotation-rate-table thead {
     display: none;
   }
 
   .analysis-player-table tbody,
+  .comparison-table tbody,
   .rotation-rate-table tbody {
     display: grid;
     gap: 10px;
   }
 
   .analysis-player-table tr,
+  .comparison-table tr,
   .rotation-rate-table tr {
     border: 1px solid rgba(24, 72, 132, 0.1);
     border-radius: 14px;
@@ -1691,6 +1722,7 @@ iframe {
   }
 
   .analysis-player-table td,
+  .comparison-table td,
   .rotation-rate-table td {
     display: grid;
     grid-template-columns: 6.5rem minmax(0, 1fr);
@@ -1703,11 +1735,13 @@ iframe {
   }
 
   .analysis-player-table td:last-child,
+  .comparison-table td:last-child,
   .rotation-rate-table td:last-child {
     border-bottom: 0;
   }
 
   .analysis-player-table td::before,
+  .comparison-table td::before,
   .rotation-rate-table td::before {
     content: attr(data-label);
     color: var(--muted);

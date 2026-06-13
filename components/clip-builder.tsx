@@ -77,6 +77,7 @@ export function ClipBuilder({
   const [skillFilter, setSkillFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState<GradeFilter>("A");
   const [concededOnly, setConcededOnly] = useState(false);
+  const [concededMinPlayCount, setConcededMinPlayCount] = useState(1);
   const [clipSeconds, setClipSeconds] = useState(8);
   const [activeClipIndex, setActiveClipIndex] = useState<number>();
   const [activeClipReady, setActiveClipReady] = useState(false);
@@ -123,6 +124,9 @@ export function ClipBuilder({
 
         if (concededOnly) {
           if (!concededTeamCode || event.plays.length === 0) {
+            return [];
+          }
+          if (event.plays.length < concededMinPlayCount) {
             return [];
           }
           if (teamFilter !== "all" && concededTeamLabel !== teamFilter) {
@@ -233,6 +237,7 @@ export function ClipBuilder({
     );
   }, [
     clipSeconds,
+    concededMinPlayCount,
     concededOnly,
     gradeFilter,
     match,
@@ -430,6 +435,21 @@ export function ClipBuilder({
             />
             <span>失点のみ</span>
           </label>
+
+          <div className="field">
+            <label htmlFor="clip-conceded-min-plays">失点ラリーの最小プレイ数</label>
+            <input
+              id="clip-conceded-min-plays"
+              type="number"
+              min={1}
+              max={99}
+              value={concededMinPlayCount}
+              disabled={!concededOnly}
+              onChange={(event) =>
+                setConcededMinPlayCount(Math.max(1, Math.min(99, Number(event.target.value) || 1)))
+              }
+            />
+          </div>
 
           <div className="field">
             <label htmlFor="clip-seconds">秒数</label>

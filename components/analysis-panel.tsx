@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getEffectGrade, getSkillLabel } from "@/lib/domain/display";
-import type { ParsedEvent, ParsedMatch, ParsedPlay, TeamSide } from "@/lib/domain/types";
+import type { ParsedEvent, ParsedMatch, ParsedPlay, ParsedSet, TeamSide } from "@/lib/domain/types";
 
 type AnalysisPanelProps = {
   match?: ParsedMatch;
@@ -55,6 +55,13 @@ type ScoreTimelinePoint = {
   away: number;
 };
 
+type SetOutcomeComparison = {
+  won: TeamAnalysis;
+  lost: TeamAnalysis;
+  wonSetLabels: string;
+  lostSetLabels: string;
+};
+
 function getTeamCode(side: TeamSide) {
   return side === "home" ? "*" : "a";
 }
@@ -98,7 +105,7 @@ function buildSkillSummary(plays: ParsedPlay[]): SkillSummaryRow[] {
   return [...counts.values()].sort((a, b) => b.count - a.count);
 }
 
-function buildRotationRows(match: ParsedMatch, side: TeamSide): RotationRow[] {
+function buildRotationRows(sets: ParsedSet[], side: TeamSide): RotationRow[] {
   const rows = new Map<
     string,
     {
@@ -111,7 +118,7 @@ function buildRotationRows(match: ParsedMatch, side: TeamSide): RotationRow[] {
     }
   >();
 
-  match.sets.forEach((set) => {
+  sets.forEach((set) => {
     set.events.forEach((event) => {
       const setterAt = event.lineup[side].setterAt ?? 0;
       const key = `ローテ${setterAt || "-"}`;
@@ -210,8 +217,9 @@ function buildPlayerRows(plays: ParsedPlay[]): PlayerRow[] {
 function buildTeamAnalysis(
   match: ParsedMatch | undefined,
   side: TeamSide,
+  sets: ParsedSet[] | undefined = match?.sets,
 ): TeamAnalysis | undefined {
-  if (!match) {
+  if (!match || !sets) {
     return undefined;
   }
 
@@ -224,7 +232,7 @@ function buildTeamAnalysis(
   let breakAttempts = 0;
   let breakWins = 0;
 
-  match.sets.forEach((set) => {
+  sets.forEach((set) => {
     set.events.forEach((event) => {
       const eventTeamPlays = event.plays.filter((play) => play.team === teamCode);
       teamPlays.push(...eventTeamPlays);
@@ -265,8 +273,54 @@ function buildTeamAnalysis(
     breakAttempts,
     breakWins,
     skillSummary: buildSkillSummary(teamPlays),
-    rotations: buildRotationRows(match, side),
+    rotations: buildRotationRows(sets, side),
     players: buildPlayerRows(teamPlays),
+  };
+}
+
+function getSetWinningSide(set: ParsedSet): TeamSide | undefined {
+  if (set.score.home > set.score.away) {
+    return "home";
+  }
+  if (set.score.away > set.score.home) {
+    return "away";
+  }
+  return undefined;
+}
+
+function formatSetLabels(sets: ParsedSet[]): string {
+  return sets.map((set) => `${set.setIndex}S`).join(", ");
+}
+
+function buildSetOutcomeComparison(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+): SetOutcomeComparison | undefined {
+  if (!match) {
+    return undefined;
+  }
+
+  const wonSets = match.sets.filter((set) => getSetWinningSide(set) === side);
+  const lostSets = match.sets.filter((set) => {
+    const winningSide = getSetWinningSide(set);
+    return winningSide !== undefined && winningSide !== side;
+  });
+
+  if (wonSets.length === 0 || lostSets.length === 0) {
+    return undefined;
+  }
+
+  const won = buildTeamAnalysis(match, side, wonSets);
+  const lost = buildTeamAnalysis(match, side, lostSets);
+  if (!won || !lost) {
+    return undefined;
+  }
+
+  return {
+    won,
+    lost,
+    wonSetLabels: formatSetLabels(wonSets),
+    lostSetLabels: formatSetLabels(lostSets),
   };
 }
 
@@ -304,6 +358,39 @@ function buildScoreTimeline(match: ParsedMatch | undefined) {
   }));
 }
 
+function getSkillSummaryRow(summary: SkillSummaryRow[], skill: string): SkillSummaryRow {
+  return (
+    summary.find((row) => row.skill === skill) ?? {
+      skill,
+      count: 0,
+      gradeCounts: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
+    }
+  );
+}
+
+function getRotationRow(rows: RotationRow[], rotationLabel: string): RotationRow {
+  return (
+    rows.find((row) => row.rotationLabel === rotationLabel) ?? {
+      rotationLabel,
+      attempts: 0,
+      wins: 0,
+      sideoutAttempts: 0,
+      sideoutWins: 0,
+      breakAttempts: 0,
+      breakWins: 0,
+    }
+  );
+}
+
+function formatSignedRateDiff(leftWins: number, leftAttempts: number, rightWins: number, rightAttempts: number) {
+  if (leftAttempts === 0 || rightAttempts === 0) {
+    return "-";
+  }
+
+  const diff = (leftWins / leftAttempts - rightWins / rightAttempts) * 100;
+  return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`;
+}
+
 export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const homeAnalysis = buildTeamAnalysis(match, "home");
   const awayAnalysis = buildTeamAnalysis(match, "away");
@@ -312,7 +399,24 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
 
   const activeAnalysis =
     activeSide === "home" ? homeAnalysis ?? awayAnalysis : awayAnalysis ?? homeAnalysis;
+  const setOutcomeComparison = buildSetOutcomeComparison(match, activeAnalysis?.side ?? activeSide);
   const gradeOrder = ["A", "B", "C", "D", "E", "F"];
+  const comparisonSkills = setOutcomeComparison
+    ? [
+        ...new Set([
+          ...setOutcomeComparison.won.skillSummary.map((row) => row.skill),
+          ...setOutcomeComparison.lost.skillSummary.map((row) => row.skill),
+        ]),
+      ].sort((left, right) => getSkillLabel(left).localeCompare(getSkillLabel(right), "ja"))
+    : [];
+  const comparisonRotations = setOutcomeComparison
+    ? [
+        ...new Set([
+          ...setOutcomeComparison.won.rotations.map((row) => row.rotationLabel),
+          ...setOutcomeComparison.lost.rotations.map((row) => row.rotationLabel),
+        ]),
+      ].sort((left, right) => left.localeCompare(right, "ja"))
+    : [];
 
   return (
     <section className="panel analysis-panel">
@@ -367,6 +471,131 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 <strong>{activeAnalysis.rallyCount}</strong>
               </div>
             </div>
+
+            {setOutcomeComparison ? (
+              <div className="analysis-block analysis-section-block">
+                <h3>勝ちセット / 負けセット比較</h3>
+                <p className="muted">
+                  勝ちセット: {setOutcomeComparison.wonSetLabels} / 負けセット:{" "}
+                  {setOutcomeComparison.lostSetLabels}
+                </p>
+
+                <div className="comparison-stack">
+                  <div>
+                    <h4>スキル内訳</h4>
+                    <div className="score-table-wrap">
+                      <table className="score-table comparison-table">
+                        <thead>
+                          <tr>
+                            <th>スキル</th>
+                            <th>勝ちセット</th>
+                            <th>負けセット</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {comparisonSkills.map((skill) => {
+                            const won = getSkillSummaryRow(
+                              setOutcomeComparison.won.skillSummary,
+                              skill,
+                            );
+                            const lost = getSkillSummaryRow(
+                              setOutcomeComparison.lost.skillSummary,
+                              skill,
+                            );
+
+                            return (
+                              <tr key={skill}>
+                                <td data-label="スキル">{getSkillLabel(skill)}</td>
+                                <td data-label="勝ちセット">
+                                  <span className="mono">{won.count}</span>
+                                  <span className="comparison-grade-row">
+                                    {gradeOrder.map((grade) => (
+                                      <span
+                                        className={`tag skill-grade-tag skill-grade-tag-${grade}`}
+                                        key={grade}
+                                      >
+                                        {grade} {won.gradeCounts[grade] ?? 0}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </td>
+                                <td data-label="負けセット">
+                                  <span className="mono">{lost.count}</span>
+                                  <span className="comparison-grade-row">
+                                    {gradeOrder.map((grade) => (
+                                      <span
+                                        className={`tag skill-grade-tag skill-grade-tag-${grade}`}
+                                        key={grade}
+                                      >
+                                        {grade} {lost.gradeCounts[grade] ?? 0}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4>ローテーション別得点率</h4>
+                    <div className="score-table-wrap">
+                      <table className="score-table comparison-table rotation-rate-table">
+                        <thead>
+                          <tr>
+                            <th>ローテーション</th>
+                            <th>勝ちセット</th>
+                            <th>負けセット</th>
+                            <th>差分</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {comparisonRotations.map((rotationLabel) => {
+                            const won = getRotationRow(
+                              setOutcomeComparison.won.rotations,
+                              rotationLabel,
+                            );
+                            const lost = getRotationRow(
+                              setOutcomeComparison.lost.rotations,
+                              rotationLabel,
+                            );
+
+                            return (
+                              <tr key={rotationLabel}>
+                                <td data-label="ローテーション">{rotationLabel}</td>
+                                <td data-label="勝ちセット">
+                                  {formatRate(won.wins, won.attempts)}
+                                  <span className="muted comparison-subvalue">
+                                    {won.wins}/{won.attempts}
+                                  </span>
+                                </td>
+                                <td data-label="負けセット">
+                                  {formatRate(lost.wins, lost.attempts)}
+                                  <span className="muted comparison-subvalue">
+                                    {lost.wins}/{lost.attempts}
+                                  </span>
+                                </td>
+                                <td data-label="差分">
+                                  {formatSignedRateDiff(
+                                    won.wins,
+                                    won.attempts,
+                                    lost.wins,
+                                    lost.attempts,
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="analysis-block analysis-section-block">
               <h3>スコア推移</h3>
