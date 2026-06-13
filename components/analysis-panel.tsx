@@ -407,15 +407,6 @@ function formatSignedRateDiff(leftWins: number, leftAttempts: number, rightWins:
   return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`;
 }
 
-function formatSignedPercentDiff(left: number | undefined, right: number | undefined) {
-  if (left === undefined || right === undefined) {
-    return "-";
-  }
-
-  const diff = left - right;
-  return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`;
-}
-
 export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const homeAnalysis = buildTeamAnalysis(match, "home");
   const awayAnalysis = buildTeamAnalysis(match, "away");
@@ -442,13 +433,6 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
         ]),
       ].sort((left, right) => left.localeCompare(right, "ja"))
     : [];
-  const wonComparisonPlayCount = setOutcomeComparison
-    ? setOutcomeComparison.won.skillSummary.reduce((sum, row) => sum + row.count, 0)
-    : 0;
-  const lostComparisonPlayCount = setOutcomeComparison
-    ? setOutcomeComparison.lost.skillSummary.reduce((sum, row) => sum + row.count, 0)
-    : 0;
-
   return (
     <section className="panel analysis-panel">
       <div className="panel-inner stack">
@@ -513,8 +497,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
 
                 <div className="comparison-stack">
                   <div>
-                    <h4>スキル内訳</h4>
-                    <div className="comparison-chart" aria-label="勝ちセットと負けセットのスキル構成比">
+                    <h4>スキル別評価分布</h4>
+                    <div className="comparison-chart" aria-label="勝ちセットと負けセットのスキル別評価分布">
                       {comparisonSkills.map((skill) => {
                         const won = getSkillSummaryRow(
                           setOutcomeComparison.won.skillSummary,
@@ -524,49 +508,77 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                           setOutcomeComparison.lost.skillSummary,
                           skill,
                         );
-                        const wonPercent =
-                          wonComparisonPlayCount > 0
-                            ? (won.count / wonComparisonPlayCount) * 100
-                            : undefined;
-                        const lostPercent =
-                          lostComparisonPlayCount > 0
-                            ? (lost.count / lostComparisonPlayCount) * 100
-                            : undefined;
 
                         return (
                           <div className="comparison-chart-row" key={skill}>
                             <div className="comparison-chart-label">
                               <strong>{getSkillLabel(skill)}</strong>
                               <span className="muted">
-                                差分 {formatSignedPercentDiff(wonPercent, lostPercent)}
+                                勝ち {won.count} / 負け {lost.count}
                               </span>
                             </div>
                             <div className="comparison-bars">
                               <div className="comparison-bar-line">
                                 <span className="comparison-bar-name">勝ち</span>
-                                <div className="comparison-bar-track">
-                                  <div
-                                    className="comparison-bar-fill comparison-bar-fill-won"
-                                    style={{ width: `${wonPercent ?? 0}%` }}
-                                  />
+                                <div className="comparison-bar-track comparison-grade-track">
+                                  {gradeOrder.map((grade) => {
+                                    const count = won.gradeCounts[grade] ?? 0;
+                                    const percent =
+                                      won.count > 0 ? (count / won.count) * 100 : 0;
+                                    return (
+                                      <div
+                                        className={`comparison-grade-segment skill-bar-grade-${grade}`}
+                                        key={grade}
+                                        style={{ width: `${percent}%` }}
+                                        title={`${grade}: ${count}`}
+                                      />
+                                    );
+                                  })}
                                 </div>
                                 <span className="mono comparison-bar-value">
-                                  {formatPercent(wonPercent)}
+                                  {won.count}
                                 </span>
-                                <span className="muted comparison-count">{won.count}</span>
+                                <span className="comparison-grade-values">
+                                  {gradeOrder.map((grade) => (
+                                    <span
+                                      className={`tag skill-grade-tag skill-grade-tag-${grade}`}
+                                      key={grade}
+                                    >
+                                      {grade} {won.gradeCounts[grade] ?? 0}
+                                    </span>
+                                  ))}
+                                </span>
                               </div>
                               <div className="comparison-bar-line">
                                 <span className="comparison-bar-name">負け</span>
-                                <div className="comparison-bar-track">
-                                  <div
-                                    className="comparison-bar-fill comparison-bar-fill-lost"
-                                    style={{ width: `${lostPercent ?? 0}%` }}
-                                  />
+                                <div className="comparison-bar-track comparison-grade-track">
+                                  {gradeOrder.map((grade) => {
+                                    const count = lost.gradeCounts[grade] ?? 0;
+                                    const percent =
+                                      lost.count > 0 ? (count / lost.count) * 100 : 0;
+                                    return (
+                                      <div
+                                        className={`comparison-grade-segment skill-bar-grade-${grade}`}
+                                        key={grade}
+                                        style={{ width: `${percent}%` }}
+                                        title={`${grade}: ${count}`}
+                                      />
+                                    );
+                                  })}
                                 </div>
                                 <span className="mono comparison-bar-value">
-                                  {formatPercent(lostPercent)}
+                                  {lost.count}
                                 </span>
-                                <span className="muted comparison-count">{lost.count}</span>
+                                <span className="comparison-grade-values">
+                                  {gradeOrder.map((grade) => (
+                                    <span
+                                      className={`tag skill-grade-tag skill-grade-tag-${grade}`}
+                                      key={grade}
+                                    >
+                                      {grade} {lost.gradeCounts[grade] ?? 0}
+                                    </span>
+                                  ))}
+                                </span>
                               </div>
                             </div>
                           </div>

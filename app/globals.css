@@ -1136,7 +1136,7 @@ iframe {
 
 .comparison-bar-line {
   display: grid;
-  grid-template-columns: 2.5rem minmax(5rem, 1fr) 4.2rem 3.2rem;
+  grid-template-columns: 2.5rem minmax(5rem, 1fr) 4.2rem minmax(3.2rem, 0.7fr);
   gap: 8px;
   align-items: center;
   min-width: 0;
@@ -1165,6 +1165,22 @@ iframe {
 
 .comparison-bar-fill-lost {
   background: #d45a3d;
+}
+
+.comparison-grade-track {
+  display: flex;
+}
+
+.comparison-grade-segment {
+  height: 100%;
+}
+
+.comparison-grade-values {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
 }
 
 .comparison-bar-value,
@@ -1597,12 +1613,29 @@ iframe {
   }
 
   .comparison-bar-line {
-    grid-template-columns: 2.5rem minmax(0, 1fr) 3.8rem;
+    grid-template-columns: 2.5rem minmax(0, 1fr) 3.5rem;
+    gap: 6px;
+  }
+
+  .comparison-grade-values {
+    grid-column: 2 / 4;
+    justify-content: flex-start;
+  }
+
+  .comparison-bar-line > .comparison-count {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    max-width: 100%;
   }
 
   .comparison-count {
-    grid-column: 3;
     font-size: 0.75rem;
+  }
+
+  .comparison-metric-heading {
+    display: grid;
+    gap: 2px;
   }
 
   .list-item-header,
