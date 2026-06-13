@@ -22,11 +22,12 @@ declare global {
             onReady?: () => void;
           };
         },
-      ) => {
+        ) => {
         destroy: () => void;
         cueVideoById: (videoId: string) => void;
         seekTo: (seconds: number, allowSeekAhead: boolean) => void;
         playVideo: () => void;
+        pauseVideo: () => void;
         getCurrentTime: () => number;
       };
     };
@@ -39,6 +40,7 @@ type VideoPlayerProps = {
   settings: VideoSyncSettings;
   selectedPlay?: ParsedPlay;
   activeSetIndex?: number;
+  pauseToken?: number;
   onPlayerTimeChange: (seconds: number | undefined) => void;
 };
 
@@ -49,6 +51,7 @@ export function VideoPlayer({
   settings,
   selectedPlay,
   activeSetIndex,
+  pauseToken,
   onPlayerTimeChange,
 }: VideoPlayerProps) {
   const playerRef = useRef<{
@@ -56,6 +59,7 @@ export function VideoPlayer({
     cueVideoById: (videoId: string) => void;
     seekTo: (seconds: number, allowSeekAhead: boolean) => void;
     playVideo: () => void;
+    pauseVideo: () => void;
     getCurrentTime: () => number;
   } | null>(null);
   const pollingRef = useRef<number | null>(null);
@@ -159,6 +163,18 @@ export function VideoPlayer({
       onPlayerTimeChange(undefined);
     }
   }, [onPlayerTimeChange, selectedPlay, selectedSeek, videoId]);
+
+  useEffect(() => {
+    if (!playerRef.current || typeof pauseToken !== "number") {
+      return;
+    }
+
+    try {
+      playerRef.current.pauseVideo();
+    } catch {
+      onPlayerTimeChange(undefined);
+    }
+  }, [onPlayerTimeChange, pauseToken]);
 
   return (
     <section className="panel">

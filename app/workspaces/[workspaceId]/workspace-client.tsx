@@ -1,7 +1,8 @@
 "use client";
 
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analysis-panel";
+import { ClipBuilder } from "@/components/clip-builder";
 import { Filters } from "@/components/filters";
 import { PlayList } from "@/components/play-list";
 import { RotationPanel } from "@/components/rotation-panel";
@@ -33,7 +34,7 @@ type FilterState = {
   rotation: string;
 };
 
-type DashboardTab = "workspace" | "review" | "analysis";
+type DashboardTab = "workspace" | "review" | "clips" | "analysis";
 
 type WorkspaceClientProps = {
   allowEditing?: boolean;
@@ -173,8 +174,10 @@ export function WorkspaceClient({
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [selectedPlay, setSelectedPlay] = useState<ParsedPlay | undefined>();
+  const [selectedClipPlay, setSelectedClipPlay] = useState<ParsedPlay | undefined>();
   const [selectedReviewSetIndex, setSelectedReviewSetIndex] = useState<number | undefined>();
   const [currentPlayerSeconds, setCurrentPlayerSeconds] = useState<number>();
+  const [clipPauseToken, setClipPauseToken] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState<string>();
   const [hasHydratedWorkspace, setHasHydratedWorkspace] = useState(false);
   const [workspaceName, setWorkspaceName] = useState(
@@ -386,6 +389,7 @@ export function WorkspaceClient({
         setCollection(record.parsedCollection);
         setSelectedMatchIndex(0);
         setSelectedPlay(undefined);
+        setSelectedClipPlay(undefined);
         setWorkspaceName(record.fileName.replace(/\.[^.]+$/, ""));
         setActiveTab("review");
         setFilters({
@@ -420,6 +424,7 @@ export function WorkspaceClient({
   function handleMatchChange(index: number) {
     setSelectedMatchIndex(index);
     setSelectedPlay(undefined);
+    setSelectedClipPlay(undefined);
     setSelectedReviewSetIndex(undefined);
     setFilters({
       team: "all",
@@ -459,6 +464,7 @@ export function WorkspaceClient({
         rotation: "all",
       });
       setSelectedPlay(undefined);
+      setSelectedClipPlay(undefined);
       setLastSavedAt(undefined);
       setRemoteWorkspaceId(undefined);
       setRemoteSavedAt(undefined);
@@ -561,6 +567,7 @@ export function WorkspaceClient({
         setSettings(workspace.settings);
         setSelectedMatchIndex(workspace.selectedMatchIndex);
         setSelectedPlay(undefined);
+        setSelectedClipPlay(undefined);
         setSelectedReviewSetIndex(undefined);
         setActiveTab("workspace");
         setFilters({
@@ -638,6 +645,10 @@ export function WorkspaceClient({
     }
   }
 
+  const handleClipPauseRequest = useCallback(() => {
+    setClipPauseToken((current) => current + 1);
+  }, []);
+
   const setupPanelProps = {
     settings,
     matchCount: collection.matches.length,
@@ -712,6 +723,7 @@ export function WorkspaceClient({
               {[
                 ["workspace", "概要"],
                 ["review", "レビュー"],
+                ["clips", "クリップ"],
                 ["analysis", "分析"],
               ].map(([value, label]) => (
                 <button
@@ -865,6 +877,33 @@ export function WorkspaceClient({
                     selectedSetIndex={selectedReviewSetIndex}
                     onSelectedSetIndexChange={handleReviewSetChange}
                     onSelectPlay={setSelectedPlay}
+                  />
+                </div>
+              </section>
+            </TabErrorBoundary>
+          ) : null}
+
+          {activeTab === "clips" ? (
+            <TabErrorBoundary tabLabel="クリップ">
+              <section className="dashboard-content-stack">
+                <div className="review-layout">
+                  <div className="review-primary">
+                    <VideoPlayer
+                      match={match}
+                      settings={settings}
+                      selectedPlay={selectedClipPlay}
+                      pauseToken={clipPauseToken}
+                      onPlayerTimeChange={setCurrentPlayerSeconds}
+                    />
+                  </div>
+
+                  <ClipBuilder
+                    match={match}
+                    settings={settings}
+                    currentPlayerSeconds={currentPlayerSeconds}
+                    selectedPlayId={selectedClipPlay?.id}
+                    onSelectPlay={setSelectedClipPlay}
+                    onPauseRequest={handleClipPauseRequest}
                   />
                 </div>
               </section>
