@@ -58,6 +58,7 @@ export function PlayList({
   onSelectPlay,
 }: PlayListProps) {
   const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
+  const [showPlayCodes, setShowPlayCodes] = useState(false);
 
   const availableSetIndices = match?.sets.map((set) => set.setIndex) ?? [];
   const effectiveSetIndex =
@@ -97,8 +98,16 @@ export function PlayList({
   return (
     <section className="panel">
       <div className="panel-inner stack">
-        <div>
+        <div className="play-list-header">
           <h2>プレイ一覧</h2>
+          <button
+            className={`button${showPlayCodes ? "" : " secondary"}`}
+            type="button"
+            aria-pressed={showPlayCodes}
+            onClick={() => setShowPlayCodes((current) => !current)}
+          >
+            {showPlayCodes ? "打ち込みコードを隠す" : "打ち込みコードを表示"}
+          </button>
         </div>
 
         {availableSetIndices.length > 1 ? (
@@ -160,8 +169,10 @@ export function PlayList({
                   </div>
                   <div className="tag-row play-list-tags">
                     <button
-                      className="tag play-list-jump"
+                      className="tag play-list-jump play-list-play-button"
                       type="button"
+                      aria-label="このプレイに移動"
+                      title="このプレイに移動"
                       onClick={() => {
                         if (!firstPlay) {
                           return;
@@ -173,7 +184,7 @@ export function PlayList({
                         });
                       }}
                     >
-                      このプレイに移動
+                      ▶
                     </button>
                     <button
                       className="tag play-list-jump"
@@ -207,12 +218,11 @@ export function PlayList({
                             </small>
                           </div>
                           <div className="tag-row play-list-tags">
-                            <span className="tag">
-                              チーム: {getTeamLabel(item.play.team, match)}
-                            </span>
                             <button
-                              className="tag play-list-jump"
+                              className="tag play-list-jump play-list-play-button"
                               type="button"
+                              aria-label="このプレイに移動"
+                              title="このプレイに移動"
                               onClick={() =>
                                 onSelectPlay({
                                   ...item.play,
@@ -220,8 +230,14 @@ export function PlayList({
                                 })
                               }
                             >
-                              このプレイに移動
+                              ▶
                             </button>
+                            <span className="tag">
+                              {getTeamLabel(item.play.team, match)}
+                            </span>
+                            {showPlayCodes ? (
+                              <span className="tag mono">{item.play.code || "なし"}</span>
+                            ) : null}
                           </div>
                         </div>
                       ))}

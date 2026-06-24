@@ -903,6 +903,17 @@ iframe {
   gap: 6px;
 }
 
+.play-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.play-list-header h2 {
+  margin-bottom: 0;
+}
+
 .play-list-meta {
   display: flex;
   flex-wrap: wrap;
@@ -941,6 +952,16 @@ iframe {
 .play-list-jump {
   border: 0;
   cursor: pointer;
+}
+
+.play-list-play-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .play-rally-detail-list {
