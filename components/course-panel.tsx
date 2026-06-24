@@ -44,13 +44,15 @@ const ZONE_GRID: Record<number, { column: number; row: number }> = {
   4: { column: 0, row: 0 },
   3: { column: 1, row: 0 },
   2: { column: 2, row: 0 },
-  5: { column: 0, row: 1 },
-  6: { column: 1, row: 1 },
-  1: { column: 2, row: 1 },
-  7: { column: 0, row: 2 },
-  8: { column: 1, row: 2 },
-  9: { column: 2, row: 2 },
+  7: { column: 0, row: 1 },
+  8: { column: 1, row: 1 },
+  9: { column: 2, row: 1 },
+  5: { column: 0, row: 2 },
+  6: { column: 1, row: 2 },
+  1: { column: 2, row: 2 },
 };
+
+const SERVE_START_ZONES = [5, 7, 6, 9, 1];
 
 function getDefaultTeamCode(match: ParsedMatch | undefined, ownTeamName?: string) {
   if (ownTeamName && match?.teams.away.name === ownTeamName) {
@@ -84,21 +86,44 @@ function getZonePoint(zone: number, courtSide: "near" | "far"): Point | undefine
   };
 }
 
-function getSubZoneOffset(subZone?: string): Point {
-  if (!subZone) {
-    return { x: 0, y: 0 };
+function getEndZonePoint(zone: number, subZone?: string): Point | undefined {
+  const grid = ZONE_GRID[zone];
+  if (!grid) {
+    return undefined;
   }
 
-  const seed = [...subZone].reduce((sum, character) => sum + character.charCodeAt(0), 0);
-  const offsets = [
-    { x: -22, y: -18 },
-    { x: 22, y: -18 },
-    { x: -22, y: 18 },
-    { x: 22, y: 18 },
-    { x: 0, y: 0 },
-  ];
+  const cellWidth = (COURT_RIGHT - COURT_LEFT) / 3;
+  const cellHeight = HALF_COURT_HEIGHT / 3;
+  const cellLeft = COURT_LEFT + cellWidth * grid.column;
+  const cellTop = COURT_TOP + cellHeight * grid.row;
+  const normalizedSubZone = subZone?.trim().toUpperCase();
+  const subZonePosition: Record<string, Point> = {
+    C: { x: 0, y: 0 },
+    B: { x: 1, y: 0 },
+    D: { x: 0, y: 1 },
+    A: { x: 1, y: 1 },
+  };
+  const position = normalizedSubZone
+    ? subZonePosition[normalizedSubZone]
+    : undefined;
 
-  return offsets[seed % offsets.length];
+  return {
+    x: cellLeft + cellWidth * (position?.x ?? 0.5),
+    y: cellTop + cellHeight * (position?.y ?? 0.5),
+  };
+}
+
+function getServeStartPoint(zone: number): Point | undefined {
+  const positionIndex = SERVE_START_ZONES.indexOf(zone);
+  if (positionIndex === -1) {
+    return undefined;
+  }
+
+  const courtWidth = COURT_RIGHT - COURT_LEFT;
+  return {
+    x: COURT_LEFT + courtWidth * ((positionIndex + 0.5) / SERVE_START_ZONES.length),
+    y: COURT_BOTTOM,
+  };
 }
 
 function getPlayerLabel(play: ParsedPlay) {
@@ -156,21 +181,20 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
         return undefined;
       }
 
-      const start = getZonePoint(play.startZone, "near");
-      const endBase = getZonePoint(play.endZone, "far");
-      if (!start || !endBase) {
+      const start =
+        skill === "S"
+          ? getServeStartPoint(play.startZone)
+          : getZonePoint(play.startZone, "near");
+      const end = getEndZonePoint(play.endZone, play.endSubZone);
+      if (!start || !end) {
         return undefined;
       }
 
-      const endOffset = getSubZoneOffset(play.endSubZone);
       return {
         play,
         player: getPlayerLabel(play),
         start,
-        end: {
-          x: endBase.x + endOffset.x,
-          y: endBase.y + endOffset.y,
-        },
+        end,
       };
     })
     .filter((entry): entry is CoursePlay => Boolean(entry));
