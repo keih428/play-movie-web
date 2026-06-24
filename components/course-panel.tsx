@@ -99,9 +99,9 @@ function getEndZonePoint(zone: number, subZone?: string): Point | undefined {
   const normalizedSubZone = subZone?.trim().toUpperCase();
   const subZonePosition: Record<string, Point> = {
     A: { x: 0.25, y: 0.25 },
-    D: { x: 0.75, y: 0.25 },
+    D: { x: 0.75, y: 0.75 },
     B: { x: 0.25, y: 0.75 },
-    C: { x: 0.75, y: 0.75 },
+    C: { x: 0.75, y: 0.25 },
   };
   const position = normalizedSubZone
     ? subZonePosition[normalizedSubZone]
