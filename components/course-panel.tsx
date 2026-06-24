@@ -95,13 +95,13 @@ function getEndZonePoint(zone: number, subZone?: string): Point | undefined {
   const cellWidth = (COURT_RIGHT - COURT_LEFT) / 3;
   const cellHeight = HALF_COURT_HEIGHT / 3;
   const cellLeft = COURT_LEFT + cellWidth * grid.column;
-  const cellTop = COURT_TOP + cellHeight * grid.row;
+  const cellTop = NET_Y - cellHeight * (grid.row + 1);
   const normalizedSubZone = subZone?.trim().toUpperCase();
   const subZonePosition: Record<string, Point> = {
-    C: { x: 0, y: 0 },
-    B: { x: 1, y: 0 },
-    D: { x: 0, y: 1 },
-    A: { x: 1, y: 1 },
+    C: { x: 0.25, y: 0.75 },
+    B: { x: 0.75, y: 0.75 },
+    D: { x: 0.25, y: 0.25 },
+    A: { x: 0.75, y: 0.25 },
   };
   const position = normalizedSubZone
     ? subZonePosition[normalizedSubZone]
@@ -124,6 +124,56 @@ function getServeStartPoint(zone: number): Point | undefined {
     x: COURT_LEFT + courtWidth * ((positionIndex + 0.5) / SERVE_START_ZONES.length),
     y: COURT_BOTTOM,
   };
+}
+
+function getAttackStartPoint(play: ParsedPlay): Point | undefined {
+  const hitType = play.hitType?.trim().toUpperCase();
+  const courtWidth = COURT_RIGHT - COURT_LEFT;
+  const backAttackPosition = hitType?.replace(/^P/, "");
+
+  if (
+    backAttackPosition === "7" ||
+    backAttackPosition === "8" ||
+    backAttackPosition === "9"
+  ) {
+    const column = Number(backAttackPosition) - 7;
+    return {
+      x: COURT_LEFT + courtWidth * ((column + 0.5) / 3),
+      y: NET_Y + 120,
+    };
+  }
+
+  if (hitType === "P1" || hitType === "PV") {
+    return {
+      x: COURT_LEFT + courtWidth / 18,
+      y: NET_Y,
+    };
+  }
+
+  if (hitType === "P5" || hitType === "PZ") {
+    return {
+      x: COURT_RIGHT - courtWidth / 18,
+      y: NET_Y,
+    };
+  }
+
+  if (typeof play.startZone !== "number") {
+    return {
+      x: COURT_LEFT + courtWidth / 2,
+      y: NET_Y,
+    };
+  }
+
+  const zonePoint = getZonePoint(play.startZone, "near");
+  return zonePoint
+    ? {
+        x: zonePoint.x,
+        y: NET_Y,
+      }
+    : {
+        x: COURT_LEFT + courtWidth / 2,
+        y: NET_Y,
+      };
 }
 
 function getPlayerLabel(play: ParsedPlay) {
@@ -177,14 +227,16 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
 
   const coursePlays = matchingPlays
     .map<CoursePlay | undefined>((play) => {
-      if (typeof play.startZone !== "number" || typeof play.endZone !== "number") {
+      if (typeof play.endZone !== "number") {
         return undefined;
       }
 
       const start =
         skill === "S"
-          ? getServeStartPoint(play.startZone)
-          : getZonePoint(play.startZone, "near");
+          ? typeof play.startZone === "number"
+            ? getServeStartPoint(play.startZone)
+            : undefined
+          : getAttackStartPoint(play);
       const end = getEndZonePoint(play.endZone, play.endSubZone);
       if (!start || !end) {
         return undefined;
