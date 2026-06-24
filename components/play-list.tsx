@@ -218,12 +218,6 @@ export function PlayList({
                             </small>
                           </div>
                           <div className="tag-row play-list-tags">
-                            <span className="tag">
-                              {getTeamLabel(item.play.team, match)}
-                            </span>
-                            {showPlayCodes ? (
-                              <span className="tag mono">{item.play.code || "なし"}</span>
-                            ) : null}
                             <button
                               className="tag play-list-jump play-list-play-button"
                               type="button"
@@ -238,6 +232,12 @@ export function PlayList({
                             >
                               ▶
                             </button>
+                            <span className="tag">
+                              {getTeamLabel(item.play.team, match)}
+                            </span>
+                            {showPlayCodes ? (
+                              <span className="tag mono">{item.play.code || "なし"}</span>
+                            ) : null}
                           </div>
                         </div>
                       ))}
