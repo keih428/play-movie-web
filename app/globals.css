@@ -903,6 +903,17 @@ iframe {
   gap: 6px;
 }
 
+.play-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.play-list-header h2 {
+  margin-bottom: 0;
+}
+
 .play-list-meta {
   display: flex;
   flex-wrap: wrap;

@@ -58,6 +58,7 @@ export function PlayList({
   onSelectPlay,
 }: PlayListProps) {
   const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
+  const [showPlayCodes, setShowPlayCodes] = useState(false);
 
   const availableSetIndices = match?.sets.map((set) => set.setIndex) ?? [];
   const effectiveSetIndex =
@@ -97,8 +98,16 @@ export function PlayList({
   return (
     <section className="panel">
       <div className="panel-inner stack">
-        <div>
+        <div className="play-list-header">
           <h2>プレイ一覧</h2>
+          <button
+            className={`button${showPlayCodes ? "" : " secondary"}`}
+            type="button"
+            aria-pressed={showPlayCodes}
+            onClick={() => setShowPlayCodes((current) => !current)}
+          >
+            {showPlayCodes ? "打ち込みコードを隠す" : "打ち込みコードを表示"}
+          </button>
         </div>
 
         {availableSetIndices.length > 1 ? (
@@ -210,6 +219,11 @@ export function PlayList({
                             <span className="tag">
                               チーム: {getTeamLabel(item.play.team, match)}
                             </span>
+                            {showPlayCodes ? (
+                              <span className="tag mono">
+                                打ち込みコード: {item.play.code || "なし"}
+                              </span>
+                            ) : null}
                             <button
                               className="tag play-list-jump"
                               type="button"

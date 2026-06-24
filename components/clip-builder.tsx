@@ -75,7 +75,7 @@ export function ClipBuilder({
   const [teamFilter, setTeamFilter] = useState("all");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [skillFilter, setSkillFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState<GradeFilter>("A");
+  const [gradeFilter, setGradeFilter] = useState<GradeFilter>("all");
   const [concededOnly, setConcededOnly] = useState(false);
   const [concededMinPlayCount, setConcededMinPlayCount] = useState(1);
   const [clipSeconds, setClipSeconds] = useState(8);
@@ -419,10 +419,10 @@ export function ClipBuilder({
               disabled={concededOnly}
               onChange={(event) => setGradeFilter(event.target.value as GradeFilter)}
             >
+              <option value="all">すべての評価</option>
               <option value="A">A評価</option>
               <option value="D_OR_LOWER">D評価以下</option>
               <option value="F">Fのみ</option>
-              <option value="all">すべての評価</option>
             </select>
           </div>
 
