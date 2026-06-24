@@ -954,6 +954,16 @@ iframe {
   cursor: pointer;
 }
 
+.play-list-play-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .play-rally-detail-list {
   display: grid;
   gap: 8px;

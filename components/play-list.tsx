@@ -169,8 +169,10 @@ export function PlayList({
                   </div>
                   <div className="tag-row play-list-tags">
                     <button
-                      className="tag play-list-jump"
+                      className="tag play-list-jump play-list-play-button"
                       type="button"
+                      aria-label="このプレイに移動"
+                      title="このプレイに移動"
                       onClick={() => {
                         if (!firstPlay) {
                           return;
@@ -182,7 +184,7 @@ export function PlayList({
                         });
                       }}
                     >
-                      このプレイに移動
+                      ▶
                     </button>
                     <button
                       className="tag play-list-jump"
@@ -217,16 +219,16 @@ export function PlayList({
                           </div>
                           <div className="tag-row play-list-tags">
                             <span className="tag">
-                              チーム: {getTeamLabel(item.play.team, match)}
+                              {getTeamLabel(item.play.team, match)}
                             </span>
                             {showPlayCodes ? (
-                              <span className="tag mono">
-                                打ち込みコード: {item.play.code || "なし"}
-                              </span>
+                              <span className="tag mono">{item.play.code || "なし"}</span>
                             ) : null}
                             <button
-                              className="tag play-list-jump"
+                              className="tag play-list-jump play-list-play-button"
                               type="button"
+                              aria-label="このプレイに移動"
+                              title="このプレイに移動"
                               onClick={() =>
                                 onSelectPlay({
                                   ...item.play,
@@ -234,7 +236,7 @@ export function PlayList({
                                 })
                               }
                             >
-                              このプレイに移動
+                              ▶
                             </button>
                           </div>
                         </div>
