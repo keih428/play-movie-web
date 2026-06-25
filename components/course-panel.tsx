@@ -129,14 +129,13 @@ function getServeStartPoint(zone: number): Point | undefined {
 function getAttackStartPoint(play: ParsedPlay): Point | undefined {
   const hitType = play.hitType?.trim().toUpperCase();
   const courtWidth = COURT_RIGHT - COURT_LEFT;
-  const backAttackPosition = hitType?.replace(/^P/, "");
 
   if (
-    backAttackPosition === "7" ||
-    backAttackPosition === "8" ||
-    backAttackPosition === "9"
+    play.startZone === 7 ||
+    play.startZone === 8 ||
+    play.startZone === 9
   ) {
-    const column = Number(backAttackPosition) - 7;
+    const column = play.startZone - 7;
     return {
       x: COURT_LEFT + courtWidth * ((column + 0.5) / 3),
       y: NET_Y + 120,
@@ -178,6 +177,14 @@ function getAttackStartPoint(play: ParsedPlay): Point | undefined {
 
 function getPlayerLabel(play: ParsedPlay) {
   return play.player?.trim() || "不明な選手";
+}
+
+function isNumberedAttack(play: ParsedPlay) {
+  return play.skill === "A" && /P[1-9]/i.test(play.code ?? "");
+}
+
+function isAttackKill(play: ParsedPlay) {
+  return play.skill === "A" && play.effect === "#";
 }
 
 export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
@@ -405,6 +412,7 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                     x2={entry.end.x}
                     y2={entry.end.y}
                     stroke={color}
+                    strokeDasharray={isNumberedAttack(entry.play) ? "10 8" : undefined}
                     markerEnd={`url(#course-arrow-${playerIndex})`}
                   />
                   <circle
@@ -414,6 +422,22 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                     r="4"
                     fill={color}
                   />
+                  {isAttackKill(entry.play) ? (
+                    <g className="course-kill-mark" stroke={color}>
+                      <line
+                        x1={entry.end.x - 7}
+                        y1={entry.end.y - 7}
+                        x2={entry.end.x + 7}
+                        y2={entry.end.y + 7}
+                      />
+                      <line
+                        x1={entry.end.x + 7}
+                        y1={entry.end.y - 7}
+                        x2={entry.end.x - 7}
+                        y2={entry.end.y + 7}
+                      />
+                    </g>
+                  ) : null}
                 </g>
               );
             })}

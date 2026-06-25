@@ -453,6 +453,11 @@ iframe {
   opacity: 0.86;
 }
 
+.course-kill-mark {
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
 .course-empty {
   position: absolute;
   inset: 50% auto auto 50%;
