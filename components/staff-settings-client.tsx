@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildTeamApiPath,
   buildTeamDataLibraryPath,
@@ -27,6 +27,63 @@ type StaffSettingsClientProps = {
   teamName?: string;
   teamSlug?: string;
 };
+
+type OffsetSecondsInputProps = {
+  id: string;
+  value: number;
+  onChange: (value: number) => void;
+};
+
+function OffsetSecondsInput({
+  id,
+  value,
+  onChange,
+}: OffsetSecondsInputProps) {
+  const [draft, setDraft] = useState(String(value));
+  const isFocused = useRef(false);
+
+  useEffect(() => {
+    if (!isFocused.current) {
+      setDraft(String(value));
+    }
+  }, [value]);
+
+  function commitValue() {
+    isFocused.current = false;
+    const parsed = Number(draft);
+    if (draft.trim() === "" || !Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+
+    setDraft(String(parsed));
+    onChange(parsed);
+  }
+
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onFocus={() => {
+        isFocused.current = true;
+      }}
+      onChange={(event) => {
+        const nextValue = event.target.value;
+        if (/^-?\d*(?:\.\d*)?$/.test(nextValue)) {
+          setDraft(nextValue);
+        }
+      }}
+      onBlur={commitValue}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
 
 function flattenScoutFiles(
   nodes: ScoutFileNode[],
@@ -567,16 +624,13 @@ export function StaffSettingsClient({
                         <label htmlFor={`selected-set-offset-${entry.setIndex}`}>
                           オフセット秒
                         </label>
-                        <input
+                        <OffsetSecondsInput
                           id={`selected-set-offset-${entry.setIndex}`}
-                          type="number"
-                          step="any"
-                          inputMode="decimal"
                           value={entry.offsetSeconds}
-                          onChange={(event) =>
+                          onChange={(offsetSeconds) =>
                             updateSetVideo(entry.setIndex, (current) => ({
                               ...current,
-                              offsetSeconds: Number(event.target.value) || 0,
+                              offsetSeconds,
                             }))
                           }
                         />

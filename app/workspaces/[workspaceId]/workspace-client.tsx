@@ -3,6 +3,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analysis-panel";
 import { ClipBuilder } from "@/components/clip-builder";
+import { CoursePanel } from "@/components/course-panel";
 import { Filters } from "@/components/filters";
 import { PlayList } from "@/components/play-list";
 import { RotationPanel } from "@/components/rotation-panel";
@@ -34,7 +35,7 @@ type FilterState = {
   rotation: string;
 };
 
-type DashboardTab = "workspace" | "review" | "clips" | "analysis";
+type DashboardTab = "workspace" | "review" | "clips" | "analysis" | "courses";
 
 type WorkspaceClientProps = {
   allowEditing?: boolean;
@@ -725,6 +726,7 @@ export function WorkspaceClient({
                 ["review", "レビュー"],
                 ["clips", "クリップ"],
                 ["analysis", "分析"],
+                ["courses", "コース"],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -927,6 +929,14 @@ export function WorkspaceClient({
                     }
                   />
                 </div>
+              </section>
+            </TabErrorBoundary>
+          ) : null}
+
+          {activeTab === "courses" ? (
+            <TabErrorBoundary tabLabel="コース">
+              <section className="dashboard-content-stack">
+                <CoursePanel match={match} ownTeamName={teamName} />
               </section>
             </TabErrorBoundary>
           ) : null}

@@ -82,6 +82,7 @@ export function ClipBuilder({
   const [activeClipIndex, setActiveClipIndex] = useState<number>();
   const [activeClipReady, setActiveClipReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showPlayCodes, setShowPlayCodes] = useState(false);
 
   const options = useMemo(() => {
     const teams = new Set<string>();
@@ -339,6 +340,14 @@ export function ClipBuilder({
           </div>
           <div className="button-row">
             <button
+              className={`button${showPlayCodes ? "" : " secondary"}`}
+              type="button"
+              aria-pressed={showPlayCodes}
+              onClick={() => setShowPlayCodes((current) => !current)}
+            >
+              {showPlayCodes ? "コードを隠す" : "コードを表示"}
+            </button>
+            <button
               className="button"
               type="button"
               disabled={clips.length === 0}
@@ -503,6 +512,9 @@ export function ClipBuilder({
                   )}
                 </div>
                 <div className="tag-row play-list-tags">
+                  {showPlayCodes && !clip.concededTeamLabel ? (
+                    <span className="tag mono">{clip.play.code || "なし"}</span>
+                  ) : null}
                   <button
                     className="tag play-list-jump"
                     type="button"
