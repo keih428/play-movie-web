@@ -392,7 +392,7 @@ iframe {
 
 .course-filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -456,6 +456,11 @@ iframe {
 .course-kill-mark {
   stroke-width: 4;
   stroke-linecap: round;
+}
+
+.course-effective-serve-mark {
+  fill: none;
+  stroke-width: 4;
 }
 
 .course-empty {

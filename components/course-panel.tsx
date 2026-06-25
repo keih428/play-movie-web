@@ -10,6 +10,7 @@ type CoursePanelProps = {
 };
 
 type CourseSkill = "S" | "A";
+type ResultFilter = "all" | "positive" | "continue";
 
 type Point = {
   x: number;
@@ -187,16 +188,22 @@ function isAttackKill(play: ParsedPlay) {
   return play.skill === "A" && play.effect === "#";
 }
 
+function isEffectiveServe(play: ParsedPlay) {
+  return play.skill === "S" && ["#", "+", "!"].includes(play.effect ?? "");
+}
+
 export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
   const defaultTeamCode = getDefaultTeamCode(match, ownTeamName);
   const [teamCode, setTeamCode] = useState(defaultTeamCode);
   const [player, setPlayer] = useState("all");
   const [skill, setSkill] = useState<CourseSkill>("S");
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
 
   useEffect(() => {
     setTeamCode(defaultTeamCode);
     setPlayer("all");
     setSkill("S");
+    setResultFilter("all");
   }, [defaultTeamCode, match?.id]);
 
   const plays = useMemo(
@@ -229,7 +236,12 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
     (play) =>
       play.team === teamCode &&
       play.skill === skill &&
-      (player === "all" || getPlayerLabel(play) === player),
+      (player === "all" || getPlayerLabel(play) === player) &&
+      (resultFilter === "all" ||
+        (resultFilter === "positive" &&
+          (skill === "A" ? isAttackKill(play) : isEffectiveServe(play))) ||
+        (resultFilter === "continue" &&
+          (skill === "A" ? !isAttackKill(play) : !isEffectiveServe(play)))),
   );
 
   const coursePlays = matchingPlays
@@ -318,10 +330,28 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
               onChange={(event) => {
                 setSkill(event.target.value as CourseSkill);
                 setPlayer("all");
+                setResultFilter("all");
               }}
             >
               <option value="S">サーブ</option>
               <option value="A">アタック</option>
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="course-result-filter">結果</label>
+            <select
+              id="course-result-filter"
+              value={resultFilter}
+              onChange={(event) =>
+                setResultFilter(event.target.value as ResultFilter)
+              }
+            >
+              <option value="all">すべて</option>
+              <option value="positive">
+                {skill === "A" ? "得点" : "効果あり"}
+              </option>
+              <option value="continue">継続</option>
             </select>
           </div>
         </div>
@@ -331,6 +361,15 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
           <span className="muted">
             {selectedTeamLabel} / {player === "all" ? "すべての選手" : player} /{" "}
             {skill === "S" ? "サーブ" : "アタック"}
+            {` / ${
+              resultFilter === "positive"
+                ? skill === "A"
+                  ? "得点"
+                  : "効果あり"
+                : resultFilter === "continue"
+                  ? "継続"
+                  : "すべて"
+            }`}
           </span>
           {omittedCount > 0 ? (
             <span className="muted">座標なし {omittedCount}本</span>
@@ -437,6 +476,15 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                         y2={entry.end.y + 7}
                       />
                     </g>
+                  ) : null}
+                  {isEffectiveServe(entry.play) ? (
+                    <circle
+                      className="course-effective-serve-mark"
+                      cx={entry.end.x}
+                      cy={entry.end.y}
+                      r="8"
+                      stroke={color}
+                    />
                   ) : null}
                 </g>
               );
