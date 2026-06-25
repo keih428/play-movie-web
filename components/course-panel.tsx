@@ -219,18 +219,16 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
       [
         ...new Set(
           plays
-            .filter((play) => play.team === teamCode && play.skill === skill)
+            .filter(
+              (play) =>
+                play.team === teamCode &&
+                (play.skill === "S" || play.skill === "A"),
+            )
             .map(getPlayerLabel),
         ),
       ].sort(),
-    [plays, skill, teamCode],
+    [plays, teamCode],
   );
-
-  useEffect(() => {
-    if (player !== "all" && !players.includes(player)) {
-      setPlayer("all");
-    }
-  }, [player, players]);
 
   const matchingPlays = plays.filter(
     (play) =>
@@ -329,7 +327,6 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
               value={skill}
               onChange={(event) => {
                 setSkill(event.target.value as CourseSkill);
-                setPlayer("all");
                 setResultFilter("all");
               }}
             >
@@ -512,6 +509,23 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
             ))}
           </div>
         ) : null}
+
+        <div className="course-symbol-legend" aria-label="軌道記号の説明">
+          <span className="course-symbol-legend-item">
+            <svg viewBox="0 0 44 16" aria-hidden="true">
+              <line x1="2" y1="8" x2="42" y2="8" />
+            </svg>
+            実線：平行またはクイック
+          </span>
+          <span className="course-symbol-legend-item">
+            <span className="course-symbol-mark">×</span>
+            アタック：決定
+          </span>
+          <span className="course-symbol-legend-item">
+            <span className="course-symbol-mark">○</span>
+            サーブ：効果あり
+          </span>
+        </div>
       </div>
     </section>
   );
