@@ -5,6 +5,7 @@ import {
   getWorkspaceStoreProvider,
   saveWorkspace,
 } from "@/lib/server/workspace-store";
+import type { VideoSyncSettings } from "@/lib/domain/types";
 
 type RouteContext = {
   params: Promise<{
@@ -65,10 +66,14 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { workspaceId } = await context.params;
     const payload = (await request.json()) as {
       name?: string;
+      settings?: VideoSyncSettings;
     };
 
-    if (!payload.name?.trim()) {
-      return NextResponse.json({ error: "name is required" }, { status: 400 });
+    if (payload.name !== undefined && !payload.name.trim()) {
+      return NextResponse.json({ error: "name must not be empty" }, { status: 400 });
+    }
+    if (payload.settings && !payload.settings.youtubeUrl?.trim()) {
+      return NextResponse.json({ error: "youtubeUrl is required" }, { status: 400 });
     }
 
     const existing = await getSavedWorkspace(workspaceId);
@@ -78,10 +83,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const workspace = await saveWorkspace({
       id: existing.id,
-      name: payload.name.trim(),
+      name: payload.name?.trim() ?? existing.name,
       workspace: {
         collection: existing.collection,
-        settings: existing.settings,
+        settings: payload.settings ?? existing.settings,
         selectedMatchIndex: existing.selectedMatchIndex,
         teamName: existing.teamName,
         teamSlug: existing.teamSlug,

@@ -162,6 +162,9 @@ export function StaffSettingsClient({
   const [isRefreshingLibraries, setIsRefreshingLibraries] = useState(false);
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<string>();
   const [editingWorkspaceName, setEditingWorkspaceName] = useState("");
+  const [editingSetVideos, setEditingSetVideos] = useState<VideoSyncSetSource[]>([]);
+  const [editingPrerollSeconds, setEditingPrerollSeconds] = useState(0);
+  const [isLoadingWorkspaceEdit, setIsLoadingWorkspaceEdit] = useState(false);
   const [isUpdatingWorkspace, setIsUpdatingWorkspace] = useState(false);
 
   const scoutFileOptions = useMemo(
@@ -253,6 +256,17 @@ export function StaffSettingsClient({
     updater: (entry: VideoSyncSetSource) => VideoSyncSetSource,
   ) {
     setSetVideos((current) =>
+      current.map((entry) =>
+        entry.setIndex === setIndex ? updater(entry) : entry,
+      ),
+    );
+  }
+
+  function updateEditingSetVideo(
+    setIndex: number,
+    updater: (entry: VideoSyncSetSource) => VideoSyncSetSource,
+  ) {
+    setEditingSetVideos((current) =>
       current.map((entry) =>
         entry.setIndex === setIndex ? updater(entry) : entry,
       ),
@@ -437,9 +451,89 @@ export function StaffSettingsClient({
     }
   }
 
-  async function handleRenameWorkspace(workspaceId: string) {
+  async function handleStartEditWorkspace(workspace: SavedWorkspaceSummary) {
+    setIsLoadingWorkspaceEdit(true);
+    setRegisterStatus(undefined);
+
+    try {
+      const response = await fetch(`/api/workspaces/${workspace.id}`, {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as {
+        workspace?: {
+          id: string;
+          name: string;
+          settings: VideoSyncSettings;
+          selectedMatchIndex: number;
+          collection: ParsedCollection;
+        };
+        error?: string;
+      };
+
+      if (!response.ok || !payload.workspace) {
+        throw new Error(payload.error || "試合情報の取得に失敗しました。");
+      }
+
+      const match =
+        payload.workspace.collection.matches[payload.workspace.selectedMatchIndex];
+      const existingSetVideos = payload.workspace.settings.setVideos ?? [];
+      const firstFallback =
+        existingSetVideos[0] ??
+        (payload.workspace.settings.youtubeUrl
+          ? {
+              setIndex: match?.sets[0]?.setIndex ?? 1,
+              youtubeUrl: payload.workspace.settings.youtubeUrl,
+              offsetSeconds: payload.workspace.settings.offsetSeconds,
+            }
+          : undefined);
+      const nextSetVideos =
+        match?.sets.map((set, index) => {
+          const existing = existingSetVideos.find(
+            (entry) => entry.setIndex === set.setIndex,
+          );
+          if (existing) {
+            return existing;
+          }
+
+          return {
+            setIndex: set.setIndex,
+            youtubeUrl:
+              index === 0 && firstFallback ? firstFallback.youtubeUrl : "",
+            offsetSeconds:
+              index === 0 && firstFallback ? firstFallback.offsetSeconds : 0,
+          };
+        }) ?? [];
+
+      setEditingWorkspaceId(workspace.id);
+      setEditingWorkspaceName(payload.workspace.name);
+      setEditingSetVideos(nextSetVideos);
+      setEditingPrerollSeconds(payload.workspace.settings.prerollSeconds ?? 0);
+    } catch (error) {
+      setRegisterStatus(
+        error instanceof Error ? error.message : "試合情報の取得に失敗しました。",
+      );
+    } finally {
+      setIsLoadingWorkspaceEdit(false);
+    }
+  }
+
+  function resetWorkspaceEditing() {
+    setEditingWorkspaceId(undefined);
+    setEditingWorkspaceName("");
+    setEditingSetVideos([]);
+    setEditingPrerollSeconds(0);
+  }
+
+  async function handleSaveWorkspaceEdit(workspaceId: string) {
     if (!editingWorkspaceName.trim()) {
       setRegisterStatus("試合名を入力してください。");
+      return;
+    }
+    const configuredSetVideos = editingSetVideos.filter((entry) =>
+      entry.youtubeUrl.trim(),
+    );
+    if (configuredSetVideos.length === 0) {
+      setRegisterStatus("少なくとも1つのセットに動画URLを設定してください。");
       return;
     }
 
@@ -454,6 +548,12 @@ export function StaffSettingsClient({
         },
         body: JSON.stringify({
           name: editingWorkspaceName.trim(),
+          settings: {
+            youtubeUrl: configuredSetVideos[0]?.youtubeUrl ?? "",
+            offsetSeconds: configuredSetVideos[0]?.offsetSeconds ?? 0,
+            prerollSeconds: editingPrerollSeconds,
+            setVideos: configuredSetVideos,
+          } satisfies VideoSyncSettings,
         }),
       });
       const payload = (await response.json()) as {
@@ -466,12 +566,11 @@ export function StaffSettingsClient({
       }
 
       await refreshWorkspaces();
-      setEditingWorkspaceId(undefined);
-      setEditingWorkspaceName("");
-      setRegisterStatus("試合名を更新しました。");
+      resetWorkspaceEditing();
+      setRegisterStatus("試合情報を更新しました。");
     } catch (error) {
       setRegisterStatus(
-        error instanceof Error ? error.message : "試合名の更新に失敗しました。",
+        error instanceof Error ? error.message : "試合情報の更新に失敗しました。",
       );
     } finally {
       setIsUpdatingWorkspace(false);
@@ -667,9 +766,17 @@ export function StaffSettingsClient({
           <div className="section-heading">
             <h3>登録済み試合を管理する</h3>
             <p className="muted">
-              ここから試合名の編集と削除ができます。
+              ここから試合名、動画URL、オフセット秒の編集と削除ができます。
             </p>
           </div>
+
+          <datalist id="match-video-url-options">
+            {matchVideos.map((video) => (
+              <option key={video.id} value={video.url}>
+                {video.label}
+              </option>
+            ))}
+          </datalist>
 
           {currentWorkspaces.length === 0 ? (
             <p className="muted">このチームで登録済みの試合はまだありません。</p>
@@ -688,13 +795,94 @@ export function StaffSettingsClient({
                           onChange={(event) => setEditingWorkspaceName(event.target.value)}
                         />
                       </div>
+                      <section className="panel-section soft-panel">
+                        <div className="section-heading">
+                          <h4>セットごとの動画設定</h4>
+                          <p className="muted">
+                            動画が切り替わるセットだけURLとオフセット秒を設定してください。未設定のセットは直前の設定を引き継ぎます。
+                          </p>
+                        </div>
+
+                        {editingSetVideos.length === 0 ? (
+                          <p className="muted">セット情報を読み込めませんでした。</p>
+                        ) : (
+                          <div className="workspace-list">
+                            {editingSetVideos.map((entry) => {
+                              const inheritedEntry = getInheritedSetVideo(
+                                editingSetVideos,
+                                entry.setIndex,
+                              );
+                              const effectiveEntry = entry.youtubeUrl
+                                ? entry
+                                : inheritedEntry;
+
+                              return (
+                                <article className="workspace-card" key={entry.setIndex}>
+                                  <div className="list-item-header">
+                                    <strong>セット {entry.setIndex}</strong>
+                                    <span className="tag">
+                                      {entry.youtubeUrl
+                                        ? "このセットから切替"
+                                        : effectiveEntry?.youtubeUrl
+                                          ? `セット ${effectiveEntry.setIndex} を継承`
+                                          : "未設定"}
+                                    </span>
+                                  </div>
+                                  <div className="field-grid">
+                                    <div className="field">
+                                      <label htmlFor={`edit-set-video-${workspace.id}-${entry.setIndex}`}>
+                                        動画URL
+                                      </label>
+                                      <input
+                                        id={`edit-set-video-${workspace.id}-${entry.setIndex}`}
+                                        type="url"
+                                        list="match-video-url-options"
+                                        value={entry.youtubeUrl}
+                                        onChange={(event) =>
+                                          updateEditingSetVideo(
+                                            entry.setIndex,
+                                            (current) => ({
+                                              ...current,
+                                              youtubeUrl: event.target.value,
+                                            }),
+                                          )
+                                        }
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                      />
+                                    </div>
+
+                                    <div className="field">
+                                      <label htmlFor={`edit-set-offset-${workspace.id}-${entry.setIndex}`}>
+                                        オフセット秒
+                                      </label>
+                                      <OffsetSecondsInput
+                                        id={`edit-set-offset-${workspace.id}-${entry.setIndex}`}
+                                        value={entry.offsetSeconds}
+                                        onChange={(offsetSeconds) =>
+                                          updateEditingSetVideo(
+                                            entry.setIndex,
+                                            (current) => ({
+                                              ...current,
+                                              offsetSeconds,
+                                            }),
+                                          )
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
                       <div className="button-row">
                         <button
                           className="button"
                           type="button"
                           disabled={isUpdatingWorkspace}
                           onClick={() => {
-                            void handleRenameWorkspace(workspace.id);
+                            void handleSaveWorkspaceEdit(workspace.id);
                           }}
                         >
                           保存
@@ -703,8 +891,7 @@ export function StaffSettingsClient({
                           className="button secondary"
                           type="button"
                           onClick={() => {
-                            setEditingWorkspaceId(undefined);
-                            setEditingWorkspaceName("");
+                            resetWorkspaceEditing();
                           }}
                         >
                           キャンセル
@@ -724,13 +911,12 @@ export function StaffSettingsClient({
                         <button
                           className="button secondary"
                           type="button"
-                          disabled={isUpdatingWorkspace}
+                          disabled={isUpdatingWorkspace || isLoadingWorkspaceEdit}
                           onClick={() => {
-                            setEditingWorkspaceId(workspace.id);
-                            setEditingWorkspaceName(workspace.name);
+                            void handleStartEditWorkspace(workspace);
                           }}
                         >
-                          名前を編集
+                          {isLoadingWorkspaceEdit ? "読込中..." : "編集"}
                         </button>
                         <button
                           className="button secondary"

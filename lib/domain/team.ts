@@ -10,10 +10,27 @@ function findCatalogEntryByAlias(value: string) {
   const normalized = value.trim().toLocaleLowerCase();
   return TEAM_CATALOG.find(
     (entry) =>
+      entry.name.trim().toLocaleLowerCase() === normalized ||
       entry.slug.toLocaleLowerCase() === normalized ||
       entry.code.toLocaleLowerCase() === normalized ||
       entry.aliases.some((alias) => alias.trim().toLocaleLowerCase() === normalized),
   );
+}
+
+export function areTeamNamesEquivalent(left: string | undefined, right: string | undefined): boolean {
+  if (!left || !right) {
+    return false;
+  }
+
+  const normalizedLeft = left.trim().toLocaleLowerCase();
+  const normalizedRight = right.trim().toLocaleLowerCase();
+  if (normalizedLeft === normalizedRight) {
+    return true;
+  }
+
+  const leftEntry = findCatalogEntryByAlias(left);
+  const rightEntry = findCatalogEntryByAlias(right);
+  return Boolean(leftEntry && rightEntry && leftEntry.slug === rightEntry.slug);
 }
 
 export function slugifyTeamName(name: string): string {
@@ -64,6 +81,10 @@ export function buildTeamStaffSettingsPath(teamSlug: string): string {
 
 export function buildTeamWorkspacesPath(teamSlug: string): string {
   return `/t/${teamSlug}/workspaces`;
+}
+
+export function buildTeamAnalysisPath(teamSlug: string): string {
+  return `/t/${teamSlug}/analysis`;
 }
 
 export function buildWorkspacePath(input: {
