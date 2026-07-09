@@ -97,11 +97,21 @@ type BlockSetRow = {
   misses: number;
 };
 
-type AttackCourseRow = {
-  player: string;
-  course: string;
+type Point = {
+  x: number;
+  y: number;
+};
+
+type AttackCourseSummary = {
   attempts: number;
   kills: number;
+};
+
+type AttackCourseRow = {
+  player: string;
+  feint: AttackCourseSummary;
+  straight: AttackCourseSummary;
+  cross: AttackCourseSummary;
 };
 
 type ServeBreakRow = {
@@ -382,6 +392,14 @@ function formatRate(wins: number, attempts: number): string {
   return `${((wins / attempts) * 100).toFixed(1)}%`;
 }
 
+function formatAttackCourseSummary(summary: AttackCourseSummary): string {
+  if (summary.attempts === 0) {
+    return "-";
+  }
+
+  return `${formatRate(summary.kills, summary.attempts)} (${summary.kills}/${summary.attempts})`;
+}
+
 function getRate(wins: number, attempts: number): number | undefined {
   if (attempts === 0) {
     return undefined;
@@ -475,6 +493,126 @@ function isReceptionAB(play: ParsedPlay) {
 
 function isEffectiveServe(play: ParsedPlay) {
   return play.effect === "#" || play.effect === "+" || play.effect === "!";
+}
+
+const COURT_LEFT = 70;
+const COURT_RIGHT = 430;
+const NET_Y = 390;
+const HALF_COURT_HEIGHT = 360;
+const COURT_WIDTH = COURT_RIGHT - COURT_LEFT;
+
+const ZONE_GRID: Record<number, { column: number; row: number }> = {
+  4: { column: 0, row: 0 },
+  3: { column: 1, row: 0 },
+  2: { column: 2, row: 0 },
+  7: { column: 0, row: 1 },
+  8: { column: 1, row: 1 },
+  9: { column: 2, row: 1 },
+  5: { column: 0, row: 2 },
+  6: { column: 1, row: 2 },
+  1: { column: 2, row: 2 },
+};
+
+function getZonePoint(zone: number, courtSide: "near" | "far"): Point | undefined {
+  const grid = ZONE_GRID[zone];
+  if (!grid) {
+    return undefined;
+  }
+
+  const cellWidth = COURT_WIDTH / 3;
+  const cellHeight = HALF_COURT_HEIGHT / 3;
+  const localX = COURT_LEFT + cellWidth * (grid.column + 0.5);
+  const localY = cellHeight * (grid.row + 0.5);
+
+  if (courtSide === "near") {
+    return {
+      x: localX,
+      y: NET_Y + localY,
+    };
+  }
+
+  return {
+    x: COURT_LEFT + COURT_RIGHT - localX,
+    y: NET_Y - localY,
+  };
+}
+
+function getAttackEndPoint(play: ParsedPlay): Point | undefined {
+  if (typeof play.endZone !== "number") {
+    return undefined;
+  }
+
+  const grid = ZONE_GRID[play.endZone];
+  if (!grid) {
+    return undefined;
+  }
+
+  const cellWidth = COURT_WIDTH / 3;
+  const cellHeight = HALF_COURT_HEIGHT / 3;
+  const cellLeft = COURT_LEFT + cellWidth * grid.column;
+  const cellTop = NET_Y - cellHeight * (grid.row + 1);
+  const subZonePosition: Record<string, Point> = {
+    A: { x: 0.25, y: 0.75 },
+    D: { x: 0.75, y: 0.75 },
+    B: { x: 0.25, y: 0.25 },
+    C: { x: 0.75, y: 0.25 },
+  };
+  const position = play.endSubZone
+    ? subZonePosition[play.endSubZone.trim().toUpperCase()]
+    : undefined;
+
+  return {
+    x: cellLeft + cellWidth * (position?.x ?? 0.5),
+    y: cellTop + cellHeight * (position?.y ?? 0.5),
+  };
+}
+
+function getAttackStartPoint(play: ParsedPlay): Point {
+  const hitType = play.hitType?.trim().toUpperCase();
+
+  if (
+    play.startZone === 7 ||
+    play.startZone === 8 ||
+    play.startZone === 9
+  ) {
+    const column = play.startZone - 7;
+    return {
+      x: COURT_LEFT + COURT_WIDTH * ((column + 0.5) / 3),
+      y: NET_Y + 120,
+    };
+  }
+
+  if (hitType === "P1" || hitType === "PV") {
+    return {
+      x: COURT_LEFT + COURT_WIDTH / 18,
+      y: NET_Y,
+    };
+  }
+
+  if (hitType === "P5" || hitType === "PZ") {
+    return {
+      x: COURT_RIGHT - COURT_WIDTH / 18,
+      y: NET_Y,
+    };
+  }
+
+  if (typeof play.startZone !== "number") {
+    return {
+      x: COURT_LEFT + COURT_WIDTH / 2,
+      y: NET_Y,
+    };
+  }
+
+  const zonePoint = getZonePoint(play.startZone, "near");
+  return zonePoint
+    ? {
+        x: zonePoint.x,
+        y: NET_Y,
+      }
+    : {
+        x: COURT_LEFT + COURT_WIDTH / 2,
+        y: NET_Y,
+      };
 }
 
 function getRowsWithTotal<T extends { label: string }>(
@@ -704,22 +842,33 @@ function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide): Bloc
   });
 }
 
-function getCourseLabel(play: ParsedPlay): string {
-  if (typeof play.endZone !== "number") {
-    return "不明";
+function getAttackCourseType(play: ParsedPlay): keyof Omit<AttackCourseRow, "player"> | undefined {
+  const start = getAttackStartPoint(play);
+  const end = getAttackEndPoint(play);
+  if (!end) {
+    return undefined;
   }
 
-  if (play.endZone === 4 || play.endZone === 7 || play.endZone === 5) {
-    return "左";
-  }
-  if (play.endZone === 3 || play.endZone === 8 || play.endZone === 6) {
-    return "中央";
-  }
-  if (play.endZone === 2 || play.endZone === 9 || play.endZone === 1) {
-    return "右";
+  const distance = Math.hypot(end.x - start.x, end.y - start.y);
+  if (distance <= COURT_WIDTH / 2) {
+    return "feint";
   }
 
-  return "不明";
+  const angleFromNet = Math.atan2(Math.abs(end.y - start.y), Math.abs(end.x - start.x)) * (180 / Math.PI);
+  if (angleFromNet >= 60 && angleFromNet <= 90) {
+    return "straight";
+  }
+
+  return "cross";
+}
+
+function createAttackCourseRow(player: string): AttackCourseRow {
+  return {
+    player,
+    feint: { attempts: 0, kills: 0 },
+    straight: { attempts: 0, kills: 0 },
+    cross: { attempts: 0, kills: 0 },
+  };
 }
 
 function buildAttackCourseRows(plays: ParsedPlay[]): AttackCourseRow[] {
@@ -727,33 +876,24 @@ function buildAttackCourseRows(plays: ParsedPlay[]): AttackCourseRow[] {
 
   plays.filter((play) => play.skill === "A").forEach((play) => {
     const player = getPlayerKey(play);
-    const course = getCourseLabel(play);
-    const key = `${player}-${course}`;
-    const row =
-      rows.get(key) ??
-      {
-        player,
-        course,
-        attempts: 0,
-        kills: 0,
-      };
+    const courseType = getAttackCourseType(play);
+    if (!courseType) {
+      return;
+    }
 
-    row.attempts += 1;
+    const row = rows.get(player) ?? createAttackCourseRow(player);
+    row[courseType].attempts += 1;
     if (isKill(play)) {
-      row.kills += 1;
+      row[courseType].kills += 1;
     }
-    rows.set(key, row);
+    rows.set(player, row);
   });
 
-  return [...rows.values()].sort((left, right) => {
-    const playerCompare = left.player.localeCompare(right.player, "ja", {
+  return [...rows.values()].sort((left, right) =>
+    left.player.localeCompare(right.player, "ja", {
       numeric: true,
-    });
-    if (playerCompare !== 0) {
-      return playerCompare;
-    }
-    return left.course.localeCompare(right.course, "ja");
-  });
+    }),
+  );
 }
 
 function buildServeBreakRows(
@@ -1381,26 +1521,32 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
 
             <div className="analysis-block analysis-section-block">
               <h3>選手別コース決定率</h3>
-              <p className="muted">終点ゾーンを左・中央・右に分類します。</p>
+              <p className="muted">
+                落下地点が打点からコート横幅の半分以内ならフェイント、軌道とネットの角度が60〜90度ならストレート、それ以外はクロスに分類します。
+              </p>
               <div className="score-table-wrap">
                 <table className="score-table analysis-player-table">
                   <thead>
                     <tr>
                       <th>選手</th>
-                      <th>コース</th>
-                      <th>打数</th>
-                      <th>得点</th>
-                      <th>決定率</th>
+                      <th>フェイント</th>
+                      <th>ストレート</th>
+                      <th>クロス</th>
                     </tr>
                   </thead>
                   <tbody>
                     {attackCourseRows.map((row) => (
-                      <tr key={`${row.player}-${row.course}`}>
+                      <tr key={row.player}>
                         <td data-label="選手">{row.player}</td>
-                        <td data-label="コース">{row.course}</td>
-                        <td data-label="打数">{row.attempts}</td>
-                        <td data-label="得点">{row.kills}</td>
-                        <td data-label="決定率">{formatRate(row.kills, row.attempts)}</td>
+                        <td data-label="フェイント">
+                          {formatAttackCourseSummary(row.feint)}
+                        </td>
+                        <td data-label="ストレート">
+                          {formatAttackCourseSummary(row.straight)}
+                        </td>
+                        <td data-label="クロス">
+                          {formatAttackCourseSummary(row.cross)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
