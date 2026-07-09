@@ -452,9 +452,12 @@ function ReceptionSection({ analysis }: { analysis: AggregateAnalysis }) {
 }
 
 function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
-  const blockSummary = analysis.teamPlays.filter((play) => play.skill === "B");
-  const successes = blockSummary.filter((play) => play.effect === "#").length;
-  const misses = blockSummary.filter((play) => play.effect === "=").length;
+  const opponentAttacks = analysis.blockOpponentAttacks;
+  const successes = analysis.blockSetRows.reduce(
+    (sum, row) => sum + row.successes,
+    0,
+  );
+  const misses = analysis.blockSetRows.reduce((sum, row) => sum + row.misses, 0);
 
   return (
     <div className="analysis-block analysis-section-block">
@@ -465,16 +468,24 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
             <tr>
               <th>項目</th>
               <th>本数</th>
+              <th>割合</th>
             </tr>
           </thead>
           <tbody>
             <tr>
+              <td data-label="項目">相手スパイク</td>
+              <td data-label="本数">{opponentAttacks}</td>
+              <td data-label="割合">{opponentAttacks > 0 ? "100.0%" : "-"}</td>
+            </tr>
+            <tr>
               <td data-label="項目">成功</td>
               <td data-label="本数">{successes}</td>
+              <td data-label="割合">{formatRate(successes, opponentAttacks)}</td>
             </tr>
             <tr>
               <td data-label="項目">ミス</td>
               <td data-label="本数">{misses}</td>
+              <td data-label="割合">{formatRate(misses, opponentAttacks)}</td>
             </tr>
           </tbody>
         </table>

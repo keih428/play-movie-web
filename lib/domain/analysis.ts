@@ -86,6 +86,7 @@ export type DistributionRow = {
 
 export type BlockSetRow = {
   setIndex: number;
+  opponentAttacks: number;
   successes: number;
   misses: number;
 };
@@ -148,6 +149,7 @@ export type AggregateAnalysis = {
   serveMetricRows: ServeMetricRow[];
   receptionMetricRows: ReceptionMetricRow[];
   freeballAttackRows: DistributionRow[];
+  blockOpponentAttacks: number;
   blockSetRows: BlockSetRow[];
   attackCourseRows: AttackCourseRow[];
   serveBreakRows: ServeBreakRow[];
@@ -686,13 +688,18 @@ export function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide
   }
 
   const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
   return match.sets.map((set) => {
     const blocks = set.events.flatMap((event) =>
       event.plays.filter((play) => play.team === teamCode && play.skill === "B"),
     );
+    const opponentAttacks = set.events.flatMap((event) =>
+      event.plays.filter((play) => play.team === opponentCode && play.skill === "A"),
+    ).length;
 
     return {
       setIndex: set.setIndex,
+      opponentAttacks,
       successes: blocks.filter(isKill).length,
       misses: blocks.filter(isError).length,
     };
@@ -1047,6 +1054,25 @@ export function buildAggregateAnalysis(
     freeballAttackRows: mergeDistributionRows(
       scopedInputs.map((input) => buildFreeballAttackDistribution(input.match, input.ownSide)),
     ),
+    blockOpponentAttacks: scopedInputs.reduce((sum, input) => {
+      const opponentCode = input.ownSide === "home" ? "a" : "*";
+      return (
+        sum +
+        input.match.sets.reduce(
+          (setSum, set) =>
+            setSum +
+            set.events.reduce(
+              (eventSum, event) =>
+                eventSum +
+                event.plays.filter(
+                  (play) => play.team === opponentCode && play.skill === "A",
+                ).length,
+              0,
+            ),
+          0,
+        )
+      );
+    }, 0),
     blockSetRows: scopedInputs.flatMap((input, matchIndex) =>
       buildBlockSetRows(input.match, input.ownSide).map((row) => ({
         ...row,

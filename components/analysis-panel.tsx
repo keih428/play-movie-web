@@ -93,6 +93,7 @@ type DistributionRow = {
 
 type BlockSetRow = {
   setIndex: number;
+  opponentAttacks: number;
   successes: number;
   misses: number;
 };
@@ -843,13 +844,18 @@ function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide): Bloc
   }
 
   const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
   return match.sets.map((set) => {
     const blocks = set.events.flatMap((event) =>
       event.plays.filter((play) => play.team === teamCode && play.skill === "B"),
     );
+    const opponentAttacks = set.events.flatMap((event) =>
+      event.plays.filter((play) => play.team === opponentCode && play.skill === "A"),
+    ).length;
 
     return {
       setIndex: set.setIndex,
+      opponentAttacks,
       successes: blocks.filter(isKill).length,
       misses: blocks.filter(isError).length,
     };
@@ -1556,16 +1562,26 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                   <thead>
                     <tr>
                       <th>セット</th>
+                      <th>相手スパイク</th>
                       <th>成功</th>
+                      <th>成功率</th>
                       <th>ミス</th>
+                      <th>ミス率</th>
                     </tr>
                   </thead>
                   <tbody>
                     {blockSetRows.map((row) => (
                       <tr key={row.setIndex}>
                         <td data-label="セット">セット {row.setIndex}</td>
+                        <td data-label="相手スパイク">{row.opponentAttacks}</td>
                         <td data-label="成功">{row.successes}</td>
+                        <td data-label="成功率">
+                          {formatRate(row.successes, row.opponentAttacks)}
+                        </td>
                         <td data-label="ミス">{row.misses}</td>
+                        <td data-label="ミス率">
+                          {formatRate(row.misses, row.opponentAttacks)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
