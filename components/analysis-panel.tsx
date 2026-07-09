@@ -62,6 +62,83 @@ type SetOutcomeComparison = {
   lostSetLabels: string;
 };
 
+type AttackMetricRow = {
+  label: string;
+  attempts: number;
+  kills: number;
+  errors: number;
+};
+
+type ServeMetricRow = {
+  label: string;
+  attempts: number;
+  noTouchAces: number;
+  serviceAces: number;
+  effective: number;
+  misses: number;
+};
+
+type ReceptionMetricRow = {
+  label: string;
+  attempts: number;
+  ab: number;
+  errors: number;
+};
+
+type DistributionRow = {
+  label: string;
+  count: number;
+  total: number;
+};
+
+type BlockSetRow = {
+  setIndex: number;
+  successes: number;
+  misses: number;
+};
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+type AttackCourseSummary = {
+  attempts: number;
+  kills: number;
+};
+
+type AttackCourseRow = {
+  player: string;
+  feint: AttackCourseSummary;
+  straight: AttackCourseSummary;
+  cross: AttackCourseSummary;
+};
+
+type ServeBreakRow = {
+  player: string;
+  attempts: number;
+  breaks: number;
+  nonMissAttempts: number;
+  nonMissBreaks: number;
+};
+
+type AnalysisCategory =
+  | "overview"
+  | "attack"
+  | "serve"
+  | "reception"
+  | "block"
+  | "player";
+
+const ANALYSIS_CATEGORIES: Array<{ key: AnalysisCategory; label: string }> = [
+  { key: "overview", label: "概要" },
+  { key: "attack", label: "攻撃" },
+  { key: "serve", label: "サーブ" },
+  { key: "reception", label: "レセプション" },
+  { key: "block", label: "ブロック" },
+  { key: "player", label: "個人" },
+];
+
 function getTeamCode(side: TeamSide) {
   return side === "home" ? "*" : "a";
 }
@@ -332,6 +409,14 @@ function formatRate(wins: number, attempts: number): string {
   return `${((wins / attempts) * 100).toFixed(1)}%`;
 }
 
+function formatAttackCourseSummary(summary: AttackCourseSummary): string {
+  if (summary.attempts === 0) {
+    return "-";
+  }
+
+  return `${formatRate(summary.kills, summary.attempts)} (${summary.kills}/${summary.attempts})`;
+}
+
 function getRate(wins: number, attempts: number): number | undefined {
   if (attempts === 0) {
     return undefined;
@@ -407,15 +492,500 @@ function formatSignedRateDiff(leftWins: number, leftAttempts: number, rightWins:
   return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`;
 }
 
+function getPlayerKey(play: ParsedPlay) {
+  return play.player ?? "不明";
+}
+
+function isKill(play: ParsedPlay) {
+  return play.effect === "#";
+}
+
+function isError(play: ParsedPlay) {
+  return play.effect === "=";
+}
+
+function isReceptionAB(play: ParsedPlay) {
+  return play.effect === "#" || play.effect === "+";
+}
+
+function isEffectiveServe(play: ParsedPlay) {
+  return play.effect === "#" || play.effect === "+" || play.effect === "!";
+}
+
+const COURT_LEFT = 70;
+const COURT_RIGHT = 430;
+const NET_Y = 390;
+const HALF_COURT_HEIGHT = 360;
+const COURT_WIDTH = COURT_RIGHT - COURT_LEFT;
+
+const ZONE_GRID: Record<number, { column: number; row: number }> = {
+  4: { column: 0, row: 0 },
+  3: { column: 1, row: 0 },
+  2: { column: 2, row: 0 },
+  7: { column: 0, row: 1 },
+  8: { column: 1, row: 1 },
+  9: { column: 2, row: 1 },
+  5: { column: 0, row: 2 },
+  6: { column: 1, row: 2 },
+  1: { column: 2, row: 2 },
+};
+
+function getZonePoint(zone: number, courtSide: "near" | "far"): Point | undefined {
+  const grid = ZONE_GRID[zone];
+  if (!grid) {
+    return undefined;
+  }
+
+  const cellWidth = COURT_WIDTH / 3;
+  const cellHeight = HALF_COURT_HEIGHT / 3;
+  const localX = COURT_LEFT + cellWidth * (grid.column + 0.5);
+  const localY = cellHeight * (grid.row + 0.5);
+
+  if (courtSide === "near") {
+    return {
+      x: localX,
+      y: NET_Y + localY,
+    };
+  }
+
+  return {
+    x: COURT_LEFT + COURT_RIGHT - localX,
+    y: NET_Y - localY,
+  };
+}
+
+function getAttackEndPoint(play: ParsedPlay): Point | undefined {
+  if (typeof play.endZone !== "number") {
+    return undefined;
+  }
+
+  const grid = ZONE_GRID[play.endZone];
+  if (!grid) {
+    return undefined;
+  }
+
+  const cellWidth = COURT_WIDTH / 3;
+  const cellHeight = HALF_COURT_HEIGHT / 3;
+  const cellLeft = COURT_LEFT + cellWidth * grid.column;
+  const cellTop = NET_Y - cellHeight * (grid.row + 1);
+  const subZonePosition: Record<string, Point> = {
+    A: { x: 0.25, y: 0.75 },
+    D: { x: 0.75, y: 0.75 },
+    B: { x: 0.25, y: 0.25 },
+    C: { x: 0.75, y: 0.25 },
+  };
+  const position = play.endSubZone
+    ? subZonePosition[play.endSubZone.trim().toUpperCase()]
+    : undefined;
+
+  return {
+    x: cellLeft + cellWidth * (position?.x ?? 0.5),
+    y: cellTop + cellHeight * (position?.y ?? 0.5),
+  };
+}
+
+function getAttackStartPoint(play: ParsedPlay): Point {
+  const hitType = play.hitType?.trim().toUpperCase();
+
+  if (
+    play.startZone === 7 ||
+    play.startZone === 8 ||
+    play.startZone === 9
+  ) {
+    const column = play.startZone - 7;
+    return {
+      x: COURT_LEFT + COURT_WIDTH * ((column + 0.5) / 3),
+      y: NET_Y + 120,
+    };
+  }
+
+  if (hitType === "P1" || hitType === "PV") {
+    return {
+      x: COURT_LEFT + COURT_WIDTH / 18,
+      y: NET_Y,
+    };
+  }
+
+  if (hitType === "P5" || hitType === "PZ") {
+    return {
+      x: COURT_RIGHT - COURT_WIDTH / 18,
+      y: NET_Y,
+    };
+  }
+
+  if (typeof play.startZone !== "number") {
+    return {
+      x: COURT_LEFT + COURT_WIDTH / 2,
+      y: NET_Y,
+    };
+  }
+
+  const zonePoint = getZonePoint(play.startZone, "near");
+  return zonePoint
+    ? {
+        x: zonePoint.x,
+        y: NET_Y,
+      }
+    : {
+        x: COURT_LEFT + COURT_WIDTH / 2,
+        y: NET_Y,
+      };
+}
+
+function getRowsWithTotal<T extends { label: string }>(
+  rows: Map<string, T>,
+  total: T,
+): T[] {
+  return [
+    total,
+    ...[...rows.values()].sort((left, right) =>
+      left.label.localeCompare(right.label, "ja", { numeric: true }),
+    ),
+  ];
+}
+
+function buildAttackMetricRows(plays: ParsedPlay[]): AttackMetricRow[] {
+  const total: AttackMetricRow = {
+    label: "チーム全体",
+    attempts: 0,
+    kills: 0,
+    errors: 0,
+  };
+  const players = new Map<string, AttackMetricRow>();
+
+  plays.filter((play) => play.skill === "A").forEach((play) => {
+    const key = getPlayerKey(play);
+    const row =
+      players.get(key) ??
+      {
+        label: key,
+        attempts: 0,
+        kills: 0,
+        errors: 0,
+      };
+
+    row.attempts += 1;
+    total.attempts += 1;
+    if (isKill(play)) {
+      row.kills += 1;
+      total.kills += 1;
+    }
+    if (isError(play)) {
+      row.errors += 1;
+      total.errors += 1;
+    }
+    players.set(key, row);
+  });
+
+  return getRowsWithTotal(players, total);
+}
+
+function buildServeMetricRows(plays: ParsedPlay[]): ServeMetricRow[] {
+  const total: ServeMetricRow = {
+    label: "チーム全体",
+    attempts: 0,
+    noTouchAces: 0,
+    serviceAces: 0,
+    effective: 0,
+    misses: 0,
+  };
+  const players = new Map<string, ServeMetricRow>();
+
+  plays.filter((play) => play.skill === "S").forEach((play) => {
+    const key = getPlayerKey(play);
+    const row =
+      players.get(key) ??
+      {
+        label: key,
+        attempts: 0,
+        noTouchAces: 0,
+        serviceAces: 0,
+        effective: 0,
+        misses: 0,
+      };
+
+    row.attempts += 1;
+    total.attempts += 1;
+    if (play.effect === "#") {
+      row.noTouchAces += 1;
+      total.noTouchAces += 1;
+    }
+    if (play.effect === "+") {
+      row.serviceAces += 1;
+      total.serviceAces += 1;
+    }
+    if (play.effect === "!") {
+      row.effective += 1;
+      total.effective += 1;
+    }
+    if (isError(play)) {
+      row.misses += 1;
+      total.misses += 1;
+    }
+    players.set(key, row);
+  });
+
+  return getRowsWithTotal(players, total);
+}
+
+function buildReceptionMetricRows(plays: ParsedPlay[]): ReceptionMetricRow[] {
+  const total: ReceptionMetricRow = {
+    label: "チーム全体",
+    attempts: 0,
+    ab: 0,
+    errors: 0,
+  };
+  const players = new Map<string, ReceptionMetricRow>();
+
+  plays.filter((play) => play.skill === "R").forEach((play) => {
+    const key = getPlayerKey(play);
+    const row =
+      players.get(key) ??
+      {
+        label: key,
+        attempts: 0,
+        ab: 0,
+        errors: 0,
+      };
+
+    row.attempts += 1;
+    total.attempts += 1;
+    if (isReceptionAB(play)) {
+      row.ab += 1;
+      total.ab += 1;
+    }
+    if (isError(play)) {
+      row.errors += 1;
+      total.errors += 1;
+    }
+    players.set(key, row);
+  });
+
+  return getRowsWithTotal(players, total);
+}
+
+function getServeEffectRate(row: ServeMetricRow): number | undefined {
+  if (row.attempts === 0) {
+    return undefined;
+  }
+
+  return (
+    (row.noTouchAces * 100 + row.serviceAces * 80 + row.effective * 25) /
+    row.attempts
+  );
+}
+
+function getAttackEffectRate(row: AttackMetricRow): number | undefined {
+  if (row.attempts === 0) {
+    return undefined;
+  }
+
+  return ((row.kills - row.errors) / row.attempts) * 100;
+}
+
+function formatNumber(value: number | undefined): string {
+  if (value === undefined) {
+    return "-";
+  }
+
+  return value.toFixed(1);
+}
+
+function getTeamPlays(match: ParsedMatch | undefined, side: TeamSide): ParsedPlay[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  return match.sets.flatMap((set) =>
+    set.events.flatMap((event) => event.plays.filter((play) => play.team === teamCode)),
+  );
+}
+
+function buildFreeballSetDistribution(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+): DistributionRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
+  const rows = new Map<string, number>();
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      event.plays.forEach((play, index) => {
+        if (play.team !== opponentCode || play.skill !== "F") {
+          return;
+        }
+
+        const attackPlay = event.plays
+          .slice(index + 1)
+          .find((candidate) => candidate.team === teamCode && candidate.skill === "A");
+        if (!attackPlay) {
+          return;
+        }
+
+        const label = attackPlay.hitType || attackPlay.code || "不明";
+        rows.set(label, (rows.get(label) ?? 0) + 1);
+      });
+    });
+  });
+
+  const total = [...rows.values()].reduce((sum, count) => sum + count, 0);
+  return [...rows.entries()]
+    .map(([label, count]) => ({ label, count, total }))
+    .sort((left, right) => right.count - left.count);
+}
+
+function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide): BlockSetRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  return match.sets.map((set) => {
+    const blocks = set.events.flatMap((event) =>
+      event.plays.filter((play) => play.team === teamCode && play.skill === "B"),
+    );
+
+    return {
+      setIndex: set.setIndex,
+      successes: blocks.filter(isKill).length,
+      misses: blocks.filter(isError).length,
+    };
+  });
+}
+
+function getAttackCourseType(play: ParsedPlay): keyof Omit<AttackCourseRow, "player"> | undefined {
+  const start = getAttackStartPoint(play);
+  const end = getAttackEndPoint(play);
+  if (!end) {
+    return undefined;
+  }
+
+  const distance = Math.hypot(end.x - start.x, end.y - start.y);
+  if (distance <= COURT_WIDTH / 2) {
+    return "feint";
+  }
+
+  const angleFromNet = Math.atan2(Math.abs(end.y - start.y), Math.abs(end.x - start.x)) * (180 / Math.PI);
+  if (angleFromNet >= 60 && angleFromNet <= 90) {
+    return "straight";
+  }
+
+  return "cross";
+}
+
+function createAttackCourseRow(player: string): AttackCourseRow {
+  return {
+    player,
+    feint: { attempts: 0, kills: 0 },
+    straight: { attempts: 0, kills: 0 },
+    cross: { attempts: 0, kills: 0 },
+  };
+}
+
+function buildAttackCourseRows(plays: ParsedPlay[]): AttackCourseRow[] {
+  const rows = new Map<string, AttackCourseRow>();
+
+  plays.filter((play) => play.skill === "A").forEach((play) => {
+    const player = getPlayerKey(play);
+    const courseType = getAttackCourseType(play);
+    if (!courseType) {
+      return;
+    }
+
+    const row = rows.get(player) ?? createAttackCourseRow(player);
+    row[courseType].attempts += 1;
+    if (isKill(play)) {
+      row[courseType].kills += 1;
+    }
+    rows.set(player, row);
+  });
+
+  return [...rows.values()].sort((left, right) =>
+    left.player.localeCompare(right.player, "ja", {
+      numeric: true,
+    }),
+  );
+}
+
+function buildServeBreakRows(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+): ServeBreakRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  const rows = new Map<string, ServeBreakRow>();
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      const serve = event.plays.find(
+        (play) => play.team === teamCode && play.skill === "S",
+      );
+      if (!serve) {
+        return;
+      }
+
+      const player = getPlayerKey(serve);
+      const row =
+        rows.get(player) ??
+        {
+          player,
+          attempts: 0,
+          breaks: 0,
+          nonMissAttempts: 0,
+          nonMissBreaks: 0,
+        };
+      const won = getWinningSide(event) === side;
+
+      row.attempts += 1;
+      if (won) {
+        row.breaks += 1;
+      }
+      if (!isError(serve)) {
+        row.nonMissAttempts += 1;
+        if (won) {
+          row.nonMissBreaks += 1;
+        }
+      }
+      rows.set(player, row);
+    });
+  });
+
+  return [...rows.values()].sort((left, right) =>
+    left.player.localeCompare(right.player, "ja", { numeric: true }),
+  );
+}
+
 export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const homeAnalysis = buildTeamAnalysis(match, "home");
   const awayAnalysis = buildTeamAnalysis(match, "away");
   const [activeSide, setActiveSide] = useState<TeamSide>("home");
+  const [activeCategory, setActiveCategory] =
+    useState<AnalysisCategory>("overview");
   const scoreTimeline = buildScoreTimeline(match);
 
   const activeAnalysis =
     activeSide === "home" ? homeAnalysis ?? awayAnalysis : awayAnalysis ?? homeAnalysis;
   const setOutcomeComparison = buildSetOutcomeComparison(match, activeAnalysis?.side ?? activeSide);
+  const activeTeamPlays = getTeamPlays(match, activeAnalysis?.side ?? activeSide);
+  const attackMetricRows = buildAttackMetricRows(activeTeamPlays);
+  const serveMetricRows = buildServeMetricRows(activeTeamPlays);
+  const receptionMetricRows = buildReceptionMetricRows(activeTeamPlays);
+  const freeballSetRows = buildFreeballSetDistribution(
+    match,
+    activeAnalysis?.side ?? activeSide,
+  );
+  const blockSetRows = buildBlockSetRows(match, activeAnalysis?.side ?? activeSide);
+  const attackCourseRows = buildAttackCourseRows(activeTeamPlays);
+  const serveBreakRows = buildServeBreakRows(match, activeAnalysis?.side ?? activeSide);
   const gradeOrder = ["A", "B", "C", "D", "E", "F"];
   const comparisonSkills = setOutcomeComparison
     ? [
@@ -464,6 +1034,23 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               ))}
             </div>
 
+            <div className="tab-row" role="tablist" aria-label="分析カテゴリ切替">
+              {ANALYSIS_CATEGORIES.map((category) => (
+                <button
+                  key={category.key}
+                  className={`tab-button${activeCategory === category.key ? " tab-button-active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCategory === category.key}
+                  onClick={() => setActiveCategory(category.key)}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
+
+            {activeCategory === "overview" ? (
+              <>
             <div className="meta-grid analysis-summary-grid">
               <div className="meta-card analysis-summary-card">
                 <span className="muted">総得点率</span>
@@ -812,7 +1399,275 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </div>
               )}
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "attack" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>アタック指標</h3>
+              <p className="muted">
+                決定率 = 得点数÷打数、効果率 =（得点数−失点数）÷打数。
+              </p>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>選手</th>
+                      <th>打数</th>
+                      <th>得点</th>
+                      <th>失点</th>
+                      <th>決定率</th>
+                      <th>効果率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attackMetricRows.map((row) => (
+                      <tr key={row.label}>
+                        <td data-label="選手">{row.label}</td>
+                        <td data-label="打数">{row.attempts}</td>
+                        <td data-label="得点">{row.kills}</td>
+                        <td data-label="失点">{row.errors}</td>
+                        <td data-label="決定率">
+                          {formatRate(row.kills, row.attempts)}
+                        </td>
+                        <td data-label="効果率">{formatPercent(getAttackEffectRate(row))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "serve" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>サーブ指標</h3>
+              <p className="muted">
+                効果率 =（ノータッチエース×100 + サービスエース×80 + 効果×25）÷打数。
+              </p>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>選手</th>
+                      <th>打数</th>
+                      <th>ノータッチ</th>
+                      <th>サービスエース</th>
+                      <th>効果</th>
+                      <th>ミス</th>
+                      <th>効果率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serveMetricRows.map((row) => (
+                      <tr key={row.label}>
+                        <td data-label="選手">{row.label}</td>
+                        <td data-label="打数">{row.attempts}</td>
+                        <td data-label="ノータッチ">{row.noTouchAces}</td>
+                        <td data-label="サービスエース">{row.serviceAces}</td>
+                        <td data-label="効果">{row.effective}</td>
+                        <td data-label="ミス">{row.misses}</td>
+                        <td data-label="効果率">{formatNumber(getServeEffectRate(row))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "reception" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>レセプション</h3>
+              <p className="muted">AB率は # / +、ミス率は = で計算します。</p>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>選手</th>
+                      <th>本数</th>
+                      <th>AB</th>
+                      <th>ミス</th>
+                      <th>AB率</th>
+                      <th>ミス率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receptionMetricRows.map((row) => (
+                      <tr key={row.label}>
+                        <td data-label="選手">{row.label}</td>
+                        <td data-label="本数">{row.attempts}</td>
+                        <td data-label="AB">{row.ab}</td>
+                        <td data-label="ミス">{row.errors}</td>
+                        <td data-label="AB率">{formatRate(row.ab, row.attempts)}</td>
+                        <td data-label="ミス率">{formatRate(row.errors, row.attempts)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "attack" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>フリーボール後の攻撃配分</h3>
+              <p className="muted">相手フリーボールの後、最初に出た自チームの攻撃を集計します。</p>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>攻撃</th>
+                      <th>本数</th>
+                      <th>配分率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {freeballSetRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={3}>該当データなし</td>
+                      </tr>
+                    ) : (
+                      freeballSetRows.map((row) => (
+                        <tr key={row.label}>
+                          <td data-label="攻撃">{row.label}</td>
+                          <td data-label="本数">{row.count}</td>
+                          <td data-label="配分率">{formatRate(row.count, row.total)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "block" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>セット別ブロック</h3>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>セット</th>
+                      <th>成功</th>
+                      <th>ミス</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blockSetRows.map((row) => (
+                      <tr key={row.setIndex}>
+                        <td data-label="セット">セット {row.setIndex}</td>
+                        <td data-label="成功">{row.successes}</td>
+                        <td data-label="ミス">{row.misses}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "attack" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>選手別コース決定率</h3>
+              <p className="muted">
+                落下地点が打点からコート横幅の半分以内ならフェイント、軌道とネットの角度が60〜90度ならストレート、それ以外はクロスに分類します。
+              </p>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>選手</th>
+                      <th>フェイント</th>
+                      <th>ストレート</th>
+                      <th>クロス</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attackCourseRows.map((row) => (
+                      <tr key={row.player}>
+                        <td data-label="選手">{row.player}</td>
+                        <td data-label="フェイント">
+                          {formatAttackCourseSummary(row.feint)}
+                        </td>
+                        <td data-label="ストレート">
+                          {formatAttackCourseSummary(row.straight)}
+                        </td>
+                        <td data-label="クロス">
+                          {formatAttackCourseSummary(row.cross)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "serve" ? (
+              <>
+            <div className="analysis-block analysis-section-block">
+              <h3>サーブ時のブレイク率比較</h3>
+              <p className="muted">ミス込みと、サーブミスを除いた場合を比較します。</p>
+              <div className="score-table-wrap">
+                <table className="score-table analysis-player-table">
+                  <thead>
+                    <tr>
+                      <th>選手</th>
+                      <th>ミス込み</th>
+                      <th>ミス除外</th>
+                      <th>差分</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serveBreakRows.map((row) => {
+                      const includedRate = getRate(row.breaks, row.attempts);
+                      const nonMissRate = getRate(row.nonMissBreaks, row.nonMissAttempts);
+                      const diff =
+                        includedRate === undefined || nonMissRate === undefined
+                          ? undefined
+                          : nonMissRate - includedRate;
+
+                      return (
+                        <tr key={row.player}>
+                          <td data-label="選手">{row.player}</td>
+                          <td data-label="ミス込み">
+                            {formatPercent(includedRate)} ({row.breaks}/{row.attempts})
+                          </td>
+                          <td data-label="ミス除外">
+                            {formatPercent(nonMissRate)} ({row.nonMissBreaks}/
+                            {row.nonMissAttempts})
+                          </td>
+                          <td data-label="差分">
+                            {diff === undefined
+                              ? "-"
+                              : `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pt`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+              </>
+            ) : null}
+
+            {activeCategory === "player" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>個人成績</h3>
               <div className="score-table-wrap">
@@ -846,6 +1701,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
           </>
         )}
       </div>

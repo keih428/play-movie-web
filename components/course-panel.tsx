@@ -40,6 +40,7 @@ const PLAYER_COLORS = [
   "#ad3974",
   "#5f6b16",
 ];
+const POSITIVE_RESULT_COLOR = "#d92d20";
 
 const ZONE_GRID: Record<number, { column: number; row: number }> = {
   4: { column: 0, row: 0 },
@@ -190,6 +191,10 @@ function isAttackKill(play: ParsedPlay) {
 
 function isEffectiveServe(play: ParsedPlay) {
   return play.skill === "S" && ["#", "+", "!"].includes(play.effect ?? "");
+}
+
+function isPositiveResult(play: ParsedPlay) {
+  return isAttackKill(play) || isEffectiveServe(play);
 }
 
 export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
@@ -381,6 +386,17 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
             aria-label={`${selectedTeamLabel}の${skill === "S" ? "サーブ" : "アタック"}コース`}
           >
             <defs>
+              <marker
+                id="course-arrow-positive"
+                markerWidth="8"
+                markerHeight="8"
+                refX="7"
+                refY="4"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <path d="M 0 0 L 8 4 L 0 8 z" fill={POSITIVE_RESULT_COLOR} />
+              </marker>
               {visiblePlayers.map((playerName, index) => {
                 const color = playerColorMap.get(playerName);
                 return (
@@ -439,6 +455,8 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
             {coursePlays.map((entry, index) => {
               const playerIndex = visiblePlayers.indexOf(entry.player);
               const color = playerColorMap.get(entry.player);
+              const isPositive = isPositiveResult(entry.play);
+              const pathColor = isPositive ? POSITIVE_RESULT_COLOR : color;
               return (
                 <g key={`${entry.play.id}-${index}`}>
                   <line
@@ -447,9 +465,13 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                     y1={entry.start.y}
                     x2={entry.end.x}
                     y2={entry.end.y}
-                    stroke={color}
+                    stroke={pathColor}
                     strokeDasharray={isNumberedAttack(entry.play) ? "10 8" : undefined}
-                    markerEnd={`url(#course-arrow-${playerIndex})`}
+                    markerEnd={
+                      isPositive
+                        ? "url(#course-arrow-positive)"
+                        : `url(#course-arrow-${playerIndex})`
+                    }
                   />
                   <circle
                     className="course-start-point"
@@ -459,7 +481,7 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                     fill={color}
                   />
                   {isAttackKill(entry.play) ? (
-                    <g className="course-kill-mark" stroke={color}>
+                    <g className="course-kill-mark" stroke={pathColor}>
                       <line
                         x1={entry.end.x - 7}
                         y1={entry.end.y - 7}
@@ -480,7 +502,7 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                       cx={entry.end.x}
                       cy={entry.end.y}
                       r="8"
-                      stroke={color}
+                      stroke={pathColor}
                     />
                   ) : null}
                 </g>
@@ -518,11 +540,21 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
             実線：平行またはクイック
           </span>
           <span className="course-symbol-legend-item">
-            <span className="course-symbol-mark">×</span>
+            <span
+              className="course-symbol-mark"
+              style={{ color: POSITIVE_RESULT_COLOR }}
+            >
+              ×
+            </span>
             アタック：決定
           </span>
           <span className="course-symbol-legend-item">
-            <span className="course-symbol-mark">○</span>
+            <span
+              className="course-symbol-mark"
+              style={{ color: POSITIVE_RESULT_COLOR }}
+            >
+              ○
+            </span>
             サーブ：効果あり
           </span>
         </div>
