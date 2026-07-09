@@ -8,6 +8,7 @@ import {
   getRate,
   getServeEffectRate,
   getSkillSummaryRow,
+  type AggregateSetScope,
   type AggregateAnalysis,
   type AnalysisMatchInput,
   type AttackCourseSummary,
@@ -45,6 +46,12 @@ const ANALYSIS_CATEGORIES: Array<{ key: AnalysisCategory; label: string }> = [
   { key: "reception", label: "レセプション" },
   { key: "block", label: "ブロック" },
   { key: "player", label: "個人" },
+];
+
+const SET_SCOPE_OPTIONS: Array<{ value: AggregateSetScope; label: string }> = [
+  { value: "all", label: "全てのセット" },
+  { value: "won", label: "勝ったセットのみ" },
+  { value: "lost", label: "負けたセットのみ" },
 ];
 
 function formatRate(wins: number, attempts: number): string {
@@ -523,25 +530,44 @@ export function MultiMatchAnalysisClient({
   );
   const [activeCategory, setActiveCategory] =
     useState<AnalysisCategory>("overview");
+  const [setScope, setSetScope] = useState<AggregateSetScope>("all");
 
   const selectedInputs = useMemo(
     () => buildInputs(candidates, selectedIds),
     [candidates, selectedIds],
   );
   const analysis = useMemo(
-    () => buildAggregateAnalysis(selectedInputs),
-    [selectedInputs],
+    () => buildAggregateAnalysis(selectedInputs, setScope),
+    [selectedInputs, setScope],
   );
   const selectedSet = new Set(selectedIds);
 
   return (
     <section className="panel analysis-panel">
       <div className="panel-inner stack">
-        <div>
-          <h2>{teamName} 総合分析</h2>
-          <p className="muted">
-            自チーム名が一致する試合を複数選択し、選択範囲全体の統計を集計します。
-          </p>
+        <div className="section-heading-row">
+          <div>
+            <h2>{teamName} 総合分析</h2>
+            <p className="muted">
+              自チーム名が一致する試合を複数選択し、選択範囲全体の統計を集計します。
+            </p>
+          </div>
+          <div className="field">
+            <label htmlFor="aggregate-set-scope">集計範囲</label>
+            <select
+              id="aggregate-set-scope"
+              value={setScope}
+              onChange={(event) =>
+                setSetScope(event.target.value as AggregateSetScope)
+              }
+            >
+              {SET_SCOPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="analysis-block analysis-section-block">

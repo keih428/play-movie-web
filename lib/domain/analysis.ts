@@ -122,6 +122,8 @@ export type AnalysisMatchInput = {
   ownSide: TeamSide;
 };
 
+export type AggregateSetScope = "all" | "won" | "lost";
+
 export type MatchSummaryRow = {
   id: string;
   name: string;
@@ -957,8 +959,32 @@ export function mergeServeBreakRows(rows: ServeBreakRow[][]): ServeBreakRow[] {
   );
 }
 
-export function buildAggregateAnalysis(inputs: AnalysisMatchInput[]): AggregateAnalysis {
-  const teamPlays = inputs.flatMap((input) => getTeamPlays(input.match, input.ownSide));
+function getScopedMatch(input: AnalysisMatchInput, scope: AggregateSetScope): ParsedMatch {
+  if (scope === "all") {
+    return input.match;
+  }
+
+  return {
+    ...input.match,
+    sets: input.match.sets.filter((set) => {
+      const winningSide = getSetWinningSide(set);
+      if (scope === "won") {
+        return winningSide === input.ownSide;
+      }
+      return winningSide !== undefined && winningSide !== input.ownSide;
+    }),
+  };
+}
+
+export function buildAggregateAnalysis(
+  inputs: AnalysisMatchInput[],
+  scope: AggregateSetScope = "all",
+): AggregateAnalysis {
+  const scopedInputs = inputs.map((input) => ({
+    ...input,
+    match: getScopedMatch(input, scope),
+  }));
+  const teamPlays = scopedInputs.flatMap((input) => getTeamPlays(input.match, input.ownSide));
   const totalAnalysis: TeamAnalysis = {
     side: "home",
     name: "選択試合合計",
@@ -973,7 +999,7 @@ export function buildAggregateAnalysis(inputs: AnalysisMatchInput[]): AggregateA
     players: buildPlayerRows(teamPlays),
   };
 
-  const matchSummaries = inputs.map<MatchSummaryRow>((input) => {
+  const matchSummaries = scopedInputs.map<MatchSummaryRow>((input) => {
     const analysis = buildTeamAnalysis(input.match, input.ownSide);
     if (analysis) {
       totalAnalysis.rallyCount += analysis.rallyCount;
@@ -1011,7 +1037,7 @@ export function buildAggregateAnalysis(inputs: AnalysisMatchInput[]): AggregateA
 
   return {
     matchCount: inputs.length,
-    setCount: inputs.reduce((sum, input) => sum + input.match.sets.length, 0),
+    setCount: scopedInputs.reduce((sum, input) => sum + input.match.sets.length, 0),
     teamAnalysis: totalAnalysis,
     teamPlays,
     matchSummaries,
@@ -1019,9 +1045,9 @@ export function buildAggregateAnalysis(inputs: AnalysisMatchInput[]): AggregateA
     serveMetricRows: buildServeMetricRows(teamPlays),
     receptionMetricRows: buildReceptionMetricRows(teamPlays),
     freeballAttackRows: mergeDistributionRows(
-      inputs.map((input) => buildFreeballAttackDistribution(input.match, input.ownSide)),
+      scopedInputs.map((input) => buildFreeballAttackDistribution(input.match, input.ownSide)),
     ),
-    blockSetRows: inputs.flatMap((input, matchIndex) =>
+    blockSetRows: scopedInputs.flatMap((input, matchIndex) =>
       buildBlockSetRows(input.match, input.ownSide).map((row) => ({
         ...row,
         setIndex: matchIndex * 100 + row.setIndex,
@@ -1029,7 +1055,7 @@ export function buildAggregateAnalysis(inputs: AnalysisMatchInput[]): AggregateA
     ),
     attackCourseRows: buildAttackCourseRows(teamPlays),
     serveBreakRows: mergeServeBreakRows(
-      inputs.map((input) => buildServeBreakRows(input.match, input.ownSide)),
+      scopedInputs.map((input) => buildServeBreakRows(input.match, input.ownSide)),
     ),
   };
 }
