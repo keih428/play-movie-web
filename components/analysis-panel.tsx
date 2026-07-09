@@ -821,14 +821,14 @@ function buildFreeballSetDistribution(
           return;
         }
 
-        const setPlay = event.plays
+        const attackPlay = event.plays
           .slice(index + 1)
-          .find((candidate) => candidate.team === teamCode && candidate.skill === "E");
-        if (!setPlay) {
+          .find((candidate) => candidate.team === teamCode && candidate.skill === "A");
+        if (!attackPlay) {
           return;
         }
 
-        const label = setPlay.code || setPlay.hitType || "不明";
+        const label = attackPlay.hitType || attackPlay.code || "不明";
         rows.set(label, (rows.get(label) ?? 0) + 1);
       });
     });
@@ -1518,12 +1518,13 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
             {activeCategory === "attack" ? (
               <>
             <div className="analysis-block analysis-section-block">
-              <h3>フリーボール時のトス配分</h3>
+              <h3>フリーボール後の攻撃配分</h3>
+              <p className="muted">相手フリーボールの後、最初に出た自チームの攻撃を集計します。</p>
               <div className="score-table-wrap">
                 <table className="score-table analysis-player-table">
                   <thead>
                     <tr>
-                      <th>トス</th>
+                      <th>攻撃</th>
                       <th>本数</th>
                       <th>配分率</th>
                     </tr>
@@ -1536,7 +1537,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                     ) : (
                       freeballSetRows.map((row) => (
                         <tr key={row.label}>
-                          <td data-label="トス">{row.label}</td>
+                          <td data-label="攻撃">{row.label}</td>
                           <td data-label="本数">{row.count}</td>
                           <td data-label="配分率">{formatRate(row.count, row.total)}</td>
                         </tr>
