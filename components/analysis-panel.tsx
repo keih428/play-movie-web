@@ -122,6 +122,23 @@ type ServeBreakRow = {
   nonMissBreaks: number;
 };
 
+type AnalysisCategory =
+  | "overview"
+  | "attack"
+  | "serve"
+  | "reception"
+  | "block"
+  | "player";
+
+const ANALYSIS_CATEGORIES: Array<{ key: AnalysisCategory; label: string }> = [
+  { key: "overview", label: "概要" },
+  { key: "attack", label: "攻撃" },
+  { key: "serve", label: "サーブ" },
+  { key: "reception", label: "レセプション" },
+  { key: "block", label: "ブロック" },
+  { key: "player", label: "個人" },
+];
+
 function getTeamCode(side: TeamSide) {
   return side === "home" ? "*" : "a";
 }
@@ -951,6 +968,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const homeAnalysis = buildTeamAnalysis(match, "home");
   const awayAnalysis = buildTeamAnalysis(match, "away");
   const [activeSide, setActiveSide] = useState<TeamSide>("home");
+  const [activeCategory, setActiveCategory] =
+    useState<AnalysisCategory>("overview");
   const scoreTimeline = buildScoreTimeline(match);
 
   const activeAnalysis =
@@ -1015,6 +1034,23 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               ))}
             </div>
 
+            <div className="tab-row" role="tablist" aria-label="分析カテゴリ切替">
+              {ANALYSIS_CATEGORIES.map((category) => (
+                <button
+                  key={category.key}
+                  className={`tab-button${activeCategory === category.key ? " tab-button-active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCategory === category.key}
+                  onClick={() => setActiveCategory(category.key)}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
+
+            {activeCategory === "overview" ? (
+              <>
             <div className="meta-grid analysis-summary-grid">
               <div className="meta-card analysis-summary-card">
                 <span className="muted">総得点率</span>
@@ -1363,7 +1399,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </div>
               )}
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "attack" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>アタック指標</h3>
               <p className="muted">
@@ -1398,7 +1438,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "serve" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>サーブ指標</h3>
               <p className="muted">
@@ -1433,7 +1477,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "reception" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>レセプション</h3>
               <p className="muted">AB率は # / +、ミス率は = で計算します。</p>
@@ -1464,7 +1512,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "attack" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>フリーボール時のトス配分</h3>
               <div className="score-table-wrap">
@@ -1494,7 +1546,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "block" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>セット別ブロック</h3>
               <div className="score-table-wrap">
@@ -1518,7 +1574,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "attack" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>選手別コース決定率</h3>
               <p className="muted">
@@ -1553,7 +1613,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "serve" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>サーブ時のブレイク率比較</h3>
               <p className="muted">ミス込みと、サーブミスを除いた場合を比較します。</p>
@@ -1598,7 +1662,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
 
+            {activeCategory === "player" ? (
+              <>
             <div className="analysis-block analysis-section-block">
               <h3>個人成績</h3>
               <div className="score-table-wrap">
@@ -1632,6 +1700,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </table>
               </div>
             </div>
+              </>
+            ) : null}
           </>
         )}
       </div>
