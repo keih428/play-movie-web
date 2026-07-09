@@ -582,6 +582,17 @@ iframe {
   gap: 1rem;
 }
 
+.analysis-tab-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.analysis-set-scope-field {
+  min-width: 180px;
+}
+
 .button {
   display: inline-flex;
   justify-content: center;
@@ -1694,6 +1705,12 @@ iframe {
   }
 
   .button-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-tab-toolbar,
+  .section-heading-row {
     display: grid;
     grid-template-columns: 1fr;
   }

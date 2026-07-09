@@ -552,22 +552,6 @@ export function MultiMatchAnalysisClient({
               自チーム名が一致する試合を複数選択し、選択範囲全体の統計を集計します。
             </p>
           </div>
-          <div className="field">
-            <label htmlFor="aggregate-set-scope">集計範囲</label>
-            <select
-              id="aggregate-set-scope"
-              value={setScope}
-              onChange={(event) =>
-                setSetScope(event.target.value as AggregateSetScope)
-              }
-            >
-              {SET_SCOPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         <div className="analysis-block analysis-section-block">
@@ -638,19 +622,37 @@ export function MultiMatchAnalysisClient({
           </div>
         ) : (
           <>
-            <div className="tab-row" role="tablist" aria-label="分析カテゴリ切替">
-              {ANALYSIS_CATEGORIES.map((category) => (
-                <button
-                  key={category.key}
-                  className={`tab-button${activeCategory === category.key ? " tab-button-active" : ""}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeCategory === category.key}
-                  onClick={() => setActiveCategory(category.key)}
+            <div className="analysis-tab-toolbar">
+              <div className="tab-row" role="tablist" aria-label="分析カテゴリ切替">
+                {ANALYSIS_CATEGORIES.map((category) => (
+                  <button
+                    key={category.key}
+                    className={`tab-button${activeCategory === category.key ? " tab-button-active" : ""}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeCategory === category.key}
+                    onClick={() => setActiveCategory(category.key)}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+              <div className="field analysis-set-scope-field">
+                <label htmlFor="aggregate-set-scope">集計範囲</label>
+                <select
+                  id="aggregate-set-scope"
+                  value={setScope}
+                  onChange={(event) =>
+                    setSetScope(event.target.value as AggregateSetScope)
+                  }
                 >
-                  {category.label}
-                </button>
-              ))}
+                  {SET_SCOPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {activeCategory === "overview" ? <OverviewSection analysis={analysis} /> : null}
