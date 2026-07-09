@@ -1,5 +1,5 @@
 import { MultiMatchAnalysisClient } from "@/components/multi-match-analysis-client";
-import { formatTeamSlugLabel } from "@/lib/domain/team";
+import { areTeamNamesEquivalent, formatTeamSlugLabel } from "@/lib/domain/team";
 import type { ParsedMatch, TeamSide } from "@/lib/domain/types";
 import {
   getSavedWorkspace,
@@ -15,11 +15,10 @@ type PageProps = {
 export const dynamic = "force-dynamic";
 
 function getOwnSide(match: ParsedMatch, teamName: string): TeamSide | undefined {
-  const normalizedTeamName = teamName.trim();
-  if (match.teams.home.name.trim() === normalizedTeamName) {
+  if (areTeamNamesEquivalent(match.teams.home.name, teamName)) {
     return "home";
   }
-  if (match.teams.away.name.trim() === normalizedTeamName) {
+  if (areTeamNamesEquivalent(match.teams.away.name, teamName)) {
     return "away";
   }
   return undefined;
