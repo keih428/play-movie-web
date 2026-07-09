@@ -66,6 +66,10 @@ export function buildTeamWorkspacesPath(teamSlug: string): string {
   return `/t/${teamSlug}/workspaces`;
 }
 
+export function buildTeamAnalysisPath(teamSlug: string): string {
+  return `/t/${teamSlug}/analysis`;
+}
+
 export function buildWorkspacePath(input: {
   teamSlug?: string;
   workspaceId: string;

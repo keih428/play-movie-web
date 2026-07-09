@@ -575,6 +575,13 @@ iframe {
   gap: 10px;
 }
 
+.section-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .button {
   display: inline-flex;
   justify-content: center;
