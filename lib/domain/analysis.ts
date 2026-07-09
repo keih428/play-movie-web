@@ -295,12 +295,9 @@ export function buildPlayerRows(plays: ParsedPlay[]): PlayerRow[] {
     rows.set(key, current);
   });
 
-  return [...rows.values()].sort((a, b) => {
-    if (b.total !== a.total) {
-      return b.total - a.total;
-    }
-    return a.player.localeCompare(b.player, "ja");
-  });
+  return [...rows.values()].sort((a, b) =>
+    a.player.localeCompare(b.player, "ja", { numeric: true }),
+  );
 }
 
 export function buildTeamAnalysis(
