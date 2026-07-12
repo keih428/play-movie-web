@@ -276,6 +276,7 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
           <table className="score-table analysis-player-table">
             <thead>
               <tr>
+                <th>コード</th>
                 <th>攻撃</th>
                 <th>本数</th>
                 <th>配分率</th>
@@ -284,13 +285,16 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
             <tbody>
               {analysis.freeballAttackRows.length === 0 ? (
                 <tr>
-                  <td colSpan={3}>該当データなし</td>
+                  <td colSpan={4}>該当データなし</td>
                 </tr>
               ) : (
                 analysis.freeballAttackRows.map((row) => (
                   <tr key={row.label}>
+                    <td data-label="コード">{row.code}</td>
                     <td data-label="攻撃">{row.label}</td>
-                    <td data-label="本数">{row.count}</td>
+                    <td data-label="本数">
+                      {row.count}（{row.setterReceivedCount}）
+                    </td>
                     <td data-label="配分率">{formatRate(row.count, row.total)}</td>
                   </tr>
                 ))
@@ -458,37 +462,51 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
     0,
   );
   const misses = analysis.blockSetRows.reduce((sum, row) => sum + row.misses, 0);
+  const tables = [
+    { title: "ブロック成功", rows: analysis.blockSuccessRows },
+    { title: "ブロックミス", rows: analysis.blockMissRows },
+  ];
 
   return (
     <div className="analysis-block analysis-section-block">
       <h3>ブロック</h3>
-      <div className="score-table-wrap">
-        <table className="score-table analysis-player-table">
-          <thead>
-            <tr>
-              <th>項目</th>
-              <th>本数</th>
-              <th>割合</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td data-label="項目">相手スパイク</td>
-              <td data-label="本数">{opponentAttacks}</td>
-              <td data-label="割合">{opponentAttacks > 0 ? "100.0%" : "-"}</td>
-            </tr>
-            <tr>
-              <td data-label="項目">成功</td>
-              <td data-label="本数">{successes}</td>
-              <td data-label="割合">{formatRate(successes, opponentAttacks)}</td>
-            </tr>
-            <tr>
-              <td data-label="項目">ミス</td>
-              <td data-label="本数">{misses}</td>
-              <td data-label="割合">{formatRate(misses, opponentAttacks)}</td>
-            </tr>
-          </tbody>
-        </table>
+      <p className="muted">
+        相手スパイク {opponentAttacks}本 / 成功 {successes}本（{formatRate(successes, opponentAttacks)}） / ミス {misses}本（{formatRate(misses, opponentAttacks)}）
+      </p>
+      <div className="comparison-stack">
+        {tables.map((table) => (
+          <div key={table.title}>
+            <h4>{table.title}</h4>
+            <div className="score-table-wrap">
+              <table className="score-table analysis-player-table">
+                <thead>
+                  <tr>
+                    <th>コード</th>
+                    <th>攻撃</th>
+                    <th>本数</th>
+                    <th>割合</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={4}>該当データなし</td>
+                    </tr>
+                  ) : (
+                    table.rows.map((row) => (
+                      <tr key={`${table.title}-${row.label}`}>
+                        <td data-label="コード">{row.code}</td>
+                        <td data-label="攻撃">{row.label}</td>
+                        <td data-label="本数">{row.count}</td>
+                        <td data-label="割合">{formatRate(row.count, row.total)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
