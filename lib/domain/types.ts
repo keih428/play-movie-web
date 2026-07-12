@@ -117,6 +117,7 @@ export type SavedWorkspaceSummary = {
   createdAt: string;
   updatedAt: string;
   matchLabel?: string;
+  matchDate?: string;
   resultLabel?: string;
   setScoreLabel?: string;
 };

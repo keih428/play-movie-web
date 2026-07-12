@@ -116,7 +116,6 @@ function VideoUrlPicker({ id, value, options, onChange }: VideoUrlPickerProps) {
               onClick={() => onChange(video.url ?? "")}
             >
               <span>{video.label}</span>
-              <small className="muted">{video.url}</small>
             </button>
           ))
         )}
@@ -185,6 +184,14 @@ function getInheritedSetVideo(
     .filter((entry) => entry.youtubeUrl && entry.setIndex <= setIndex)
     .sort((left, right) => left.setIndex - right.setIndex)
     .at(-1);
+}
+
+function getVideoTitleByUrl(options: VideoOption[], url: string | undefined) {
+  if (!url) {
+    return "未選択";
+  }
+
+  return options.find((video) => video.url === url)?.label ?? url;
 }
 
 export function StaffSettingsClient({
@@ -730,20 +737,13 @@ export function StaffSettingsClient({
                             : "未設定"}
                       </span>
                     </div>
-                    <div className="meta-grid">
-                      <div className="meta-card">
-                        <span className="muted">動画</span>
-                        <strong>{effectiveEntry?.youtubeUrl || "未選択"}</strong>
-                      </div>
-                      <div className="meta-card">
-                        <span className="muted">オフセット</span>
-                        <strong>{effectiveEntry?.offsetSeconds ?? 0}s</strong>
-                      </div>
-                    </div>
+                    <p className="muted">
+                      {getVideoTitleByUrl(matchVideos, effectiveEntry?.youtubeUrl)}
+                    </p>
                     <div className="field-grid">
                       <div className="field">
                         <label htmlFor={`selected-set-video-${entry.setIndex}`}>
-                          試合動画
+                          動画
                         </label>
                         <VideoUrlPicker
                           id={`selected-set-video-${entry.setIndex}`}
@@ -760,7 +760,7 @@ export function StaffSettingsClient({
 
                       <div className="field">
                         <label htmlFor={`selected-set-offset-${entry.setIndex}`}>
-                          オフセット秒
+                          オフセット
                         </label>
                         <OffsetSecondsInput
                           id={`selected-set-offset-${entry.setIndex}`}
@@ -859,10 +859,13 @@ export function StaffSettingsClient({
                                           : "未設定"}
                                     </span>
                                   </div>
+                                  <p className="muted">
+                                    {getVideoTitleByUrl(matchVideos, effectiveEntry?.youtubeUrl)}
+                                  </p>
                                   <div className="field-grid">
                                     <div className="field">
                                       <label htmlFor={`edit-set-video-${workspace.id}-${entry.setIndex}`}>
-                                        動画URL
+                                        動画
                                       </label>
                                       <VideoUrlPicker
                                         id={`edit-set-video-${workspace.id}-${entry.setIndex}`}
@@ -882,7 +885,7 @@ export function StaffSettingsClient({
 
                                     <div className="field">
                                       <label htmlFor={`edit-set-offset-${workspace.id}-${entry.setIndex}`}>
-                                        オフセット秒
+                                        オフセット
                                       </label>
                                       <OffsetSecondsInput
                                         id={`edit-set-offset-${workspace.id}-${entry.setIndex}`}
