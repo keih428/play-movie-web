@@ -86,8 +86,10 @@ type ReceptionMetricRow = {
 };
 
 type DistributionRow = {
+  code: string;
   label: string;
   count: number;
+  setterReceivedCount: number;
   total: number;
 };
 
@@ -96,6 +98,14 @@ type BlockSetRow = {
   opponentAttacks: number;
   successes: number;
   misses: number;
+};
+
+type BlockAttackRow = {
+  code: string;
+  label: string;
+  count: number;
+  opponentAttackCount: number;
+  total: number;
 };
 
 type Point = {
@@ -800,6 +810,144 @@ function getTeamPlays(match: ParsedMatch | undefined, side: TeamSide): ParsedPla
   );
 }
 
+function isGradeF(play: ParsedPlay) {
+  return play.effect === "F" || getEffectGrade(play.effect) === "F";
+}
+
+function hasCodeToken(play: ParsedPlay, token: string) {
+  return (play.code ?? "").toUpperCase().includes(token);
+}
+
+function isOverpassAttack(play: ParsedPlay) {
+  return (
+    play.skill === "A" &&
+    (play.hitType?.trim().toUpperCase() === "O" || hasCodeToken(play, "AO"))
+  );
+}
+
+function isOverpassDig(play: ParsedPlay) {
+  return (
+    play.skill === "D" &&
+    (play.hitType?.trim().toUpperCase() === "O" || hasCodeToken(play, "DO"))
+  );
+}
+
+function getAttackCombinationLabel(play: ParsedPlay) {
+  const combination = play.combination?.trim().toUpperCase();
+  if (combination) {
+    return combination;
+  }
+
+  const code = play.code?.trim().toUpperCase();
+  const codeMatch = code?.match(/P[A-Z0-9]/);
+  if (codeMatch) {
+    return codeMatch[0];
+  }
+
+  return play.code || play.hitType || "不明";
+}
+
+function getFreeballAttackDisplay(code: string) {
+  const normalizedCode = code.trim().toUpperCase();
+  const displayMap: Record<string, { code: string; label: string }> = {
+    PV: { code: "PV", label: "レフト平行" },
+    PA: { code: "PA", label: "Aクイック" },
+    PB: { code: "PB", label: "Bクイック" },
+    PZ: { code: "PZ", label: "ライト平行" },
+    P1: { code: "P1/P2", label: "レフトオープン" },
+    P2: { code: "P1/P2", label: "レフトオープン" },
+    P3: { code: "P3", label: "センターオープン" },
+    P4: { code: "P4/P5", label: "ライトオープン" },
+    P5: { code: "P4/P5", label: "ライトオープン" },
+    P8: { code: "P8", label: "パイプ" },
+    P9: { code: "P9", label: "シャー" },
+  };
+
+  return displayMap[normalizedCode] ?? {
+    code: "その他",
+    label: "その他",
+  };
+}
+
+function normalizePlayerNumber(value: number | string | undefined) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return String(value).trim().replace(/^0+/, "") || "0";
+}
+
+function getFreeballReceiverPlay(
+  event: ParsedEvent,
+  side: TeamSide,
+  triggerIndex: number,
+) {
+  const teamCode = getTeamCode(side);
+  const triggerPlay = event.plays[triggerIndex];
+
+  if (triggerPlay?.team === teamCode && isOverpassDig(triggerPlay)) {
+    return triggerPlay;
+  }
+
+  return event.plays
+    .slice(triggerIndex + 1)
+    .find(
+      (candidate) =>
+        candidate.team === teamCode &&
+        (candidate.skill === "R" ||
+          candidate.skill === "D" ||
+          candidate.skill === "F"),
+    );
+}
+
+function didSetterReceiveFreeball(
+  event: ParsedEvent,
+  side: TeamSide,
+  triggerIndex: number,
+) {
+  const setterAt = event.lineup[side].setterAt;
+  const setterPlayer = setterAt
+    ? event.lineup[side].positions[String(setterAt)]
+    : undefined;
+  const receiverPlay = getFreeballReceiverPlay(event, side, triggerIndex);
+
+  return (
+    normalizePlayerNumber(receiverPlay?.player) !== undefined &&
+    normalizePlayerNumber(receiverPlay?.player) === normalizePlayerNumber(setterPlayer)
+  );
+}
+
+function isFreeballTriggerForSide(
+  plays: ParsedPlay[],
+  index: number,
+  side: TeamSide,
+) {
+  const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
+  const play = plays[index];
+
+  if (play.team === opponentCode && play.skill === "F") {
+    return true;
+  }
+
+  if (
+    play.team === opponentCode &&
+    (play.skill === "R" || play.skill === "D") &&
+    isGradeF(play)
+  ) {
+    return true;
+  }
+
+  if (play.team === teamCode && isOverpassDig(play)) {
+    const previousOpponentAttack = [...plays.slice(0, index)]
+      .reverse()
+      .find((candidate) => candidate.team === opponentCode && candidate.skill !== "B");
+    return previousOpponentAttack ? isOverpassAttack(previousOpponentAttack) : false;
+  }
+
+  return false;
+}
+
 function buildFreeballSetDistribution(
   match: ParsedMatch | undefined,
   side: TeamSide,
@@ -809,13 +957,15 @@ function buildFreeballSetDistribution(
   }
 
   const teamCode = getTeamCode(side);
-  const opponentCode = side === "home" ? "a" : "*";
-  const rows = new Map<string, number>();
+  const rows = new Map<
+    string,
+    { code: string; label: string; count: number; setterReceivedCount: number }
+  >();
 
   match.sets.forEach((set) => {
     set.events.forEach((event) => {
-      event.plays.forEach((play, index) => {
-        if (play.team !== opponentCode || play.skill !== "F") {
+      event.plays.forEach((_play, index) => {
+        if (!isFreeballTriggerForSide(event.plays, index, side)) {
           return;
         }
 
@@ -826,15 +976,24 @@ function buildFreeballSetDistribution(
           return;
         }
 
-        const label = attackPlay.hitType || attackPlay.code || "不明";
-        rows.set(label, (rows.get(label) ?? 0) + 1);
+        const display = getFreeballAttackDisplay(getAttackCombinationLabel(attackPlay));
+        const current = rows.get(display.label) ?? {
+          ...display,
+          count: 0,
+          setterReceivedCount: 0,
+        };
+        current.count += 1;
+        if (didSetterReceiveFreeball(event, side, index)) {
+          current.setterReceivedCount += 1;
+        }
+        rows.set(display.label, current);
       });
     });
   });
 
-  const total = [...rows.values()].reduce((sum, count) => sum + count, 0);
-  return [...rows.entries()]
-    .map(([label, count]) => ({ label, count, total }))
+  const total = [...rows.values()].reduce((sum, row) => sum + row.count, 0);
+  return [...rows.values()]
+    .map((row) => ({ ...row, total }))
     .sort((left, right) => right.count - left.count);
 }
 
@@ -860,6 +1019,82 @@ function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide): Bloc
       misses: blocks.filter(isError).length,
     };
   });
+}
+
+function findPreviousOpponentAttack(
+  plays: ParsedPlay[],
+  blockIndex: number,
+  opponentCode: string,
+) {
+  return [...plays.slice(0, blockIndex)]
+    .reverse()
+    .find((play) => play.team === opponentCode && play.skill === "A");
+}
+
+function buildBlockAttackRows(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+  effect: "#" | "=",
+): BlockAttackRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
+  const rows = new Map<
+    string,
+    { code: string; label: string; count: number; opponentAttackCount: number }
+  >();
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      event.plays.forEach((play, index) => {
+        if (play.team === opponentCode && play.skill === "A") {
+          const display = getFreeballAttackDisplay(getAttackCombinationLabel(play));
+          const current = rows.get(display.label) ?? {
+            ...display,
+            count: 0,
+            opponentAttackCount: 0,
+          };
+          current.opponentAttackCount += 1;
+          rows.set(display.label, current);
+        }
+
+        if (play.team !== teamCode || play.skill !== "B" || play.effect !== effect) {
+          return;
+        }
+
+        const attack = findPreviousOpponentAttack(event.plays, index, opponentCode);
+        const display = getFreeballAttackDisplay(
+          attack ? getAttackCombinationLabel(attack) : "不明",
+        );
+        const current = rows.get(display.label) ?? {
+          ...display,
+          count: 0,
+          opponentAttackCount: 0,
+        };
+        current.count += 1;
+        rows.set(display.label, current);
+      });
+    });
+  });
+
+  const total = [...rows.values()].reduce((sum, row) => sum + row.count, 0);
+  return [...rows.values()]
+    .map((row) => ({ ...row, total }))
+    .sort((left, right) => {
+      if (left.label === "その他" && right.label !== "その他") {
+        return 1;
+      }
+      if (right.label === "その他" && left.label !== "その他") {
+        return -1;
+      }
+      if (right.opponentAttackCount !== left.opponentAttackCount) {
+        return right.opponentAttackCount - left.opponentAttackCount;
+      }
+      return right.count - left.count;
+    });
 }
 
 function getAttackCourseType(play: ParsedPlay): keyof Omit<AttackCourseRow, "player"> | undefined {
@@ -987,6 +1222,16 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
     activeAnalysis?.side ?? activeSide,
   );
   const blockSetRows = buildBlockSetRows(match, activeAnalysis?.side ?? activeSide);
+  const blockSuccessRows = buildBlockAttackRows(
+    match,
+    activeAnalysis?.side ?? activeSide,
+    "#",
+  );
+  const blockMissRows = buildBlockAttackRows(
+    match,
+    activeAnalysis?.side ?? activeSide,
+    "=",
+  );
   const attackCourseRows = buildAttackCourseRows(activeTeamPlays);
   const serveBreakRows = buildServeBreakRows(match, activeAnalysis?.side ?? activeSide);
   const gradeOrder = ["A", "B", "C", "D", "E", "F"];
@@ -1393,7 +1638,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                       <div className="tag-row">
                         {gradeOrder.map((grade) => (
                           <span className={`tag skill-grade-tag skill-grade-tag-${grade}`} key={grade}>
-                            {grade} {row.gradeCounts[grade] ?? 0}
+                            {grade}
+                            {row.gradeCounts[grade] ?? 0}
                           </span>
                         ))}
                       </div>
@@ -1522,11 +1768,14 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               <>
             <div className="analysis-block analysis-section-block">
               <h3>フリーボール後の攻撃配分</h3>
-              <p className="muted">相手フリーボールの後、最初に出た自チームの攻撃を集計します。</p>
+              <p className="muted">
+                相手フリーボールの後、最初に出た自チームの攻撃を集計します。括弧内はセッターがレシーブした本数です。
+              </p>
               <div className="score-table-wrap">
                 <table className="score-table analysis-player-table">
                   <thead>
                     <tr>
+                      <th>コード</th>
                       <th>攻撃</th>
                       <th>本数</th>
                       <th>配分率</th>
@@ -1535,13 +1784,16 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                   <tbody>
                     {freeballSetRows.length === 0 ? (
                       <tr>
-                        <td colSpan={3}>該当データなし</td>
+                        <td colSpan={4}>該当データなし</td>
                       </tr>
                     ) : (
                       freeballSetRows.map((row) => (
                         <tr key={row.label}>
+                          <td data-label="コード">{row.code}</td>
                           <td data-label="攻撃">{row.label}</td>
-                          <td data-label="本数">{row.count}</td>
+                          <td data-label="本数">
+                            {row.count}（{row.setterReceivedCount}）
+                          </td>
                           <td data-label="配分率">{formatRate(row.count, row.total)}</td>
                         </tr>
                       ))
@@ -1556,36 +1808,68 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
             {activeCategory === "block" ? (
               <>
             <div className="analysis-block analysis-section-block">
-              <h3>セット別ブロック</h3>
-              <div className="score-table-wrap">
-                <table className="score-table analysis-player-table">
-                  <thead>
-                    <tr>
-                      <th>セット</th>
-                      <th>相手スパイク</th>
-                      <th>成功</th>
-                      <th>成功率</th>
-                      <th>ミス</th>
-                      <th>ミス率</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {blockSetRows.map((row) => (
-                      <tr key={row.setIndex}>
-                        <td data-label="セット">セット {row.setIndex}</td>
-                        <td data-label="相手スパイク">{row.opponentAttacks}</td>
-                        <td data-label="成功">{row.successes}</td>
-                        <td data-label="成功率">
-                          {formatRate(row.successes, row.opponentAttacks)}
-                        </td>
-                        <td data-label="ミス">{row.misses}</td>
-                        <td data-label="ミス率">
-                          {formatRate(row.misses, row.opponentAttacks)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <h3>ブロック</h3>
+              <p className="muted">
+                相手スパイク{" "}
+                {blockSetRows.reduce((sum, row) => sum + row.opponentAttacks, 0)}本 / 成功{" "}
+                {blockSetRows.reduce((sum, row) => sum + row.successes, 0)}本 / ミス{" "}
+                {blockSetRows.reduce((sum, row) => sum + row.misses, 0)}本
+              </p>
+              <div className="comparison-stack">
+                {[
+                  {
+                    title: "ブロック成功",
+                    rows: blockSuccessRows,
+                    probabilityLabel: "成功確率",
+                    shareLabel: "得点割合",
+                  },
+                  {
+                    title: "ブロックミス",
+                    rows: blockMissRows,
+                    probabilityLabel: "ミス確率",
+                    shareLabel: "失点割合",
+                  },
+                ].map((table) => (
+                  <div key={table.title}>
+                    <h4>{table.title}</h4>
+                    <div className="score-table-wrap">
+                      <table className="score-table analysis-player-table">
+                        <thead>
+                          <tr>
+                            <th>コード</th>
+                            <th>攻撃</th>
+                            <th>本数</th>
+                            <th>相手スパイク</th>
+                            <th>{table.probabilityLabel}</th>
+                            <th>{table.shareLabel}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {table.rows.length === 0 ? (
+                            <tr>
+                              <td colSpan={6}>該当データなし</td>
+                            </tr>
+                          ) : (
+                            table.rows.map((row) => (
+                              <tr key={`${table.title}-${row.label}`}>
+                                <td data-label="コード">{row.code}</td>
+                                <td data-label="攻撃">{row.label}</td>
+                                <td data-label="本数">{row.count}</td>
+                                <td data-label="相手スパイク">{row.opponentAttackCount}</td>
+                                <td data-label={table.probabilityLabel}>
+                                  {formatRate(row.count, row.opponentAttackCount)}
+                                </td>
+                                <td data-label={table.shareLabel}>
+                                  {formatRate(row.count, row.total)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
               </>

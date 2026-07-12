@@ -85,6 +85,48 @@ function OffsetSecondsInput({
   );
 }
 
+type VideoOption = VideoLibraryNode & { label: string };
+
+type VideoUrlPickerProps = {
+  id: string;
+  value: string;
+  options: VideoOption[];
+  onChange: (value: string) => void;
+};
+
+function VideoUrlPicker({ id, value, options, onChange }: VideoUrlPickerProps) {
+  return (
+    <div className="video-url-picker">
+      <input
+        id={id}
+        type="url"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="https://www.youtube.com/watch?v=..."
+      />
+      <div className="video-option-scroll-list" role="listbox" aria-label="登録済み動画">
+        {options.length === 0 ? (
+          <span className="muted">登録済み動画がありません。</span>
+        ) : (
+          options.map((video) => (
+            <button
+              key={video.id}
+              className={`video-option-button${value === video.url ? " video-option-button-active" : ""}`}
+              type="button"
+              onClick={() => onChange(video.url ?? "")}
+            >
+              <span>{video.label}</span>
+            </button>
+          ))
+        )}
+      </div>
+      {options.length > 0 ? (
+        <small className="muted">登録済み動画 {options.length} 件を新しい順に表示しています。</small>
+      ) : null}
+    </div>
+  );
+}
+
 function flattenScoutFiles(
   nodes: ScoutFileNode[],
   depth = 0,
@@ -105,7 +147,7 @@ function flattenScoutFiles(
 
 function flattenVideoLinks(
   nodes: VideoLibraryNode[],
-): Array<VideoLibraryNode & { label: string }> {
+): VideoOption[] {
   const matchVideosFolder = nodes.find((node) => node.systemKey === "match-videos");
   if (!matchVideosFolder || matchVideosFolder.type !== "folder") {
     return [];
@@ -114,7 +156,7 @@ function flattenVideoLinks(
   function walk(
     entries: VideoLibraryNode[],
     parents: string[] = [],
-  ): Array<VideoLibraryNode & { label: string }> {
+  ): VideoOption[] {
     return entries.flatMap((node) => {
       if (node.type === "link" && node.url) {
         return [
@@ -129,7 +171,9 @@ function flattenVideoLinks(
     });
   }
 
-  return walk(matchVideosFolder.children ?? []);
+  return walk(matchVideosFolder.children ?? []).sort((left, right) =>
+    (right.createdAt ?? "").localeCompare(left.createdAt ?? ""),
+  );
 }
 
 function getInheritedSetVideo(
@@ -140,6 +184,14 @@ function getInheritedSetVideo(
     .filter((entry) => entry.youtubeUrl && entry.setIndex <= setIndex)
     .sort((left, right) => left.setIndex - right.setIndex)
     .at(-1);
+}
+
+function getVideoTitleByUrl(options: VideoOption[], url: string | undefined) {
+  if (!url) {
+    return "未選択";
+  }
+
+  return options.find((video) => video.url === url)?.label ?? url;
 }
 
 export function StaffSettingsClient({
@@ -685,43 +737,30 @@ export function StaffSettingsClient({
                             : "未設定"}
                       </span>
                     </div>
-                    <div className="meta-grid">
-                      <div className="meta-card">
-                        <span className="muted">動画</span>
-                        <strong>{effectiveEntry?.youtubeUrl || "未選択"}</strong>
-                      </div>
-                      <div className="meta-card">
-                        <span className="muted">オフセット</span>
-                        <strong>{effectiveEntry?.offsetSeconds ?? 0}s</strong>
-                      </div>
-                    </div>
+                    <p className="muted">
+                      {getVideoTitleByUrl(matchVideos, effectiveEntry?.youtubeUrl)}
+                    </p>
                     <div className="field-grid">
                       <div className="field">
                         <label htmlFor={`selected-set-video-${entry.setIndex}`}>
-                          試合動画
+                          動画
                         </label>
-                        <select
+                        <VideoUrlPicker
                           id={`selected-set-video-${entry.setIndex}`}
                           value={entry.youtubeUrl}
-                          onChange={(event) =>
+                          options={matchVideos}
+                          onChange={(youtubeUrl) =>
                             updateSetVideo(entry.setIndex, (current) => ({
                               ...current,
-                              youtubeUrl: event.target.value,
+                              youtubeUrl,
                             }))
                           }
-                        >
-                          <option value="">試合動画を選択</option>
-                          {matchVideos.map((video) => (
-                            <option key={video.id} value={video.url}>
-                              {video.label}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
 
                       <div className="field">
                         <label htmlFor={`selected-set-offset-${entry.setIndex}`}>
-                          オフセット秒
+                          オフセット
                         </label>
                         <OffsetSecondsInput
                           id={`selected-set-offset-${entry.setIndex}`}
@@ -769,14 +808,6 @@ export function StaffSettingsClient({
               ここから試合名、動画URL、オフセット秒の編集と削除ができます。
             </p>
           </div>
-
-          <datalist id="match-video-url-options">
-            {matchVideos.map((video) => (
-              <option key={video.id} value={video.url}>
-                {video.label}
-              </option>
-            ))}
-          </datalist>
 
           {currentWorkspaces.length === 0 ? (
             <p className="muted">このチームで登録済みの試合はまだありません。</p>
@@ -828,32 +859,33 @@ export function StaffSettingsClient({
                                           : "未設定"}
                                     </span>
                                   </div>
+                                  <p className="muted">
+                                    {getVideoTitleByUrl(matchVideos, effectiveEntry?.youtubeUrl)}
+                                  </p>
                                   <div className="field-grid">
                                     <div className="field">
                                       <label htmlFor={`edit-set-video-${workspace.id}-${entry.setIndex}`}>
-                                        動画URL
+                                        動画
                                       </label>
-                                      <input
+                                      <VideoUrlPicker
                                         id={`edit-set-video-${workspace.id}-${entry.setIndex}`}
-                                        type="url"
-                                        list="match-video-url-options"
                                         value={entry.youtubeUrl}
-                                        onChange={(event) =>
+                                        options={matchVideos}
+                                        onChange={(youtubeUrl) =>
                                           updateEditingSetVideo(
                                             entry.setIndex,
                                             (current) => ({
                                               ...current,
-                                              youtubeUrl: event.target.value,
+                                              youtubeUrl,
                                             }),
                                           )
                                         }
-                                        placeholder="https://www.youtube.com/watch?v=..."
                                       />
                                     </div>
 
                                     <div className="field">
                                       <label htmlFor={`edit-set-offset-${workspace.id}-${entry.setIndex}`}>
-                                        オフセット秒
+                                        オフセット
                                       </label>
                                       <OffsetSecondsInput
                                         id={`edit-set-offset-${workspace.id}-${entry.setIndex}`}

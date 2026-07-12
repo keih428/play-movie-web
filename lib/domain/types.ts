@@ -18,6 +18,7 @@ export type ParsedPlay = {
   player?: string;
   skill?: string;
   hitType?: string;
+  combination?: string;
   effect?: string;
   code?: string;
   time?: number;
@@ -117,6 +118,7 @@ export type SavedWorkspaceSummary = {
   createdAt: string;
   updatedAt: string;
   matchLabel?: string;
+  matchDate?: string;
   resultLabel?: string;
   setScoreLabel?: string;
 };

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { formatJstDate, formatJstDateTime } from "@/lib/domain/datetime";
+import { formatJstDate } from "@/lib/domain/datetime";
 import {
-  buildTeamRootPath,
   buildWorkspacePath,
   formatTeamSlugLabel,
 } from "@/lib/domain/team";
+import type { SavedWorkspaceSummary } from "@/lib/domain/types";
 import { listSavedWorkspaces } from "@/lib/server/workspace-store";
 
 type PageProps = {
@@ -15,11 +15,20 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
+function getWorkspaceSortDate(workspace: SavedWorkspaceSummary) {
+  return workspace.matchDate ?? workspace.createdAt;
+}
+
 export default async function TeamWorkspacesPage({ params }: PageProps) {
   const { teamSlug } = await params;
-  const workspaces = (await listSavedWorkspaces()).filter(
-    (workspace) => workspace.teamSlug === teamSlug,
-  );
+  const workspaces = (await listSavedWorkspaces())
+    .filter((workspace) => workspace.teamSlug === teamSlug)
+    .sort((left, right) =>
+      getWorkspaceSortDate(right).localeCompare(getWorkspaceSortDate(left)),
+    );
+  const latestCreatedAt = workspaces
+    .map((workspace) => workspace.createdAt)
+    .sort((left, right) => right.localeCompare(left))[0];
   const teamName =
     workspaces[0]?.teamName ?? formatTeamSlugLabel(teamSlug) ?? teamSlug;
 
@@ -30,7 +39,7 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
           <div>
             <h1>試合一覧</h1>
             <p>
-              YoutubeとVSMファイルを紐付けた試合を新しい順に表示しています。
+              YoutubeとVSMファイルを紐付けた試合を、試合日の新しい順に表示しています。
             </p>
           </div>
           <div className="meta-grid workspaces-meta-grid">
@@ -39,8 +48,8 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
               <strong>{workspaces.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">最新更新日</span>
-              <strong>{formatJstDate(workspaces[0]?.createdAt)}</strong>
+              <span className="muted">最終更新日</span>
+              <strong>{formatJstDate(latestCreatedAt)}</strong>
             </div>
           </div>
         </div>
@@ -69,7 +78,7 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
                     {workspace.setScoreLabel ?? "-"}
                   </span>
                   <span className="workspace-row-cell mono">
-                    {formatJstDateTime(workspace.createdAt)}
+                    試合日 {formatJstDate(workspace.matchDate)}
                   </span>
                   <div className="workspace-row-action">
                     <Link

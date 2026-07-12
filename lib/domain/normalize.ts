@@ -36,6 +36,8 @@ function normalizePlay(play: Record<string, unknown>, playIndex: number): Parsed
     player: typeof play.player === "string" ? play.player : undefined,
     skill: typeof play.skill === "string" ? play.skill : undefined,
     hitType: typeof play.hitType === "string" ? play.hitType : undefined,
+    combination:
+      typeof play.combination === "string" ? play.combination : undefined,
     effect: typeof play.effect === "string" ? play.effect : undefined,
     code: typeof play.code === "string" ? play.code : undefined,
     time: typeof play.time === "number" ? play.time : undefined,

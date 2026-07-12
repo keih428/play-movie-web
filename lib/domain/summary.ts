@@ -119,6 +119,7 @@ export function enrichWorkspaceSummary(
   return {
     ...summary,
     matchLabel: `${match.teams.home.name} vs ${match.teams.away.name}`,
+    matchDate: match.startDate,
     resultLabel: getMatchResultLabel(match),
     setScoreLabel: `${setScore.home}-${setScore.away}`,
   };
