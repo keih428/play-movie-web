@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatJstDate, formatJstDateTime } from "@/lib/domain/datetime";
+import { formatJstDate } from "@/lib/domain/datetime";
 import {
   buildWorkspacePath,
   formatTeamSlugLabel,
@@ -26,6 +26,9 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
     .sort((left, right) =>
       getWorkspaceSortDate(right).localeCompare(getWorkspaceSortDate(left)),
     );
+  const latestCreatedAt = workspaces
+    .map((workspace) => workspace.createdAt)
+    .sort((left, right) => right.localeCompare(left))[0];
   const teamName =
     workspaces[0]?.teamName ?? formatTeamSlugLabel(teamSlug) ?? teamSlug;
 
@@ -45,8 +48,8 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
               <strong>{workspaces.length}</strong>
             </div>
             <div className="meta-card">
-              <span className="muted">最新試合日</span>
-              <strong>{formatJstDate(workspaces[0]?.matchDate)}</strong>
+              <span className="muted">最終更新日</span>
+              <strong>{formatJstDate(latestCreatedAt)}</strong>
             </div>
           </div>
         </div>
@@ -76,9 +79,6 @@ export default async function TeamWorkspacesPage({ params }: PageProps) {
                   </span>
                   <span className="workspace-row-cell mono">
                     試合日 {formatJstDate(workspace.matchDate)}
-                  </span>
-                  <span className="workspace-row-cell mono">
-                    登録 {formatJstDateTime(workspace.createdAt)}
                   </span>
                   <div className="workspace-row-action">
                     <Link
