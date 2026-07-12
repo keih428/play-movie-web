@@ -629,13 +629,22 @@ iframe {
 
 .analysis-tab-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
 }
 
+.analysis-tab-toolbar .tab-row {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
 .analysis-set-scope-field {
-  min-width: 180px;
+  flex: 0 1 180px;
+  min-width: min(180px, 100%);
+  max-width: 100%;
+  margin-left: auto;
 }
 
 .button {
