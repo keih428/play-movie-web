@@ -716,8 +716,8 @@ function getFreeballAttackDisplay(code: string) {
   };
 
   return displayMap[normalizedCode] ?? {
-    code: normalizedCode || "不明",
-    label: normalizedCode || "不明",
+    code: "その他",
+    label: "その他",
   };
 }
 
@@ -729,23 +729,43 @@ function normalizePlayerNumber(value: number | string | undefined) {
   return String(value).trim().replace(/^0+/, "") || "0";
 }
 
-function didSetterReceiveFreeball(
+function getFreeballReceiverPlay(
   event: ParsedEvent,
   side: TeamSide,
   triggerIndex: number,
 ) {
   const teamCode = getTeamCode(side);
+  const triggerPlay = event.plays[triggerIndex];
+
+  if (triggerPlay?.team === teamCode && isOverpassDig(triggerPlay)) {
+    return triggerPlay;
+  }
+
+  return event.plays
+    .slice(triggerIndex + 1)
+    .find(
+      (candidate) =>
+        candidate.team === teamCode &&
+        (candidate.skill === "R" ||
+          candidate.skill === "D" ||
+          candidate.skill === "F"),
+    );
+}
+
+function didSetterReceiveFreeball(
+  event: ParsedEvent,
+  side: TeamSide,
+  triggerIndex: number,
+) {
   const setterAt = event.lineup[side].setterAt;
   const setterPlayer = setterAt
     ? event.lineup[side].positions[String(setterAt)]
     : undefined;
-  const firstOwnPlay = event.plays
-    .slice(triggerIndex + 1)
-    .find((candidate) => candidate.team === teamCode);
+  const receiverPlay = getFreeballReceiverPlay(event, side, triggerIndex);
 
   return (
-    normalizePlayerNumber(firstOwnPlay?.player) !== undefined &&
-    normalizePlayerNumber(firstOwnPlay?.player) === normalizePlayerNumber(setterPlayer)
+    normalizePlayerNumber(receiverPlay?.player) !== undefined &&
+    normalizePlayerNumber(receiverPlay?.player) === normalizePlayerNumber(setterPlayer)
   );
 }
 

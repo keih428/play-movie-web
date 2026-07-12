@@ -271,7 +271,9 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
 
       <div className="analysis-block analysis-section-block">
         <h3>フリーボール後の攻撃配分</h3>
-        <p className="muted">相手フリーボールの後、最初に出た自チームの攻撃を集計します。</p>
+        <p className="muted">
+          相手フリーボールの後、最初に出た自チームの攻撃を集計します。括弧内はセッターがレシーブした本数です。
+        </p>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
             <thead>
