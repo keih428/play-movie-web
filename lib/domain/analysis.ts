@@ -644,6 +644,59 @@ export function getTeamPlays(match: ParsedMatch | undefined, side: TeamSide): Pa
   );
 }
 
+function isGradeF(play: ParsedPlay) {
+  return play.effect === "F" || getEffectGrade(play.effect) === "F";
+}
+
+function hasCodeToken(play: ParsedPlay, token: string) {
+  return (play.code ?? "").toUpperCase().includes(token);
+}
+
+function isOverpassAttack(play: ParsedPlay) {
+  return (
+    play.skill === "A" &&
+    (play.hitType?.trim().toUpperCase() === "O" || hasCodeToken(play, "AO"))
+  );
+}
+
+function isOverpassDig(play: ParsedPlay) {
+  return (
+    play.skill === "D" &&
+    (play.hitType?.trim().toUpperCase() === "O" || hasCodeToken(play, "DO"))
+  );
+}
+
+function isFreeballTriggerForSide(
+  plays: ParsedPlay[],
+  index: number,
+  side: TeamSide,
+) {
+  const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
+  const play = plays[index];
+
+  if (play.team === opponentCode && play.skill === "F") {
+    return true;
+  }
+
+  if (
+    play.team === opponentCode &&
+    (play.skill === "R" || play.skill === "D") &&
+    isGradeF(play)
+  ) {
+    return true;
+  }
+
+  if (play.team === teamCode && isOverpassDig(play)) {
+    const previousOpponentAttack = [...plays.slice(0, index)]
+      .reverse()
+      .find((candidate) => candidate.team === opponentCode && candidate.skill !== "B");
+    return previousOpponentAttack ? isOverpassAttack(previousOpponentAttack) : false;
+  }
+
+  return false;
+}
+
 export function buildFreeballAttackDistribution(
   match: ParsedMatch | undefined,
   side: TeamSide,
@@ -653,13 +706,12 @@ export function buildFreeballAttackDistribution(
   }
 
   const teamCode = getTeamCode(side);
-  const opponentCode = side === "home" ? "a" : "*";
   const rows = new Map<string, number>();
 
   match.sets.forEach((set) => {
     set.events.forEach((event) => {
-      event.plays.forEach((play, index) => {
-        if (play.team !== opponentCode || play.skill !== "F") {
+      event.plays.forEach((_play, index) => {
+        if (!isFreeballTriggerForSide(event.plays, index, side)) {
           return;
         }
 

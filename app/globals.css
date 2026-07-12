@@ -569,6 +569,45 @@ iframe {
   background: rgba(255, 255, 255, 0.7);
 }
 
+.video-url-picker {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.video-option-scroll-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.video-option-button {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.video-option-button:hover,
+.video-option-button-active {
+  border-color: var(--accent);
+  background: rgba(20, 100, 165, 0.1);
+}
+
+.video-option-button small {
+  overflow-wrap: anywhere;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
