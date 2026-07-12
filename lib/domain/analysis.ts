@@ -936,6 +936,12 @@ function buildBlockAttackRows(
   return [...rows.values()]
     .map((row) => ({ ...row, total }))
     .sort((left, right) => {
+      if (left.label === "その他" && right.label !== "その他") {
+        return 1;
+      }
+      if (right.label === "その他" && left.label !== "その他") {
+        return -1;
+      }
       if (right.opponentAttackCount !== left.opponentAttackCount) {
         return right.opponentAttackCount - left.opponentAttackCount;
       }
@@ -1229,6 +1235,12 @@ export function mergeBlockAttackRows(rows: BlockAttackRow[][]): BlockAttackRow[]
   return [...counts.values()]
     .map((row) => ({ ...row, total }))
     .sort((left, right) => {
+      if (left.label === "その他" && right.label !== "その他") {
+        return 1;
+      }
+      if (right.label === "その他" && left.label !== "その他") {
+        return -1;
+      }
       if (right.opponentAttackCount !== left.opponentAttackCount) {
         return right.opponentAttackCount - left.opponentAttackCount;
       }

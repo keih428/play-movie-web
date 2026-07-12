@@ -299,12 +299,16 @@ iframe {
 
 .score-table-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .score-table {
   width: 100%;
+  min-width: 0;
   border-collapse: collapse;
   font-size: 0.95rem;
+  table-layout: fixed;
 }
 
 .score-table th,
@@ -312,7 +316,8 @@ iframe {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(24, 72, 132, 0.1);
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .score-table th {
