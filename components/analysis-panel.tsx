@@ -1638,7 +1638,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                       <div className="tag-row">
                         {gradeOrder.map((grade) => (
                           <span className={`tag skill-grade-tag skill-grade-tag-${grade}`} key={grade}>
-                            {grade} {row.gradeCounts[grade] ?? 0}
+                            {grade}
+                            {row.gradeCounts[grade] ?? 0}
                           </span>
                         ))}
                       </div>

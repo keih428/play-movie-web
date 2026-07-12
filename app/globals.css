@@ -1248,6 +1248,11 @@ iframe {
   gap: 12px;
 }
 
+.skill-bar-meta .mono {
+  white-space: nowrap;
+  font-size: 0.9em;
+}
+
 .skill-bar-track {
   overflow: hidden;
   height: 12px;
@@ -1303,6 +1308,12 @@ iframe {
 .skill-grade-tag-F {
   background: #a63d32;
   color: white;
+}
+
+.skill-grade-tag {
+  white-space: nowrap;
+  padding-inline: 8px;
+  font-size: 0.82rem;
 }
 
 .comparison-stack {
