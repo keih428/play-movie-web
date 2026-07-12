@@ -104,6 +104,7 @@ type BlockAttackRow = {
   code: string;
   label: string;
   count: number;
+  opponentAttackCount: number;
   total: number;
 };
 
@@ -1021,11 +1022,25 @@ function buildBlockAttackRows(
 
   const teamCode = getTeamCode(side);
   const opponentCode = side === "home" ? "a" : "*";
-  const rows = new Map<string, { code: string; label: string; count: number }>();
+  const rows = new Map<
+    string,
+    { code: string; label: string; count: number; opponentAttackCount: number }
+  >();
 
   match.sets.forEach((set) => {
     set.events.forEach((event) => {
       event.plays.forEach((play, index) => {
+        if (play.team === opponentCode && play.skill === "A") {
+          const display = getFreeballAttackDisplay(getAttackCombinationLabel(play));
+          const current = rows.get(display.label) ?? {
+            ...display,
+            count: 0,
+            opponentAttackCount: 0,
+          };
+          current.opponentAttackCount += 1;
+          rows.set(display.label, current);
+        }
+
         if (play.team !== teamCode || play.skill !== "B" || play.effect !== effect) {
           return;
         }
@@ -1037,6 +1052,7 @@ function buildBlockAttackRows(
         const current = rows.get(display.label) ?? {
           ...display,
           count: 0,
+          opponentAttackCount: 0,
         };
         current.count += 1;
         rows.set(display.label, current);
@@ -1047,7 +1063,12 @@ function buildBlockAttackRows(
   const total = [...rows.values()].reduce((sum, row) => sum + row.count, 0);
   return [...rows.values()]
     .map((row) => ({ ...row, total }))
-    .sort((left, right) => right.count - left.count);
+    .sort((left, right) => {
+      if (right.opponentAttackCount !== left.opponentAttackCount) {
+        return right.opponentAttackCount - left.opponentAttackCount;
+      }
+      return right.count - left.count;
+    });
 }
 
 function getAttackCourseType(play: ParsedPlay): keyof Omit<AttackCourseRow, "player"> | undefined {
@@ -1767,8 +1788,18 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
               </p>
               <div className="comparison-stack">
                 {[
-                  { title: "ブロック成功", rows: blockSuccessRows },
-                  { title: "ブロックミス", rows: blockMissRows },
+                  {
+                    title: "ブロック成功",
+                    rows: blockSuccessRows,
+                    probabilityLabel: "成功確率",
+                    shareLabel: "得点割合",
+                  },
+                  {
+                    title: "ブロックミス",
+                    rows: blockMissRows,
+                    probabilityLabel: "ミス確率",
+                    shareLabel: "失点割合",
+                  },
                 ].map((table) => (
                   <div key={table.title}>
                     <h4>{table.title}</h4>
@@ -1779,13 +1810,15 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                             <th>コード</th>
                             <th>攻撃</th>
                             <th>本数</th>
-                            <th>割合</th>
+                            <th>相手スパイク</th>
+                            <th>{table.probabilityLabel}</th>
+                            <th>{table.shareLabel}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {table.rows.length === 0 ? (
                             <tr>
-                              <td colSpan={4}>該当データなし</td>
+                              <td colSpan={6}>該当データなし</td>
                             </tr>
                           ) : (
                             table.rows.map((row) => (
@@ -1793,7 +1826,13 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                                 <td data-label="コード">{row.code}</td>
                                 <td data-label="攻撃">{row.label}</td>
                                 <td data-label="本数">{row.count}</td>
-                                <td data-label="割合">{formatRate(row.count, row.total)}</td>
+                                <td data-label="相手スパイク">{row.opponentAttackCount}</td>
+                                <td data-label={table.probabilityLabel}>
+                                  {formatRate(row.count, row.opponentAttackCount)}
+                                </td>
+                                <td data-label={table.shareLabel}>
+                                  {formatRate(row.count, row.total)}
+                                </td>
                               </tr>
                             ))
                           )}

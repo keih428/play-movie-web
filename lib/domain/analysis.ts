@@ -96,6 +96,7 @@ export type BlockAttackRow = {
   code: string;
   label: string;
   count: number;
+  opponentAttackCount: number;
   total: number;
 };
 
@@ -873,11 +874,25 @@ function buildBlockAttackRows(
 
   const teamCode = getTeamCode(side);
   const opponentCode = side === "home" ? "a" : "*";
-  const rows = new Map<string, { code: string; label: string; count: number }>();
+  const rows = new Map<
+    string,
+    { code: string; label: string; count: number; opponentAttackCount: number }
+  >();
 
   match.sets.forEach((set) => {
     set.events.forEach((event) => {
       event.plays.forEach((play, index) => {
+        if (play.team === opponentCode && play.skill === "A") {
+          const display = getFreeballAttackDisplay(getAttackCombinationLabel(play));
+          const current = rows.get(display.label) ?? {
+            ...display,
+            count: 0,
+            opponentAttackCount: 0,
+          };
+          current.opponentAttackCount += 1;
+          rows.set(display.label, current);
+        }
+
         if (play.team !== teamCode || play.skill !== "B" || play.effect !== effect) {
           return;
         }
@@ -889,6 +904,7 @@ function buildBlockAttackRows(
         const current = rows.get(display.label) ?? {
           ...display,
           count: 0,
+          opponentAttackCount: 0,
         };
         current.count += 1;
         rows.set(display.label, current);
@@ -899,7 +915,12 @@ function buildBlockAttackRows(
   const total = [...rows.values()].reduce((sum, row) => sum + row.count, 0);
   return [...rows.values()]
     .map((row) => ({ ...row, total }))
-    .sort((left, right) => right.count - left.count);
+    .sort((left, right) => {
+      if (right.opponentAttackCount !== left.opponentAttackCount) {
+        return right.opponentAttackCount - left.opponentAttackCount;
+      }
+      return right.count - left.count;
+    });
 }
 
 export function buildBlockSuccessRows(match: ParsedMatch | undefined, side: TeamSide) {
@@ -1169,20 +1190,30 @@ export function mergeFreeballAttackRows(rows: FreeballAttackRow[][]): FreeballAt
 }
 
 export function mergeBlockAttackRows(rows: BlockAttackRow[][]): BlockAttackRow[] {
-  const counts = new Map<string, { code: string; label: string; count: number }>();
+  const counts = new Map<
+    string,
+    { code: string; label: string; count: number; opponentAttackCount: number }
+  >();
   rows.flat().forEach((row) => {
     const current = counts.get(row.label) ?? {
       code: row.code,
       label: row.label,
       count: 0,
+      opponentAttackCount: 0,
     };
     current.count += row.count;
+    current.opponentAttackCount += row.opponentAttackCount;
     counts.set(row.label, current);
   });
   const total = [...counts.values()].reduce((sum, row) => sum + row.count, 0);
   return [...counts.values()]
     .map((row) => ({ ...row, total }))
-    .sort((left, right) => right.count - left.count);
+    .sort((left, right) => {
+      if (right.opponentAttackCount !== left.opponentAttackCount) {
+        return right.opponentAttackCount - left.opponentAttackCount;
+      }
+      return right.count - left.count;
+    });
 }
 
 export function mergeServeBreakRows(rows: ServeBreakRow[][]): ServeBreakRow[] {

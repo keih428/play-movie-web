@@ -463,8 +463,18 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
   );
   const misses = analysis.blockSetRows.reduce((sum, row) => sum + row.misses, 0);
   const tables = [
-    { title: "ブロック成功", rows: analysis.blockSuccessRows },
-    { title: "ブロックミス", rows: analysis.blockMissRows },
+    {
+      title: "ブロック成功",
+      rows: analysis.blockSuccessRows,
+      probabilityLabel: "成功確率",
+      shareLabel: "得点割合",
+    },
+    {
+      title: "ブロックミス",
+      rows: analysis.blockMissRows,
+      probabilityLabel: "ミス確率",
+      shareLabel: "失点割合",
+    },
   ];
 
   return (
@@ -484,13 +494,15 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
                     <th>コード</th>
                     <th>攻撃</th>
                     <th>本数</th>
-                    <th>割合</th>
+                    <th>相手スパイク</th>
+                    <th>{table.probabilityLabel}</th>
+                    <th>{table.shareLabel}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {table.rows.length === 0 ? (
                     <tr>
-                      <td colSpan={4}>該当データなし</td>
+                      <td colSpan={6}>該当データなし</td>
                     </tr>
                   ) : (
                     table.rows.map((row) => (
@@ -498,7 +510,13 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
                         <td data-label="コード">{row.code}</td>
                         <td data-label="攻撃">{row.label}</td>
                         <td data-label="本数">{row.count}</td>
-                        <td data-label="割合">{formatRate(row.count, row.total)}</td>
+                        <td data-label="相手スパイク">{row.opponentAttackCount}</td>
+                        <td data-label={table.probabilityLabel}>
+                          {formatRate(row.count, row.opponentAttackCount)}
+                        </td>
+                        <td data-label={table.shareLabel}>
+                          {formatRate(row.count, row.total)}
+                        </td>
                       </tr>
                     ))
                   )}
