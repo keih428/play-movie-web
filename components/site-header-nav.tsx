@@ -24,7 +24,7 @@ export function SiteHeaderNav() {
   const links = teamSlug
     ? [
         { href: buildTeamWorkspacesPath(teamSlug), label: "試合一覧", shortLabel: "試合一覧" },
-        { href: buildTeamAnalysisPath(teamSlug), label: "総合分析", shortLabel: "分析" },
+        { href: buildTeamAnalysisPath(teamSlug), label: "総合分析", shortLabel: "総合分析" },
         { href: buildTeamVideosPath(teamSlug), label: "動画ライブラリ", shortLabel: "動画" },
         { href: buildTeamDataLibraryPath(teamSlug), label: "試合データ管理", shortLabel: "データ" },
         { href: buildTeamStaffSettingsPath(teamSlug), label: "設定", shortLabel: "設定" },

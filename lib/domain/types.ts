@@ -18,6 +18,7 @@ export type ParsedPlay = {
   player?: string;
   skill?: string;
   hitType?: string;
+  combination?: string;
   effect?: string;
   code?: string;
   time?: number;

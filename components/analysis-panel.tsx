@@ -822,6 +822,21 @@ function isOverpassDig(play: ParsedPlay) {
   );
 }
 
+function getAttackCombinationLabel(play: ParsedPlay) {
+  const combination = play.combination?.trim().toUpperCase();
+  if (combination) {
+    return combination;
+  }
+
+  const code = play.code?.trim().toUpperCase();
+  const codeMatch = code?.match(/P[A-Z0-9]/);
+  if (codeMatch) {
+    return codeMatch[0];
+  }
+
+  return play.code || play.hitType || "不明";
+}
+
 function isFreeballTriggerForSide(
   plays: ParsedPlay[],
   index: number,
@@ -878,7 +893,7 @@ function buildFreeballSetDistribution(
           return;
         }
 
-        const label = attackPlay.hitType || attackPlay.code || "不明";
+        const label = getAttackCombinationLabel(attackPlay);
         rows.set(label, (rows.get(label) ?? 0) + 1);
       });
     });
