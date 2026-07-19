@@ -9,10 +9,10 @@ import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/ty
 type PlayListProps = {
   match?: ParsedMatch;
   settings: VideoSyncSettings;
-  selectedPlayId?: string;
+  selectedPlayKey?: string;
   selectedSetIndex?: number;
   onSelectedSetIndexChange: (setIndex: number) => void;
-  onSelectPlay: (play: ParsedPlay) => void;
+  onSelectPlay: (play: ParsedPlay, playKey: string) => void;
 };
 
 function getScoreBeforeRally(score: { home: number; away: number }, point?: string) {
@@ -52,7 +52,7 @@ function getRallyNumber(score: { home: number; away: number }) {
 export function PlayList({
   match,
   settings,
-  selectedPlayId,
+  selectedPlayKey,
   selectedSetIndex,
   onSelectedSetIndexChange,
   onSelectPlay,
@@ -63,9 +63,6 @@ export function PlayList({
   const availableSetIndices = match?.sets.map((set) => set.setIndex) ?? [];
   const effectiveSetIndex =
     selectedSetIndex ??
-    match?.sets.find((set) =>
-      set.events.some((event) => event.plays.some((play) => play.id === selectedPlayId)),
-    )?.setIndex ??
     availableSetIndices[0];
 
   const rallyItems =
@@ -140,9 +137,7 @@ export function PlayList({
               const firstPlay = rally.plays[0]?.play;
               const firstSeekSeconds = rally.plays[0]?.seekSeconds;
               const isExpanded = expandedRallies[rally.key] ?? false;
-              const hasSelectedPlay = rally.plays.some(
-                (item) => item.play.id === selectedPlayId,
-              );
+              const hasSelectedPlay = rally.plays.some((item) => item.key === selectedPlayKey);
               const rallyResultClass = getRallyResultClass(rally.point);
               const rallyNumber = getRallyNumber(rally.score);
 
@@ -178,10 +173,13 @@ export function PlayList({
                           return;
                         }
 
-                        onSelectPlay({
-                          ...firstPlay,
-                          setIndex: rally.setIndex,
-                        });
+                        onSelectPlay(
+                          {
+                            ...firstPlay,
+                            setIndex: rally.setIndex,
+                          },
+                          rally.plays[0].key,
+                        );
                       }}
                     >
                       ▶
@@ -204,7 +202,7 @@ export function PlayList({
                     <div className="play-rally-detail-list">
                       {rally.plays.map((item) => (
                         <div
-                          className={`play-rally-detail${selectedPlayId === item.play.id ? " play-rally-detail-active" : ""}`}
+                          className={`play-rally-detail${selectedPlayKey === item.key ? " play-rally-detail-active" : ""}`}
                           key={item.key}
                         >
                           <div className="play-rally-detail-row">
@@ -224,10 +222,13 @@ export function PlayList({
                               aria-label="このプレイに移動"
                               title="このプレイに移動"
                               onClick={() =>
-                                onSelectPlay({
-                                  ...item.play,
-                                  setIndex: rally.setIndex,
-                                })
+                                onSelectPlay(
+                                  {
+                                    ...item.play,
+                                    setIndex: rally.setIndex,
+                                  },
+                                  item.key,
+                                )
                               }
                             >
                               ▶
