@@ -879,7 +879,7 @@ export function WorkspaceClient({
                 <div className="review-layout">
                   <div className="review-primary">
                     <VideoPlayer
-                      match={filteredMatch}
+                      match={match}
                       settings={settings}
                       activeSetIndex={selectedReviewSetIndex}
                       selectedPlay={selectedPlay}
