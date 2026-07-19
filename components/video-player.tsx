@@ -139,18 +139,6 @@ export function VideoPlayer({
     };
   }, [onPlayerTimeChange, videoId]);
 
-  useEffect(() => {
-    if (!playerRef.current || !videoId) {
-      return;
-    }
-
-    try {
-      playerRef.current.cueVideoById(videoId);
-    } catch {
-      onPlayerTimeChange(undefined);
-    }
-  }, [onPlayerTimeChange, videoId]);
-
   const selectedSeek = selectedPlay
     ? calculateSeekSeconds(selectedPlay, settings, match)
     : undefined;
