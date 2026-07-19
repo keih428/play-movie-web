@@ -175,6 +175,7 @@ export function WorkspaceClient({
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [selectedPlay, setSelectedPlay] = useState<ParsedPlay | undefined>();
+  const [selectedReviewPlayKey, setSelectedReviewPlayKey] = useState<string | undefined>();
   const [selectedClipPlay, setSelectedClipPlay] = useState<ParsedPlay | undefined>();
   const [selectedReviewSetIndex, setSelectedReviewSetIndex] = useState<number | undefined>();
   const [currentPlayerSeconds, setCurrentPlayerSeconds] = useState<number>();
@@ -390,6 +391,7 @@ export function WorkspaceClient({
         setCollection(record.parsedCollection);
         setSelectedMatchIndex(0);
         setSelectedPlay(undefined);
+        setSelectedReviewPlayKey(undefined);
         setSelectedClipPlay(undefined);
         setWorkspaceName(record.fileName.replace(/\.[^.]+$/, ""));
         setActiveTab("review");
@@ -425,6 +427,7 @@ export function WorkspaceClient({
   function handleMatchChange(index: number) {
     setSelectedMatchIndex(index);
     setSelectedPlay(undefined);
+    setSelectedReviewPlayKey(undefined);
     setSelectedClipPlay(undefined);
     setSelectedReviewSetIndex(undefined);
     setFilters({
@@ -444,12 +447,22 @@ export function WorkspaceClient({
   function handleFiltersChange(nextFilters: FilterState) {
     setFilters(nextFilters);
     setSelectedPlay(undefined);
+    setSelectedReviewPlayKey(undefined);
     setSelectedReviewSetIndex(undefined);
   }
 
   function handleReviewSetChange(setIndex: number) {
     setSelectedReviewSetIndex(setIndex);
     setSelectedPlay(undefined);
+    setSelectedReviewPlayKey(undefined);
+  }
+
+  function handleReviewPlaySelect(play: ParsedPlay, playKey: string) {
+    setSelectedPlay(play);
+    setSelectedReviewPlayKey(playKey);
+    if (typeof play.setIndex === "number") {
+      setSelectedReviewSetIndex(play.setIndex);
+    }
   }
 
   function handleClearSavedWorkspace() {
@@ -465,6 +478,7 @@ export function WorkspaceClient({
         rotation: "all",
       });
       setSelectedPlay(undefined);
+      setSelectedReviewPlayKey(undefined);
       setSelectedClipPlay(undefined);
       setLastSavedAt(undefined);
       setRemoteWorkspaceId(undefined);
@@ -568,6 +582,7 @@ export function WorkspaceClient({
         setSettings(workspace.settings);
         setSelectedMatchIndex(workspace.selectedMatchIndex);
         setSelectedPlay(undefined);
+        setSelectedReviewPlayKey(undefined);
         setSelectedClipPlay(undefined);
         setSelectedReviewSetIndex(undefined);
         setActiveTab("workspace");
@@ -875,10 +890,10 @@ export function WorkspaceClient({
                   <PlayList
                     match={filteredMatch}
                     settings={settings}
-                    selectedPlayId={selectedPlay?.id}
+                    selectedPlayKey={selectedReviewPlayKey}
                     selectedSetIndex={selectedReviewSetIndex}
                     onSelectedSetIndexChange={handleReviewSetChange}
-                    onSelectPlay={setSelectedPlay}
+                    onSelectPlay={handleReviewPlaySelect}
                   />
                 </div>
               </section>

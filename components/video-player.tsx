@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSkillLabel } from "@/lib/domain/display";
 import {
   calculateSeekSeconds,
@@ -63,18 +63,21 @@ export function VideoPlayer({
     getCurrentTime: () => number;
   } | null>(null);
   const pollingRef = useRef<number | null>(null);
+  const [playerReadyToken, setPlayerReadyToken] = useState(0);
   const effectiveSetIndex =
-    activeSetIndex ?? selectedPlay?.setIndex ?? match?.sets[0]?.setIndex;
+    selectedPlay?.setIndex ?? activeSetIndex ?? match?.sets[0]?.setIndex;
   const activeVideoSource = getVideoSourceForSet(settings, effectiveSetIndex);
   const videoId = extractYouTubeVideoId(activeVideoSource.youtubeUrl);
 
   useEffect(() => {
     if (!videoId) {
       onPlayerTimeChange(undefined);
+      setPlayerReadyToken(0);
       return;
     }
 
     let cancelled = false;
+    setPlayerReadyToken(0);
 
     const createPlayer = () => {
       if (cancelled || !window.YT || playerRef.current) {
@@ -90,6 +93,7 @@ export function VideoPlayer({
           events: {
             onReady: () => {
               onPlayerTimeChange(0);
+              setPlayerReadyToken((current) => current + 1);
             },
           },
         });
@@ -162,7 +166,7 @@ export function VideoPlayer({
     } catch {
       onPlayerTimeChange(undefined);
     }
-  }, [onPlayerTimeChange, selectedPlay, selectedSeek, videoId]);
+  }, [onPlayerTimeChange, playerReadyToken, selectedPlay, selectedSeek, videoId]);
 
   useEffect(() => {
     if (!playerRef.current || typeof pauseToken !== "number") {
