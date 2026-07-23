@@ -30,10 +30,7 @@ type ClipCandidate = {
   point?: string;
   seekSeconds: number;
   durationSeconds: number;
-  concededTeamLabel?: string;
 };
-
-const RALLY_TAIL_SECONDS = 3;
 
 function getGradeMatches(effect: string | undefined, gradeFilter: GradeFilter) {
   if (gradeFilter === "all") {
@@ -52,18 +49,6 @@ function getGradeMatches(effect: string | undefined, gradeFilter: GradeFilter) {
   return grade === "D" || grade === "E" || grade === "F";
 }
 
-function getConcededTeamCode(point?: string) {
-  if (point === "*") {
-    return "a";
-  }
-
-  if (point === "a") {
-    return "*";
-  }
-
-  return undefined;
-}
-
 export function ClipBuilder({
   match,
   settings,
@@ -76,8 +61,6 @@ export function ClipBuilder({
   const [playerFilter, setPlayerFilter] = useState("all");
   const [skillFilter, setSkillFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState<GradeFilter>("all");
-  const [concededOnly, setConcededOnly] = useState(false);
-  const [concededMinPlayCount, setConcededMinPlayCount] = useState(1);
   const [clipSeconds, setClipSeconds] = useState(8);
   const [activeClipIndex, setActiveClipIndex] = useState<number>();
   const [activeClipReady, setActiveClipReady] = useState(false);
@@ -120,75 +103,6 @@ export function ClipBuilder({
 
     return match.sets.flatMap((set) =>
       set.events.flatMap((event) => {
-        const concededTeamCode = getConcededTeamCode(event.point);
-        const concededTeamLabel = getTeamLabel(concededTeamCode, match);
-
-        if (concededOnly) {
-          if (!concededTeamCode || event.plays.length === 0) {
-            return [];
-          }
-          if (event.plays.length < concededMinPlayCount) {
-            return [];
-          }
-          if (teamFilter !== "all" && concededTeamLabel !== teamFilter) {
-            return [];
-          }
-
-          const timedPlays = event.plays
-            .map((play, playIndex) => {
-              const seekSeconds = calculateSeekSeconds(
-                {
-                  ...play,
-                  setIndex: set.setIndex,
-                },
-                settings,
-                match,
-              );
-
-              return typeof seekSeconds === "number"
-                ? {
-                    play,
-                    playIndex,
-                    seekSeconds,
-                  }
-                : undefined;
-            })
-            .filter((entry): entry is {
-              play: ParsedPlay;
-              playIndex: number;
-              seekSeconds: number;
-            } => Boolean(entry))
-            .sort((left, right) => left.seekSeconds - right.seekSeconds);
-
-          const firstTimedPlay = timedPlays[0];
-          const lastTimedPlay = timedPlays.at(-1);
-          if (!firstTimedPlay || !lastTimedPlay) {
-            return [];
-          }
-
-          return [
-            {
-              key: `${set.id}-${event.id}-conceded-rally`,
-              play: {
-                ...firstTimedPlay.play,
-                setIndex: set.setIndex,
-              },
-              title: "失点ラリー",
-              subtitle: `${event.plays.length}プレイ`,
-              setIndex: set.setIndex,
-              eventIndex: event.eventIndex,
-              score: event.score,
-              point: event.point,
-              seekSeconds: firstTimedPlay.seekSeconds,
-              durationSeconds: Math.max(
-                RALLY_TAIL_SECONDS,
-                lastTimedPlay.seekSeconds - firstTimedPlay.seekSeconds + RALLY_TAIL_SECONDS,
-              ),
-              concededTeamLabel,
-            },
-          ];
-        }
-
         return event.plays.flatMap((play, playIndex) => {
           const teamLabel = getTeamLabel(play.team, match);
           const seekSeconds = calculateSeekSeconds(
@@ -238,8 +152,6 @@ export function ClipBuilder({
     );
   }, [
     clipSeconds,
-    concededMinPlayCount,
-    concededOnly,
     gradeFilter,
     match,
     playerFilter,
@@ -388,12 +300,11 @@ export function ClipBuilder({
 
           <div className="field">
             <label htmlFor="clip-player-filter">選手</label>
-            <select
-              id="clip-player-filter"
-              value={playerFilter}
-              disabled={concededOnly}
-              onChange={(event) => setPlayerFilter(event.target.value)}
-            >
+              <select
+                id="clip-player-filter"
+                value={playerFilter}
+                onChange={(event) => setPlayerFilter(event.target.value)}
+              >
               <option value="all">すべての選手</option>
               {options.players.map((player) => (
                 <option key={player} value={player}>
@@ -405,12 +316,11 @@ export function ClipBuilder({
 
           <div className="field">
             <label htmlFor="clip-skill-filter">スキル</label>
-            <select
-              id="clip-skill-filter"
-              value={skillFilter}
-              disabled={concededOnly}
-              onChange={(event) => setSkillFilter(event.target.value)}
-            >
+              <select
+                id="clip-skill-filter"
+                value={skillFilter}
+                onChange={(event) => setSkillFilter(event.target.value)}
+              >
               <option value="all">すべてのスキル</option>
               {options.skills.map((skill) => (
                 <option key={skill} value={skill}>
@@ -422,42 +332,16 @@ export function ClipBuilder({
 
           <div className="field">
             <label htmlFor="clip-grade-filter">評価</label>
-            <select
-              id="clip-grade-filter"
-              value={gradeFilter}
-              disabled={concededOnly}
-              onChange={(event) => setGradeFilter(event.target.value as GradeFilter)}
-            >
+              <select
+                id="clip-grade-filter"
+                value={gradeFilter}
+                onChange={(event) => setGradeFilter(event.target.value as GradeFilter)}
+              >
               <option value="all">すべての評価</option>
               <option value="A">A評価</option>
               <option value="D_OR_LOWER">D評価以下</option>
               <option value="F">Fのみ</option>
             </select>
-          </div>
-
-          <label className="check-field" htmlFor="clip-conceded-filter">
-            <input
-              id="clip-conceded-filter"
-              type="checkbox"
-              checked={concededOnly}
-              onChange={(event) => setConcededOnly(event.target.checked)}
-            />
-            <span>失点のみ</span>
-          </label>
-
-          <div className="field">
-            <label htmlFor="clip-conceded-min-plays">失点ラリーの最小プレイ数</label>
-            <input
-              id="clip-conceded-min-plays"
-              type="number"
-              min={1}
-              max={99}
-              value={concededMinPlayCount}
-              disabled={!concededOnly}
-              onChange={(event) =>
-                setConcededMinPlayCount(Math.max(1, Math.min(99, Number(event.target.value) || 1)))
-              }
-            />
           </div>
 
           <div className="field">
@@ -468,7 +352,6 @@ export function ClipBuilder({
               min={3}
               max={30}
               value={clipSeconds}
-              disabled={concededOnly}
               onChange={(event) =>
                 setClipSeconds(Math.max(3, Math.min(30, Number(event.target.value) || 8)))
               }
@@ -505,14 +388,10 @@ export function ClipBuilder({
                   <small>
                     スコア {clip.score.home} - {clip.score.away}
                   </small>
-                  {clip.concededTeamLabel ? (
-                    <small>失点 {clip.concededTeamLabel}</small>
-                  ) : (
-                    <small>チーム {getTeamLabel(clip.play.team, match)}</small>
-                  )}
+                  <small>チーム {getTeamLabel(clip.play.team, match)}</small>
                 </div>
                 <div className="tag-row play-list-tags">
-                  {showPlayCodes && !clip.concededTeamLabel ? (
+                  {showPlayCodes ? (
                     <span className="tag mono">{clip.play.code || "なし"}</span>
                   ) : null}
                   <button

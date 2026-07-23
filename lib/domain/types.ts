@@ -154,7 +154,7 @@ export type ScoutFileNode = {
   name: string;
   children?: ScoutFileNode[];
   fileId?: string;
-  extension?: ".vsm" | ".vsdb";
+  extension?: ".vsm" | ".vsdb" | ".xlsx" | ".xls" | ".xlsm";
   note?: string;
 };
 
@@ -166,8 +166,10 @@ export type ScoutFileLibrary = {
 export type ScoutFileRecord = {
   id: string;
   fileName: string;
-  extension: ".vsm" | ".vsdb";
-  text: string;
-  parsedCollection: ParsedCollection;
+  extension: ".vsm" | ".vsdb" | ".xlsx" | ".xls" | ".xlsm";
+  text?: string;
+  contentBase64?: string;
+  contentType?: string;
+  parsedCollection?: ParsedCollection;
   uploadedAt: string;
 };

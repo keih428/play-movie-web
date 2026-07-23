@@ -224,12 +224,14 @@ function reorderAtLevel(
 function TreeNode({
   node,
   onDelete,
+  onDownload,
   onEdit,
   onMove,
   depth = 0,
 }: {
   node: ScoutFileNode;
   onDelete: (id: string) => void;
+  onDownload: (node: ScoutFileNode) => void;
   onEdit: (node: ScoutFileNode) => void;
   onMove: (id: string, direction: "up" | "down") => void;
   depth?: number;
@@ -306,6 +308,18 @@ function TreeNode({
               >
                 編集
               </button>
+              {node.type === "file" && node.fileId ? (
+                <button
+                  className="tree-menu-item"
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onDownload(node);
+                  }}
+                >
+                  ダウンロード
+                </button>
+              ) : null}
               <button
                 className="tree-menu-item tree-menu-item-danger"
                 type="button"
@@ -327,6 +341,7 @@ function TreeNode({
               key={child.id}
               node={child}
               onDelete={onDelete}
+              onDownload={onDownload}
               onEdit={onEdit}
               onMove={onMove}
               depth={depth + 1}
@@ -566,6 +581,18 @@ export function ScoutFileLibraryClient({
     await saveLibrary(removeNode(library.root, id));
   }
 
+  function handleDownload(node: ScoutFileNode) {
+    if (!node.fileId) {
+      setStatus("ダウンロード対象のファイルが見つかりません。");
+      return;
+    }
+
+    window.location.href = buildTeamApiPath(
+      `/api/scout-files/${node.fileId}?download=1`,
+      teamSlug,
+    );
+  }
+
   function handleEdit(node: ScoutFileNode) {
     const found = findNode(library.root, node.id);
     setEditing({
@@ -651,9 +678,9 @@ export function ScoutFileLibraryClient({
         <section className="panel">
           <div className="panel-inner stack">
             <div>
-              <h2>試合データを追加</h2>
-              <p className="muted">
-                フォルダを作成して試合データを整理し、vsm / vsdb ファイルを登録します。
+                <h2>試合データを追加</h2>
+                <p className="muted">
+                フォルダを作成して試合データを整理し、vsm / vsdb / Excel ファイルを登録します。
               </p>
             </div>
 
@@ -695,7 +722,7 @@ export function ScoutFileLibraryClient({
                   id="upload-file"
                   ref={uploadInputRef}
                   type="file"
-                  accept=".vsm,.vsdb"
+                  accept=".vsm,.vsdb,.xlsx,.xls,.xlsm"
                   onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
                 />
               </div>
@@ -858,6 +885,7 @@ export function ScoutFileLibraryClient({
                     key={node.id}
                     node={node}
                     onDelete={handleDelete}
+                    onDownload={handleDownload}
                     onEdit={handleEdit}
                     onMove={handleMove}
                   />

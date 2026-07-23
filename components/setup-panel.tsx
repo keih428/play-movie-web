@@ -64,7 +64,13 @@ function flattenScoutFiles(
   depth = 0,
 ): ScoutFileNode[] {
   return nodes.flatMap((node) => {
-    if (node.type === "file" && node.fileId) {
+    if (
+      node.type === "file" &&
+      node.fileId &&
+      node.extension !== ".xlsx" &&
+      node.extension !== ".xls" &&
+      node.extension !== ".xlsm"
+    ) {
       return [
         {
           ...node,

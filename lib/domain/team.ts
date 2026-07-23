@@ -103,7 +103,8 @@ export function buildTeamApiPath(pathname: string, teamSlug?: string): string {
     return pathname;
   }
 
-  return `${pathname}?team=${encodeURIComponent(teamSlug)}`;
+  const separator = pathname.includes("?") ? "&" : "?";
+  return `${pathname}${separator}team=${encodeURIComponent(teamSlug)}`;
 }
 
 export function getWorkspaceSummaryPath(workspace: SavedWorkspaceSummary): string {

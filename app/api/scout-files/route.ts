@@ -13,12 +13,20 @@ function makeId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function getFileExtension(fileName: string): ".vsm" | ".vsdb" | null {
+type ScoutFileExtension = ".vsm" | ".vsdb" | ".xlsx" | ".xls" | ".xlsm";
+
+function getFileExtension(fileName: string): ScoutFileExtension | null {
   const lastDotIndex = fileName.lastIndexOf(".");
   const extension =
     lastDotIndex === -1 ? "" : fileName.slice(lastDotIndex).toLowerCase();
 
-  if (extension === ".vsm" || extension === ".vsdb") {
+  if (
+    extension === ".vsm" ||
+    extension === ".vsdb" ||
+    extension === ".xlsx" ||
+    extension === ".xls" ||
+    extension === ".xlsm"
+  ) {
     return extension;
   }
 
@@ -35,6 +43,12 @@ function parseScoutFile(
   }
 
   return parseVsdbText(text, fileName);
+}
+
+function isParsableScoutExtension(
+  extension: ScoutFileExtension,
+): extension is ".vsm" | ".vsdb" {
+  return extension === ".vsm" || extension === ".vsdb";
 }
 
 function addNode(
@@ -131,7 +145,7 @@ export async function POST(request: NextRequest) {
     const extension = getFileExtension(file.name || "");
     if (!extension) {
       return NextResponse.json(
-        { error: "vsm または vsdb ファイルのみ登録できます" },
+        { error: "vsm、vsdb、Excel ファイルのみ登録できます" },
         { status: 400 },
       );
     }
@@ -156,14 +170,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const text = await file.text();
-    const parsedCollection = parseScoutFile(extension, text, file.name);
+    const text = isParsableScoutExtension(extension) ? await file.text() : undefined;
+    const parsedCollection =
+      text && isParsableScoutExtension(extension)
+        ? parseScoutFile(extension, text, file.name)
+        : undefined;
+    const contentBase64 = !isParsableScoutExtension(extension)
+      ? Buffer.from(await file.arrayBuffer()).toString("base64")
+      : undefined;
     const fileId = makeId();
     const uploadedAt = new Date().toISOString();
     console.log("[api/scout-files] POST start", {
       fileName: file.name,
       extension,
-      size: text.length,
+      size: file.size,
       fileId,
       teamSlug: teamSlug ?? null,
       parentId,
@@ -174,6 +194,8 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
       extension,
       text,
+      contentBase64,
+      contentType: file.type || undefined,
       parsedCollection,
       uploadedAt,
     }, teamSlug);

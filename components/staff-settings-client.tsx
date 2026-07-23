@@ -132,7 +132,13 @@ function flattenScoutFiles(
   depth = 0,
 ): Array<{ fileId: string; label: string }> {
   return nodes.flatMap((node) => {
-    if (node.type === "file" && node.fileId) {
+    if (
+      node.type === "file" &&
+      node.fileId &&
+      node.extension !== ".xlsx" &&
+      node.extension !== ".xls" &&
+      node.extension !== ".xlsm"
+    ) {
       return [
         {
           fileId: node.fileId,
@@ -340,7 +346,7 @@ export function StaffSettingsClient({
         );
         const payload = (await response.json()) as {
           record?: {
-            parsedCollection: ParsedCollection;
+            parsedCollection?: ParsedCollection;
           };
           error?: string;
         };
@@ -356,7 +362,7 @@ export function StaffSettingsClient({
           throw new Error(payload.error || "試合データの読込に失敗しました。");
         }
 
-        const firstMatch = payload.record.parsedCollection.matches[0];
+        const firstMatch = payload.record.parsedCollection?.matches[0];
         const nextSetVideos =
           firstMatch?.sets.map((set) => ({
             setIndex: set.setIndex,
@@ -413,13 +419,13 @@ export function StaffSettingsClient({
       );
       const scoutPayload = (await scoutResponse.json()) as {
         record?: {
-          parsedCollection: ParsedCollection;
+          parsedCollection?: ParsedCollection;
           fileName: string;
         };
         error?: string;
       };
 
-      if (!scoutResponse.ok || !scoutPayload.record) {
+      if (!scoutResponse.ok || !scoutPayload.record?.parsedCollection) {
         throw new Error(scoutPayload.error || "試合データの読込に失敗しました。");
       }
 
