@@ -553,6 +553,15 @@ iframe {
   accent-color: var(--accent);
 }
 
+.clip-grade-checks {
+  gap: 6px;
+}
+
+.clip-grade-check {
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
 .clip-list {
   display: grid;
   gap: 10px;
@@ -561,6 +570,11 @@ iframe {
 }
 
 .field label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.field-label {
   font-size: 0.9rem;
   color: var(--muted);
 }

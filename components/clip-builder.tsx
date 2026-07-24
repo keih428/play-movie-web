@@ -14,7 +14,8 @@ type ClipBuilderProps = {
   onPauseRequest: () => void;
 };
 
-type GradeFilter = "all" | "A" | "D_OR_LOWER" | "F";
+const gradeOptions = ["A", "B", "C", "D", "E", "F"] as const;
+type GradeOption = (typeof gradeOptions)[number];
 
 type ClipCandidate = {
   key: string;
@@ -32,21 +33,9 @@ type ClipCandidate = {
   durationSeconds: number;
 };
 
-function getGradeMatches(effect: string | undefined, gradeFilter: GradeFilter) {
-  if (gradeFilter === "all") {
-    return true;
-  }
-
+function getGradeMatches(effect: string | undefined, selectedGrades: GradeOption[]) {
   const grade = getEffectGrade(effect);
-  if (gradeFilter === "A") {
-    return grade === "A";
-  }
-
-  if (gradeFilter === "F") {
-    return grade === "F";
-  }
-
-  return grade === "D" || grade === "E" || grade === "F";
+  return selectedGrades.includes(grade as GradeOption);
 }
 
 export function ClipBuilder({
@@ -60,7 +49,7 @@ export function ClipBuilder({
   const [teamFilter, setTeamFilter] = useState("all");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [skillFilter, setSkillFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState<GradeFilter>("all");
+  const [selectedGrades, setSelectedGrades] = useState<GradeOption[]>([...gradeOptions]);
   const [clipSeconds, setClipSeconds] = useState(8);
   const [activeClipIndex, setActiveClipIndex] = useState<number>();
   const [activeClipReady, setActiveClipReady] = useState(false);
@@ -123,7 +112,7 @@ export function ClipBuilder({
           if (skillFilter !== "all" && play.skill !== skillFilter) {
             return [];
           }
-          if (!getGradeMatches(play.effect, gradeFilter)) {
+          if (!getGradeMatches(play.effect, selectedGrades)) {
             return [];
           }
           if (typeof seekSeconds !== "number") {
@@ -152,9 +141,9 @@ export function ClipBuilder({
     );
   }, [
     clipSeconds,
-    gradeFilter,
     match,
     playerFilter,
+    selectedGrades,
     settings,
     skillFilter,
     teamFilter,
@@ -331,17 +320,25 @@ export function ClipBuilder({
           </div>
 
           <div className="field">
-            <label htmlFor="clip-grade-filter">評価</label>
-              <select
-                id="clip-grade-filter"
-                value={gradeFilter}
-                onChange={(event) => setGradeFilter(event.target.value as GradeFilter)}
-              >
-              <option value="all">すべての評価</option>
-              <option value="A">A評価</option>
-              <option value="D_OR_LOWER">D評価以下</option>
-              <option value="F">Fのみ</option>
-            </select>
+            <span className="field-label">評価</span>
+            <div className="tag-row clip-grade-checks" aria-label="評価フィルター">
+              {gradeOptions.map((grade) => (
+                <label className="check-field clip-grade-check" key={grade}>
+                  <input
+                    type="checkbox"
+                    checked={selectedGrades.includes(grade)}
+                    onChange={(event) =>
+                      setSelectedGrades((current) =>
+                        event.target.checked
+                          ? [...current, grade].sort()
+                          : current.filter((value) => value !== grade),
+                      )
+                    }
+                  />
+                  <span>{grade}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="field">
