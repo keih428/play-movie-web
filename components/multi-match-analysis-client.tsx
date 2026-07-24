@@ -62,6 +62,14 @@ function formatRate(wins: number, attempts: number): string {
   return `${((wins / attempts) * 100).toFixed(1)}%`;
 }
 
+function formatMadeCount(wins: number, attempts: number): string {
+  if (attempts === 0) {
+    return "-";
+  }
+
+  return `${attempts}本中${wins}本`;
+}
+
 function formatPercent(value: number | undefined): string {
   if (value === undefined) {
     return "-";
@@ -122,7 +130,7 @@ function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
         <div className="meta-card analysis-summary-card">
           <span className="muted">総得点率</span>
           <strong>
-            {formatRate(
+            {formatMadeCount(
               analysis.teamAnalysis.wonRallies,
               analysis.teamAnalysis.rallyCount,
             )}
@@ -173,7 +181,7 @@ function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
                   <td data-label="相手">{row.opponent}</td>
                   <td data-label="セット">{row.setScore}</td>
                   <td data-label="得点率">
-                    {formatRate(row.wonRallies, row.rallyCount)}
+                    {formatMadeCount(row.wonRallies, row.rallyCount)}
                   </td>
                   <td data-label="Sideout%">
                     {formatRate(row.sideoutWins, row.sideoutAttempts)}
