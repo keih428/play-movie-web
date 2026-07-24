@@ -179,6 +179,7 @@ export function WorkspaceClient({
   const [selectedClipPlay, setSelectedClipPlay] = useState<ParsedPlay | undefined>();
   const [selectedReviewSetIndex, setSelectedReviewSetIndex] = useState<number | undefined>();
   const [currentPlayerSeconds, setCurrentPlayerSeconds] = useState<number>();
+  const [reviewPauseToken, setReviewPauseToken] = useState(0);
   const [clipPauseToken, setClipPauseToken] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState<string>();
   const [hasHydratedWorkspace, setHasHydratedWorkspace] = useState(false);
@@ -376,7 +377,7 @@ export function WorkspaceClient({
         record?: {
           id: string;
           fileName: string;
-          parsedCollection: ParsedCollection;
+          parsedCollection?: ParsedCollection;
         };
         error?: string;
       };
@@ -386,9 +387,13 @@ export function WorkspaceClient({
       }
 
       const record = payload.record;
+      const parsedCollection = record.parsedCollection;
+      if (!parsedCollection) {
+        throw new Error("このファイルは試合ビューアで読み込めません。");
+      }
 
       startTransition(() => {
-        setCollection(record.parsedCollection);
+        setCollection(parsedCollection);
         setSelectedMatchIndex(0);
         setSelectedPlay(undefined);
         setSelectedReviewPlayKey(undefined);
@@ -665,6 +670,10 @@ export function WorkspaceClient({
     setClipPauseToken((current) => current + 1);
   }, []);
 
+  const handleReviewPauseRequest = useCallback(() => {
+    setReviewPauseToken((current) => current + 1);
+  }, []);
+
   const setupPanelProps = {
     settings,
     matchCount: collection.matches.length,
@@ -883,15 +892,19 @@ export function WorkspaceClient({
                       settings={settings}
                       activeSetIndex={selectedReviewSetIndex}
                       selectedPlay={selectedPlay}
+                      pauseToken={reviewPauseToken}
                       onPlayerTimeChange={setCurrentPlayerSeconds}
                     />
                   </div>
 
                   <PlayList
                     match={filteredMatch}
+                    sourceMatch={match}
                     settings={settings}
+                    currentPlayerSeconds={currentPlayerSeconds}
                     selectedPlayKey={selectedReviewPlayKey}
                     selectedSetIndex={selectedReviewSetIndex}
+                    onPauseRequest={handleReviewPauseRequest}
                     onSelectedSetIndexChange={handleReviewSetChange}
                     onSelectPlay={handleReviewPlaySelect}
                   />

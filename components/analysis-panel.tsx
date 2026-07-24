@@ -417,6 +417,14 @@ function formatRate(wins: number, attempts: number): string {
   return `${((wins / attempts) * 100).toFixed(1)}%`;
 }
 
+function formatMadeCount(wins: number, attempts: number): string {
+  if (attempts === 0) {
+    return "-";
+  }
+
+  return `${attempts}本中${wins}本`;
+}
+
 function formatAttackCourseSummary(summary: AttackCourseSummary): string {
   if (summary.attempts === 0) {
     return "-";
@@ -1302,7 +1310,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
             <div className="meta-grid analysis-summary-grid">
               <div className="meta-card analysis-summary-card">
                 <span className="muted">総得点率</span>
-                <strong>{formatRate(activeAnalysis.wonRallies, activeAnalysis.rallyCount)}</strong>
+                <strong>{formatMadeCount(activeAnalysis.wonRallies, activeAnalysis.rallyCount)}</strong>
               </div>
               <div className="meta-card analysis-summary-card">
                 <span className="muted">Sideout%</span>
@@ -1439,8 +1447,9 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                             label: "得点率",
                             wonRate: getRate(won.wins, won.attempts),
                             lostRate: getRate(lost.wins, lost.attempts),
-                            wonValue: `${won.wins}/${won.attempts}`,
-                            lostValue: `${lost.wins}/${lost.attempts}`,
+                            wonValue: formatMadeCount(won.wins, won.attempts),
+                            lostValue: formatMadeCount(lost.wins, lost.attempts),
+                            showPercent: false,
                             diff: formatSignedRateDiff(
                               won.wins,
                               won.attempts,
@@ -1454,6 +1463,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                             lostRate: getRate(lost.sideoutWins, lost.sideoutAttempts),
                             wonValue: `${won.sideoutWins}/${won.sideoutAttempts}`,
                             lostValue: `${lost.sideoutWins}/${lost.sideoutAttempts}`,
+                            showPercent: true,
                             diff: formatSignedRateDiff(
                               won.sideoutWins,
                               won.sideoutAttempts,
@@ -1467,6 +1477,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                             lostRate: getRate(lost.breakWins, lost.breakAttempts),
                             wonValue: `${won.breakWins}/${won.breakAttempts}`,
                             lostValue: `${lost.breakWins}/${lost.breakAttempts}`,
+                            showPercent: true,
                             diff: formatSignedRateDiff(
                               won.breakWins,
                               won.breakAttempts,
@@ -1499,11 +1510,13 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                                         />
                                       </div>
                                       <span className="mono comparison-bar-value">
-                                        {formatPercent(metric.wonRate)}
+                                        {metric.showPercent ? formatPercent(metric.wonRate) : metric.wonValue}
                                       </span>
-                                      <span className="muted comparison-count">
-                                        {metric.wonValue}
-                                      </span>
+                                      {metric.showPercent ? (
+                                        <span className="muted comparison-count">
+                                          {metric.wonValue}
+                                        </span>
+                                      ) : null}
                                     </div>
                                     <div className="comparison-bar-line">
                                       <span className="comparison-bar-name">負け</span>
@@ -1514,11 +1527,13 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                                         />
                                       </div>
                                       <span className="mono comparison-bar-value">
-                                        {formatPercent(metric.lostRate)}
+                                        {metric.showPercent ? formatPercent(metric.lostRate) : metric.lostValue}
                                       </span>
-                                      <span className="muted comparison-count">
-                                        {metric.lostValue}
-                                      </span>
+                                      {metric.showPercent ? (
+                                        <span className="muted comparison-count">
+                                          {metric.lostValue}
+                                        </span>
+                                      ) : null}
                                     </div>
                                   </div>
                                 </div>

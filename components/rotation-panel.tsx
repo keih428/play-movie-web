@@ -40,6 +40,14 @@ function formatRate(wins: number, attempts: number): string {
   return `${((wins / attempts) * 100).toFixed(1)}%`;
 }
 
+function formatMadeCount(wins: number, attempts: number): string {
+  if (attempts === 0) {
+    return "-";
+  }
+
+  return `${attempts}本中${wins}本`;
+}
+
 function getWinningSide(event: ParsedEvent): TeamSide | undefined {
   if (event.point === "*") {
     return "home";
@@ -378,7 +386,7 @@ export function RotationPanel({
                         <td>{row.rotationLabel}</td>
                         <td>{row.wins}</td>
                         <td>{row.attempts}</td>
-                        <td>{formatRate(row.wins, row.attempts)}</td>
+                        <td>{formatMadeCount(row.wins, row.attempts)}</td>
                         <td>{formatRate(row.sideoutWins, row.sideoutAttempts)}</td>
                         <td>{formatRate(row.breakWins, row.breakAttempts)}</td>
                       </tr>
