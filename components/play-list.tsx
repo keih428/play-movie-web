@@ -70,7 +70,7 @@ export function PlayList({
   const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
   const [showPlayCodes, setShowPlayCodes] = useState(false);
   const [rallyResultFilter, setRallyResultFilter] = useState<RallyResultFilter>("all");
-  const [concededMinPlayCount, setConcededMinPlayCount] = useState(1);
+  const [minPlayCount, setMinPlayCount] = useState(1);
   const [activeRallyIndex, setActiveRallyIndex] = useState<number>();
   const [activeRallyReady, setActiveRallyReady] = useState(false);
   const [isPlayingRallies, setIsPlayingRallies] = useState(false);
@@ -96,10 +96,7 @@ export function PlayList({
               if (rallyResultFilter === "conceded" && event.point !== "a") {
                 return [];
               }
-              if (
-                rallyResultFilter === "conceded" &&
-                event.plays.length < concededMinPlayCount
-              ) {
+              if (event.plays.length < minPlayCount) {
                 return [];
               }
 
@@ -147,7 +144,7 @@ export function PlayList({
               ];
             }),
       ) ?? [],
-    [concededMinPlayCount, effectiveSetIndex, match, rallyResultFilter, settings, timingMatch],
+    [effectiveSetIndex, match, minPlayCount, rallyResultFilter, settings, timingMatch],
   );
 
   const rallyItemsKey = rallyItems.map((rally) => rally.key).join("|");
@@ -303,16 +300,15 @@ export function PlayList({
           </div>
 
           <div className="field">
-            <label htmlFor="play-list-conceded-min-plays">失点ラリーの最小プレイ数</label>
+            <label htmlFor="play-list-min-plays">最小プレイ数</label>
             <input
-              id="play-list-conceded-min-plays"
+              id="play-list-min-plays"
               type="number"
               min={1}
               max={99}
-              value={concededMinPlayCount}
-              disabled={rallyResultFilter !== "conceded"}
+              value={minPlayCount}
               onChange={(event) =>
-                setConcededMinPlayCount(Math.max(1, Math.min(99, Number(event.target.value) || 1)))
+                setMinPlayCount(Math.max(1, Math.min(99, Number(event.target.value) || 1)))
               }
             />
           </div>

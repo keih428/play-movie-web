@@ -1,9 +1,18 @@
 export type TeamSide = "home" | "away";
 
+export type MatchPlayer = {
+  code?: string;
+  shirtNumber?: number;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+};
+
 export type MatchTeam = {
   code?: string;
   shortCode?: string;
   name: string;
+  players?: MatchPlayer[];
 };
 
 export type MatchLineup = {

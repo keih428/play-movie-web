@@ -298,8 +298,9 @@ iframe {
 }
 
 .score-table-wrap {
-  overflow-x: auto;
+  overflow: auto;
   max-width: 100%;
+  max-height: min(70vh, 640px);
   min-width: 0;
 }
 
@@ -321,8 +322,13 @@ iframe {
 }
 
 .score-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(249, 252, 255, 0.98);
   color: var(--muted);
   font-weight: 600;
+  box-shadow: 0 1px 0 rgba(24, 72, 132, 0.1);
 }
 
 .score-table tbody tr:last-child td {
@@ -639,6 +645,32 @@ iframe {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.toggle-switch {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(24, 72, 132, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.toggle-switch-button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.toggle-switch-button.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 8px 18px rgba(21, 63, 116, 0.14);
 }
 
 .analysis-tab-toolbar {
@@ -1444,6 +1476,75 @@ iframe {
   text-align: right;
 }
 
+.team-comparison-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.team-comparison-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.26fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(24, 72, 132, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.team-comparison-label {
+  display: grid;
+  gap: 4px;
+}
+
+.team-comparison-bars {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.team-comparison-line {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.22fr) minmax(6rem, 1fr) minmax(5.2rem, 0.22fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.team-comparison-name {
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-comparison-track {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(31, 94, 168, 0.1);
+}
+
+.team-comparison-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.team-comparison-fill-own {
+  background: #1f8f4c;
+}
+
+.team-comparison-fill-opponent {
+  background: #d45a3d;
+}
+
+.team-comparison-value {
+  text-align: right;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
 .comparison-grade-row {
   display: flex;
   flex-wrap: wrap;
@@ -2063,6 +2164,14 @@ iframe {
 
   .timeline-chart {
     height: 120px;
+  }
+
+  .team-comparison-row {
+    grid-template-columns: 1fr;
+  }
+
+  .team-comparison-line {
+    grid-template-columns: minmax(4rem, 0.35fr) minmax(5rem, 1fr) minmax(4.8rem, 0.35fr);
   }
 
   .score-table-wrap {
