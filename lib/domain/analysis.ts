@@ -1484,7 +1484,7 @@ function getDisplayPlayerLabel(label: string, playerNames: Map<string, string>) 
   }
 
   const key = normalizePlayerNumber(label);
-  return key ? playerNames.get(key) ?? label : label;
+  return key ? playerNames.get(key) ?? key : label;
 }
 
 function applyPlayerNamesToLabelRows<T extends { label: string }>(
@@ -1505,6 +1505,21 @@ function applyPlayerNamesToPlayerRows<T extends { player: string }>(
     ...row,
     player: getDisplayPlayerLabel(row.player, playerNames),
   }));
+}
+
+function mergeDisplayedBlockPlayerRows(rows: BlockPlayerRow[]): BlockPlayerRow[] {
+  const merged = new Map<string, BlockPlayerRow>();
+  rows.forEach((row) => {
+    const current = merged.get(row.player) ?? createBlockPlayerRow(row.player);
+    current.setAppearances += row.setAppearances;
+    current.successes += row.successes;
+    current.misses += row.misses;
+    merged.set(row.player, current);
+  });
+
+  return [...merged.values()].sort((left, right) =>
+    left.player.localeCompare(right.player, "ja", { numeric: true }),
+  );
 }
 
 function getScopedMatch(input: AnalysisMatchInput, scope: AggregateSetScope): ParsedMatch {
@@ -1658,11 +1673,13 @@ export function buildAggregateAnalysis(
         setIndex: matchIndex * 100 + row.setIndex,
       })),
     ),
-    blockPlayerRows: applyPlayerNamesToPlayerRows(
-      mergeBlockPlayerRows(
-        scopedInputs.map((input) => buildBlockPlayerRows(input.match, input.ownSide)),
+    blockPlayerRows: mergeDisplayedBlockPlayerRows(
+      applyPlayerNamesToPlayerRows(
+        mergeBlockPlayerRows(
+          scopedInputs.map((input) => buildBlockPlayerRows(input.match, input.ownSide)),
+        ),
+        playerNames,
       ),
-      playerNames,
     ),
     blockSuccessRows: mergeBlockAttackRows(
       scopedInputs.map((input) => buildBlockSuccessRows(input.match, input.ownSide)),
