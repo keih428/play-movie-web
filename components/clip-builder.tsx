@@ -184,6 +184,8 @@ export function ClipBuilder({
   const [activeClipReady, setActiveClipReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayCodes, setShowPlayCodes] = useState(false);
+  const canEditAttackTypeFilter = skillFilter === "A";
+  const canEditBlockZoneFilter = skillFilter === "B";
 
   const options = useMemo(() => {
     const teams = new Set<string>();
@@ -463,9 +465,18 @@ export function ClipBuilder({
           <div className="field">
             <label htmlFor="clip-skill-filter">スキル</label>
               <select
-                id="clip-skill-filter"
-                value={skillFilter}
-                onChange={(event) => setSkillFilter(event.target.value)}
+              id="clip-skill-filter"
+              value={skillFilter}
+              onChange={(event) => {
+                const nextSkill = event.target.value;
+                setSkillFilter(nextSkill);
+                if (nextSkill !== "A") {
+                  setAttackTypeFilter("all");
+                }
+                if (nextSkill !== "B") {
+                  setBlockZoneFilter("all");
+                }
+              }}
               >
               <option value="all">すべてのスキル</option>
               {options.skills.map((skill) => (
@@ -481,6 +492,7 @@ export function ClipBuilder({
             <select
               id="clip-attack-type-filter"
               value={attackTypeFilter}
+              disabled={!canEditAttackTypeFilter}
               onChange={(event) => setAttackTypeFilter(event.target.value)}
             >
               <option value="all">すべての種類</option>
@@ -497,6 +509,7 @@ export function ClipBuilder({
             <select
               id="clip-block-zone-filter"
               value={blockZoneFilter}
+              disabled={!canEditBlockZoneFilter}
               onChange={(event) => setBlockZoneFilter(event.target.value)}
             >
               <option value="all">すべてのゾーン</option>

@@ -1441,22 +1441,39 @@ function getPlayerNumberKeys(player: MatchPlayer) {
   );
 }
 
+function getAnalysisInputDateKey(input: AnalysisMatchInput, fallbackIndex: number) {
+  return (
+    input.match.startDate ??
+    input.match.createdAt ??
+    String(fallbackIndex).padStart(8, "0")
+  );
+}
+
 function buildPlayerDisplayNameMap(inputs: AnalysisMatchInput[]) {
   const names = new Map<string, string>();
 
-  inputs.forEach((input) => {
-    const players = input.match.teams[input.ownSide].players ?? [];
-    players.forEach((player) => {
-      const name = getPlayerDisplayName(player);
-      if (!name) {
-        return;
-      }
+  [...inputs]
+    .map((input, index) => ({ input, index }))
+    .sort((left, right) =>
+      getAnalysisInputDateKey(left.input, left.index).localeCompare(
+        getAnalysisInputDateKey(right.input, right.index),
+      ),
+    )
+    .forEach(({ input }) => {
+      const players = input.match.teams[input.ownSide].players ?? [];
+      players.forEach((player) => {
+        const name = getPlayerDisplayName(player);
+        if (!name) {
+          return;
+        }
 
-      getPlayerNumberKeys(player).forEach((key) => {
-        names.set(key, name);
+        getPlayerNumberKeys(player).forEach((key) => {
+          if (!names.has(key)) {
+            names.set(key, `${key} ${name}`);
+          }
+        });
       });
     });
-  });
 
   return names;
 }
