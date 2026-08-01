@@ -1,5 +1,6 @@
 import type {
   MatchLineup,
+  MatchPlayer,
   MatchTeam,
   ParsedCollection,
   ParsedEvent,
@@ -9,11 +10,35 @@ import type {
   TeamSide,
 } from "@/lib/domain/types";
 
+function normalizePlayer(player: Record<string, unknown>): MatchPlayer {
+  const firstName =
+    typeof player.firstName === "string" ? player.firstName.trim() : undefined;
+  const lastName =
+    typeof player.lastName === "string" ? player.lastName.trim() : undefined;
+  const explicitName =
+    typeof player.name === "string" ? player.name.trim() : undefined;
+  const joinedName = [lastName, firstName].filter(Boolean).join(" ");
+
+  return {
+    code: typeof player.code === "string" ? player.code : undefined,
+    shirtNumber:
+      typeof player.shirtNumber === "number" ? player.shirtNumber : undefined,
+    firstName,
+    lastName,
+    name: explicitName || joinedName || undefined,
+  };
+}
+
 function normalizeTeam(team: Record<string, unknown> | undefined): MatchTeam {
   return {
     code: typeof team?.code === "string" ? team.code : undefined,
     shortCode: typeof team?.shortCode === "string" ? team.shortCode : undefined,
     name: typeof team?.name === "string" ? team.name : "Unknown",
+    players: Array.isArray(team?.players)
+      ? team.players.map((player) =>
+          normalizePlayer(player as Record<string, unknown>),
+        )
+      : [],
   };
 }
 

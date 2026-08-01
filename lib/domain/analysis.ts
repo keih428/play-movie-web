@@ -1,5 +1,12 @@
 import { getEffectGrade } from "@/lib/domain/display";
-import type { ParsedEvent, ParsedMatch, ParsedPlay, ParsedSet, TeamSide } from "@/lib/domain/types";
+import type {
+  MatchPlayer,
+  ParsedEvent,
+  ParsedMatch,
+  ParsedPlay,
+  ParsedSet,
+  TeamSide,
+} from "@/lib/domain/types";
 
 export type SkillSummaryRow = {
   skill: string;
@@ -59,6 +66,8 @@ export type AttackMetricRow = {
   label: string;
   attempts: number;
   kills: number;
+  attackErrors: number;
+  blockedErrors: number;
   errors: number;
 };
 
@@ -89,6 +98,7 @@ export type FreeballAttackRow = {
   label: string;
   count: number;
   setterReceivedCount: number;
+  kills: number;
   total: number;
 };
 
@@ -103,6 +113,13 @@ export type BlockAttackRow = {
 export type BlockSetRow = {
   setIndex: number;
   opponentAttacks: number;
+  successes: number;
+  misses: number;
+};
+
+export type BlockPlayerRow = {
+  player: string;
+  setAppearances: number;
   successes: number;
   misses: number;
 };
@@ -159,7 +176,9 @@ export type AggregateAnalysis = {
   matchCount: number;
   setCount: number;
   teamAnalysis: TeamAnalysis;
+  opponentAnalysis: TeamAnalysis;
   teamPlays: ParsedPlay[];
+  opponentPlays: ParsedPlay[];
   matchSummaries: MatchSummaryRow[];
   attackMetricRows: AttackMetricRow[];
   serveMetricRows: ServeMetricRow[];
@@ -167,6 +186,7 @@ export type AggregateAnalysis = {
   freeballAttackRows: FreeballAttackRow[];
   blockOpponentAttacks: number;
   blockSetRows: BlockSetRow[];
+  blockPlayerRows: BlockPlayerRow[];
   blockSuccessRows: BlockAttackRow[];
   blockMissRows: BlockAttackRow[];
   attackCourseRows: AttackCourseRow[];
@@ -509,6 +529,8 @@ export function buildAttackMetricRows(plays: ParsedPlay[]): AttackMetricRow[] {
     label: "チーム全体",
     attempts: 0,
     kills: 0,
+    attackErrors: 0,
+    blockedErrors: 0,
     errors: 0,
   };
   const players = new Map<string, AttackMetricRow>();
@@ -521,6 +543,8 @@ export function buildAttackMetricRows(plays: ParsedPlay[]): AttackMetricRow[] {
         label: key,
         attempts: 0,
         kills: 0,
+        attackErrors: 0,
+        blockedErrors: 0,
         errors: 0,
       };
 
@@ -531,7 +555,15 @@ export function buildAttackMetricRows(plays: ParsedPlay[]): AttackMetricRow[] {
       total.kills += 1;
     }
     if (isError(play)) {
+      row.attackErrors += 1;
       row.errors += 1;
+      total.attackErrors += 1;
+      total.errors += 1;
+    }
+    if (play.effect === "/") {
+      row.blockedErrors += 1;
+      row.errors += 1;
+      total.blockedErrors += 1;
       total.errors += 1;
     }
     players.set(key, row);
@@ -630,7 +662,9 @@ export function getServeEffectRate(row: ServeMetricRow): number | undefined {
   }
 
   return (
-    (row.noTouchAces * 100 + row.serviceAces * 80 + row.effective * 25) /
+    ((row.noTouchAces + row.serviceAces) * 100 +
+      row.effective * 25 -
+      row.misses * 25) /
     row.attempts
   );
 }
@@ -705,6 +739,9 @@ function getFreeballAttackDisplay(code: string) {
     PV: { code: "PV", label: "レフト平行" },
     PA: { code: "PA", label: "Aクイック" },
     PB: { code: "PB", label: "Bクイック" },
+    PW: { code: "PW", label: "レフトセミ" },
+    PX: { code: "PX", label: "セミ" },
+    PY: { code: "PY", label: "ライトセミ" },
     PZ: { code: "PZ", label: "ライト平行" },
     P1: { code: "P1/P2", label: "レフトオープン" },
     P2: { code: "P1/P2", label: "レフトオープン" },
@@ -719,6 +756,38 @@ function getFreeballAttackDisplay(code: string) {
     code: "その他",
     label: "その他",
   };
+}
+
+const BLOCK_ZONE_DISPLAYS = [
+  { code: "ゾーン1", label: "ゾーン1", combinations: ["P1", "PV"] },
+  { code: "ゾーン2", label: "ゾーン2", combinations: ["P2", "PB", "PW"] },
+  { code: "ゾーン3", label: "ゾーン3", combinations: ["PA", "PX", "P3", "P8"] },
+  { code: "ゾーン4", label: "ゾーン4", combinations: ["PC", "PY", "P4"] },
+  { code: "ゾーン5", label: "ゾーン5", combinations: ["P5", "PZ", "P9"] },
+] as const;
+
+const BLOCK_ZONE_BY_COMBINATION = BLOCK_ZONE_DISPLAYS.reduce<
+  Record<string, { code: string; label: string }>
+>((zones, zone) => {
+  zone.combinations.forEach((combination) => {
+    zones[combination] = { code: zone.code, label: zone.label };
+  });
+  return zones;
+}, {});
+
+function getBlockZoneDisplay(code: string) {
+  const normalizedCode = code.trim().toUpperCase();
+  return (
+    BLOCK_ZONE_BY_COMBINATION[normalizedCode] ?? {
+      code: "その他",
+      label: "その他",
+    }
+  );
+}
+
+function getBlockZoneOrder(label: string) {
+  const index = BLOCK_ZONE_DISPLAYS.findIndex((zone) => zone.label === label);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index + 1;
 }
 
 function normalizePlayerNumber(value: number | string | undefined) {
@@ -811,7 +880,7 @@ export function buildFreeballAttackDistribution(
   const teamCode = getTeamCode(side);
   const rows = new Map<
     string,
-    { code: string; label: string; count: number; setterReceivedCount: number }
+    { code: string; label: string; count: number; setterReceivedCount: number; kills: number }
   >();
 
   match.sets.forEach((set) => {
@@ -833,8 +902,12 @@ export function buildFreeballAttackDistribution(
           ...display,
           count: 0,
           setterReceivedCount: 0,
+          kills: 0,
         };
         current.count += 1;
+        if (isKill(attackPlay)) {
+          current.kills += 1;
+        }
         if (didSetterReceiveFreeball(event, side, index)) {
           current.setterReceivedCount += 1;
         }
@@ -873,6 +946,71 @@ export function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide
   });
 }
 
+function createBlockPlayerRow(player: string): BlockPlayerRow {
+  return {
+    player,
+    setAppearances: 0,
+    successes: 0,
+    misses: 0,
+  };
+}
+
+function getLineupPlayerKeys(event: ParsedEvent, side: TeamSide) {
+  return Object.values(event.lineup[side].positions)
+    .map((player) => normalizePlayerNumber(player))
+    .filter((player): player is string => player !== undefined);
+}
+
+export function buildBlockPlayerRows(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+): BlockPlayerRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  const rows = new Map<string, BlockPlayerRow>();
+
+  match.sets.forEach((set) => {
+    const setPlayers = new Set<string>();
+
+    set.events.forEach((event) => {
+      getLineupPlayerKeys(event, side).forEach((player) => {
+        setPlayers.add(player);
+        if (!rows.has(player)) {
+          rows.set(player, createBlockPlayerRow(player));
+        }
+      });
+
+      event.plays
+        .filter((play) => play.team === teamCode && play.skill === "B")
+        .forEach((play) => {
+          const player = getPlayerKey(play);
+          setPlayers.add(player);
+          const row = rows.get(player) ?? createBlockPlayerRow(player);
+          if (isKill(play)) {
+            row.successes += 1;
+          }
+          if (isError(play)) {
+            row.misses += 1;
+          }
+          rows.set(player, row);
+        });
+    });
+
+    setPlayers.forEach((player) => {
+      const row = rows.get(player) ?? createBlockPlayerRow(player);
+      row.setAppearances += 1;
+      rows.set(player, row);
+    });
+  });
+
+  return [...rows.values()].sort((left, right) =>
+    left.player.localeCompare(right.player, "ja", { numeric: true }),
+  );
+}
+
 function findPreviousOpponentAttack(
   plays: ParsedPlay[],
   blockIndex: number,
@@ -903,7 +1041,7 @@ function buildBlockAttackRows(
     set.events.forEach((event) => {
       event.plays.forEach((play, index) => {
         if (play.team === opponentCode && play.skill === "A") {
-          const display = getFreeballAttackDisplay(getAttackCombinationLabel(play));
+          const display = getBlockZoneDisplay(getAttackCombinationLabel(play));
           const current = rows.get(display.label) ?? {
             ...display,
             count: 0,
@@ -918,7 +1056,7 @@ function buildBlockAttackRows(
         }
 
         const attack = findPreviousOpponentAttack(event.plays, index, opponentCode);
-        const display = getFreeballAttackDisplay(
+        const display = getBlockZoneDisplay(
           attack ? getAttackCombinationLabel(attack) : "不明",
         );
         const current = rows.get(display.label) ?? {
@@ -936,11 +1074,10 @@ function buildBlockAttackRows(
   return [...rows.values()]
     .map((row) => ({ ...row, total }))
     .sort((left, right) => {
-      if (left.label === "その他" && right.label !== "その他") {
-        return 1;
-      }
-      if (right.label === "その他" && left.label !== "その他") {
-        return -1;
+      const leftOrder = getBlockZoneOrder(left.label);
+      const rightOrder = getBlockZoneOrder(right.label);
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
       }
       if (right.opponentAttackCount !== left.opponentAttackCount) {
         return right.opponentAttackCount - left.opponentAttackCount;
@@ -1196,7 +1333,7 @@ export function mergeDistributionRows(rows: DistributionRow[][]): DistributionRo
 export function mergeFreeballAttackRows(rows: FreeballAttackRow[][]): FreeballAttackRow[] {
   const counts = new Map<
     string,
-    { code: string; label: string; count: number; setterReceivedCount: number }
+    { code: string; label: string; count: number; setterReceivedCount: number; kills: number }
   >();
   rows.flat().forEach((row) => {
     const current = counts.get(row.label) ?? {
@@ -1204,9 +1341,11 @@ export function mergeFreeballAttackRows(rows: FreeballAttackRow[][]): FreeballAt
       label: row.label,
       count: 0,
       setterReceivedCount: 0,
+      kills: 0,
     };
     current.count += row.count;
     current.setterReceivedCount += row.setterReceivedCount;
+    current.kills += row.kills;
     counts.set(row.label, current);
   });
   const total = [...counts.values()].reduce((sum, row) => sum + row.count, 0);
@@ -1235,11 +1374,10 @@ export function mergeBlockAttackRows(rows: BlockAttackRow[][]): BlockAttackRow[]
   return [...counts.values()]
     .map((row) => ({ ...row, total }))
     .sort((left, right) => {
-      if (left.label === "その他" && right.label !== "その他") {
-        return 1;
-      }
-      if (right.label === "その他" && left.label !== "その他") {
-        return -1;
+      const leftOrder = getBlockZoneOrder(left.label);
+      const rightOrder = getBlockZoneOrder(right.label);
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
       }
       if (right.opponentAttackCount !== left.opponentAttackCount) {
         return right.opponentAttackCount - left.opponentAttackCount;
@@ -1272,6 +1410,86 @@ export function mergeServeBreakRows(rows: ServeBreakRow[][]): ServeBreakRow[] {
   );
 }
 
+export function mergeBlockPlayerRows(rows: BlockPlayerRow[][]): BlockPlayerRow[] {
+  const merged = new Map<string, BlockPlayerRow>();
+  rows.flat().forEach((row) => {
+    const current = merged.get(row.player) ?? createBlockPlayerRow(row.player);
+    current.setAppearances += row.setAppearances;
+    current.successes += row.successes;
+    current.misses += row.misses;
+    merged.set(row.player, current);
+  });
+
+  return [...merged.values()].sort((left, right) =>
+    left.player.localeCompare(right.player, "ja", { numeric: true }),
+  );
+}
+
+function getPlayerDisplayName(player: MatchPlayer) {
+  const explicitName = player.name?.trim();
+  const joinedName = [player.lastName, player.firstName]
+    .map((name) => name?.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return explicitName || joinedName || undefined;
+}
+
+function getPlayerNumberKeys(player: MatchPlayer) {
+  return [normalizePlayerNumber(player.code), normalizePlayerNumber(player.shirtNumber)].filter(
+    (value): value is string => value !== undefined,
+  );
+}
+
+function buildPlayerDisplayNameMap(inputs: AnalysisMatchInput[]) {
+  const names = new Map<string, string>();
+
+  inputs.forEach((input) => {
+    const players = input.match.teams[input.ownSide].players ?? [];
+    players.forEach((player) => {
+      const name = getPlayerDisplayName(player);
+      if (!name) {
+        return;
+      }
+
+      getPlayerNumberKeys(player).forEach((key) => {
+        names.set(key, name);
+      });
+    });
+  });
+
+  return names;
+}
+
+function getDisplayPlayerLabel(label: string, playerNames: Map<string, string>) {
+  if (label === "チーム全体") {
+    return label;
+  }
+
+  const key = normalizePlayerNumber(label);
+  return key ? playerNames.get(key) ?? label : label;
+}
+
+function applyPlayerNamesToLabelRows<T extends { label: string }>(
+  rows: T[],
+  playerNames: Map<string, string>,
+): T[] {
+  return rows.map((row) => ({
+    ...row,
+    label: getDisplayPlayerLabel(row.label, playerNames),
+  }));
+}
+
+function applyPlayerNamesToPlayerRows<T extends { player: string }>(
+  rows: T[],
+  playerNames: Map<string, string>,
+): T[] {
+  return rows.map((row) => ({
+    ...row,
+    player: getDisplayPlayerLabel(row.player, playerNames),
+  }));
+}
+
 function getScopedMatch(input: AnalysisMatchInput, scope: AggregateSetScope): ParsedMatch {
   if (scope === "all") {
     return input.match;
@@ -1298,6 +1516,10 @@ export function buildAggregateAnalysis(
     match: getScopedMatch(input, scope),
   }));
   const teamPlays = scopedInputs.flatMap((input) => getTeamPlays(input.match, input.ownSide));
+  const opponentPlays = scopedInputs.flatMap((input) =>
+    getTeamPlays(input.match, input.ownSide === "home" ? "away" : "home"),
+  );
+  const playerNames = buildPlayerDisplayNameMap(scopedInputs);
   const totalAnalysis: TeamAnalysis = {
     side: "home",
     name: "選択試合合計",
@@ -1309,11 +1531,26 @@ export function buildAggregateAnalysis(
     breakWins: 0,
     skillSummary: buildSkillSummary(teamPlays),
     rotations: [],
-    players: buildPlayerRows(teamPlays),
+    players: applyPlayerNamesToPlayerRows(buildPlayerRows(teamPlays), playerNames),
+  };
+  const opponentAnalysis: TeamAnalysis = {
+    side: "away",
+    name: "相手チーム合計",
+    rallyCount: 0,
+    wonRallies: 0,
+    sideoutAttempts: 0,
+    sideoutWins: 0,
+    breakAttempts: 0,
+    breakWins: 0,
+    skillSummary: buildSkillSummary(opponentPlays),
+    rotations: [],
+    players: buildPlayerRows(opponentPlays),
   };
 
   const matchSummaries = scopedInputs.map<MatchSummaryRow>((input) => {
     const analysis = buildTeamAnalysis(input.match, input.ownSide);
+    const opponentSide = input.ownSide === "home" ? "away" : "home";
+    const opponentAnalysisForMatch = buildTeamAnalysis(input.match, opponentSide);
     if (analysis) {
       totalAnalysis.rallyCount += analysis.rallyCount;
       totalAnalysis.wonRallies += analysis.wonRallies;
@@ -1321,6 +1558,14 @@ export function buildAggregateAnalysis(
       totalAnalysis.sideoutWins += analysis.sideoutWins;
       totalAnalysis.breakAttempts += analysis.breakAttempts;
       totalAnalysis.breakWins += analysis.breakWins;
+    }
+    if (opponentAnalysisForMatch) {
+      opponentAnalysis.rallyCount += opponentAnalysisForMatch.rallyCount;
+      opponentAnalysis.wonRallies += opponentAnalysisForMatch.wonRallies;
+      opponentAnalysis.sideoutAttempts += opponentAnalysisForMatch.sideoutAttempts;
+      opponentAnalysis.sideoutWins += opponentAnalysisForMatch.sideoutWins;
+      opponentAnalysis.breakAttempts += opponentAnalysisForMatch.breakAttempts;
+      opponentAnalysis.breakWins += opponentAnalysisForMatch.breakWins;
     }
 
     const opponent =
@@ -1352,11 +1597,22 @@ export function buildAggregateAnalysis(
     matchCount: inputs.length,
     setCount: scopedInputs.reduce((sum, input) => sum + input.match.sets.length, 0),
     teamAnalysis: totalAnalysis,
+    opponentAnalysis,
     teamPlays,
+    opponentPlays,
     matchSummaries,
-    attackMetricRows: buildAttackMetricRows(teamPlays),
-    serveMetricRows: buildServeMetricRows(teamPlays),
-    receptionMetricRows: buildReceptionMetricRows(teamPlays),
+    attackMetricRows: applyPlayerNamesToLabelRows(
+      buildAttackMetricRows(teamPlays),
+      playerNames,
+    ),
+    serveMetricRows: applyPlayerNamesToLabelRows(
+      buildServeMetricRows(teamPlays),
+      playerNames,
+    ),
+    receptionMetricRows: applyPlayerNamesToLabelRows(
+      buildReceptionMetricRows(teamPlays),
+      playerNames,
+    ),
     freeballAttackRows: mergeFreeballAttackRows(
       scopedInputs.map((input) => buildFreeballAttackDistribution(input.match, input.ownSide)),
     ),
@@ -1385,15 +1641,27 @@ export function buildAggregateAnalysis(
         setIndex: matchIndex * 100 + row.setIndex,
       })),
     ),
+    blockPlayerRows: applyPlayerNamesToPlayerRows(
+      mergeBlockPlayerRows(
+        scopedInputs.map((input) => buildBlockPlayerRows(input.match, input.ownSide)),
+      ),
+      playerNames,
+    ),
     blockSuccessRows: mergeBlockAttackRows(
       scopedInputs.map((input) => buildBlockSuccessRows(input.match, input.ownSide)),
     ),
     blockMissRows: mergeBlockAttackRows(
       scopedInputs.map((input) => buildBlockMissRows(input.match, input.ownSide)),
     ),
-    attackCourseRows: buildAttackCourseRows(teamPlays),
-    serveBreakRows: mergeServeBreakRows(
-      scopedInputs.map((input) => buildServeBreakRows(input.match, input.ownSide)),
+    attackCourseRows: applyPlayerNamesToPlayerRows(
+      buildAttackCourseRows(teamPlays),
+      playerNames,
+    ),
+    serveBreakRows: applyPlayerNamesToPlayerRows(
+      mergeServeBreakRows(
+        scopedInputs.map((input) => buildServeBreakRows(input.match, input.ownSide)),
+      ),
+      playerNames,
     ),
   };
 }

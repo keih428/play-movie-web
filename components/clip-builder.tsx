@@ -17,6 +17,33 @@ type ClipBuilderProps = {
 const gradeOptions = ["A", "B", "C", "D", "E", "F"] as const;
 type GradeOption = (typeof gradeOptions)[number];
 
+const attackTypeOptions = [
+  { value: "P1", label: "P1 レフトハイセット" },
+  { value: "PV", label: "PV レフト平行" },
+  { value: "P2", label: "P2 レフトハイセット" },
+  { value: "PB", label: "PB Bクイック" },
+  { value: "PW", label: "PW レフトセミ" },
+  { value: "PA", label: "PA Aクイック" },
+  { value: "PX", label: "PX セミ" },
+  { value: "P3", label: "P3 センターオープン" },
+  { value: "P8", label: "P8 パイプ" },
+  { value: "PC", label: "PC Cクイック" },
+  { value: "PY", label: "PY ライトセミ" },
+  { value: "P4", label: "P4 ライトハイセット" },
+  { value: "P5", label: "P5 ライトハイセット" },
+  { value: "PZ", label: "PZ ライト平行" },
+  { value: "P9", label: "P9 シャー" },
+] as const;
+
+const blockZoneOptions = [
+  { value: "ゾーン1", label: "ゾーン1" },
+  { value: "ゾーン2", label: "ゾーン2" },
+  { value: "ゾーン3", label: "ゾーン3" },
+  { value: "ゾーン4", label: "ゾーン4" },
+  { value: "ゾーン5", label: "ゾーン5" },
+  { value: "その他", label: "その他" },
+] as const;
+
 type ClipCandidate = {
   key: string;
   play: ParsedPlay;
@@ -33,9 +60,106 @@ type ClipCandidate = {
   durationSeconds: number;
 };
 
+function clampNumber(value: number, min: number, max: number, fallback: number) {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(max, value));
+}
+
 function getGradeMatches(effect: string | undefined, selectedGrades: GradeOption[]) {
   const grade = getEffectGrade(effect);
   return selectedGrades.includes(grade as GradeOption);
+}
+
+function getAttackCombination(play: ParsedPlay | undefined) {
+  const combination = play?.combination?.trim().toUpperCase();
+  if (combination?.match(/^P[A-Z0-9]$/)) {
+    return combination;
+  }
+
+  const code = play?.code?.trim().toUpperCase();
+  const codeMatch = code?.match(/P[A-Z0-9]/);
+  if (codeMatch) {
+    return codeMatch[0];
+  }
+
+  return undefined;
+}
+
+function findNextTeamAttack(
+  plays: ParsedPlay[],
+  playIndex: number,
+  teamCode: string,
+) {
+  return plays
+    .slice(playIndex + 1)
+    .find((candidate) => candidate.team === teamCode && candidate.skill === "A");
+}
+
+function findPreviousOpponentAttack(
+  plays: ParsedPlay[],
+  playIndex: number,
+  opponentCode: string,
+) {
+  return [...plays.slice(0, playIndex)]
+    .reverse()
+    .find((candidate) => candidate.team === opponentCode && candidate.skill === "A");
+}
+
+function getAttackTypeForPlay(
+  play: ParsedPlay,
+  plays: ParsedPlay[],
+  playIndex: number,
+) {
+  if (play.skill === "A") {
+    return getAttackCombination(play);
+  }
+  if (play.skill === "E") {
+    return getAttackCombination(play) ?? getAttackCombination(findNextTeamAttack(plays, playIndex, play.team));
+  }
+  return undefined;
+}
+
+function getBlockZoneForCombination(combination: string | undefined) {
+  switch (combination) {
+    case "P1":
+    case "PV":
+      return "ゾーン1";
+    case "P2":
+    case "PB":
+    case "PW":
+      return "ゾーン2";
+    case "PA":
+    case "PX":
+    case "P3":
+    case "P8":
+      return "ゾーン3";
+    case "PC":
+    case "PY":
+    case "P4":
+      return "ゾーン4";
+    case "P5":
+    case "PZ":
+    case "P9":
+      return "ゾーン5";
+    default:
+      return "その他";
+  }
+}
+
+function getBlockZoneForPlay(
+  play: ParsedPlay,
+  plays: ParsedPlay[],
+  playIndex: number,
+) {
+  if (play.skill !== "B") {
+    return undefined;
+  }
+  const opponentCode = play.team === "*" ? "a" : "*";
+  const attack = findPreviousOpponentAttack(plays, playIndex, opponentCode);
+  return getBlockZoneForCombination(getAttackCombination(attack));
 }
 
 export function ClipBuilder({
@@ -49,8 +173,13 @@ export function ClipBuilder({
   const [teamFilter, setTeamFilter] = useState("all");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [skillFilter, setSkillFilter] = useState("all");
+  const [attackTypeFilter, setAttackTypeFilter] = useState("all");
+  const [blockZoneFilter, setBlockZoneFilter] = useState("all");
   const [selectedGrades, setSelectedGrades] = useState<GradeOption[]>([...gradeOptions]);
-  const [clipSeconds, setClipSeconds] = useState(8);
+  const [clipBeforeSeconds, setClipBeforeSeconds] = useState(2);
+  const [clipAfterSeconds, setClipAfterSeconds] = useState(8);
+  const [clipBeforeSecondsInput, setClipBeforeSecondsInput] = useState("2");
+  const [clipAfterSecondsInput, setClipAfterSecondsInput] = useState("8");
   const [activeClipIndex, setActiveClipIndex] = useState<number>();
   const [activeClipReady, setActiveClipReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -112,36 +241,62 @@ export function ClipBuilder({
           if (skillFilter !== "all" && play.skill !== skillFilter) {
             return [];
           }
+          if (
+            attackTypeFilter !== "all" &&
+            getAttackTypeForPlay(play, event.plays, playIndex) !== attackTypeFilter
+          ) {
+            return [];
+          }
+          if (
+            blockZoneFilter !== "all" &&
+            getBlockZoneForPlay(play, event.plays, playIndex) !== blockZoneFilter
+          ) {
+            return [];
+          }
           if (!getGradeMatches(play.effect, selectedGrades)) {
             return [];
           }
           if (typeof seekSeconds !== "number") {
             return [];
           }
+          const clipStartSeconds = Math.max(0, seekSeconds - clipBeforeSeconds);
+          const clipEndSeconds = seekSeconds + clipAfterSeconds;
+          const durationSeconds = Math.max(1, clipEndSeconds - clipStartSeconds);
+          const clipPlay =
+            typeof play.time === "number"
+              ? {
+                  ...play,
+                  setIndex: set.setIndex,
+                  time: Math.max(0, play.time - clipBeforeSeconds * 10),
+                }
+              : {
+                  ...play,
+                  setIndex: set.setIndex,
+                };
 
           return [
             {
               key: `${set.id}-${event.id}-${play.id}-${playIndex}`,
-              play: {
-                ...play,
-                setIndex: set.setIndex,
-              },
+              play: clipPlay,
               title: getSkillLabel(play.skill),
               subtitle: `${play.player ?? "不明な選手"} / ${getEffectGrade(play.effect)}`,
               setIndex: set.setIndex,
               eventIndex: event.eventIndex,
               score: event.score,
               point: event.point,
-              seekSeconds,
-              durationSeconds: clipSeconds,
+              seekSeconds: clipStartSeconds,
+              durationSeconds,
             },
           ];
         });
       }),
     );
   }, [
-    clipSeconds,
+    clipAfterSeconds,
+    clipBeforeSeconds,
     match,
+    attackTypeFilter,
+    blockZoneFilter,
     playerFilter,
     selectedGrades,
     settings,
@@ -154,7 +309,9 @@ export function ClipBuilder({
     0,
   );
 
-  const clipsKey = clips.map((clip) => clip.key).join("|");
+  const clipsKey = clips
+    .map((clip) => `${clip.key}:${clip.seekSeconds}:${clip.durationSeconds}`)
+    .join("|");
 
   useEffect(() => {
     setActiveClipIndex(undefined);
@@ -320,6 +477,38 @@ export function ClipBuilder({
           </div>
 
           <div className="field">
+            <label htmlFor="clip-attack-type-filter">アタック種類</label>
+            <select
+              id="clip-attack-type-filter"
+              value={attackTypeFilter}
+              onChange={(event) => setAttackTypeFilter(event.target.value)}
+            >
+              <option value="all">すべての種類</option>
+              {attackTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="clip-block-zone-filter">ブロックゾーン</label>
+            <select
+              id="clip-block-zone-filter"
+              value={blockZoneFilter}
+              onChange={(event) => setBlockZoneFilter(event.target.value)}
+            >
+              <option value="all">すべてのゾーン</option>
+              {blockZoneOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
             <span className="field-label">評価</span>
             <div className="tag-row clip-grade-checks" aria-label="評価フィルター">
               {gradeOptions.map((grade) => (
@@ -342,16 +531,36 @@ export function ClipBuilder({
           </div>
 
           <div className="field">
-            <label htmlFor="clip-seconds">秒数</label>
+            <label htmlFor="clip-before-seconds">前秒数</label>
             <input
-              id="clip-seconds"
+              id="clip-before-seconds"
               type="number"
-              min={3}
+              min={0}
               max={30}
-              value={clipSeconds}
-              onChange={(event) =>
-                setClipSeconds(Math.max(3, Math.min(30, Number(event.target.value) || 8)))
-              }
+              value={clipBeforeSecondsInput}
+              onChange={(event) => setClipBeforeSecondsInput(event.target.value)}
+              onBlur={() => {
+                const nextValue = clampNumber(Number(clipBeforeSecondsInput), 0, 30, 2);
+                setClipBeforeSeconds(nextValue);
+                setClipBeforeSecondsInput(String(nextValue));
+              }}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="clip-after-seconds">後秒数</label>
+            <input
+              id="clip-after-seconds"
+              type="number"
+              min={1}
+              max={60}
+              value={clipAfterSecondsInput}
+              onChange={(event) => setClipAfterSecondsInput(event.target.value)}
+              onBlur={() => {
+                const nextValue = clampNumber(Number(clipAfterSecondsInput), 1, 60, 8);
+                setClipAfterSeconds(nextValue);
+                setClipAfterSecondsInput(String(nextValue));
+              }}
             />
           </div>
         </div>

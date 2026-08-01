@@ -90,6 +90,7 @@ type DistributionRow = {
   label: string;
   count: number;
   setterReceivedCount: number;
+  kills: number;
   total: number;
 };
 
@@ -131,6 +132,15 @@ type ServeBreakRow = {
   breaks: number;
   nonMissAttempts: number;
   nonMissBreaks: number;
+};
+
+type TeamComparisonMetric = {
+  label: string;
+  ownValue: number;
+  opponentValue: number;
+  ownText: string;
+  opponentText: string;
+  maxValue: number;
 };
 
 type AnalysisCategory =
@@ -431,6 +441,130 @@ function formatAttackCourseSummary(summary: AttackCourseSummary): string {
   }
 
   return `${formatRate(summary.kills, summary.attempts)} (${summary.kills}/${summary.attempts})`;
+}
+
+function getTotalAttackMetric(rows: AttackMetricRow[]): AttackMetricRow {
+  return rows.find((row) => row.label === "チーム全体") ?? {
+    label: "チーム全体",
+    attempts: 0,
+    kills: 0,
+    errors: 0,
+  };
+}
+
+function getTotalServeMetric(rows: ServeMetricRow[]): ServeMetricRow {
+  return rows.find((row) => row.label === "チーム全体") ?? {
+    label: "チーム全体",
+    attempts: 0,
+    noTouchAces: 0,
+    serviceAces: 0,
+    effective: 0,
+    misses: 0,
+  };
+}
+
+function buildTeamComparisonMetrics(input: {
+  ownAttack: AttackMetricRow;
+  opponentAttack: AttackMetricRow;
+  ownServe: ServeMetricRow;
+  opponentServe: ServeMetricRow;
+}): TeamComparisonMetric[] {
+  const ownServePoints = input.ownServe.noTouchAces + input.ownServe.serviceAces;
+  const opponentServePoints =
+    input.opponentServe.noTouchAces + input.opponentServe.serviceAces;
+  const ownAttackMissRate =
+    input.ownAttack.attempts > 0 ? (input.ownAttack.errors / input.ownAttack.attempts) * 100 : 0;
+  const opponentAttackMissRate =
+    input.opponentAttack.attempts > 0
+      ? (input.opponentAttack.errors / input.opponentAttack.attempts) * 100
+      : 0;
+  const ownServeMissRate =
+    input.ownServe.attempts > 0 ? (input.ownServe.misses / input.ownServe.attempts) * 100 : 0;
+  const opponentServeMissRate =
+    input.opponentServe.attempts > 0
+      ? (input.opponentServe.misses / input.opponentServe.attempts) * 100
+      : 0;
+
+  return [
+    {
+      label: "スパイク決定数",
+      ownValue: input.ownAttack.kills,
+      opponentValue: input.opponentAttack.kills,
+      ownText: `${input.ownAttack.kills}本`,
+      opponentText: `${input.opponentAttack.kills}本`,
+      maxValue: Math.max(input.ownAttack.kills, input.opponentAttack.kills, 1),
+    },
+    {
+      label: "スパイクミス率",
+      ownValue: ownAttackMissRate,
+      opponentValue: opponentAttackMissRate,
+      ownText: `${input.ownAttack.errors}/${input.ownAttack.attempts} (${formatPercent(ownAttackMissRate)})`,
+      opponentText: `${input.opponentAttack.errors}/${input.opponentAttack.attempts} (${formatPercent(opponentAttackMissRate)})`,
+      maxValue: 100,
+    },
+    {
+      label: "サーブ得点数",
+      ownValue: ownServePoints,
+      opponentValue: opponentServePoints,
+      ownText: `${ownServePoints}本`,
+      opponentText: `${opponentServePoints}本`,
+      maxValue: Math.max(ownServePoints, opponentServePoints, 1),
+    },
+    {
+      label: "サーブミス率",
+      ownValue: ownServeMissRate,
+      opponentValue: opponentServeMissRate,
+      ownText: `${input.ownServe.misses}/${input.ownServe.attempts} (${formatPercent(ownServeMissRate)})`,
+      opponentText: `${input.opponentServe.misses}/${input.opponentServe.attempts} (${formatPercent(opponentServeMissRate)})`,
+      maxValue: 100,
+    },
+  ];
+}
+
+function TeamComparisonChart({
+  ownName,
+  opponentName,
+  metrics,
+}: {
+  ownName: string;
+  opponentName: string;
+  metrics: TeamComparisonMetric[];
+}) {
+  return (
+    <div className="team-comparison-chart">
+      {metrics.map((metric) => (
+        <div className="team-comparison-row" key={metric.label}>
+          <div className="team-comparison-label">
+            <strong>{metric.label}</strong>
+          </div>
+          <div className="team-comparison-bars">
+            <div className="team-comparison-line">
+              <span className="team-comparison-name">{ownName}</span>
+              <div className="team-comparison-track">
+                <div
+                  className="team-comparison-fill team-comparison-fill-own"
+                  style={{ width: `${Math.min(100, (metric.ownValue / metric.maxValue) * 100)}%` }}
+                />
+              </div>
+              <span className="mono team-comparison-value">{metric.ownText}</span>
+            </div>
+            <div className="team-comparison-line">
+              <span className="team-comparison-name">{opponentName}</span>
+              <div className="team-comparison-track">
+                <div
+                  className="team-comparison-fill team-comparison-fill-opponent"
+                  style={{
+                    width: `${Math.min(100, (metric.opponentValue / metric.maxValue) * 100)}%`,
+                  }}
+                />
+              </div>
+              <span className="mono team-comparison-value">{metric.opponentText}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function getRate(wins: number, attempts: number): number | undefined {
@@ -967,7 +1101,7 @@ function buildFreeballSetDistribution(
   const teamCode = getTeamCode(side);
   const rows = new Map<
     string,
-    { code: string; label: string; count: number; setterReceivedCount: number }
+    { code: string; label: string; count: number; setterReceivedCount: number; kills: number }
   >();
 
   match.sets.forEach((set) => {
@@ -989,8 +1123,12 @@ function buildFreeballSetDistribution(
           ...display,
           count: 0,
           setterReceivedCount: 0,
+          kills: 0,
         };
         current.count += 1;
+        if (isKill(attackPlay)) {
+          current.kills += 1;
+        }
         if (didSetterReceiveFreeball(event, side, index)) {
           current.setterReceivedCount += 1;
         }
@@ -1222,8 +1360,18 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
     activeSide === "home" ? homeAnalysis ?? awayAnalysis : awayAnalysis ?? homeAnalysis;
   const setOutcomeComparison = buildSetOutcomeComparison(match, activeAnalysis?.side ?? activeSide);
   const activeTeamPlays = getTeamPlays(match, activeAnalysis?.side ?? activeSide);
+  const opponentSide = (activeAnalysis?.side ?? activeSide) === "home" ? "away" : "home";
+  const opponentTeamPlays = getTeamPlays(match, opponentSide);
   const attackMetricRows = buildAttackMetricRows(activeTeamPlays);
   const serveMetricRows = buildServeMetricRows(activeTeamPlays);
+  const opponentAttackMetricRows = buildAttackMetricRows(opponentTeamPlays);
+  const opponentServeMetricRows = buildServeMetricRows(opponentTeamPlays);
+  const teamComparisonMetrics = buildTeamComparisonMetrics({
+    ownAttack: getTotalAttackMetric(attackMetricRows),
+    opponentAttack: getTotalAttackMetric(opponentAttackMetricRows),
+    ownServe: getTotalServeMetric(serveMetricRows),
+    opponentServe: getTotalServeMetric(opponentServeMetricRows),
+  });
   const receptionMetricRows = buildReceptionMetricRows(activeTeamPlays);
   const freeballSetRows = buildFreeballSetDistribution(
     match,
@@ -1624,44 +1772,13 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
             </div>
 
             <div className="analysis-block analysis-section-block">
-              <h3>スキル内訳</h3>
-              {activeAnalysis.skillSummary.length === 0 ? (
-                <p className="muted">表示できるプレイがありません。</p>
-              ) : (
-                <div className="skill-bars">
-                  {activeAnalysis.skillSummary.map((row) => (
-                    <div className="skill-bar-row" key={row.skill}>
-                      <div className="skill-bar-meta">
-                        <strong>{getSkillLabel(row.skill)}</strong>
-                        <span className="mono">{row.count}</span>
-                      </div>
-                      <div className="skill-bar-track skill-bar-track-stacked">
-                        {gradeOrder.map((grade) => {
-                          const count = row.gradeCounts[grade] ?? 0;
-                          return count > 0 ? (
-                            <div
-                              className={`skill-bar-segment skill-bar-grade-${grade}`}
-                              key={grade}
-                              style={{
-                                width: `${(count / Math.max(1, row.count)) * 100}%`,
-                              }}
-                              title={`${grade}: ${count}`}
-                            />
-                          ) : null;
-                        })}
-                      </div>
-                      <div className="tag-row">
-                        {gradeOrder.map((grade) => (
-                          <span className={`tag skill-grade-tag skill-grade-tag-${grade}`} key={grade}>
-                            {grade}
-                            {row.gradeCounts[grade] ?? 0}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <h3>チーム比較</h3>
+              <p className="muted">スパイクとサーブの得点・ミスを自チームと相手で比較します。</p>
+              <TeamComparisonChart
+                ownName={activeAnalysis.name}
+                opponentName={opponentSide === "home" ? homeAnalysis.name : awayAnalysis.name}
+                metrics={teamComparisonMetrics}
+              />
             </div>
               </>
             ) : null}
@@ -1794,12 +1911,14 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                       <th>攻撃</th>
                       <th>本数</th>
                       <th>配分率</th>
+                      <th>決定</th>
+                      <th>決定率</th>
                     </tr>
                   </thead>
                   <tbody>
                     {freeballSetRows.length === 0 ? (
                       <tr>
-                        <td colSpan={4}>該当データなし</td>
+                        <td colSpan={6}>該当データなし</td>
                       </tr>
                     ) : (
                       freeballSetRows.map((row) => (
@@ -1810,6 +1929,8 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                             {row.count}（{row.setterReceivedCount}）
                           </td>
                           <td data-label="配分率">{formatRate(row.count, row.total)}</td>
+                          <td data-label="決定">{row.kills}</td>
+                          <td data-label="決定率">{formatRate(row.kills, row.count)}</td>
                         </tr>
                       ))
                     )}

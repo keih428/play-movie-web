@@ -1,17 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getSkillLabel } from "@/lib/domain/display";
 import {
   buildAggregateAnalysis,
+  buildAttackMetricRows,
+  buildServeMetricRows,
   getAttackEffectRate,
   getRate,
   getServeEffectRate,
-  getSkillSummaryRow,
   type AggregateSetScope,
   type AggregateAnalysis,
   type AnalysisMatchInput,
+  type AttackMetricRow,
   type AttackCourseSummary,
+  type ServeMetricRow,
 } from "@/lib/domain/analysis";
 import type { ParsedMatch, TeamSide } from "@/lib/domain/types";
 
@@ -54,6 +56,8 @@ const SET_SCOPE_OPTIONS: Array<{ value: AggregateSetScope; label: string }> = [
   { value: "lost", label: "負けたセットのみ" },
 ];
 
+type BlockZoneDivision = "three" | "five";
+
 function formatRate(wins: number, attempts: number): string {
   if (attempts === 0) {
     return "-";
@@ -94,8 +98,215 @@ function formatAttackCourseSummary(summary: AttackCourseSummary): string {
   return `${formatRate(summary.kills, summary.attempts)} (${summary.kills}/${summary.attempts})`;
 }
 
+function getTotalAttackMetric(rows: AttackMetricRow[]): AttackMetricRow {
+  return rows.find((row) => row.label === "チーム全体") ?? {
+    label: "チーム全体",
+    attempts: 0,
+    kills: 0,
+    attackErrors: 0,
+    blockedErrors: 0,
+    errors: 0,
+  };
+}
+
+function getTotalServeMetric(rows: ServeMetricRow[]): ServeMetricRow {
+  return rows.find((row) => row.label === "チーム全体") ?? {
+    label: "チーム全体",
+    attempts: 0,
+    noTouchAces: 0,
+    serviceAces: 0,
+    effective: 0,
+    misses: 0,
+  };
+}
+
+type TeamComparisonMetric = {
+  label: string;
+  ownValue: number;
+  opponentValue: number;
+  ownText: string;
+  opponentText: string;
+  maxValue: number;
+};
+
+function buildTeamComparisonMetrics(input: {
+  ownAttack: AttackMetricRow;
+  opponentAttack: AttackMetricRow;
+  ownServe: ServeMetricRow;
+  opponentServe: ServeMetricRow;
+}): TeamComparisonMetric[] {
+  const ownServePoints = input.ownServe.noTouchAces + input.ownServe.serviceAces;
+  const opponentServePoints =
+    input.opponentServe.noTouchAces + input.opponentServe.serviceAces;
+  const ownAttackMissRate =
+    input.ownAttack.attempts > 0 ? (input.ownAttack.errors / input.ownAttack.attempts) * 100 : 0;
+  const opponentAttackMissRate =
+    input.opponentAttack.attempts > 0
+      ? (input.opponentAttack.errors / input.opponentAttack.attempts) * 100
+      : 0;
+  const ownServeMissRate =
+    input.ownServe.attempts > 0 ? (input.ownServe.misses / input.ownServe.attempts) * 100 : 0;
+  const opponentServeMissRate =
+    input.opponentServe.attempts > 0
+      ? (input.opponentServe.misses / input.opponentServe.attempts) * 100
+      : 0;
+
+  return [
+    {
+      label: "スパイク決定数",
+      ownValue: input.ownAttack.kills,
+      opponentValue: input.opponentAttack.kills,
+      ownText: `${input.ownAttack.kills}本`,
+      opponentText: `${input.opponentAttack.kills}本`,
+      maxValue: Math.max(input.ownAttack.kills, input.opponentAttack.kills, 1),
+    },
+    {
+      label: "スパイクミス率",
+      ownValue: ownAttackMissRate,
+      opponentValue: opponentAttackMissRate,
+      ownText: `${input.ownAttack.errors}/${input.ownAttack.attempts} (${formatPercent(ownAttackMissRate)})`,
+      opponentText: `${input.opponentAttack.errors}/${input.opponentAttack.attempts} (${formatPercent(opponentAttackMissRate)})`,
+      maxValue: 100,
+    },
+    {
+      label: "サーブ得点数",
+      ownValue: ownServePoints,
+      opponentValue: opponentServePoints,
+      ownText: `${ownServePoints}本`,
+      opponentText: `${opponentServePoints}本`,
+      maxValue: Math.max(ownServePoints, opponentServePoints, 1),
+    },
+    {
+      label: "サーブミス率",
+      ownValue: ownServeMissRate,
+      opponentValue: opponentServeMissRate,
+      ownText: `${input.ownServe.misses}/${input.ownServe.attempts} (${formatPercent(ownServeMissRate)})`,
+      opponentText: `${input.opponentServe.misses}/${input.opponentServe.attempts} (${formatPercent(opponentServeMissRate)})`,
+      maxValue: 100,
+    },
+  ];
+}
+
+function TeamComparisonChart({
+  ownName,
+  opponentName,
+  metrics,
+}: {
+  ownName: string;
+  opponentName: string;
+  metrics: TeamComparisonMetric[];
+}) {
+  return (
+    <div className="team-comparison-chart">
+      {metrics.map((metric) => (
+        <div className="team-comparison-row" key={metric.label}>
+          <div className="team-comparison-label">
+            <strong>{metric.label}</strong>
+          </div>
+          <div className="team-comparison-bars">
+            <div className="team-comparison-line">
+              <span className="team-comparison-name">{ownName}</span>
+              <div className="team-comparison-track">
+                <div
+                  className="team-comparison-fill team-comparison-fill-own"
+                  style={{ width: `${Math.min(100, (metric.ownValue / metric.maxValue) * 100)}%` }}
+                />
+              </div>
+              <span className="mono team-comparison-value">{metric.ownText}</span>
+            </div>
+            <div className="team-comparison-line">
+              <span className="team-comparison-name">{opponentName}</span>
+              <div className="team-comparison-track">
+                <div
+                  className="team-comparison-fill team-comparison-fill-opponent"
+                  style={{
+                    width: `${Math.min(100, (metric.opponentValue / metric.maxValue) * 100)}%`,
+                  }}
+                />
+              </div>
+              <span className="mono team-comparison-value">{metric.opponentText}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function formatSide(side: TeamSide) {
   return side === "home" ? "home" : "away";
+}
+
+function getBlockZoneDivisionLabel(label: string, division: BlockZoneDivision) {
+  if (division === "five") {
+    return label;
+  }
+
+  if (label === "ゾーン1" || label === "ゾーン2") {
+    return "ゾーン1（1+2）";
+  }
+  if (label === "ゾーン4" || label === "ゾーン5") {
+    return "ゾーン5（4+5）";
+  }
+  return label;
+}
+
+function getBlockZoneDivisionOrder(label: string) {
+  if (label.startsWith("ゾーン1")) {
+    return 1;
+  }
+  if (label === "ゾーン2") {
+    return 2;
+  }
+  if (label === "ゾーン3") {
+    return 3;
+  }
+  if (label === "ゾーン4") {
+    return 4;
+  }
+  if (label.startsWith("ゾーン5")) {
+    return 5;
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function getBlockRowsByDivision(
+  rows: AggregateAnalysis["blockSuccessRows"],
+  division: BlockZoneDivision,
+): AggregateAnalysis["blockSuccessRows"] {
+  if (division === "five") {
+    return rows;
+  }
+
+  const merged = new Map<
+    string,
+    { code: string; label: string; count: number; opponentAttackCount: number }
+  >();
+
+  rows.forEach((row) => {
+    const label = getBlockZoneDivisionLabel(row.label, division);
+    const current = merged.get(label) ?? {
+      code: label,
+      label,
+      count: 0,
+      opponentAttackCount: 0,
+    };
+    current.count += row.count;
+    current.opponentAttackCount += row.opponentAttackCount;
+    merged.set(label, current);
+  });
+
+  const total = [...merged.values()].reduce((sum, row) => sum + row.count, 0);
+  return [...merged.values()]
+    .map((row) => ({ ...row, total }))
+    .sort((left, right) => {
+      const orderDiff =
+        getBlockZoneDivisionOrder(left.label) - getBlockZoneDivisionOrder(right.label);
+      if (orderDiff !== 0) {
+        return orderDiff;
+      }
+      return right.count - left.count;
+    });
 }
 
 function buildInputs(candidates: MultiMatchCandidate[], selectedIds: string[]): AnalysisMatchInput[] {
@@ -111,10 +322,12 @@ function buildInputs(candidates: MultiMatchCandidate[], selectedIds: string[]): 
 }
 
 function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
-  const gradeOrder = ["A", "B", "C", "D", "E", "F"];
-  const comparisonSkills = analysis.teamAnalysis.skillSummary
-    .map((row) => row.skill)
-    .sort((left, right) => getSkillLabel(left).localeCompare(getSkillLabel(right), "ja"));
+  const comparisonMetrics = buildTeamComparisonMetrics({
+    ownAttack: getTotalAttackMetric(analysis.attackMetricRows),
+    opponentAttack: getTotalAttackMetric(buildAttackMetricRows(analysis.opponentPlays)),
+    ownServe: getTotalServeMetric(analysis.serveMetricRows),
+    opponentServe: getTotalServeMetric(buildServeMetricRows(analysis.opponentPlays)),
+  });
 
   return (
     <>
@@ -197,46 +410,13 @@ function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
       </div>
 
       <div className="analysis-block analysis-section-block">
-        <h3>スキル内訳</h3>
-        <div className="skill-bars">
-          {comparisonSkills.map((skill) => {
-            const row = getSkillSummaryRow(analysis.teamAnalysis.skillSummary, skill);
-            return (
-              <div className="skill-bar-row" key={row.skill}>
-                <div className="skill-bar-meta">
-                  <strong>{getSkillLabel(row.skill)}</strong>
-                  <span className="mono">{row.count}</span>
-                </div>
-                <div className="skill-bar-track skill-bar-track-stacked">
-                  {gradeOrder.map((grade) => {
-                    const count = row.gradeCounts[grade] ?? 0;
-                    return count > 0 ? (
-                      <div
-                        className={`skill-bar-segment skill-bar-grade-${grade}`}
-                        key={grade}
-                        style={{
-                          width: `${(count / Math.max(1, row.count)) * 100}%`,
-                        }}
-                        title={`${grade}: ${count}`}
-                      />
-                    ) : null;
-                  })}
-                </div>
-                <div className="tag-row">
-                  {gradeOrder.map((grade) => (
-                    <span
-                      className={`tag skill-grade-tag skill-grade-tag-${grade}`}
-                      key={grade}
-                    >
-                      {grade}
-                      {row.gradeCounts[grade] ?? 0}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <h3>チーム比較</h3>
+        <p className="muted">スパイクとサーブの得点・ミスを自チームと相手で比較します。</p>
+        <TeamComparisonChart
+          ownName={analysis.teamAnalysis.name}
+          opponentName="相手"
+          metrics={comparisonMetrics}
+        />
       </div>
     </>
   );
@@ -248,7 +428,7 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
       <div className="analysis-block analysis-section-block">
         <h3>アタック指標</h3>
         <p className="muted">
-          決定率 = 得点数÷打数、効果率 =（得点数−失点数）÷打数。
+          決定率 = 得点数÷打数、効果率 =（得点数−ミス−被ブロック）÷打数。
         </p>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
@@ -257,7 +437,8 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
                 <th>選手</th>
                 <th>打数</th>
                 <th>得点</th>
-                <th>失点</th>
+                <th>ミス</th>
+                <th>被ブロック</th>
                 <th>決定率</th>
                 <th>効果率</th>
               </tr>
@@ -268,7 +449,8 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
                   <td data-label="選手">{row.label}</td>
                   <td data-label="打数">{row.attempts}</td>
                   <td data-label="得点">{row.kills}</td>
-                  <td data-label="失点">{row.errors}</td>
+                  <td data-label="ミス">{row.attackErrors}</td>
+                  <td data-label="被ブロック">{row.blockedErrors}</td>
                   <td data-label="決定率">{formatRate(row.kills, row.attempts)}</td>
                   <td data-label="効果率">{formatPercent(getAttackEffectRate(row))}</td>
                 </tr>
@@ -291,12 +473,14 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
                 <th>攻撃</th>
                 <th>本数</th>
                 <th>配分率</th>
+                <th>決定</th>
+                <th>決定率</th>
               </tr>
             </thead>
             <tbody>
               {analysis.freeballAttackRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4}>該当データなし</td>
+                  <td colSpan={6}>該当データなし</td>
                 </tr>
               ) : (
                 analysis.freeballAttackRows.map((row) => (
@@ -307,6 +491,8 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
                       {row.count}（{row.setterReceivedCount}）
                     </td>
                     <td data-label="配分率">{formatRate(row.count, row.total)}</td>
+                    <td data-label="決定">{row.kills}</td>
+                    <td data-label="決定率">{formatRate(row.kills, row.count)}</td>
                   </tr>
                 ))
               )}
@@ -353,7 +539,7 @@ function ServeSection({ analysis }: { analysis: AggregateAnalysis }) {
       <div className="analysis-block analysis-section-block">
         <h3>サーブ指標</h3>
         <p className="muted">
-          効果率 =（ノータッチエース×100 + サービスエース×80 + 効果×25）÷打数。
+          効果率 =（サービスエース×100 + 効果×25 - サーブミス×25）÷打数。サービスエースにはノータッチも含めます。
         </p>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
@@ -365,6 +551,7 @@ function ServeSection({ analysis }: { analysis: AggregateAnalysis }) {
                 <th>サービスエース</th>
                 <th>効果</th>
                 <th>ミス</th>
+                <th>ミス率</th>
                 <th>効果率</th>
               </tr>
             </thead>
@@ -377,6 +564,7 @@ function ServeSection({ analysis }: { analysis: AggregateAnalysis }) {
                   <td data-label="サービスエース">{row.serviceAces}</td>
                   <td data-label="効果">{row.effective}</td>
                   <td data-label="ミス">{row.misses}</td>
+                  <td data-label="ミス率">{formatRate(row.misses, row.attempts)}</td>
                   <td data-label="効果率">{formatNumber(getServeEffectRate(row))}</td>
                 </tr>
               ))}
@@ -467,6 +655,7 @@ function ReceptionSection({ analysis }: { analysis: AggregateAnalysis }) {
 }
 
 function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
+  const [zoneDivision, setZoneDivision] = useState<BlockZoneDivision>("three");
   const opponentAttacks = analysis.blockOpponentAttacks;
   const successes = analysis.blockSetRows.reduce(
     (sum, row) => sum + row.successes,
@@ -476,13 +665,13 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
   const tables = [
     {
       title: "ブロック成功",
-      rows: analysis.blockSuccessRows,
+      rows: getBlockRowsByDivision(analysis.blockSuccessRows, zoneDivision),
       probabilityLabel: "成功確率",
-      shareLabel: "得点割合",
+      shareLabel: undefined,
     },
     {
       title: "ブロックミス",
-      rows: analysis.blockMissRows,
+      rows: getBlockRowsByDivision(analysis.blockMissRows, zoneDivision),
       probabilityLabel: "ミス確率",
       shareLabel: "失点割合",
     },
@@ -495,6 +684,63 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
         相手スパイク {opponentAttacks}本 / 成功 {successes}本（{formatRate(successes, opponentAttacks)}） / ミス {misses}本（{formatRate(misses, opponentAttacks)}）
       </p>
       <div className="comparison-stack">
+        <div>
+          <h4>個人ブロック成績</h4>
+          <div className="score-table-wrap">
+            <table className="score-table analysis-player-table">
+              <thead>
+                <tr>
+                  <th>選手</th>
+                  <th>出場セット</th>
+                  <th>ブロック成功</th>
+                  <th>ブロック失敗</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.blockPlayerRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>該当データなし</td>
+                  </tr>
+                ) : (
+                  analysis.blockPlayerRows.map((row) => (
+                    <tr key={row.player}>
+                      <td data-label="選手">{row.player}</td>
+                      <td data-label="出場セット">{row.setAppearances}</td>
+                      <td data-label="ブロック成功">{row.successes}</td>
+                      <td data-label="ブロック失敗">{row.misses}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="section-heading-row">
+          <div>
+            <h4>ゾーン別ブロック集計</h4>
+            <p className="muted">
+              三分割ではゾーン2をゾーン1へ、ゾーン4をゾーン5へ合算します。
+            </p>
+          </div>
+          <div className="toggle-switch" role="group" aria-label="ブロックゾーン分割">
+            <button
+              className={zoneDivision === "three" ? "toggle-switch-button active" : "toggle-switch-button"}
+              type="button"
+              onClick={() => setZoneDivision("three")}
+            >
+              三分割
+            </button>
+            <button
+              className={zoneDivision === "five" ? "toggle-switch-button active" : "toggle-switch-button"}
+              type="button"
+              onClick={() => setZoneDivision("five")}
+            >
+              五分割
+            </button>
+          </div>
+        </div>
+
         {tables.map((table) => (
           <div key={table.title}>
             <h4>{table.title}</h4>
@@ -502,32 +748,32 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
               <table className="score-table analysis-player-table">
                 <thead>
                   <tr>
-                    <th>コード</th>
-                    <th>攻撃</th>
+                    <th>ゾーン</th>
                     <th>本数</th>
                     <th>相手スパイク</th>
                     <th>{table.probabilityLabel}</th>
-                    <th>{table.shareLabel}</th>
+                    {table.shareLabel ? <th>{table.shareLabel}</th> : null}
                   </tr>
                 </thead>
                 <tbody>
                   {table.rows.length === 0 ? (
                     <tr>
-                      <td colSpan={6}>該当データなし</td>
+                      <td colSpan={table.shareLabel ? 5 : 4}>該当データなし</td>
                     </tr>
                   ) : (
                     table.rows.map((row) => (
                       <tr key={`${table.title}-${row.label}`}>
-                        <td data-label="コード">{row.code}</td>
-                        <td data-label="攻撃">{row.label}</td>
+                        <td data-label="ゾーン">{row.label}</td>
                         <td data-label="本数">{row.count}</td>
                         <td data-label="相手スパイク">{row.opponentAttackCount}</td>
                         <td data-label={table.probabilityLabel}>
                           {formatRate(row.count, row.opponentAttackCount)}
                         </td>
-                        <td data-label={table.shareLabel}>
-                          {formatRate(row.count, row.total)}
-                        </td>
+                        {table.shareLabel ? (
+                          <td data-label={table.shareLabel}>
+                            {formatRate(row.count, row.total)}
+                          </td>
+                        ) : null}
                       </tr>
                     ))
                   )}
@@ -549,7 +795,7 @@ function PlayerSection({ analysis }: { analysis: AggregateAnalysis }) {
         <table className="score-table analysis-player-table">
           <thead>
             <tr>
-              <th>背番号</th>
+              <th>選手</th>
               <th>総プレイ</th>
               <th>サーブ</th>
               <th>レセプション</th>
@@ -562,7 +808,7 @@ function PlayerSection({ analysis }: { analysis: AggregateAnalysis }) {
           <tbody>
             {analysis.teamAnalysis.players.map((row) => (
               <tr key={row.player}>
-                <td data-label="背番号">{row.player}</td>
+                <td data-label="選手">{row.player}</td>
                 <td data-label="総プレイ">{row.total}</td>
                 <td data-label="サーブ">{row.serve}</td>
                 <td data-label="レセプション">{row.receive}</td>
