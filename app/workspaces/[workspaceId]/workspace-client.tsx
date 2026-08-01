@@ -88,7 +88,7 @@ function getFilterOptions(match: ParsedMatch | undefined, filters?: FilterState)
             rotationLabel === filters.rotation) &&
           (filters?.skill === undefined || filters.skill === "all" || play.skill === filters.skill)
         ) {
-          players.add(play.player);
+          players.add(normalizePlayerNumber(play.player));
         }
         if (play.skill) {
           skills.add(play.skill);
@@ -134,7 +134,10 @@ function getFilteredMatch(
               ) {
                 return false;
               }
-              if (filters.player !== "all" && play.player !== filters.player) {
+              if (
+                filters.player !== "all" &&
+                normalizePlayerNumber(play.player) !== filters.player
+              ) {
                 return false;
               }
               if (filters.skill !== "all" && play.skill !== filters.skill) {
@@ -147,6 +150,14 @@ function getFilteredMatch(
       }))
       .filter((set) => set.events.length > 0),
   };
+}
+
+function normalizePlayerNumber(value: string | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().replace(/^0+/, "") || "0";
 }
 
 export function WorkspaceClient({

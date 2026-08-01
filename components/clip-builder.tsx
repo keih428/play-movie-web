@@ -68,6 +68,14 @@ function clampNumber(value: number, min: number, max: number, fallback: number) 
   return Math.max(min, Math.min(max, value));
 }
 
+function normalizePlayerNumber(value: string | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().replace(/^0+/, "") || "0";
+}
+
 function getGradeMatches(effect: string | undefined, selectedGrades: GradeOption[]) {
   const grade = getEffectGrade(effect);
   return selectedGrades.includes(grade as GradeOption);
@@ -200,7 +208,7 @@ export function ClipBuilder({
             teams.add(teamLabel);
           }
           if (play.player && (teamFilter === "all" || teamLabel === teamFilter)) {
-            players.add(play.player);
+            players.add(normalizePlayerNumber(play.player));
           }
           if (play.skill) {
             skills.add(play.skill);
@@ -237,7 +245,10 @@ export function ClipBuilder({
           if (teamFilter !== "all" && teamLabel !== teamFilter) {
             return [];
           }
-          if (playerFilter !== "all" && play.player !== playerFilter) {
+          if (
+            playerFilter !== "all" &&
+            normalizePlayerNumber(play.player) !== playerFilter
+          ) {
             return [];
           }
           if (skillFilter !== "all" && play.skill !== skillFilter) {

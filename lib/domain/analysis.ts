@@ -300,7 +300,7 @@ export function buildPlayerRows(plays: ParsedPlay[]): PlayerRow[] {
   const rows = new Map<string, PlayerRow>();
 
   plays.forEach((play) => {
-    const key = play.player ?? "不明";
+    const key = getPlayerKey(play);
     const current =
       rows.get(key) ??
       {
@@ -497,7 +497,7 @@ export function getRotationRow(rows: RotationRow[], rotationLabel: string): Rota
 }
 
 export function getPlayerKey(play: ParsedPlay) {
-  return play.player ?? "不明";
+  return normalizePlayerNumber(play.player) ?? "不明";
 }
 
 export function isKill(play: ParsedPlay) {
