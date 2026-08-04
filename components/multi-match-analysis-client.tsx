@@ -39,6 +39,7 @@ type AnalysisCategory =
   | "serve"
   | "reception"
   | "block"
+  | "rotation"
   | "player";
 
 const ANALYSIS_CATEGORIES: Array<{ key: AnalysisCategory; label: string }> = [
@@ -47,6 +48,7 @@ const ANALYSIS_CATEGORIES: Array<{ key: AnalysisCategory; label: string }> = [
   { key: "serve", label: "サーブ" },
   { key: "reception", label: "レセプション" },
   { key: "block", label: "ブロック" },
+  { key: "rotation", label: "ローテ" },
   { key: "player", label: "個人" },
 ];
 
@@ -88,6 +90,18 @@ function formatNumber(value: number | undefined): string {
   }
 
   return value.toFixed(1);
+}
+
+function formatRateSum(left: number | undefined, right: number | undefined): string {
+  if (left === undefined || right === undefined) {
+    return "-";
+  }
+
+  return `${(left + right).toFixed(1)}%`;
+}
+
+function formatCountRate(count: number, total: number): string {
+  return `${count}本（${formatRate(count, total)}）`;
 }
 
 function formatAttackCourseSummary(summary: AttackCourseSummary): string {
@@ -623,7 +637,7 @@ function ReceptionSection({ analysis }: { analysis: AggregateAnalysis }) {
   return (
     <div className="analysis-block analysis-section-block">
       <h3>レセプション</h3>
-      <p className="muted">AB率は # / +、ミス率は = で計算します。</p>
+      <p className="muted">AB率は # / +、BC率は + / !、ミス率は = で計算します。</p>
       <div className="score-table-wrap">
         <table className="score-table analysis-player-table">
           <thead>
@@ -631,8 +645,10 @@ function ReceptionSection({ analysis }: { analysis: AggregateAnalysis }) {
               <th>選手</th>
               <th>本数</th>
               <th>AB</th>
-              <th>ミス</th>
+              <th>BC</th>
               <th>AB率</th>
+              <th>BC率</th>
+              <th>ミス</th>
               <th>ミス率</th>
             </tr>
           </thead>
@@ -642,8 +658,10 @@ function ReceptionSection({ analysis }: { analysis: AggregateAnalysis }) {
                 <td data-label="選手">{row.label}</td>
                 <td data-label="本数">{row.attempts}</td>
                 <td data-label="AB">{row.ab}</td>
-                <td data-label="ミス">{row.errors}</td>
+                <td data-label="BC">{row.bc}</td>
                 <td data-label="AB率">{formatRate(row.ab, row.attempts)}</td>
+                <td data-label="BC率">{formatRate(row.bc, row.attempts)}</td>
+                <td data-label="ミス">{row.errors}</td>
                 <td data-label="ミス率">{formatRate(row.errors, row.attempts)}</td>
               </tr>
             ))}
@@ -782,6 +800,100 @@ function BlockSection({ analysis }: { analysis: AggregateAnalysis }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
+  return (
+    <div className="comparison-stack">
+      <div className="analysis-block analysis-section-block">
+        <h3>ローテ</h3>
+        <p className="muted">S1〜S6ごとのBreak率、Sideout率、その和を表示します。</p>
+        <div className="score-table-wrap">
+          <table className="score-table analysis-player-table">
+            <thead>
+              <tr>
+                <th>ローテ</th>
+                <th>Break</th>
+                <th>Sideout</th>
+                <th>合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.teamAnalysis.rotations.map((row) => {
+                const breakRate = getRate(row.breakWins, row.breakAttempts);
+                const sideoutRate = getRate(row.sideoutWins, row.sideoutAttempts);
+                const rotationLabel = row.rotationLabel.replace("ローテ", "S");
+
+                return (
+                  <tr key={row.rotationLabel}>
+                    <td data-label="ローテ">{rotationLabel}</td>
+                    <td data-label="Break">
+                      {formatPercent(breakRate)} ({row.breakWins}/{row.breakAttempts})
+                    </td>
+                    <td data-label="Sideout">
+                      {formatPercent(sideoutRate)} ({row.sideoutWins}/{row.sideoutAttempts})
+                    </td>
+                    <td data-label="合計">{formatRateSum(breakRate, sideoutRate)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="analysis-block analysis-section-block">
+        <h3>ローテ別 得失点要因</h3>
+        <p className="muted">
+          得点要因は得点ラリー数、失点要因は失点ラリー数を分母にして割合を表示します。
+        </p>
+        <div className="score-table-wrap">
+          <table className="score-table analysis-player-table">
+            <thead>
+              <tr>
+                <th>ローテ</th>
+                <th>サーブ得点</th>
+                <th>アタック得点</th>
+                <th>レセプションミス</th>
+                <th>サーブミス</th>
+                <th>スパイクミス</th>
+                <th>相手スパイク</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.rotationPointCauseRows.map((row) => {
+                const rotationLabel = row.rotationLabel.replace("ローテ", "S");
+
+                return (
+                  <tr key={row.rotationLabel}>
+                    <td data-label="ローテ">{rotationLabel}</td>
+                    <td data-label="サーブ得点">
+                      {formatCountRate(row.servePoints, row.wonRallies)}
+                    </td>
+                    <td data-label="アタック得点">
+                      {formatCountRate(row.attackPoints, row.wonRallies)}
+                    </td>
+                    <td data-label="レセプションミス">
+                      {formatCountRate(row.receptionErrors, row.lostRallies)}
+                    </td>
+                    <td data-label="サーブミス">
+                      {formatCountRate(row.serveErrors, row.lostRallies)}
+                    </td>
+                    <td data-label="スパイクミス">
+                      {formatCountRate(row.attackErrors, row.lostRallies)}
+                    </td>
+                    <td data-label="相手スパイク">
+                      {formatCountRate(row.opponentAttackPoints, row.lostRallies)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -964,6 +1076,7 @@ export function MultiMatchAnalysisClient({
             {activeCategory === "serve" ? <ServeSection analysis={analysis} /> : null}
             {activeCategory === "reception" ? <ReceptionSection analysis={analysis} /> : null}
             {activeCategory === "block" ? <BlockSection analysis={analysis} /> : null}
+            {activeCategory === "rotation" ? <RotationSection analysis={analysis} /> : null}
             {activeCategory === "player" ? <PlayerSection analysis={analysis} /> : null}
           </>
         )}

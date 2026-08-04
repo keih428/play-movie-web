@@ -24,6 +24,18 @@ export type RotationRow = {
   breakWins: number;
 };
 
+export type RotationPointCauseRow = {
+  rotationLabel: string;
+  wonRallies: number;
+  servePoints: number;
+  attackPoints: number;
+  lostRallies: number;
+  receptionErrors: number;
+  serveErrors: number;
+  attackErrors: number;
+  opponentAttackPoints: number;
+};
+
 export type PlayerRow = {
   player: string;
   total: number;
@@ -84,6 +96,7 @@ export type ReceptionMetricRow = {
   label: string;
   attempts: number;
   ab: number;
+  bc: number;
   errors: number;
 };
 
@@ -180,6 +193,7 @@ export type AggregateAnalysis = {
   teamPlays: ParsedPlay[];
   opponentPlays: ParsedPlay[];
   matchSummaries: MatchSummaryRow[];
+  rotationPointCauseRows: RotationPointCauseRow[];
   attackMetricRows: AttackMetricRow[];
   serveMetricRows: ServeMetricRow[];
   receptionMetricRows: ReceptionMetricRow[];
@@ -496,6 +510,169 @@ export function getRotationRow(rows: RotationRow[], rotationLabel: string): Rota
   );
 }
 
+export function mergeRotationRows(rows: RotationRow[][]): RotationRow[] {
+  const merged = new Map<string, RotationRow>();
+
+  rows.flat().forEach((row) => {
+    const current = merged.get(row.rotationLabel) ?? {
+      rotationLabel: row.rotationLabel,
+      attempts: 0,
+      wins: 0,
+      sideoutAttempts: 0,
+      sideoutWins: 0,
+      breakAttempts: 0,
+      breakWins: 0,
+    };
+    current.attempts += row.attempts;
+    current.wins += row.wins;
+    current.sideoutAttempts += row.sideoutAttempts;
+    current.sideoutWins += row.sideoutWins;
+    current.breakAttempts += row.breakAttempts;
+    current.breakWins += row.breakWins;
+    merged.set(row.rotationLabel, current);
+  });
+
+  return [1, 2, 3, 4, 5, 6].map((rotation) =>
+    getRotationRow([...merged.values()], `ローテ${rotation}`),
+  );
+}
+
+function createRotationPointCauseRow(rotationLabel: string): RotationPointCauseRow {
+  return {
+    rotationLabel,
+    wonRallies: 0,
+    servePoints: 0,
+    attackPoints: 0,
+    lostRallies: 0,
+    receptionErrors: 0,
+    serveErrors: 0,
+    attackErrors: 0,
+    opponentAttackPoints: 0,
+  };
+}
+
+function getRotationLabelForEvent(event: ParsedEvent, side: TeamSide) {
+  const setterAt = event.lineup[side].setterAt ?? 0;
+  return `ローテ${setterAt || "-"}`;
+}
+
+function getLastPlay(
+  plays: ParsedPlay[],
+  predicate: (play: ParsedPlay) => boolean,
+) {
+  return [...plays].reverse().find(predicate);
+}
+
+export function buildRotationPointCauseRows(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+): RotationPointCauseRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  const opponentCode = side === "home" ? "a" : "*";
+  const rows = new Map<string, RotationPointCauseRow>();
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      const winningSide = getWinningSide(event);
+      if (!winningSide) {
+        return;
+      }
+
+      const rotationLabel = getRotationLabelForEvent(event, side);
+      const row =
+        rows.get(rotationLabel) ?? createRotationPointCauseRow(rotationLabel);
+
+      if (winningSide === side) {
+        row.wonRallies += 1;
+        const servePoint = getLastPlay(
+          event.plays,
+          (play) =>
+            play.team === teamCode &&
+            play.skill === "S" &&
+            (play.effect === "#" || play.effect === "+"),
+        );
+        const attackPoint = getLastPlay(
+          event.plays,
+          (play) => play.team === teamCode && play.skill === "A" && isKill(play),
+        );
+
+        if (servePoint) {
+          row.servePoints += 1;
+        } else if (attackPoint) {
+          row.attackPoints += 1;
+        }
+      } else {
+        row.lostRallies += 1;
+        const receptionError = getLastPlay(
+          event.plays,
+          (play) => play.team === teamCode && play.skill === "R" && isError(play),
+        );
+        const serveError = getLastPlay(
+          event.plays,
+          (play) => play.team === teamCode && play.skill === "S" && isError(play),
+        );
+        const attackError = getLastPlay(
+          event.plays,
+          (play) => play.team === teamCode && play.skill === "A" && isError(play),
+        );
+        const opponentAttackPoint = getLastPlay(
+          event.plays,
+          (play) => play.team === opponentCode && play.skill === "A" && isKill(play),
+        );
+
+        if (receptionError) {
+          row.receptionErrors += 1;
+        } else if (serveError) {
+          row.serveErrors += 1;
+        } else if (attackError) {
+          row.attackErrors += 1;
+        } else if (opponentAttackPoint) {
+          row.opponentAttackPoints += 1;
+        }
+      }
+
+      rows.set(rotationLabel, row);
+    });
+  });
+
+  return [1, 2, 3, 4, 5, 6].map(
+    (rotation) =>
+      rows.get(`ローテ${rotation}`) ??
+      createRotationPointCauseRow(`ローテ${rotation}`),
+  );
+}
+
+export function mergeRotationPointCauseRows(
+  rows: RotationPointCauseRow[][],
+): RotationPointCauseRow[] {
+  const merged = new Map<string, RotationPointCauseRow>();
+
+  rows.flat().forEach((row) => {
+    const current =
+      merged.get(row.rotationLabel) ??
+      createRotationPointCauseRow(row.rotationLabel);
+    current.wonRallies += row.wonRallies;
+    current.servePoints += row.servePoints;
+    current.attackPoints += row.attackPoints;
+    current.lostRallies += row.lostRallies;
+    current.receptionErrors += row.receptionErrors;
+    current.serveErrors += row.serveErrors;
+    current.attackErrors += row.attackErrors;
+    current.opponentAttackPoints += row.opponentAttackPoints;
+    merged.set(row.rotationLabel, current);
+  });
+
+  return [1, 2, 3, 4, 5, 6].map(
+    (rotation) =>
+      merged.get(`ローテ${rotation}`) ??
+      createRotationPointCauseRow(`ローテ${rotation}`),
+  );
+}
+
 export function getPlayerKey(play: ParsedPlay) {
   return normalizePlayerNumber(play.player) ?? "不明";
 }
@@ -510,6 +687,10 @@ export function isError(play: ParsedPlay) {
 
 function isReceptionAB(play: ParsedPlay) {
   return play.effect === "#" || play.effect === "+";
+}
+
+function isReceptionBC(play: ParsedPlay) {
+  return play.effect === "+" || play.effect === "!";
 }
 
 function getRowsWithTotal<T extends { label: string }>(
@@ -625,6 +806,7 @@ export function buildReceptionMetricRows(plays: ParsedPlay[]): ReceptionMetricRo
     label: "チーム全体",
     attempts: 0,
     ab: 0,
+    bc: 0,
     errors: 0,
   };
   const players = new Map<string, ReceptionMetricRow>();
@@ -637,6 +819,7 @@ export function buildReceptionMetricRows(plays: ParsedPlay[]): ReceptionMetricRo
         label: key,
         attempts: 0,
         ab: 0,
+        bc: 0,
         errors: 0,
       };
 
@@ -645,6 +828,10 @@ export function buildReceptionMetricRows(plays: ParsedPlay[]): ReceptionMetricRo
     if (isReceptionAB(play)) {
       row.ab += 1;
       total.ab += 1;
+    }
+    if (isReceptionBC(play)) {
+      row.bc += 1;
+      total.bc += 1;
     }
     if (isError(play)) {
       row.errors += 1;
@@ -1566,7 +1753,9 @@ export function buildAggregateAnalysis(
     breakAttempts: 0,
     breakWins: 0,
     skillSummary: buildSkillSummary(teamPlays),
-    rotations: [],
+    rotations: mergeRotationRows(
+      scopedInputs.map((input) => buildRotationRows(input.match.sets, input.ownSide)),
+    ),
     players: applyPlayerNamesToPlayerRows(buildPlayerRows(teamPlays), playerNames),
   };
   const opponentAnalysis: TeamAnalysis = {
@@ -1637,6 +1826,11 @@ export function buildAggregateAnalysis(
     teamPlays,
     opponentPlays,
     matchSummaries,
+    rotationPointCauseRows: mergeRotationPointCauseRows(
+      scopedInputs.map((input) =>
+        buildRotationPointCauseRows(input.match, input.ownSide),
+      ),
+    ),
     attackMetricRows: applyPlayerNamesToLabelRows(
       buildAttackMetricRows(teamPlays),
       playerNames,
