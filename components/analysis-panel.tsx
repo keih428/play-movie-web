@@ -267,7 +267,7 @@ function buildPlayerRows(plays: ParsedPlay[]): PlayerRow[] {
   const rows = new Map<string, PlayerRow>();
 
   plays.forEach((play) => {
-    const key = play.player ?? "不明";
+    const key = getPlayerKey(play);
     const current =
       rows.get(key) ??
       {
@@ -643,7 +643,7 @@ function formatSignedRateDiff(leftWins: number, leftAttempts: number, rightWins:
 }
 
 function getPlayerKey(play: ParsedPlay) {
-  return play.player ?? "不明";
+  return normalizePlayerNumber(play.player) ?? "不明";
 }
 
 function isKill(play: ParsedPlay) {

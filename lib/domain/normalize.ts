@@ -10,13 +10,20 @@ import type {
   TeamSide,
 } from "@/lib/domain/types";
 
+function normalizeNameWhitespace(value: string | undefined) {
+  return value?.trim().replace(/\s+/g, " ") || undefined;
+}
+
 function normalizePlayer(player: Record<string, unknown>): MatchPlayer {
-  const firstName =
-    typeof player.firstName === "string" ? player.firstName.trim() : undefined;
-  const lastName =
-    typeof player.lastName === "string" ? player.lastName.trim() : undefined;
-  const explicitName =
-    typeof player.name === "string" ? player.name.trim() : undefined;
+  const firstName = normalizeNameWhitespace(
+    typeof player.firstName === "string" ? player.firstName : undefined,
+  );
+  const lastName = normalizeNameWhitespace(
+    typeof player.lastName === "string" ? player.lastName : undefined,
+  );
+  const explicitName = normalizeNameWhitespace(
+    typeof player.name === "string" ? player.name : undefined,
+  );
   const joinedName = [lastName, firstName].filter(Boolean).join(" ");
 
   return {

@@ -68,6 +68,14 @@ function clampNumber(value: number, min: number, max: number, fallback: number) 
   return Math.max(min, Math.min(max, value));
 }
 
+function normalizePlayerNumber(value: string | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().replace(/^0+/, "") || "0";
+}
+
 function getGradeMatches(effect: string | undefined, selectedGrades: GradeOption[]) {
   const grade = getEffectGrade(effect);
   return selectedGrades.includes(grade as GradeOption);
@@ -162,6 +170,10 @@ function getBlockZoneForPlay(
   return getBlockZoneForCombination(getAttackCombination(attack));
 }
 
+function isSkillSelection(skill: string, expectedSkill: "A" | "B") {
+  return skill === expectedSkill || getSkillLabel(skill) === getSkillLabel(expectedSkill);
+}
+
 export function ClipBuilder({
   match,
   settings,
@@ -184,6 +196,8 @@ export function ClipBuilder({
   const [activeClipReady, setActiveClipReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayCodes, setShowPlayCodes] = useState(false);
+  const canEditAttackTypeFilter = isSkillSelection(skillFilter, "A");
+  const canEditBlockZoneFilter = isSkillSelection(skillFilter, "B");
 
   const options = useMemo(() => {
     const teams = new Set<string>();
@@ -198,7 +212,7 @@ export function ClipBuilder({
             teams.add(teamLabel);
           }
           if (play.player && (teamFilter === "all" || teamLabel === teamFilter)) {
-            players.add(play.player);
+            players.add(normalizePlayerNumber(play.player));
           }
           if (play.skill) {
             skills.add(play.skill);
@@ -235,7 +249,10 @@ export function ClipBuilder({
           if (teamFilter !== "all" && teamLabel !== teamFilter) {
             return [];
           }
-          if (playerFilter !== "all" && play.player !== playerFilter) {
+          if (
+            playerFilter !== "all" &&
+            normalizePlayerNumber(play.player) !== playerFilter
+          ) {
             return [];
           }
           if (skillFilter !== "all" && play.skill !== skillFilter) {
@@ -463,9 +480,18 @@ export function ClipBuilder({
           <div className="field">
             <label htmlFor="clip-skill-filter">スキル</label>
               <select
-                id="clip-skill-filter"
-                value={skillFilter}
-                onChange={(event) => setSkillFilter(event.target.value)}
+              id="clip-skill-filter"
+              value={skillFilter}
+              onChange={(event) => {
+                const nextSkill = event.target.value;
+                setSkillFilter(nextSkill);
+                if (!isSkillSelection(nextSkill, "A")) {
+                  setAttackTypeFilter("all");
+                }
+                if (!isSkillSelection(nextSkill, "B")) {
+                  setBlockZoneFilter("all");
+                }
+              }}
               >
               <option value="all">すべてのスキル</option>
               {options.skills.map((skill) => (
@@ -476,11 +502,13 @@ export function ClipBuilder({
             </select>
           </div>
 
-          <div className="field">
+          <div className={canEditAttackTypeFilter ? "field" : "field field-disabled"}>
             <label htmlFor="clip-attack-type-filter">アタック種類</label>
             <select
               id="clip-attack-type-filter"
               value={attackTypeFilter}
+              disabled={!canEditAttackTypeFilter}
+              aria-disabled={!canEditAttackTypeFilter}
               onChange={(event) => setAttackTypeFilter(event.target.value)}
             >
               <option value="all">すべての種類</option>
@@ -492,11 +520,13 @@ export function ClipBuilder({
             </select>
           </div>
 
-          <div className="field">
+          <div className={canEditBlockZoneFilter ? "field" : "field field-disabled"}>
             <label htmlFor="clip-block-zone-filter">ブロックゾーン</label>
             <select
               id="clip-block-zone-filter"
               value={blockZoneFilter}
+              disabled={!canEditBlockZoneFilter}
+              aria-disabled={!canEditBlockZoneFilter}
               onChange={(event) => setBlockZoneFilter(event.target.value)}
             >
               <option value="all">すべてのゾーン</option>

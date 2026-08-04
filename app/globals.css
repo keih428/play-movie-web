@@ -595,6 +595,20 @@ iframe {
   background: rgba(255, 255, 255, 0.7);
 }
 
+.field-disabled label,
+.field-disabled .field-label {
+  opacity: 0.58;
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  color: var(--muted);
+  background: rgba(235, 242, 250, 0.72);
+}
+
 .video-url-picker {
   display: grid;
   gap: 0.55rem;
