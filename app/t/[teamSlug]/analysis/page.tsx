@@ -1,6 +1,5 @@
 import { MultiMatchAnalysisClient } from "@/components/multi-match-analysis-client";
-import { areTeamNamesEquivalent, formatTeamSlugLabel } from "@/lib/domain/team";
-import type { ParsedMatch, TeamSide } from "@/lib/domain/types";
+import { formatTeamSlugLabel } from "@/lib/domain/team";
 import {
   getSavedWorkspace,
   listSavedWorkspaces,
@@ -13,16 +12,6 @@ type PageProps = {
 };
 
 export const dynamic = "force-dynamic";
-
-function getOwnSide(match: ParsedMatch, teamName: string): TeamSide | undefined {
-  if (areTeamNamesEquivalent(match.teams.home.name, teamName)) {
-    return "home";
-  }
-  if (areTeamNamesEquivalent(match.teams.away.name, teamName)) {
-    return "away";
-  }
-  return undefined;
-}
 
 export default async function TeamAnalysisPage({ params }: PageProps) {
   const { teamSlug } = await params;
@@ -51,12 +40,6 @@ export default async function TeamAnalysisPage({ params }: PageProps) {
       return [];
     }
 
-    const workspaceTeamName = record.teamName ?? teamName;
-    const ownSide = getOwnSide(match, workspaceTeamName);
-    if (!ownSide) {
-      return [];
-    }
-
     return [
       {
         id: record.id,
@@ -65,7 +48,6 @@ export default async function TeamAnalysisPage({ params }: PageProps) {
         resultLabel: summary.resultLabel,
         setScoreLabel: summary.setScoreLabel,
         createdAt: record.createdAt,
-        ownSide,
         match,
       },
     ];
@@ -78,7 +60,7 @@ export default async function TeamAnalysisPage({ params }: PageProps) {
           <div>
             <h1>総合分析</h1>
             <p>
-              {teamName} が出場した試合を複数選択し、統計をまとめて確認します。
+              対象チームを選択し、そのチームが出場した試合を複数選択して統計をまとめて確認します。
             </p>
           </div>
           <div className="meta-grid workspaces-meta-grid">

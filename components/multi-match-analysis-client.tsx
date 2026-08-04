@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   buildAggregateAnalysis,
   buildAttackMetricRows,
   buildServeMetricRows,
+  getSetWinningSide,
   getAttackEffectRate,
   getRate,
   getServeEffectRate,
@@ -15,6 +16,7 @@ import {
   type AttackCourseSummary,
   type ServeMetricRow,
 } from "@/lib/domain/analysis";
+import { areTeamNamesEquivalent, slugifyTeamName } from "@/lib/domain/team";
 import type { ParsedMatch, TeamSide } from "@/lib/domain/types";
 
 type MultiMatchCandidate = {
@@ -24,7 +26,6 @@ type MultiMatchCandidate = {
   resultLabel?: string;
   setScoreLabel?: string;
   createdAt: string;
-  ownSide: TeamSide;
   match: ParsedMatch;
 };
 
@@ -323,16 +324,88 @@ function getBlockRowsByDivision(
     });
 }
 
-function buildInputs(candidates: MultiMatchCandidate[], selectedIds: string[]): AnalysisMatchInput[] {
+function getSideForTeam(match: ParsedMatch, teamName: string): TeamSide | undefined {
+  if (areTeamNamesEquivalent(match.teams.home.name, teamName)) {
+    return "home";
+  }
+  if (areTeamNamesEquivalent(match.teams.away.name, teamName)) {
+    return "away";
+  }
+  return undefined;
+}
+
+function buildTeamOptions(
+  candidates: MultiMatchCandidate[],
+  defaultTeamName: string,
+): string[] {
+  const options: string[] = [];
+  const seen = new Set<string>();
+
+  const addOption = (name: string | undefined) => {
+    if (!name) {
+      return;
+    }
+    const key = slugifyTeamName(name);
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    options.push(name);
+  };
+
+  addOption(defaultTeamName);
+  candidates.forEach((candidate) => {
+    addOption(candidate.match.teams.home.name);
+    addOption(candidate.match.teams.away.name);
+  });
+
+  return options;
+}
+
+function getSetScoreLabelForSide(match: ParsedMatch, side: TeamSide): string {
+  const wonSets = match.sets.filter((set) => getSetWinningSide(set) === side).length;
+  const lostSets = match.sets.filter((set) => {
+    const winningSide = getSetWinningSide(set);
+    return winningSide !== undefined && winningSide !== side;
+  }).length;
+  return `${wonSets}-${lostSets}`;
+}
+
+function getResultLabelForSide(match: ParsedMatch, side: TeamSide): string {
+  const [wonSets, lostSets] = getSetScoreLabelForSide(match, side)
+    .split("-")
+    .map((value) => Number(value));
+  if (wonSets > lostSets) {
+    return "勝ち";
+  }
+  if (lostSets > wonSets) {
+    return "負け";
+  }
+  return "結果未取得";
+}
+
+function buildInputs(
+  candidates: MultiMatchCandidate[],
+  selectedIds: string[],
+  selectedTeamName: string,
+): AnalysisMatchInput[] {
   const selected = new Set(selectedIds);
   return candidates
     .filter((candidate) => selected.has(candidate.id))
-    .map((candidate) => ({
-      id: candidate.id,
-      name: candidate.name,
-      match: candidate.match,
-      ownSide: candidate.ownSide,
-    }));
+    .flatMap((candidate) => {
+      const ownSide = getSideForTeam(candidate.match, selectedTeamName);
+      if (!ownSide) {
+        return [];
+      }
+      return [
+        {
+          id: candidate.id,
+          name: candidate.name,
+          match: candidate.match,
+          ownSide,
+        },
+      ];
+    });
 }
 
 function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
@@ -1017,16 +1090,35 @@ export function MultiMatchAnalysisClient({
   candidates,
   teamName,
 }: MultiMatchAnalysisClientProps) {
+  const teamOptions = useMemo(
+    () => buildTeamOptions(candidates, teamName),
+    [candidates, teamName],
+  );
+  const [selectedTeamName, setSelectedTeamName] = useState(teamName);
+  const filteredCandidates = useMemo(
+    () =>
+      candidates.filter((candidate) =>
+        Boolean(getSideForTeam(candidate.match, selectedTeamName)),
+      ),
+    [candidates, selectedTeamName],
+  );
   const [selectedIds, setSelectedIds] = useState(() =>
-    candidates.slice(0, 5).map((candidate) => candidate.id),
+    candidates
+      .filter((candidate) => Boolean(getSideForTeam(candidate.match, teamName)))
+      .slice(0, 5)
+      .map((candidate) => candidate.id),
   );
   const [activeCategory, setActiveCategory] =
     useState<AnalysisCategory>("overview");
   const [setScope, setSetScope] = useState<AggregateSetScope>("all");
 
+  useEffect(() => {
+    setSelectedIds(filteredCandidates.slice(0, 5).map((candidate) => candidate.id));
+  }, [filteredCandidates]);
+
   const selectedInputs = useMemo(
-    () => buildInputs(candidates, selectedIds),
-    [candidates, selectedIds],
+    () => buildInputs(filteredCandidates, selectedIds, selectedTeamName),
+    [filteredCandidates, selectedIds, selectedTeamName],
   );
   const analysis = useMemo(
     () => buildAggregateAnalysis(selectedInputs, setScope),
@@ -1039,24 +1131,43 @@ export function MultiMatchAnalysisClient({
       <div className="panel-inner stack">
         <div className="section-heading-row">
           <div>
-            <h2>{teamName} 総合分析</h2>
+            <h2>{selectedTeamName} 総合分析</h2>
             <p className="muted">
-              自チーム名が一致する試合を複数選択し、選択範囲全体の統計を集計します。
+              対象チームを選択し、そのチームが出場している試合を複数選択して統計を集計します。
             </p>
           </div>
         </div>
 
         <div className="analysis-block analysis-section-block">
+          <div className="field">
+            <label htmlFor="aggregate-team-select">対象チーム</label>
+            <select
+              id="aggregate-team-select"
+              value={selectedTeamName}
+              onChange={(event) => setSelectedTeamName(event.target.value)}
+            >
+              {teamOptions.map((option) => (
+                <option key={slugifyTeamName(option)} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="section-heading-row">
             <div>
               <h3>試合選択</h3>
-              <p className="muted">選択中 {selectedIds.length} / {candidates.length} 試合</p>
+              <p className="muted">
+                選択中 {selectedIds.length} / {filteredCandidates.length} 試合
+              </p>
             </div>
             <div className="button-row">
               <button
                 className="button button-secondary"
                 type="button"
-                onClick={() => setSelectedIds(candidates.map((candidate) => candidate.id))}
+                onClick={() =>
+                  setSelectedIds(filteredCandidates.map((candidate) => candidate.id))
+                }
               >
                 すべて選択
               </button>
@@ -1070,40 +1181,46 @@ export function MultiMatchAnalysisClient({
             </div>
           </div>
 
-          {candidates.length === 0 ? (
-            <p className="muted">自チーム名が一致する試合がありません。</p>
+          {filteredCandidates.length === 0 ? (
+            <p className="muted">選択チームが出場している試合がありません。</p>
           ) : (
             <div className="workspace-row-list analysis-match-selector-list">
-              {candidates.map((candidate) => (
-                <label className="workspace-row" key={candidate.id}>
-                  <span className="workspace-row-cell">
-                    <input
-                      type="checkbox"
-                      checked={selectedSet.has(candidate.id)}
-                      onChange={(event) => {
-                        setSelectedIds((current) =>
-                          event.target.checked
-                            ? [...current, candidate.id]
-                            : current.filter((id) => id !== candidate.id),
-                        );
-                      }}
-                    />
-                  </span>
-                  <strong className="workspace-row-title">{candidate.name}</strong>
-                  <span className="workspace-row-cell muted">
-                    {candidate.matchLabel ?? "対戦カード未設定"}
-                  </span>
-                  <span className="workspace-row-cell">
-                    {candidate.resultLabel ?? "結果未取得"}
-                  </span>
-                  <span className="workspace-row-cell">
-                    {candidate.setScoreLabel ?? "-"}
-                  </span>
-                  <span className="workspace-row-cell mono">
-                    {formatSide(candidate.ownSide)}
-                  </span>
-                </label>
-              ))}
+              {filteredCandidates.map((candidate) => {
+                const targetSide = getSideForTeam(candidate.match, selectedTeamName);
+                const resultLabel = targetSide
+                  ? getResultLabelForSide(candidate.match, targetSide)
+                  : "結果未取得";
+                const setScoreLabel = targetSide
+                  ? getSetScoreLabelForSide(candidate.match, targetSide)
+                  : "-";
+
+                return (
+                  <label className="workspace-row" key={candidate.id}>
+                    <span className="workspace-row-cell">
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(candidate.id)}
+                        onChange={(event) => {
+                          setSelectedIds((current) =>
+                            event.target.checked
+                              ? [...current, candidate.id]
+                              : current.filter((id) => id !== candidate.id),
+                          );
+                        }}
+                      />
+                    </span>
+                    <strong className="workspace-row-title">{candidate.name}</strong>
+                    <span className="workspace-row-cell muted">
+                      {candidate.matchLabel ?? "対戦カード未設定"}
+                    </span>
+                    <span className="workspace-row-cell">{resultLabel}</span>
+                    <span className="workspace-row-cell">{setScoreLabel}</span>
+                    <span className="workspace-row-cell mono">
+                      {targetSide ? formatSide(targetSide) : "-"}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           )}
         </div>
