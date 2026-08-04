@@ -388,6 +388,39 @@ function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
       </div>
 
       <div className="analysis-block analysis-section-block">
+        <h3>セット局面別 Sideout / Break</h3>
+        <p className="muted">
+          序盤はリード側が8点に到達する前、中盤は16点に到達する前、終盤はそれ以降です。
+        </p>
+        <div className="score-table-wrap">
+          <table className="score-table analysis-player-table">
+            <thead>
+              <tr>
+                <th>局面</th>
+                <th>Sideout%</th>
+                <th>Break%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.setPhaseRows.map((row) => (
+                <tr key={row.phase}>
+                  <td data-label="局面">{row.phase}</td>
+                  <td data-label="Sideout%">
+                    {formatRate(row.sideoutWins, row.sideoutAttempts)} (
+                    {row.sideoutWins}/{row.sideoutAttempts})
+                  </td>
+                  <td data-label="Break%">
+                    {formatRate(row.breakWins, row.breakAttempts)} ({row.breakWins}/
+                    {row.breakAttempts})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="analysis-block analysis-section-block">
         <h3>試合別サマリー</h3>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
