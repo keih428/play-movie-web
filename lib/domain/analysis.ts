@@ -24,6 +24,14 @@ export type RotationRow = {
   breakWins: number;
 };
 
+export type SetPhaseRow = {
+  phase: "序盤" | "中盤" | "終盤";
+  sideoutAttempts: number;
+  sideoutWins: number;
+  breakAttempts: number;
+  breakWins: number;
+};
+
 export type RotationPointCauseRow = {
   rotationLabel: string;
   wonRallies: number;
@@ -201,6 +209,7 @@ export type AggregateAnalysis = {
   teamPlays: ParsedPlay[];
   opponentPlays: ParsedPlay[];
   matchSummaries: MatchSummaryRow[];
+  setPhaseRows: SetPhaseRow[];
   rotationPointCauseRows: RotationPointCauseRow[];
   attackMetricRows: AttackMetricRow[];
   serveMetricRows: ServeMetricRow[];
@@ -316,6 +325,86 @@ export function buildRotationRows(sets: ParsedSet[], side: TeamSide): RotationRo
       breakWins: value.breakWins,
     }))
     .sort((a, b) => a.rotationLabel.localeCompare(b.rotationLabel, "ja"));
+}
+
+const SET_PHASES: SetPhaseRow["phase"][] = ["序盤", "中盤", "終盤"];
+
+function createSetPhaseRow(phase: SetPhaseRow["phase"]): SetPhaseRow {
+  return {
+    phase,
+    sideoutAttempts: 0,
+    sideoutWins: 0,
+    breakAttempts: 0,
+    breakWins: 0,
+  };
+}
+
+function getScoreBeforeEvent(event: ParsedEvent) {
+  const winningSide = getWinningSide(event);
+  return {
+    home: Math.max(0, event.score.home - (winningSide === "home" ? 1 : 0)),
+    away: Math.max(0, event.score.away - (winningSide === "away" ? 1 : 0)),
+  };
+}
+
+function getSetPhaseForEvent(event: ParsedEvent): SetPhaseRow["phase"] {
+  const scoreBefore = getScoreBeforeEvent(event);
+  const leadingScore = Math.max(scoreBefore.home, scoreBefore.away);
+  if (leadingScore < 8) {
+    return "序盤";
+  }
+  if (leadingScore < 16) {
+    return "中盤";
+  }
+  return "終盤";
+}
+
+export function buildSetPhaseRows(sets: ParsedSet[], side: TeamSide): SetPhaseRow[] {
+  const rows = new Map<SetPhaseRow["phase"], SetPhaseRow>(
+    SET_PHASES.map((phase) => [phase, createSetPhaseRow(phase)]),
+  );
+
+  sets.forEach((set) => {
+    set.events.forEach((event) => {
+      const winningSide = getWinningSide(event);
+      const firstPlay = getFirstPlayForSide(event, side);
+      const phase = getSetPhaseForEvent(event);
+      const row = rows.get(phase) ?? createSetPhaseRow(phase);
+
+      if (firstPlay?.skill === "R") {
+        row.sideoutAttempts += 1;
+        if (winningSide === side) {
+          row.sideoutWins += 1;
+        }
+      }
+      if (firstPlay?.skill === "S") {
+        row.breakAttempts += 1;
+        if (winningSide === side) {
+          row.breakWins += 1;
+        }
+      }
+      rows.set(phase, row);
+    });
+  });
+
+  return SET_PHASES.map((phase) => rows.get(phase) ?? createSetPhaseRow(phase));
+}
+
+export function mergeSetPhaseRows(rows: SetPhaseRow[][]): SetPhaseRow[] {
+  const merged = new Map<SetPhaseRow["phase"], SetPhaseRow>(
+    SET_PHASES.map((phase) => [phase, createSetPhaseRow(phase)]),
+  );
+
+  rows.flat().forEach((row) => {
+    const current = merged.get(row.phase) ?? createSetPhaseRow(row.phase);
+    current.sideoutAttempts += row.sideoutAttempts;
+    current.sideoutWins += row.sideoutWins;
+    current.breakAttempts += row.breakAttempts;
+    current.breakWins += row.breakWins;
+    merged.set(row.phase, current);
+  });
+
+  return SET_PHASES.map((phase) => merged.get(phase) ?? createSetPhaseRow(phase));
 }
 
 export function buildPlayerRows(plays: ParsedPlay[]): PlayerRow[] {
@@ -1896,6 +1985,9 @@ export function buildAggregateAnalysis(
     teamPlays,
     opponentPlays,
     matchSummaries,
+    setPhaseRows: mergeSetPhaseRows(
+      scopedInputs.map((input) => buildSetPhaseRows(input.match.sets, input.ownSide)),
+    ),
     rotationPointCauseRows: mergeRotationPointCauseRows(
       scopedInputs.map((input) =>
         buildRotationPointCauseRows(input.match, input.ownSide),
