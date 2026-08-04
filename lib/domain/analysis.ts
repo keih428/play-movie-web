@@ -1426,13 +1426,17 @@ export function mergeBlockPlayerRows(rows: BlockPlayerRow[][]): BlockPlayerRow[]
 }
 
 function getPlayerDisplayName(player: MatchPlayer) {
-  const explicitName = player.name?.trim();
+  const explicitName = normalizeNameWhitespace(player.name);
   const joinedName = [player.lastName, player.firstName]
-    .map((name) => name?.trim())
+    .map((name) => normalizeNameWhitespace(name))
     .filter(Boolean)
     .join(" ");
 
   return explicitName || joinedName || undefined;
+}
+
+function normalizeNameWhitespace(value: string | undefined) {
+  return value?.trim().replace(/\s+/g, " ") || undefined;
 }
 
 function getPlayerNumberKeys(player: MatchPlayer) {

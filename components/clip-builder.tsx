@@ -170,6 +170,10 @@ function getBlockZoneForPlay(
   return getBlockZoneForCombination(getAttackCombination(attack));
 }
 
+function isSkillSelection(skill: string, expectedSkill: "A" | "B") {
+  return skill === expectedSkill || getSkillLabel(skill) === getSkillLabel(expectedSkill);
+}
+
 export function ClipBuilder({
   match,
   settings,
@@ -192,8 +196,8 @@ export function ClipBuilder({
   const [activeClipReady, setActiveClipReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayCodes, setShowPlayCodes] = useState(false);
-  const canEditAttackTypeFilter = skillFilter === "A";
-  const canEditBlockZoneFilter = skillFilter === "B";
+  const canEditAttackTypeFilter = isSkillSelection(skillFilter, "A");
+  const canEditBlockZoneFilter = isSkillSelection(skillFilter, "B");
 
   const options = useMemo(() => {
     const teams = new Set<string>();
@@ -481,10 +485,10 @@ export function ClipBuilder({
               onChange={(event) => {
                 const nextSkill = event.target.value;
                 setSkillFilter(nextSkill);
-                if (nextSkill !== "A") {
+                if (!isSkillSelection(nextSkill, "A")) {
                   setAttackTypeFilter("all");
                 }
-                if (nextSkill !== "B") {
+                if (!isSkillSelection(nextSkill, "B")) {
                   setBlockZoneFilter("all");
                 }
               }}
@@ -498,12 +502,13 @@ export function ClipBuilder({
             </select>
           </div>
 
-          <div className="field">
+          <div className={canEditAttackTypeFilter ? "field" : "field field-disabled"}>
             <label htmlFor="clip-attack-type-filter">アタック種類</label>
             <select
               id="clip-attack-type-filter"
               value={attackTypeFilter}
               disabled={!canEditAttackTypeFilter}
+              aria-disabled={!canEditAttackTypeFilter}
               onChange={(event) => setAttackTypeFilter(event.target.value)}
             >
               <option value="all">すべての種類</option>
@@ -515,12 +520,13 @@ export function ClipBuilder({
             </select>
           </div>
 
-          <div className="field">
+          <div className={canEditBlockZoneFilter ? "field" : "field field-disabled"}>
             <label htmlFor="clip-block-zone-filter">ブロックゾーン</label>
             <select
               id="clip-block-zone-filter"
               value={blockZoneFilter}
               disabled={!canEditBlockZoneFilter}
+              aria-disabled={!canEditBlockZoneFilter}
               onChange={(event) => setBlockZoneFilter(event.target.value)}
             >
               <option value="all">すべてのゾーン</option>
