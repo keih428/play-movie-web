@@ -848,7 +848,7 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
       <div className="analysis-block analysis-section-block">
         <h3>ローテ別 得点要因</h3>
         <p className="muted">
-          サーブ得点はBreak得点数、その他は各ローテの得点数を分母にして割合を表示します。
+          各ローテの得点数を分母にして割合を表示します。分母はローテ名の横に表示します。
         </p>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
@@ -863,13 +863,13 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
             </thead>
             <tbody>
               {analysis.rotationPointCauseRows.map((row) => {
-                const rotationLabel = row.rotationLabel.replace("ローテ", "S");
+                const rotationLabel = `${row.rotationLabel.replace("ローテ", "S")}（${row.wonRallies}）`;
 
                 return (
                   <tr key={row.rotationLabel}>
                     <td data-label="ローテ">{rotationLabel}</td>
                     <td data-label="サーブ得点">
-                      {formatCountRate(row.servePoints, row.breakWins)}
+                      {formatCountRate(row.servePoints, row.wonRallies)}
                     </td>
                     <td data-label="アタック得点">
                       {formatCountRate(row.attackPoints, row.wonRallies)}
@@ -891,7 +891,7 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
       <div className="analysis-block analysis-section-block">
         <h3>ローテ別 失点要因</h3>
         <p className="muted">
-          レセプションミスはSideout失点数、サーブミスはBreak失点数、その他は各ローテの失点数を分母にして割合を表示します。
+          各ローテの失点数を分母にして割合を表示します。分母はローテ名の横に表示します。
         </p>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
@@ -908,16 +908,16 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
             </thead>
             <tbody>
               {analysis.rotationPointCauseRows.map((row) => {
-                const rotationLabel = row.rotationLabel.replace("ローテ", "S");
+                const rotationLabel = `${row.rotationLabel.replace("ローテ", "S")}（${row.lostRallies}）`;
 
                 return (
                   <tr key={row.rotationLabel}>
                     <td data-label="ローテ">{rotationLabel}</td>
                     <td data-label="レセプションミス">
-                      {formatCountRate(row.receptionErrors, row.sideoutLosses)}
+                      {formatCountRate(row.receptionErrors, row.lostRallies)}
                     </td>
                     <td data-label="サーブミス">
-                      {formatCountRate(row.serveErrors, row.breakLosses)}
+                      {formatCountRate(row.serveErrors, row.lostRallies)}
                     </td>
                     <td data-label="スパイクミス">
                       {formatCountRate(row.attackErrors, row.lostRallies)}
