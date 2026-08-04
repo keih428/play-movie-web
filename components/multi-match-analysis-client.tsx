@@ -846,9 +846,9 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
       </div>
 
       <div className="analysis-block analysis-section-block">
-        <h3>ローテ別 得失点要因</h3>
+        <h3>ローテ別 得点要因</h3>
         <p className="muted">
-          得点要因は得点ラリー数、失点要因は失点ラリー数を分母にして割合を表示します。
+          サーブ得点はBreak得点数、その他は各ローテの得点数を分母にして割合を表示します。
         </p>
         <div className="score-table-wrap">
           <table className="score-table analysis-player-table">
@@ -857,10 +857,8 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
                 <th>ローテ</th>
                 <th>サーブ得点</th>
                 <th>アタック得点</th>
-                <th>レセプションミス</th>
-                <th>サーブミス</th>
-                <th>スパイクミス</th>
-                <th>相手スパイク</th>
+                <th>ブロック得点</th>
+                <th>相手ミス</th>
               </tr>
             </thead>
             <tbody>
@@ -871,22 +869,67 @@ function RotationSection({ analysis }: { analysis: AggregateAnalysis }) {
                   <tr key={row.rotationLabel}>
                     <td data-label="ローテ">{rotationLabel}</td>
                     <td data-label="サーブ得点">
-                      {formatCountRate(row.servePoints, row.wonRallies)}
+                      {formatCountRate(row.servePoints, row.breakWins)}
                     </td>
                     <td data-label="アタック得点">
                       {formatCountRate(row.attackPoints, row.wonRallies)}
                     </td>
+                    <td data-label="ブロック得点">
+                      {formatCountRate(row.blockPoints, row.wonRallies)}
+                    </td>
+                    <td data-label="相手ミス">
+                      {formatCountRate(row.opponentErrors, row.wonRallies)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="analysis-block analysis-section-block">
+        <h3>ローテ別 失点要因</h3>
+        <p className="muted">
+          レセプションミスはSideout失点数、サーブミスはBreak失点数、その他は各ローテの失点数を分母にして割合を表示します。
+        </p>
+        <div className="score-table-wrap">
+          <table className="score-table analysis-player-table">
+            <thead>
+              <tr>
+                <th>ローテ</th>
+                <th>レセプションミス</th>
+                <th>サーブミス</th>
+                <th>スパイクミス</th>
+                <th>相手ブロック</th>
+                <th>相手スパイク</th>
+                <th>その他ミス</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.rotationPointCauseRows.map((row) => {
+                const rotationLabel = row.rotationLabel.replace("ローテ", "S");
+
+                return (
+                  <tr key={row.rotationLabel}>
+                    <td data-label="ローテ">{rotationLabel}</td>
                     <td data-label="レセプションミス">
-                      {formatCountRate(row.receptionErrors, row.lostRallies)}
+                      {formatCountRate(row.receptionErrors, row.sideoutLosses)}
                     </td>
                     <td data-label="サーブミス">
-                      {formatCountRate(row.serveErrors, row.lostRallies)}
+                      {formatCountRate(row.serveErrors, row.breakLosses)}
                     </td>
                     <td data-label="スパイクミス">
                       {formatCountRate(row.attackErrors, row.lostRallies)}
                     </td>
+                    <td data-label="相手ブロック">
+                      {formatCountRate(row.opponentBlockPoints, row.lostRallies)}
+                    </td>
                     <td data-label="相手スパイク">
                       {formatCountRate(row.opponentAttackPoints, row.lostRallies)}
+                    </td>
+                    <td data-label="その他ミス">
+                      {formatCountRate(row.otherErrors, row.lostRallies)}
                     </td>
                   </tr>
                 );
@@ -997,7 +1040,7 @@ export function MultiMatchAnalysisClient({
           {candidates.length === 0 ? (
             <p className="muted">自チーム名が一致する試合がありません。</p>
           ) : (
-            <div className="workspace-row-list">
+            <div className="workspace-row-list analysis-match-selector-list">
               {candidates.map((candidate) => (
                 <label className="workspace-row" key={candidate.id}>
                   <span className="workspace-row-cell">

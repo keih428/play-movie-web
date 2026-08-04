@@ -868,6 +868,13 @@ iframe {
   gap: 10px;
 }
 
+.analysis-match-selector-list {
+  max-height: 620px;
+  overflow: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
 .workspace-row {
   display: grid;
   grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 1.4fr) 120px 100px 220px 180px;

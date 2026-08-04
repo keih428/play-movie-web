@@ -27,13 +27,21 @@ export type RotationRow = {
 export type RotationPointCauseRow = {
   rotationLabel: string;
   wonRallies: number;
+  sideoutWins: number;
+  breakWins: number;
   servePoints: number;
   attackPoints: number;
+  blockPoints: number;
+  opponentErrors: number;
   lostRallies: number;
+  sideoutLosses: number;
+  breakLosses: number;
   receptionErrors: number;
   serveErrors: number;
   attackErrors: number;
+  opponentBlockPoints: number;
   opponentAttackPoints: number;
+  otherErrors: number;
 };
 
 export type PlayerRow = {
@@ -541,13 +549,21 @@ function createRotationPointCauseRow(rotationLabel: string): RotationPointCauseR
   return {
     rotationLabel,
     wonRallies: 0,
+    sideoutWins: 0,
+    breakWins: 0,
     servePoints: 0,
     attackPoints: 0,
+    blockPoints: 0,
+    opponentErrors: 0,
     lostRallies: 0,
+    sideoutLosses: 0,
+    breakLosses: 0,
     receptionErrors: 0,
     serveErrors: 0,
     attackErrors: 0,
+    opponentBlockPoints: 0,
     opponentAttackPoints: 0,
+    otherErrors: 0,
   };
 }
 
@@ -585,9 +601,16 @@ export function buildRotationPointCauseRows(
       const rotationLabel = getRotationLabelForEvent(event, side);
       const row =
         rows.get(rotationLabel) ?? createRotationPointCauseRow(rotationLabel);
+      const firstPlay = getFirstPlayForSide(event, side);
 
       if (winningSide === side) {
         row.wonRallies += 1;
+        if (firstPlay?.skill === "R") {
+          row.sideoutWins += 1;
+        }
+        if (firstPlay?.skill === "S") {
+          row.breakWins += 1;
+        }
         const servePoint = getLastPlay(
           event.plays,
           (play) =>
@@ -599,14 +622,32 @@ export function buildRotationPointCauseRows(
           event.plays,
           (play) => play.team === teamCode && play.skill === "A" && isKill(play),
         );
+        const blockPoint = getLastPlay(
+          event.plays,
+          (play) => play.team === teamCode && play.skill === "B" && isKill(play),
+        );
+        const opponentError = getLastPlay(
+          event.plays,
+          (play) => play.team === opponentCode && isError(play),
+        );
 
         if (servePoint) {
           row.servePoints += 1;
         } else if (attackPoint) {
           row.attackPoints += 1;
+        } else if (blockPoint) {
+          row.blockPoints += 1;
+        } else if (opponentError) {
+          row.opponentErrors += 1;
         }
       } else {
         row.lostRallies += 1;
+        if (firstPlay?.skill === "R") {
+          row.sideoutLosses += 1;
+        }
+        if (firstPlay?.skill === "S") {
+          row.breakLosses += 1;
+        }
         const receptionError = getLastPlay(
           event.plays,
           (play) => play.team === teamCode && play.skill === "R" && isError(play),
@@ -619,9 +660,26 @@ export function buildRotationPointCauseRows(
           event.plays,
           (play) => play.team === teamCode && play.skill === "A" && isError(play),
         );
+        const opponentBlockPoint = getLastPlay(
+          event.plays,
+          (play) => play.team === opponentCode && play.skill === "B" && isKill(play),
+        );
+        const blockedAttack = getLastPlay(
+          event.plays,
+          (play) => play.team === teamCode && play.skill === "A" && play.effect === "/",
+        );
         const opponentAttackPoint = getLastPlay(
           event.plays,
           (play) => play.team === opponentCode && play.skill === "A" && isKill(play),
+        );
+        const otherError = getLastPlay(
+          event.plays,
+          (play) =>
+            play.team === teamCode &&
+            isError(play) &&
+            play.skill !== "R" &&
+            play.skill !== "S" &&
+            play.skill !== "A",
         );
 
         if (receptionError) {
@@ -630,8 +688,12 @@ export function buildRotationPointCauseRows(
           row.serveErrors += 1;
         } else if (attackError) {
           row.attackErrors += 1;
+        } else if (opponentBlockPoint || blockedAttack) {
+          row.opponentBlockPoints += 1;
         } else if (opponentAttackPoint) {
           row.opponentAttackPoints += 1;
+        } else if (otherError) {
+          row.otherErrors += 1;
         }
       }
 
@@ -656,13 +718,21 @@ export function mergeRotationPointCauseRows(
       merged.get(row.rotationLabel) ??
       createRotationPointCauseRow(row.rotationLabel);
     current.wonRallies += row.wonRallies;
+    current.sideoutWins += row.sideoutWins;
+    current.breakWins += row.breakWins;
     current.servePoints += row.servePoints;
     current.attackPoints += row.attackPoints;
+    current.blockPoints += row.blockPoints;
+    current.opponentErrors += row.opponentErrors;
     current.lostRallies += row.lostRallies;
+    current.sideoutLosses += row.sideoutLosses;
+    current.breakLosses += row.breakLosses;
     current.receptionErrors += row.receptionErrors;
     current.serveErrors += row.serveErrors;
     current.attackErrors += row.attackErrors;
+    current.opponentBlockPoints += row.opponentBlockPoints;
     current.opponentAttackPoints += row.opponentAttackPoints;
+    current.otherErrors += row.otherErrors;
     merged.set(row.rotationLabel, current);
   });
 
