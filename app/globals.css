@@ -707,6 +707,17 @@ iframe {
   margin-left: auto;
 }
 
+.analysis-team-select-field {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.analysis-team-select-field select {
+  width: auto;
+  min-width: 12rem;
+  max-width: 100%;
+}
+
 .button {
   display: inline-flex;
   justify-content: center;

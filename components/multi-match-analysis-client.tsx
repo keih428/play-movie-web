@@ -1139,7 +1139,7 @@ export function MultiMatchAnalysisClient({
         </div>
 
         <div className="analysis-block analysis-section-block">
-          <div className="field">
+          <div className="field analysis-team-select-field">
             <label htmlFor="aggregate-team-select">対象チーム</label>
             <select
               id="aggregate-team-select"
