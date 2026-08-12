@@ -6,6 +6,7 @@ import { ClipBuilder } from "@/components/clip-builder";
 import { CoursePanel } from "@/components/course-panel";
 import { Filters } from "@/components/filters";
 import { PlayList } from "@/components/play-list";
+import { RotationLineupTab } from "@/components/rotation-lineup-tab";
 import { RotationPanel } from "@/components/rotation-panel";
 import { SetupPanel } from "@/components/setup-panel";
 import { TabErrorBoundary } from "@/components/tab-error-boundary";
@@ -35,7 +36,7 @@ type FilterState = {
   rotation: string;
 };
 
-type DashboardTab = "workspace" | "review" | "clips" | "analysis" | "courses";
+type DashboardTab = "workspace" | "review" | "clips" | "analysis" | "rotation" | "courses";
 
 type WorkspaceClientProps = {
   allowEditing?: boolean;
@@ -761,6 +762,7 @@ export function WorkspaceClient({
                 ["review", "レビュー"],
                 ["clips", "クリップ"],
                 ["analysis", "分析"],
+                ["rotation", "ローテ"],
                 ["courses", "コース"],
               ].map(([value, label]) => (
                 <button
@@ -976,6 +978,18 @@ export function WorkspaceClient({
             <TabErrorBoundary tabLabel="コース">
               <section className="dashboard-content-stack">
                 <CoursePanel match={match} ownTeamName={teamName} />
+              </section>
+            </TabErrorBoundary>
+          ) : null}
+
+          {activeTab === "rotation" ? (
+            <TabErrorBoundary tabLabel="ローテ">
+              <section className="dashboard-content-stack">
+                <RotationLineupTab
+                  match={match}
+                  ownTeamName={teamName}
+                  settings={settings}
+                />
               </section>
             </TabErrorBoundary>
           ) : null}

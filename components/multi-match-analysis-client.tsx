@@ -9,6 +9,7 @@ import {
   getAttackEffectRate,
   getRate,
   getServeEffectRate,
+  type AggregatePhaseScope,
   type AggregateSetScope,
   type AggregateAnalysis,
   type AnalysisMatchInput,
@@ -57,6 +58,13 @@ const SET_SCOPE_OPTIONS: Array<{ value: AggregateSetScope; label: string }> = [
   { value: "all", label: "全てのセット" },
   { value: "won", label: "勝ったセットのみ" },
   { value: "lost", label: "負けたセットのみ" },
+];
+
+const PHASE_SCOPE_OPTIONS: Array<{ value: AggregatePhaseScope; label: string }> = [
+  { value: "all", label: "全て" },
+  { value: "序盤", label: "序盤" },
+  { value: "中盤", label: "中盤" },
+  { value: "終盤", label: "終盤" },
 ];
 
 type BlockZoneDivision = "three" | "five";
@@ -1111,6 +1119,7 @@ export function MultiMatchAnalysisClient({
   const [activeCategory, setActiveCategory] =
     useState<AnalysisCategory>("overview");
   const [setScope, setSetScope] = useState<AggregateSetScope>("all");
+  const [phaseScope, setPhaseScope] = useState<AggregatePhaseScope>("all");
 
   useEffect(() => {
     setSelectedIds(filteredCandidates.slice(0, 5).map((candidate) => candidate.id));
@@ -1121,8 +1130,8 @@ export function MultiMatchAnalysisClient({
     [filteredCandidates, selectedIds, selectedTeamName],
   );
   const analysis = useMemo(
-    () => buildAggregateAnalysis(selectedInputs, setScope),
-    [selectedInputs, setScope],
+    () => buildAggregateAnalysis(selectedInputs, setScope, phaseScope),
+    [selectedInputs, setScope, phaseScope],
   );
   const selectedSet = new Set(selectedIds);
 
@@ -1256,6 +1265,22 @@ export function MultiMatchAnalysisClient({
                   }
                 >
                   {SET_SCOPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field analysis-set-scope-field">
+                <label htmlFor="aggregate-phase-scope">局面</label>
+                <select
+                  id="aggregate-phase-scope"
+                  value={phaseScope}
+                  onChange={(event) =>
+                    setPhaseScope(event.target.value as AggregatePhaseScope)
+                  }
+                >
+                  {PHASE_SCOPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>

@@ -1648,11 +1648,40 @@ iframe {
   gap: 16px;
 }
 
+.rotation-lineup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .rotation-team-card {
   padding: 16px;
   border-radius: 20px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.92);
+}
+
+.rotation-lineup-card {
+  min-width: 0;
+}
+
+.rotation-reception-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.rotation-reception-preview {
+  display: grid;
+  gap: 6px;
+}
+
+.rotation-reception-preview iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #0f172a;
 }
 
 .rotation-team-header {
@@ -1768,6 +1797,7 @@ iframe {
   }
 
   .rotation-summary,
+  .rotation-lineup-grid,
   .rotation-grid {
     grid-template-columns: 1fr;
   }

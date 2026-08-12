@@ -21,6 +21,7 @@ type PlayListProps = {
 type RallyResultFilter = "all" | "scored" | "conceded";
 
 const RALLY_TAIL_SECONDS = 3;
+const RALLY_SERVE_PREROLL_SECONDS = 2;
 
 function getScoreBeforeRally(score: { home: number; away: number }, point?: string) {
   if (point === "*") {
@@ -54,6 +55,17 @@ function getRallyResultClass(point?: string) {
 
 function getRallyNumber(score: { home: number; away: number }) {
   return score.home + score.away + 1;
+}
+
+function getRallyStartPlay(play: ParsedPlay, setIndex: number): ParsedPlay {
+  return {
+    ...play,
+    setIndex,
+    time:
+      typeof play.time === "number"
+        ? Math.max(0, play.time - RALLY_SERVE_PREROLL_SECONDS * 10)
+        : play.time,
+  };
 }
 
 export function PlayList({
@@ -100,6 +112,18 @@ export function PlayList({
                 return [];
               }
 
+              const sourceEvent = timingMatch?.sets
+                .find((sourceSet) => sourceSet.setIndex === set.setIndex)
+                ?.events.find((sourceEvent) => sourceEvent.id === event.id);
+              const sourcePlays = sourceEvent?.plays ?? event.plays;
+              const servePlay = sourcePlays.find((play) => play.skill === "S");
+              const rallyStartPlay = servePlay
+                ? getRallyStartPlay(servePlay, set.setIndex)
+                : undefined;
+              const rallyStartSeekSeconds = rallyStartPlay
+                ? calculateSeekSeconds(rallyStartPlay, settings, timingMatch)
+                : undefined;
+
               const plays = event.plays.map((play, index) => ({
                 key: `${set.id}-${event.id}-${play.id}-${index}`,
                 play,
@@ -119,6 +143,10 @@ export function PlayList({
                 .sort((left, right) => left.seekSeconds - right.seekSeconds);
               const firstTimedPlay = timedPlays[0];
               const lastTimedPlay = timedPlays.at(-1);
+              const firstSeekSeconds =
+                typeof rallyStartSeekSeconds === "number"
+                  ? rallyStartSeekSeconds
+                  : firstTimedPlay?.seekSeconds;
 
               return [
                 {
@@ -130,13 +158,17 @@ export function PlayList({
                   homeRotation: getRotationLabel(event.lineup.home),
                   awayRotation: getRotationLabel(event.lineup.away),
                   plays,
-                  firstSeekSeconds: firstTimedPlay?.seekSeconds,
+                  rallyStartPlay: rallyStartPlay ?? firstTimedPlay?.play,
+                  rallyStartKey: rallyStartPlay
+                    ? `${set.id}-${event.id}-${rallyStartPlay.id}-serve-preroll`
+                    : firstTimedPlay?.key,
+                  firstSeekSeconds,
                   durationSeconds:
-                    firstTimedPlay && lastTimedPlay
+                    typeof firstSeekSeconds === "number" && lastTimedPlay
                       ? Math.max(
                           RALLY_TAIL_SECONDS,
                           lastTimedPlay.seekSeconds -
-                            firstTimedPlay.seekSeconds +
+                            firstSeekSeconds +
                             RALLY_TAIL_SECONDS,
                         )
                       : undefined,
@@ -152,8 +184,12 @@ export function PlayList({
   const playRallyFrom = useCallback(
     (index: number) => {
       const rally = rallyItems[index];
-      const firstPlayable = rally?.plays.find((item) => typeof item.seekSeconds === "number");
-      if (!rally || !firstPlayable) {
+      if (
+        !rally ||
+        !rally.rallyStartPlay ||
+        !rally.rallyStartKey ||
+        typeof rally.firstSeekSeconds !== "number"
+      ) {
         return;
       }
 
@@ -162,10 +198,10 @@ export function PlayList({
       setIsPlayingRallies(true);
       onSelectPlay(
         {
-          ...firstPlayable.play,
+          ...rally.rallyStartPlay,
           setIndex: rally.setIndex,
         },
-        firstPlayable.key,
+        rally.rallyStartKey,
       );
     },
     [onSelectPlay, rallyItems],
@@ -325,9 +361,10 @@ export function PlayList({
           ) : (
             rallyItems.map((rally, index) => {
               const firstPlay = rally.plays[0]?.play;
-              const firstSeekSeconds = rally.plays[0]?.seekSeconds;
               const isExpanded = expandedRallies[rally.key] ?? false;
-              const hasSelectedPlay = rally.plays.some((item) => item.key === selectedPlayKey);
+              const hasSelectedPlay =
+                rally.rallyStartKey === selectedPlayKey ||
+                rally.plays.some((item) => item.key === selectedPlayKey);
               const rallyResultClass = getRallyResultClass(rally.point);
               const rallyNumber = getRallyNumber(rally.score);
 
@@ -343,7 +380,7 @@ export function PlayList({
                       </strong>
                       <span>{rally.plays.length}プレイ</span>
                     </div>
-                    <small className="mono">{formatSeconds(rally.firstSeekSeconds ?? firstSeekSeconds)}</small>
+                    <small className="mono">{formatSeconds(rally.firstSeekSeconds)}</small>
                   </div>
                   <div className="play-list-meta">
                     <small>
@@ -359,16 +396,16 @@ export function PlayList({
                       aria-label="このプレイに移動"
                       title="このプレイに移動"
                       onClick={() => {
-                        if (!firstPlay) {
+                        if (!rally.rallyStartPlay || !rally.rallyStartKey) {
                           return;
                         }
 
                         onSelectPlay(
                           {
-                            ...firstPlay,
+                            ...rally.rallyStartPlay,
                             setIndex: rally.setIndex,
                           },
-                          rally.plays[0].key,
+                          rally.rallyStartKey,
                         );
                       }}
                     >
