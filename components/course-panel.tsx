@@ -185,6 +185,38 @@ function isNumberedAttack(play: ParsedPlay) {
   return play.skill === "A" && /P[1-9]/i.test(play.code ?? "");
 }
 
+function getServeType(play: ParsedPlay): "float" | "drive" | undefined {
+  if (play.skill !== "S") {
+    return undefined;
+  }
+
+  const hitType = play.hitType?.trim().toUpperCase();
+  if (hitType === "Q" || hitType === "SQ") {
+    return "drive";
+  }
+  if (hitType === "S" || hitType === "M" || hitType === "SM") {
+    return "float";
+  }
+
+  const code = play.code?.toUpperCase() ?? "";
+  if (code.includes("SQ")) {
+    return "drive";
+  }
+  if (code.includes("SM") || code.includes("S")) {
+    return "float";
+  }
+
+  return undefined;
+}
+
+function isCourseServe(play: ParsedPlay) {
+  return play.skill === "S" && play.effect !== "=";
+}
+
+function isDriveServe(play: ParsedPlay) {
+  return getServeType(play) === "drive";
+}
+
 function isAttackKill(play: ParsedPlay) {
   return play.skill === "A" && play.effect === "#";
 }
@@ -239,6 +271,7 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
     (play) =>
       play.team === teamCode &&
       play.skill === skill &&
+      (skill !== "S" || isCourseServe(play)) &&
       (player === "all" || getPlayerLabel(play) === player) &&
       (resultFilter === "all" ||
         (resultFilter === "positive" &&
@@ -466,7 +499,11 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
                     x2={entry.end.x}
                     y2={entry.end.y}
                     stroke={pathColor}
-                    strokeDasharray={isNumberedAttack(entry.play) ? "10 8" : undefined}
+                    strokeDasharray={
+                      isNumberedAttack(entry.play) || isDriveServe(entry.play)
+                        ? "10 8"
+                        : undefined
+                    }
                     markerEnd={
                       isPositive
                         ? "url(#course-arrow-positive)"
@@ -537,7 +574,13 @@ export function CoursePanel({ match, ownTeamName }: CoursePanelProps) {
             <svg viewBox="0 0 44 16" aria-hidden="true">
               <line x1="2" y1="8" x2="42" y2="8" />
             </svg>
-            実線：平行またはクイック
+            実線：平行・クイック・フローターサーブ（S/SM）
+          </span>
+          <span className="course-symbol-legend-item">
+            <svg viewBox="0 0 44 16" aria-hidden="true">
+              <line x1="2" y1="8" x2="42" y2="8" strokeDasharray="10 8" />
+            </svg>
+            点線：オープン・バックアタック・ドライブサーブ（SQ）
           </span>
           <span className="course-symbol-legend-item">
             <span

@@ -186,6 +186,7 @@ export type AnalysisMatchInput = {
 };
 
 export type AggregateSetScope = "all" | "won" | "lost";
+export type AggregatePhaseScope = "all" | SetPhaseRow["phase"];
 
 export type MatchSummaryRow = {
   id: string;
@@ -1872,30 +1873,46 @@ function mergeDisplayedBlockPlayerRows(rows: BlockPlayerRow[]): BlockPlayerRow[]
   );
 }
 
-function getScopedMatch(input: AnalysisMatchInput, scope: AggregateSetScope): ParsedMatch {
-  if (scope === "all") {
-    return input.match;
+function getScopedMatch(
+  input: AnalysisMatchInput,
+  setScope: AggregateSetScope,
+  phaseScope: AggregatePhaseScope,
+): ParsedMatch {
+  const sets =
+    setScope === "all"
+      ? input.match.sets
+      : input.match.sets.filter((set) => {
+      const winningSide = getSetWinningSide(set);
+      if (setScope === "won") {
+        return winningSide === input.ownSide;
+      }
+      return winningSide !== undefined && winningSide !== input.ownSide;
+    });
+
+  if (phaseScope === "all") {
+    return {
+      ...input.match,
+      sets,
+    };
   }
 
   return {
     ...input.match,
-    sets: input.match.sets.filter((set) => {
-      const winningSide = getSetWinningSide(set);
-      if (scope === "won") {
-        return winningSide === input.ownSide;
-      }
-      return winningSide !== undefined && winningSide !== input.ownSide;
-    }),
+    sets: sets.map((set) => ({
+      ...set,
+      events: set.events.filter((event) => getSetPhaseForEvent(event) === phaseScope),
+    })),
   };
 }
 
 export function buildAggregateAnalysis(
   inputs: AnalysisMatchInput[],
-  scope: AggregateSetScope = "all",
+  setScope: AggregateSetScope = "all",
+  phaseScope: AggregatePhaseScope = "all",
 ): AggregateAnalysis {
   const scopedInputs = inputs.map((input) => ({
     ...input,
-    match: getScopedMatch(input, scope),
+    match: getScopedMatch(input, setScope, phaseScope),
   }));
   const teamPlays = scopedInputs.flatMap((input) => getTeamPlays(input.match, input.ownSide));
   const opponentPlays = scopedInputs.flatMap((input) =>

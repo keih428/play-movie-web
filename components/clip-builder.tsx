@@ -189,9 +189,9 @@ export function ClipBuilder({
   const [blockZoneFilter, setBlockZoneFilter] = useState("all");
   const [selectedGrades, setSelectedGrades] = useState<GradeOption[]>([...gradeOptions]);
   const [clipBeforeSeconds, setClipBeforeSeconds] = useState(2);
-  const [clipAfterSeconds, setClipAfterSeconds] = useState(8);
+  const [clipAfterSeconds, setClipAfterSeconds] = useState(5);
   const [clipBeforeSecondsInput, setClipBeforeSecondsInput] = useState("2");
-  const [clipAfterSecondsInput, setClipAfterSecondsInput] = useState("8");
+  const [clipAfterSecondsInput, setClipAfterSecondsInput] = useState("5");
   const [activeClipIndex, setActiveClipIndex] = useState<number>();
   const [activeClipReady, setActiveClipReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -587,7 +587,7 @@ export function ClipBuilder({
               value={clipAfterSecondsInput}
               onChange={(event) => setClipAfterSecondsInput(event.target.value)}
               onBlur={() => {
-                const nextValue = clampNumber(Number(clipAfterSecondsInput), 1, 60, 8);
+                const nextValue = clampNumber(Number(clipAfterSecondsInput), 1, 60, 5);
                 setClipAfterSeconds(nextValue);
                 setClipAfterSecondsInput(String(nextValue));
               }}
