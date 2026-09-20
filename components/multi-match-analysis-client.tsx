@@ -551,6 +551,14 @@ function OverviewSection({ analysis }: { analysis: AggregateAnalysis }) {
 }
 
 function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
+  const receptionAttackGroupSizes = new Map<string, number>();
+  analysis.receptionAttackRows.forEach((row) => {
+    receptionAttackGroupSizes.set(
+      row.rotationLabel,
+      (receptionAttackGroupSizes.get(row.rotationLabel) ?? 0) + 1,
+    );
+  });
+
   return (
     <>
       <div className="analysis-block analysis-section-block">
@@ -583,6 +591,59 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
                   <td data-label="効果率">{formatPercent(getAttackEffectRate(row))}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="analysis-block analysis-section-block">
+        <h3>レセプション直後の攻撃配分</h3>
+        <p className="muted">
+          各ラリーのレセプション後、相手のプレーを挟まずに出た最初の自チームの攻撃をローテーション別に集計します。クイックのコールがないセットは二段トスに分類し、配分率は各ローテーション・区分内で計算します。
+        </p>
+        <div className="score-table-wrap">
+          <table className="score-table analysis-player-table">
+            <thead>
+              <tr>
+                <th>ローテ</th>
+                <th>区分</th>
+                <th>コード</th>
+                <th>攻撃</th>
+                <th>本数</th>
+                <th>配分率</th>
+                <th>決定</th>
+                <th>決定率</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.receptionAttackRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8}>該当データなし</td>
+                </tr>
+              ) : (
+                analysis.receptionAttackRows.map((row, index) => {
+                  const isFirstInRotation =
+                    index === 0 ||
+                    analysis.receptionAttackRows[index - 1].rotationLabel !== row.rotationLabel;
+
+                  return (
+                    <tr key={`${row.rotationLabel}-${row.setType}-${row.label}`}>
+                      {isFirstInRotation ? (
+                        <td data-label="ローテ" rowSpan={receptionAttackGroupSizes.get(row.rotationLabel)}>
+                          {row.rotationLabel.replace("ローテ", "S")}
+                        </td>
+                      ) : null}
+                      <td data-label="区分">{row.setType}</td>
+                      <td data-label="コード">{row.code}</td>
+                      <td data-label="攻撃">{row.label}</td>
+                      <td data-label="本数">{row.count}</td>
+                      <td data-label="配分率">{formatRate(row.count, row.total)}</td>
+                      <td data-label="決定">{row.kills}</td>
+                      <td data-label="決定率">{formatRate(row.kills, row.count)}</td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

@@ -131,6 +131,16 @@ export type FreeballAttackRow = {
   total: number;
 };
 
+export type ReceptionAttackRow = {
+  rotationLabel: string;
+  setType: "セッターコールあり" | "二段トス";
+  code: string;
+  label: string;
+  count: number;
+  kills: number;
+  total: number;
+};
+
 export type BlockAttackRow = {
   code: string;
   label: string;
@@ -215,6 +225,7 @@ export type AggregateAnalysis = {
   attackMetricRows: AttackMetricRow[];
   serveMetricRows: ServeMetricRow[];
   receptionMetricRows: ReceptionMetricRow[];
+  receptionAttackRows: ReceptionAttackRow[];
   freeballAttackRows: FreeballAttackRow[];
   blockOpponentAttacks: number;
   blockSetRows: BlockSetRow[];
@@ -1269,6 +1280,94 @@ export function buildFreeballAttackDistribution(
     .sort((left, right) => right.count - left.count);
 }
 
+export function buildReceptionAttackDistribution(
+  match: ParsedMatch | undefined,
+  side: TeamSide,
+): ReceptionAttackRow[] {
+  if (!match) {
+    return [];
+  }
+
+  const teamCode = getTeamCode(side);
+  const rows = new Map<
+    string,
+    {
+      rotationLabel: string;
+      setType: ReceptionAttackRow["setType"];
+      code: string;
+      label: string;
+      count: number;
+      kills: number;
+    }
+  >();
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      const receptionIndex = event.plays.findIndex(
+        (play) => play.team === teamCode && play.skill === "R",
+      );
+      if (receptionIndex === -1) {
+        return;
+      }
+
+      const playsAfterReception = event.plays.slice(receptionIndex + 1);
+      const attackOffset = playsAfterReception.findIndex(
+        (play) => play.team !== teamCode || play.skill === "A",
+      );
+      const attackPlay = attackOffset === -1 ? undefined : playsAfterReception[attackOffset];
+      if (!attackPlay || attackPlay.team !== teamCode || attackPlay.skill !== "A") {
+        return;
+      }
+
+      const rotationLabel = getRotationLabelForEvent(event, side);
+      const hasSetterCall = playsAfterReception
+        .slice(0, attackOffset)
+        .some(
+          (play) =>
+            play.team === teamCode &&
+            play.skill === "E" &&
+            Boolean(play.combination?.trim()),
+        );
+      const setType: ReceptionAttackRow["setType"] = hasSetterCall
+        ? "セッターコールあり"
+        : "二段トス";
+      const display = getFreeballAttackDisplay(getAttackCombinationLabel(attackPlay));
+      const key = `${rotationLabel}\u0000${setType}\u0000${display.label}`;
+      const current = rows.get(key) ?? {
+        rotationLabel,
+        setType,
+        ...display,
+        count: 0,
+        kills: 0,
+      };
+      current.count += 1;
+      if (isKill(attackPlay)) {
+        current.kills += 1;
+      }
+      rows.set(key, current);
+    });
+  });
+
+  const totals = new Map<string, number>();
+  rows.forEach((row) => {
+    const key = `${row.rotationLabel}\u0000${row.setType}`;
+    totals.set(key, (totals.get(key) ?? 0) + row.count);
+  });
+
+  return [...rows.values()]
+    .map((row) => ({
+      ...row,
+      total: totals.get(`${row.rotationLabel}\u0000${row.setType}`) ?? 0,
+    }))
+    .sort(
+      (left, right) =>
+        left.rotationLabel.localeCompare(right.rotationLabel, "ja", { numeric: true }) ||
+        Number(left.setType === "二段トス") - Number(right.setType === "二段トス") ||
+        right.count - left.count ||
+        left.label.localeCompare(right.label, "ja"),
+    );
+}
+
 export function buildBlockSetRows(match: ParsedMatch | undefined, side: TeamSide): BlockSetRow[] {
   if (!match) {
     return [];
@@ -1701,6 +1800,53 @@ export function mergeFreeballAttackRows(rows: FreeballAttackRow[][]): FreeballAt
     .sort((left, right) => right.count - left.count);
 }
 
+export function mergeReceptionAttackRows(rows: ReceptionAttackRow[][]): ReceptionAttackRow[] {
+  const counts = new Map<
+    string,
+    {
+      rotationLabel: string;
+      setType: ReceptionAttackRow["setType"];
+      code: string;
+      label: string;
+      count: number;
+      kills: number;
+    }
+  >();
+  rows.flat().forEach((row) => {
+    const key = `${row.rotationLabel}\u0000${row.setType}\u0000${row.label}`;
+    const current = counts.get(key) ?? {
+      rotationLabel: row.rotationLabel,
+      setType: row.setType,
+      code: row.code,
+      label: row.label,
+      count: 0,
+      kills: 0,
+    };
+    current.count += row.count;
+    current.kills += row.kills;
+    counts.set(key, current);
+  });
+
+  const totals = new Map<string, number>();
+  counts.forEach((row) => {
+    const key = `${row.rotationLabel}\u0000${row.setType}`;
+    totals.set(key, (totals.get(key) ?? 0) + row.count);
+  });
+
+  return [...counts.values()]
+    .map((row) => ({
+      ...row,
+      total: totals.get(`${row.rotationLabel}\u0000${row.setType}`) ?? 0,
+    }))
+    .sort(
+      (left, right) =>
+        left.rotationLabel.localeCompare(right.rotationLabel, "ja", { numeric: true }) ||
+        Number(left.setType === "二段トス") - Number(right.setType === "二段トス") ||
+        right.count - left.count ||
+        left.label.localeCompare(right.label, "ja"),
+    );
+}
+
 export function mergeBlockAttackRows(rows: BlockAttackRow[][]): BlockAttackRow[] {
   const counts = new Map<
     string,
@@ -2021,6 +2167,11 @@ export function buildAggregateAnalysis(
     receptionMetricRows: applyPlayerNamesToLabelRows(
       buildReceptionMetricRows(teamPlays),
       playerNames,
+    ),
+    receptionAttackRows: mergeReceptionAttackRows(
+      scopedInputs.map((input) =>
+        buildReceptionAttackDistribution(input.match, input.ownSide),
+      ),
     ),
     freeballAttackRows: mergeFreeballAttackRows(
       scopedInputs.map((input) => buildFreeballAttackDistribution(input.match, input.ownSide)),
