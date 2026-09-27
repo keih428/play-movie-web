@@ -980,8 +980,14 @@ export function WorkspaceClient({
           {activeTab === "clips" ? (
             <TabErrorBoundary tabLabel="クリップ">
               <section className="dashboard-content-stack">
-                <div className="review-layout">
-                  <div className="review-primary">
+                <ClipBuilder
+                  match={match}
+                  settings={settings}
+                  currentPlayerSeconds={currentPlayerSeconds}
+                  selectedPlayId={selectedClipPlay?.id}
+                  onSelectPlay={setSelectedClipPlay}
+                  onPauseRequest={handleClipPauseRequest}
+                >
                     <VideoPlayer
                       match={match}
                       settings={settings}
@@ -989,17 +995,7 @@ export function WorkspaceClient({
                       pauseToken={clipPauseToken}
                       onPlayerTimeChange={setCurrentPlayerSeconds}
                     />
-                  </div>
-
-                  <ClipBuilder
-                    match={match}
-                    settings={settings}
-                    currentPlayerSeconds={currentPlayerSeconds}
-                    selectedPlayId={selectedClipPlay?.id}
-                    onSelectPlay={setSelectedClipPlay}
-                    onPauseRequest={handleClipPauseRequest}
-                  />
-                </div>
+                </ClipBuilder>
               </section>
             </TabErrorBoundary>
           ) : null}

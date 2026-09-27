@@ -41,6 +41,7 @@ type AnalysisCategory =
   | "serve"
   | "reception"
   | "block"
+  | "sideout"
   | "rotation"
   | "player";
 
@@ -50,6 +51,7 @@ const ANALYSIS_CATEGORIES: Array<{ key: AnalysisCategory; label: string }> = [
   { key: "serve", label: "サーブ" },
   { key: "reception", label: "レセプション" },
   { key: "block", label: "ブロック" },
+  { key: "sideout", label: "サイドアウト" },
   { key: "rotation", label: "ローテ" },
   { key: "player", label: "個人" },
 ];
@@ -722,6 +724,73 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
   );
 }
 
+function SideoutSection({ analysis }: { analysis: AggregateAnalysis }) {
+  const [rotationIndex, setRotationIndex] = useState(-1);
+  const rows =
+    rotationIndex === -1
+      ? analysis.sideoutMetricRows.sum
+      : (analysis.sideoutMetricRows.rotation[rotationIndex] ?? []);
+
+  return (
+    <div className="analysis-block analysis-section-block">
+      <div className="section-heading-row">
+        <div>
+          <h3>レセプション評価別サイドアウト攻撃</h3>
+          <p className="muted">
+            相手へ返球する前の最初の攻撃について、レセプション評価別に決定数を集計します。
+          </p>
+        </div>
+        <div className="field analysis-set-scope-field">
+          <label htmlFor="aggregate-sideout-rotation">ローテーション</label>
+          <select
+            id="aggregate-sideout-rotation"
+            value={rotationIndex}
+            onChange={(event) => setRotationIndex(Number(event.target.value))}
+          >
+            <option value={-1}>すべてのローテ</option>
+            {Array.from({ length: 6 }, (_, index) => (
+              <option key={index} value={index}>
+                S{index + 1}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="score-table-wrap">
+        <table className="score-table analysis-player-table">
+          <thead>
+            <tr>
+              <th>選手</th>
+              <th>ABパス</th>
+              <th>Cパス</th>
+              <th>Dパス</th>
+              <th>アタックなし</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label}>
+                <td data-label="選手">{row.label}</td>
+                <td data-label="ABパス">
+                  {row.abPassKills}/{row.abAttempts}
+                </td>
+                <td data-label="Cパス">
+                  {row.cPassKills}/{row.cAttempts}
+                </td>
+                <td data-label="Dパス">
+                  {row.dPassKills}/{row.dAttempts}
+                </td>
+                <td data-label="アタックなし">{row.noAttacks}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ServeSection({ analysis }: { analysis: AggregateAnalysis }) {
   return (
     <>
@@ -1355,6 +1424,7 @@ export function MultiMatchAnalysisClient({
             {activeCategory === "serve" ? <ServeSection analysis={analysis} /> : null}
             {activeCategory === "reception" ? <ReceptionSection analysis={analysis} /> : null}
             {activeCategory === "block" ? <BlockSection analysis={analysis} /> : null}
+            {activeCategory === "sideout" ? <SideoutSection analysis={analysis} /> : null}
             {activeCategory === "rotation" ? <RotationSection analysis={analysis} /> : null}
             {activeCategory === "player" ? <PlayerSection analysis={analysis} /> : null}
           </>
