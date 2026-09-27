@@ -379,9 +379,46 @@ iframe {
 
 .filters-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 220px));
+  grid-template-columns: repeat(8, minmax(112px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.review-filter-panel .panel-inner {
+  padding: 16px 18px 18px;
+}
+
+.review-filter-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 12px;
-  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.review-filter-header h3 {
+  margin-bottom: 2px;
+}
+
+.review-filter-header p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.review-filter-panel .field {
+  gap: 5px;
+}
+
+.review-filter-panel .field label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.review-filter-panel .field select,
+.review-filter-panel .field input {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.88rem;
 }
 
 .clip-builder-header {
@@ -1202,6 +1239,11 @@ iframe {
   margin-bottom: 0;
 }
 
+.play-list-header .button {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
 .play-list-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1223,6 +1265,21 @@ iframe {
 
 .play-list-tags {
   margin-top: 8px;
+}
+
+.play-list-actions {
+  gap: 4px;
+}
+
+.play-list-actions .play-list-jump {
+  min-height: 30px;
+  padding: 5px 9px;
+  background: rgba(31, 94, 168, 0.08);
+  color: var(--accent-strong);
+}
+
+.play-list-actions .play-list-play-button {
+  width: auto;
 }
 
 .tag {
@@ -1790,6 +1847,10 @@ iframe {
   .field-grid,
   .overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .filters-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .rotation-filter-grid {

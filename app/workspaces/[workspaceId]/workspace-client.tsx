@@ -216,6 +216,10 @@ export function WorkspaceClient({
   const [selectedReviewPlayKey, setSelectedReviewPlayKey] = useState<string | undefined>();
   const [selectedClipPlay, setSelectedClipPlay] = useState<ParsedPlay | undefined>();
   const [selectedReviewSetIndex, setSelectedReviewSetIndex] = useState<number | undefined>();
+  const [reviewRallyResult, setReviewRallyResult] = useState<
+    "all" | "scored" | "conceded"
+  >("all");
+  const [reviewMinPlayCount, setReviewMinPlayCount] = useState(1);
   const [currentPlayerSeconds, setCurrentPlayerSeconds] = useState<number>();
   const [reviewPauseToken, setReviewPauseToken] = useState(0);
   const [clipPauseToken, setClipPauseToken] = useState(0);
@@ -436,6 +440,9 @@ export function WorkspaceClient({
         setSelectedPlay(undefined);
         setSelectedReviewPlayKey(undefined);
         setSelectedClipPlay(undefined);
+        setSelectedReviewSetIndex(undefined);
+        setReviewRallyResult("all");
+        setReviewMinPlayCount(1);
         setWorkspaceName(record.fileName.replace(/\.[^.]+$/, ""));
         setActiveTab("review");
         setFilters({
@@ -474,6 +481,8 @@ export function WorkspaceClient({
     setSelectedReviewPlayKey(undefined);
     setSelectedClipPlay(undefined);
     setSelectedReviewSetIndex(undefined);
+    setReviewRallyResult("all");
+    setReviewMinPlayCount(1);
     setFilters({
       team: "all",
       player: "all",
@@ -493,7 +502,6 @@ export function WorkspaceClient({
     setFilters(nextFilters);
     setSelectedPlay(undefined);
     setSelectedReviewPlayKey(undefined);
-    setSelectedReviewSetIndex(undefined);
   }
 
   function handleReviewSetChange(setIndex: number) {
@@ -526,6 +534,9 @@ export function WorkspaceClient({
       setSelectedPlay(undefined);
       setSelectedReviewPlayKey(undefined);
       setSelectedClipPlay(undefined);
+      setSelectedReviewSetIndex(undefined);
+      setReviewRallyResult("all");
+      setReviewMinPlayCount(1);
       setLastSavedAt(undefined);
       setRemoteWorkspaceId(undefined);
       setRemoteSavedAt(undefined);
@@ -631,6 +642,8 @@ export function WorkspaceClient({
         setSelectedReviewPlayKey(undefined);
         setSelectedClipPlay(undefined);
         setSelectedReviewSetIndex(undefined);
+        setReviewRallyResult("all");
+        setReviewMinPlayCount(1);
         setActiveTab("workspace");
         setFilters({
           team: "all",
@@ -924,8 +937,15 @@ export function WorkspaceClient({
                   playerOptions={filterOptions.players}
                   skillOptions={filterOptions.skills}
                   rotationOptions={filterOptions.rotations}
+                  setOptions={match?.sets.map((set) => set.setIndex) ?? []}
+                  selectedSetIndex={selectedReviewSetIndex}
+                  rallyResult={reviewRallyResult}
+                  minPlayCount={reviewMinPlayCount}
                   filters={filters}
                   onChange={handleFiltersChange}
+                  onSelectedSetIndexChange={handleReviewSetChange}
+                  onRallyResultChange={setReviewRallyResult}
+                  onMinPlayCountChange={setReviewMinPlayCount}
                 />
 
                 <div className="review-layout">
@@ -947,8 +967,9 @@ export function WorkspaceClient({
                     currentPlayerSeconds={currentPlayerSeconds}
                     selectedPlayKey={selectedReviewPlayKey}
                     selectedSetIndex={selectedReviewSetIndex}
+                    rallyResultFilter={reviewRallyResult}
+                    minPlayCount={reviewMinPlayCount}
                     onPauseRequest={handleReviewPauseRequest}
-                    onSelectedSetIndexChange={handleReviewSetChange}
                     onSelectPlay={handleReviewPlaySelect}
                   />
                 </div>
