@@ -20,6 +20,7 @@ import {
 } from "@/lib/domain/team";
 import type {
   ParsedCollection,
+  ParsedEvent,
   ParsedMatch,
   ParsedPlay,
   PersistedWorkspace,
@@ -34,6 +35,7 @@ type FilterState = {
   player: string;
   skill: string;
   rotation: string;
+  rallyPhase: string;
 };
 
 type DashboardTab = "workspace" | "review" | "clips" | "analysis" | "rotation" | "courses";
@@ -53,6 +55,19 @@ type WorkspaceClientProps = {
 };
 
 const WORKSPACE_STORAGE_KEY = "play-movie-web.workspace.v1";
+
+function getRallyPhase(event: ParsedEvent): "sideout" | "break" | undefined {
+  const firstHomePlay = event.plays.find((play) => play.team === "*");
+
+  if (firstHomePlay?.skill === "R") {
+    return "sideout";
+  }
+  if (firstHomePlay?.skill === "S") {
+    return "break";
+  }
+
+  return undefined;
+}
 
 function countPlays(match: ParsedMatch | undefined): number {
   if (!match) {
@@ -75,6 +90,7 @@ function getFilterOptions(match: ParsedMatch | undefined, filters?: FilterState)
   match?.sets.forEach((set) => {
     set.events.forEach((event) => {
       const rotationLabel = getRotationLabel(event.lineup.home);
+      const rallyPhase = getRallyPhase(event);
       rotations.add(rotationLabel);
       event.plays.forEach((play) => {
         const teamLabel = getTeamLabel(play.team, match);
@@ -87,6 +103,9 @@ function getFilterOptions(match: ParsedMatch | undefined, filters?: FilterState)
           (filters?.rotation === undefined ||
             filters.rotation === "all" ||
             rotationLabel === filters.rotation) &&
+          (filters?.rallyPhase === undefined ||
+            filters.rallyPhase === "all" ||
+            rallyPhase === filters.rallyPhase) &&
           (filters?.skill === undefined || filters.skill === "all" || play.skill === filters.skill)
         ) {
           players.add(normalizePlayerNumber(play.player));
@@ -123,6 +142,12 @@ function getFilteredMatch(
           .map((event) => ({
             ...event,
             plays: event.plays.filter((play) => {
+              if (
+                filters.rallyPhase !== "all" &&
+                getRallyPhase(event) !== filters.rallyPhase
+              ) {
+                return false;
+              }
               if (
                 filters.rotation !== "all" &&
                 getRotationLabel(event.lineup.home) !== filters.rotation
@@ -182,6 +207,7 @@ export function WorkspaceClient({
     player: "all",
     skill: "all",
     rotation: "all",
+    rallyPhase: "all",
   });
   const [status, setStatus] = useState(initialStatus ?? "試合データの準備ができています");
   const [error, setError] = useState<string | null>(null);
@@ -417,6 +443,7 @@ export function WorkspaceClient({
           player: "all",
           skill: "all",
           rotation: "all",
+          rallyPhase: "all",
         });
       });
       setStatus(`試合データを反映しました: ${record.fileName}`);
@@ -452,6 +479,7 @@ export function WorkspaceClient({
       player: "all",
       skill: "all",
       rotation: "all",
+      rallyPhase: "all",
     });
   }
 
@@ -493,6 +521,7 @@ export function WorkspaceClient({
         player: "all",
         skill: "all",
         rotation: "all",
+        rallyPhase: "all",
       });
       setSelectedPlay(undefined);
       setSelectedReviewPlayKey(undefined);
@@ -608,6 +637,7 @@ export function WorkspaceClient({
           player: "all",
           skill: "all",
           rotation: "all",
+          rallyPhase: "all",
         });
         setWorkspaceName(workspace.name);
         setTeamName(workspace.teamName);

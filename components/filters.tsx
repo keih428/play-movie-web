@@ -1,5 +1,9 @@
 import { getSkillLabel } from "@/lib/domain/display";
 
+function formatRotationLabel(rotation: string): string {
+  return rotation.replace(/^ローテ(?=\d+$)/, "S");
+}
+
 type FiltersProps = {
   teamOptions: string[];
   playerOptions: string[];
@@ -10,12 +14,14 @@ type FiltersProps = {
     player: string;
     skill: string;
     rotation: string;
+    rallyPhase: string;
   };
   onChange: (filters: {
     team: string;
     player: string;
     skill: string;
     rotation: string;
+    rallyPhase: string;
   }) => void;
 };
 
@@ -46,6 +52,7 @@ export function Filters({
                   player: "all",
                   skill: "all",
                   rotation: "all",
+                  rallyPhase: "all",
                 })
               }
             >
@@ -115,9 +122,27 @@ export function Filters({
               <option value="all">すべてのローテ</option>
               {rotationOptions.map((rotation) => (
                 <option key={rotation} value={rotation}>
-                  {rotation}
+                  {formatRotationLabel(rotation)}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="rally-phase-filter">ラリー区分</label>
+            <select
+              id="rally-phase-filter"
+              value={filters.rallyPhase}
+              onChange={(event) =>
+                onChange({
+                  ...filters,
+                  rallyPhase: event.target.value,
+                })
+              }
+            >
+              <option value="all">すべての区分</option>
+              <option value="sideout">サイドアウト</option>
+              <option value="break">ブレイク</option>
             </select>
           </div>
         </div>
