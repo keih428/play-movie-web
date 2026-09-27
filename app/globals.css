@@ -656,9 +656,36 @@ iframe {
   grid-column: span 2;
 }
 
-.clip-grade-check {
+.clip-grade-button {
   min-height: 38px;
-  padding: 6px 8px;
+  min-width: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.clip-grade-button:hover {
+  border-color: rgba(31, 94, 168, 0.4);
+  color: var(--accent-strong);
+}
+
+.clip-grade-button-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 3px 10px rgba(31, 94, 168, 0.18);
+}
+
+.clip-grade-button:focus-visible {
+  outline: 3px solid rgba(31, 94, 168, 0.22);
+  outline-offset: 2px;
 }
 
 .clip-list {
@@ -914,6 +941,23 @@ iframe {
 .video-stage {
   display: grid;
   gap: 16px;
+}
+
+.video-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.video-player-header h2 {
+  margin-bottom: 0;
+}
+
+.clip-player-action {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 0.84rem;
 }
 
 .video-placeholder {

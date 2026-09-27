@@ -504,7 +504,7 @@ export function WorkspaceClient({
     setSelectedReviewPlayKey(undefined);
   }
 
-  function handleReviewSetChange(setIndex: number) {
+  function handleReviewSetChange(setIndex: number | undefined) {
     setSelectedReviewSetIndex(setIndex);
     setSelectedPlay(undefined);
     setSelectedReviewPlayKey(undefined);
@@ -513,9 +513,6 @@ export function WorkspaceClient({
   function handleReviewPlaySelect(play: ParsedPlay, playKey: string) {
     setSelectedPlay(play);
     setSelectedReviewPlayKey(playKey);
-    if (typeof play.setIndex === "number") {
-      setSelectedReviewSetIndex(play.setIndex);
-    }
   }
 
   function handleClearSavedWorkspace() {
@@ -949,17 +946,6 @@ export function WorkspaceClient({
                 />
 
                 <div className="review-layout">
-                  <div className="review-primary">
-                    <VideoPlayer
-                      match={match}
-                      settings={settings}
-                      activeSetIndex={selectedReviewSetIndex}
-                      selectedPlay={selectedPlay}
-                      pauseToken={reviewPauseToken}
-                      onPlayerTimeChange={setCurrentPlayerSeconds}
-                    />
-                  </div>
-
                   <PlayList
                     match={filteredMatch}
                     sourceMatch={match}
@@ -971,7 +957,19 @@ export function WorkspaceClient({
                     minPlayCount={reviewMinPlayCount}
                     onPauseRequest={handleReviewPauseRequest}
                     onSelectPlay={handleReviewPlaySelect}
-                  />
+                  >
+                    {(playbackControl) => (
+                      <VideoPlayer
+                        match={match}
+                        settings={settings}
+                        activeSetIndex={selectedReviewSetIndex}
+                        selectedPlay={selectedPlay}
+                        pauseToken={reviewPauseToken}
+                        headerAction={playbackControl}
+                        onPlayerTimeChange={setCurrentPlayerSeconds}
+                      />
+                    )}
+                  </PlayList>
                 </div>
               </section>
             </TabErrorBoundary>
@@ -988,13 +986,16 @@ export function WorkspaceClient({
                   onSelectPlay={setSelectedClipPlay}
                   onPauseRequest={handleClipPauseRequest}
                 >
+                  {(playbackControl) => (
                     <VideoPlayer
                       match={match}
                       settings={settings}
                       selectedPlay={selectedClipPlay}
                       pauseToken={clipPauseToken}
+                      headerAction={playbackControl}
                       onPlayerTimeChange={setCurrentPlayerSeconds}
                     />
+                  )}
                 </ClipBuilder>
               </section>
             </TabErrorBoundary>

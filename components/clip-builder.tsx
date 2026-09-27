@@ -10,7 +10,7 @@ type ClipBuilderProps = {
   settings: VideoSyncSettings;
   currentPlayerSeconds?: number;
   selectedPlayId?: string;
-  children: ReactNode;
+  children: (playbackControl: ReactNode) => ReactNode;
   onSelectPlay: (play: ParsedPlay) => void;
   onPauseRequest: () => void;
 };
@@ -428,6 +428,19 @@ export function ClipBuilder({
     onPauseRequest();
   }
 
+  const playbackControl = (
+    <button
+      className={`button clip-player-action${isPlaying ? " secondary" : ""}`}
+      type="button"
+      disabled={clips.length === 0}
+      onClick={() =>
+        isPlaying ? stopPlayback() : playFrom(activeClipIndex ?? 0)
+      }
+    >
+      {isPlaying ? "■ 停止" : "▶ 連続再生"}
+    </button>
+  );
+
   return (
     <>
       <section className="panel clip-filter-panel">
@@ -554,22 +567,26 @@ export function ClipBuilder({
           <div className="field clip-grade-field">
             <span className="field-label">評価</span>
             <div className="tag-row clip-grade-checks" aria-label="評価フィルター">
-              {gradeOptions.map((grade) => (
-                <label className="check-field clip-grade-check" key={grade}>
-                  <input
-                    type="checkbox"
-                    checked={selectedGrades.includes(grade)}
-                    onChange={(event) =>
+              {gradeOptions.map((grade) => {
+                const isSelected = selectedGrades.includes(grade);
+                return (
+                  <button
+                    className={`clip-grade-button${isSelected ? " clip-grade-button-active" : ""}`}
+                    key={grade}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() =>
                       setSelectedGrades((current) =>
-                        event.target.checked
-                          ? [...current, grade].sort()
-                          : current.filter((value) => value !== grade),
+                        isSelected
+                          ? current.filter((value) => value !== grade)
+                          : [...current, grade].sort(),
                       )
                     }
-                  />
-                  <span>{grade}</span>
-                </label>
-              ))}
+                  >
+                    {grade}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -611,7 +628,7 @@ export function ClipBuilder({
       </section>
 
       <div className="clip-workspace-layout">
-        <div className="review-primary">{children}</div>
+        <div className="review-primary">{children(playbackControl)}</div>
 
         <section className="panel clip-results-panel">
           <div className="panel-inner stack">
@@ -630,16 +647,6 @@ export function ClipBuilder({
                   onClick={() => setShowPlayCodes((current) => !current)}
                 >
                   {showPlayCodes ? "コードを隠す" : "コード"}
-                </button>
-                <button
-                  className={`button${isPlaying ? " secondary" : ""}`}
-                  type="button"
-                  disabled={clips.length === 0}
-                  onClick={() =>
-                    isPlaying ? stopPlayback() : playFrom(activeClipIndex ?? 0)
-                  }
-                >
-                  {isPlaying ? "■ 停止" : "▶ 連続再生"}
                 </button>
               </div>
             </div>
