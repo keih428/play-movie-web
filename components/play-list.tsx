@@ -13,12 +13,11 @@ type PlayListProps = {
   currentPlayerSeconds?: number;
   selectedPlayKey?: string;
   selectedSetIndex?: number;
+  rallyResultFilter: "all" | "scored" | "conceded";
+  minPlayCount: number;
   onPauseRequest: () => void;
-  onSelectedSetIndexChange: (setIndex: number) => void;
   onSelectPlay: (play: ParsedPlay, playKey: string) => void;
 };
-
-type RallyResultFilter = "all" | "scored" | "conceded";
 
 const RALLY_TAIL_SECONDS = 3;
 const RALLY_SERVE_PREROLL_SECONDS = 2;
@@ -57,6 +56,10 @@ function getRallyNumber(score: { home: number; away: number }) {
   return score.home + score.away + 1;
 }
 
+function formatRotationLabel(rotation: string): string {
+  return rotation.replace(/^ローテ(?=\d+$)/, "S");
+}
+
 function getRallyStartPlay(play: ParsedPlay, setIndex: number): ParsedPlay {
   return {
     ...play,
@@ -75,14 +78,13 @@ export function PlayList({
   currentPlayerSeconds,
   selectedPlayKey,
   selectedSetIndex,
+  rallyResultFilter,
+  minPlayCount,
   onPauseRequest,
-  onSelectedSetIndexChange,
   onSelectPlay,
 }: PlayListProps) {
   const [expandedRallies, setExpandedRallies] = useState<Record<string, boolean>>({});
   const [showPlayCodes, setShowPlayCodes] = useState(false);
-  const [rallyResultFilter, setRallyResultFilter] = useState<RallyResultFilter>("all");
-  const [minPlayCount, setMinPlayCount] = useState(1);
   const [activeRallyIndex, setActiveRallyIndex] = useState<number>();
   const [activeRallyReady, setActiveRallyReady] = useState(false);
   const [isPlayingRallies, setIsPlayingRallies] = useState(false);
@@ -283,70 +285,20 @@ export function PlayList({
               aria-pressed={showPlayCodes}
               onClick={() => setShowPlayCodes((current) => !current)}
             >
-              {showPlayCodes ? "打ち込みコードを隠す" : "打ち込みコードを表示"}
+              {showPlayCodes ? "コードを隠す" : "コードを表示"}
             </button>
             <button
-              className="button"
+              className={`button${isPlayingRallies ? " secondary" : ""}`}
               type="button"
               disabled={rallyItems.length === 0}
-              onClick={() => playRallyFrom(activeRallyIndex ?? 0)}
-            >
-              {isPlayingRallies ? "再開" : "連続再生"}
-            </button>
-            <button
-              className="button secondary"
-              type="button"
-              disabled={!isPlayingRallies}
-              onClick={stopRallyPlayback}
-            >
-              停止
-            </button>
-          </div>
-        </div>
-
-        <div className="clip-filter-grid">
-          <div className="field">
-            <label htmlFor="play-list-set-filter">セット</label>
-            <select
-              id="play-list-set-filter"
-              value={effectiveSetIndex}
-              onChange={(event) => onSelectedSetIndexChange(Number(event.target.value))}
-            >
-              {availableSetIndices.map((setIndex) => (
-                <option key={setIndex} value={setIndex}>
-                  セット {setIndex}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field">
-            <label htmlFor="play-list-rally-result-filter">ラリー結果</label>
-            <select
-              id="play-list-rally-result-filter"
-              value={rallyResultFilter}
-              onChange={(event) =>
-                setRallyResultFilter(event.target.value as RallyResultFilter)
+              onClick={() =>
+                isPlayingRallies
+                  ? stopRallyPlayback()
+                  : playRallyFrom(activeRallyIndex ?? 0)
               }
             >
-              <option value="all">すべてのラリー</option>
-              <option value="scored">得点ラリー</option>
-              <option value="conceded">失点ラリー</option>
-            </select>
-          </div>
-
-          <div className="field">
-            <label htmlFor="play-list-min-plays">最小プレイ数</label>
-            <input
-              id="play-list-min-plays"
-              type="number"
-              min={1}
-              max={99}
-              value={minPlayCount}
-              onChange={(event) =>
-                setMinPlayCount(Math.max(1, Math.min(99, Number(event.target.value) || 1)))
-              }
-            />
+              {isPlayingRallies ? "■ 停止" : "▶ 連続再生"}
+            </button>
           </div>
         </div>
 
@@ -386,10 +338,10 @@ export function PlayList({
                     <small>
                       スコア {rally.score.home} - {rally.score.away}
                     </small>
-                    <small>自チーム {rally.homeRotation}</small>
-                    <small>相手チーム {rally.awayRotation}</small>
+                    <small>自チーム {formatRotationLabel(rally.homeRotation)}</small>
+                    <small>相手チーム {formatRotationLabel(rally.awayRotation)}</small>
                   </div>
-                  <div className="tag-row play-list-tags">
+                  <div className="tag-row play-list-tags play-list-actions">
                     <button
                       className="tag play-list-jump play-list-play-button"
                       type="button"
@@ -409,7 +361,7 @@ export function PlayList({
                         );
                       }}
                     >
-                      ▶
+                      ▶ 再生
                     </button>
                     <button
                       className="tag play-list-jump"
@@ -421,14 +373,14 @@ export function PlayList({
                         }))
                       }
                     >
-                      {isExpanded ? "詳細を隠す" : "詳細を表示"}
+                      {isExpanded ? "詳細を閉じる" : "詳細"}
                     </button>
                     <button
                       className="tag play-list-jump"
                       type="button"
                       onClick={() => playRallyFrom(index)}
                     >
-                      ここから連続再生
+                      ▶▶ ここから
                     </button>
                   </div>
 
