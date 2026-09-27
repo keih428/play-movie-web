@@ -27,7 +27,7 @@ type FiltersProps = {
     rotation: string;
     rallyPhase: string;
   }) => void;
-  onSelectedSetIndexChange: (setIndex: number) => void;
+  onSelectedSetIndexChange: (setIndex: number | undefined) => void;
   onRallyResultChange: (result: "all" | "scored" | "conceded") => void;
   onMinPlayCountChange: (count: number) => void;
 };
@@ -47,8 +47,6 @@ export function Filters({
   onRallyResultChange,
   onMinPlayCountChange,
 }: FiltersProps) {
-  const effectiveSetIndex = selectedSetIndex ?? setOptions[0];
-
   return (
     <section className="panel review-filter-panel">
       <div className="panel-inner">
@@ -64,9 +62,14 @@ export function Filters({
             <label htmlFor="review-set-filter">セット</label>
             <select
               id="review-set-filter"
-              value={effectiveSetIndex ?? ""}
-              onChange={(event) => onSelectedSetIndexChange(Number(event.target.value))}
+              value={selectedSetIndex ?? "all"}
+              onChange={(event) =>
+                onSelectedSetIndexChange(
+                  event.target.value === "all" ? undefined : Number(event.target.value),
+                )
+              }
             >
+              <option value="all">すべてのセット</option>
               {setOptions.map((setIndex) => (
                 <option key={setIndex} value={setIndex}>
                   第{setIndex}セット

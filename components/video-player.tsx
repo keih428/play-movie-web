@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { getSkillLabel } from "@/lib/domain/display";
 import {
   calculateSeekSeconds,
@@ -41,6 +41,7 @@ type VideoPlayerProps = {
   selectedPlay?: ParsedPlay;
   activeSetIndex?: number;
   pauseToken?: number;
+  headerAction?: ReactNode;
   onPlayerTimeChange: (seconds: number | undefined) => void;
 };
 
@@ -52,6 +53,7 @@ export function VideoPlayer({
   selectedPlay,
   activeSetIndex,
   pauseToken,
+  headerAction,
   onPlayerTimeChange,
 }: VideoPlayerProps) {
   const playerRef = useRef<{
@@ -171,8 +173,9 @@ export function VideoPlayer({
   return (
     <section className="panel">
       <div className="panel-inner video-stage">
-        <div>
+        <div className="video-player-header">
           <h2>動画プレーヤー</h2> {/* YouTube IFrame Player API に接続 */}
+          {headerAction}
         </div>
 
         {videoId ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { getRotationLabel } from "@/lib/domain/rotation";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
@@ -15,6 +15,7 @@ type PlayListProps = {
   selectedSetIndex?: number;
   rallyResultFilter: "all" | "scored" | "conceded";
   minPlayCount: number;
+  children: (playbackControl: ReactNode) => ReactNode;
   onPauseRequest: () => void;
   onSelectPlay: (play: ParsedPlay, playKey: string) => void;
 };
@@ -80,6 +81,7 @@ export function PlayList({
   selectedSetIndex,
   rallyResultFilter,
   minPlayCount,
+  children,
   onPauseRequest,
   onSelectPlay,
 }: PlayListProps) {
@@ -89,11 +91,8 @@ export function PlayList({
   const [activeRallyReady, setActiveRallyReady] = useState(false);
   const [isPlayingRallies, setIsPlayingRallies] = useState(false);
 
-  const availableSetIndices = match?.sets.map((set) => set.setIndex) ?? [];
   const timingMatch = sourceMatch ?? match;
-  const effectiveSetIndex =
-    selectedSetIndex ??
-    availableSetIndices[0];
+  const effectiveSetIndex = selectedSetIndex;
 
   const rallyItems = useMemo(
     () =>
@@ -273,8 +272,25 @@ export function PlayList({
     onPauseRequest();
   }
 
+  const playbackControl = (
+    <button
+      className={`button clip-player-action${isPlayingRallies ? " secondary" : ""}`}
+      type="button"
+      disabled={rallyItems.length === 0}
+      onClick={() =>
+        isPlayingRallies
+          ? stopRallyPlayback()
+          : playRallyFrom(activeRallyIndex ?? 0)
+      }
+    >
+      {isPlayingRallies ? "■ 停止" : "▶ 連続再生"}
+    </button>
+  );
+
   return (
-    <section className="panel">
+    <>
+      <div className="review-primary">{children(playbackControl)}</div>
+      <section className="panel">
       <div className="panel-inner stack">
         <div className="play-list-header">
           <h2>プレイ一覧</h2>
@@ -286,18 +302,6 @@ export function PlayList({
               onClick={() => setShowPlayCodes((current) => !current)}
             >
               {showPlayCodes ? "コードを隠す" : "コードを表示"}
-            </button>
-            <button
-              className={`button${isPlayingRallies ? " secondary" : ""}`}
-              type="button"
-              disabled={rallyItems.length === 0}
-              onClick={() =>
-                isPlayingRallies
-                  ? stopRallyPlayback()
-                  : playRallyFrom(activeRallyIndex ?? 0)
-              }
-            >
-              {isPlayingRallies ? "■ 停止" : "▶ 連続再生"}
             </button>
           </div>
         </div>
@@ -436,6 +440,7 @@ export function PlayList({
           )}
         </div>
       </div>
-    </section>
+      </section>
+    </>
   );
 }
