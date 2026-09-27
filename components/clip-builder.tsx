@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
@@ -10,12 +10,14 @@ type ClipBuilderProps = {
   settings: VideoSyncSettings;
   currentPlayerSeconds?: number;
   selectedPlayId?: string;
+  children: ReactNode;
   onSelectPlay: (play: ParsedPlay) => void;
   onPauseRequest: () => void;
 };
 
 const gradeOptions = ["A", "B", "C", "D", "E", "F"] as const;
 type GradeOption = (typeof gradeOptions)[number];
+type RallyPhaseFilter = "all" | "sideout" | "break";
 
 const attackTypeOptions = [
   { value: "P1", label: "P1 レフトハイセット" },
@@ -79,6 +81,20 @@ function normalizePlayerNumber(value: string | undefined) {
 function getGradeMatches(effect: string | undefined, selectedGrades: GradeOption[]) {
   const grade = getEffectGrade(effect);
   return selectedGrades.includes(grade as GradeOption);
+}
+
+function getRallyPhaseForTeam(
+  plays: ParsedPlay[],
+  teamCode: string,
+): Exclude<RallyPhaseFilter, "all"> | undefined {
+  const firstTeamPlay = plays.find((play) => play.team === teamCode);
+  if (firstTeamPlay?.skill === "R") {
+    return "sideout";
+  }
+  if (firstTeamPlay?.skill === "S") {
+    return "break";
+  }
+  return undefined;
 }
 
 function getAttackCombination(play: ParsedPlay | undefined) {
@@ -179,12 +195,14 @@ export function ClipBuilder({
   settings,
   currentPlayerSeconds,
   selectedPlayId,
+  children,
   onSelectPlay,
   onPauseRequest,
 }: ClipBuilderProps) {
   const [teamFilter, setTeamFilter] = useState("all");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [skillFilter, setSkillFilter] = useState("all");
+  const [rallyPhaseFilter, setRallyPhaseFilter] = useState<RallyPhaseFilter>("all");
   const [attackTypeFilter, setAttackTypeFilter] = useState("all");
   const [blockZoneFilter, setBlockZoneFilter] = useState("all");
   const [selectedGrades, setSelectedGrades] = useState<GradeOption[]>([...gradeOptions]);
@@ -259,6 +277,12 @@ export function ClipBuilder({
             return [];
           }
           if (
+            rallyPhaseFilter !== "all" &&
+            getRallyPhaseForTeam(event.plays, play.team) !== rallyPhaseFilter
+          ) {
+            return [];
+          }
+          if (
             attackTypeFilter !== "all" &&
             getAttackTypeForPlay(play, event.plays, playIndex) !== attackTypeFilter
           ) {
@@ -315,6 +339,7 @@ export function ClipBuilder({
     attackTypeFilter,
     blockZoneFilter,
     playerFilter,
+    rallyPhaseFilter,
     selectedGrades,
     settings,
     skillFilter,
@@ -404,40 +429,13 @@ export function ClipBuilder({
   }
 
   return (
-    <section className="panel">
-      <div className="panel-inner stack">
+    <>
+      <section className="panel clip-filter-panel">
+        <div className="panel-inner">
         <div className="clip-builder-header">
           <div>
-            <h2>クリップ抽出</h2>
-            <p className="muted">
-              {clips.length}件 / {Math.round(totalClipSeconds)}秒
-            </p>
-          </div>
-          <div className="button-row">
-            <button
-              className={`button${showPlayCodes ? "" : " secondary"}`}
-              type="button"
-              aria-pressed={showPlayCodes}
-              onClick={() => setShowPlayCodes((current) => !current)}
-            >
-              {showPlayCodes ? "コードを隠す" : "コードを表示"}
-            </button>
-            <button
-              className="button"
-              type="button"
-              disabled={clips.length === 0}
-              onClick={() => playFrom(activeClipIndex ?? 0)}
-            >
-              {isPlaying ? "再開" : "連続再生"}
-            </button>
-            <button
-              className="button secondary"
-              type="button"
-              disabled={!isPlaying}
-              onClick={stopPlayback}
-            >
-              停止
-            </button>
+            <h2>クリップ条件</h2>
+            <p className="muted">抽出対象と再生範囲をまとめて設定します</p>
           </div>
         </div>
 
@@ -502,6 +500,21 @@ export function ClipBuilder({
             </select>
           </div>
 
+          <div className="field">
+            <label htmlFor="clip-rally-phase-filter">ラリー区分</label>
+            <select
+              id="clip-rally-phase-filter"
+              value={rallyPhaseFilter}
+              onChange={(event) =>
+                setRallyPhaseFilter(event.target.value as RallyPhaseFilter)
+              }
+            >
+              <option value="all">すべての区分</option>
+              <option value="sideout">サイドアウト</option>
+              <option value="break">ブレイク</option>
+            </select>
+          </div>
+
           <div className={canEditAttackTypeFilter ? "field" : "field field-disabled"}>
             <label htmlFor="clip-attack-type-filter">アタック種類</label>
             <select
@@ -538,7 +551,7 @@ export function ClipBuilder({
             </select>
           </div>
 
-          <div className="field">
+          <div className="field clip-grade-field">
             <span className="field-label">評価</span>
             <div className="tag-row clip-grade-checks" aria-label="評価フィルター">
               {gradeOptions.map((grade) => (
@@ -594,8 +607,44 @@ export function ClipBuilder({
             />
           </div>
         </div>
+        </div>
+      </section>
 
-        <div className="clip-list">
+      <div className="clip-workspace-layout">
+        <div className="review-primary">{children}</div>
+
+        <section className="panel clip-results-panel">
+          <div className="panel-inner stack">
+            <div className="clip-builder-header">
+              <div>
+                <h2>抽出結果</h2>
+                <p className="muted">
+                  {clips.length}件・約{Math.round(totalClipSeconds)}秒
+                </p>
+              </div>
+              <div className="button-row clip-action-buttons">
+                <button
+                  className={`button${showPlayCodes ? "" : " secondary"}`}
+                  type="button"
+                  aria-pressed={showPlayCodes}
+                  onClick={() => setShowPlayCodes((current) => !current)}
+                >
+                  {showPlayCodes ? "コードを隠す" : "コード"}
+                </button>
+                <button
+                  className={`button${isPlaying ? " secondary" : ""}`}
+                  type="button"
+                  disabled={clips.length === 0}
+                  onClick={() =>
+                    isPlaying ? stopPlayback() : playFrom(activeClipIndex ?? 0)
+                  }
+                >
+                  {isPlaying ? "■ 停止" : "▶ 連続再生"}
+                </button>
+              </div>
+            </div>
+
+            <div className="clip-list">
           {clips.length === 0 ? (
             <div className="list-item">
               <strong>該当クリップなし</strong>
@@ -631,18 +680,20 @@ export function ClipBuilder({
                     <span className="tag mono">{clip.play.code || "なし"}</span>
                   ) : null}
                   <button
-                    className="tag play-list-jump"
+                    className="tag play-list-jump clip-play-button"
                     type="button"
                     onClick={() => playFrom(index)}
                   >
-                    ここから再生
+                    ▶ ここから
                   </button>
                 </div>
               </article>
             ))
           )}
-        </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+    </>
   );
 }

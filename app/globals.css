@@ -429,14 +429,64 @@ iframe {
 }
 
 .clip-builder-header p {
-  margin: -8px 0 0;
+  margin: 2px 0 0;
 }
 
 .clip-filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
   align-items: end;
+}
+
+.clip-filter-panel .panel-inner {
+  padding: 16px 18px 18px;
+}
+
+.clip-filter-panel .clip-builder-header {
+  margin-bottom: 12px;
+}
+
+.clip-filter-panel .field {
+  gap: 5px;
+}
+
+.clip-filter-panel .field label,
+.clip-filter-panel .field-label {
+  font-size: 0.78rem;
+}
+
+.clip-filter-panel .field select,
+.clip-filter-panel .field input {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+}
+
+.clip-workspace-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.clip-results-panel .panel-inner {
+  padding: 18px;
+}
+
+.clip-action-buttons {
+  gap: 6px;
+}
+
+.clip-action-buttons .button {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.clip-play-button {
+  padding: 5px 9px;
+  background: rgba(31, 94, 168, 0.08);
+  color: var(--accent-strong);
 }
 
 .course-filter-grid {
@@ -598,11 +648,17 @@ iframe {
 
 .clip-grade-checks {
   gap: 6px;
+  margin-top: 0;
+  flex-wrap: nowrap;
+}
+
+.clip-grade-field {
+  grid-column: span 2;
 }
 
 .clip-grade-check {
-  min-height: 42px;
-  padding: 8px 10px;
+  min-height: 38px;
+  padding: 6px 8px;
 }
 
 .clip-list {
@@ -1823,6 +1879,14 @@ iframe {
     grid-template-columns: 1fr;
   }
 
+  .clip-workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .clip-filter-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .dashboard-header,
   .home-intro {
     grid-template-columns: 1fr;
@@ -2178,6 +2242,10 @@ iframe {
 
   .clip-filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .clip-grade-field {
+    grid-column: auto;
   }
 
   .course-filter-grid {

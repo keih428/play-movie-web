@@ -188,6 +188,25 @@ export type ServeBreakRow = {
   nonMissBreaks: number;
 };
 
+export type SideoutMetricRow = {
+  label: string;
+  abAttempts: number;
+  abPassKills: number;
+  abPassErrors: number;
+  cAttempts: number;
+  cPassKills: number;
+  cPassErrors: number;
+  dAttempts: number;
+  dPassKills: number;
+  dPassErrors: number;
+  noAttacks: number;
+};
+
+export type SideoutMetricRows = {
+  sum: SideoutMetricRow[];
+  rotation: SideoutMetricRow[][];
+};
+
 export type AnalysisMatchInput = {
   id: string;
   name: string;
@@ -234,6 +253,7 @@ export type AggregateAnalysis = {
   blockMissRows: BlockAttackRow[];
   attackCourseRows: AttackCourseRow[];
   serveBreakRows: ServeBreakRow[];
+  sideoutMetricRows: SideoutMetricRows;
 };
 
 export function getTeamCode(side: TeamSide) {
@@ -2019,6 +2039,142 @@ function mergeDisplayedBlockPlayerRows(rows: BlockPlayerRow[]): BlockPlayerRow[]
   );
 }
 
+const SIDEOUT_METRIC_KEYS: Array<Exclude<keyof SideoutMetricRow, "label">> = [
+  "abAttempts",
+  "abPassKills",
+  "abPassErrors",
+  "cAttempts",
+  "cPassKills",
+  "cPassErrors",
+  "dAttempts",
+  "dPassKills",
+  "dPassErrors",
+  "noAttacks",
+];
+
+function createSideoutMetricRow(label: string): SideoutMetricRow {
+  return {
+    label,
+    abAttempts: 0,
+    abPassKills: 0,
+    abPassErrors: 0,
+    cAttempts: 0,
+    cPassKills: 0,
+    cPassErrors: 0,
+    dAttempts: 0,
+    dPassKills: 0,
+    dPassErrors: 0,
+    noAttacks: 0,
+  };
+}
+
+function addSideoutMetricRow(target: SideoutMetricRow, source: SideoutMetricRow) {
+  SIDEOUT_METRIC_KEYS.forEach((key) => {
+    target[key] += source[key];
+  });
+}
+
+function buildAggregateSideoutMetricRows(
+  inputs: AnalysisMatchInput[],
+  playerNames: Map<string, string>,
+): SideoutMetricRows {
+  const totals = Array.from({ length: 6 }, () => createSideoutMetricRow("チーム全体"));
+  const players = Array.from({ length: 6 }, () => new Map<string, SideoutMetricRow>());
+
+  inputs.forEach((input) => {
+    const teamCode = getTeamCode(input.ownSide);
+    input.match.sets.forEach((set) => {
+      set.events.forEach((event) => {
+        const setterAt = event.lineup[input.ownSide].setterAt;
+        if (typeof setterAt !== "number" || setterAt < 1 || setterAt > 6) {
+          return;
+        }
+
+        let reception: ParsedPlay | undefined;
+        let attack: ParsedPlay | undefined;
+        for (const play of event.plays) {
+          if (!reception && play.team === teamCode && play.skill === "R") {
+            reception = play;
+            continue;
+          }
+          if (reception && play.team !== teamCode) {
+            break;
+          }
+          if (reception && play.team === teamCode && play.skill === "A") {
+            attack = play;
+          }
+        }
+        if (!reception) {
+          return;
+        }
+
+        const rotationIndex = setterAt - 1;
+        const playerKey = getPlayerKey(reception);
+        const row = players[rotationIndex].get(playerKey) ?? createSideoutMetricRow(playerKey);
+        const total = totals[rotationIndex];
+        if (!attack) {
+          row.noAttacks += 1;
+          total.noAttacks += 1;
+          players[rotationIndex].set(playerKey, row);
+          return;
+        }
+
+        const receptionGroup =
+          reception.effect === "#" || reception.effect === "+"
+            ? "ab"
+            : reception.effect === "!"
+              ? "c"
+              : reception.effect === "-"
+                ? "d"
+                : undefined;
+        if (!receptionGroup) {
+          return;
+        }
+
+        const attemptsKey = `${receptionGroup}Attempts` as const;
+        const killsKey = `${receptionGroup}PassKills` as const;
+        const errorsKey = `${receptionGroup}PassErrors` as const;
+        row[attemptsKey] += 1;
+        total[attemptsKey] += 1;
+        if (attack.effect === "#") {
+          row[killsKey] += 1;
+          total[killsKey] += 1;
+        } else if (attack.effect === "=") {
+          row[errorsKey] += 1;
+          total[errorsKey] += 1;
+        }
+        players[rotationIndex].set(playerKey, row);
+      });
+    });
+  });
+
+  const allTotal = createSideoutMetricRow("チーム全体");
+  totals.forEach((row) => addSideoutMetricRow(allTotal, row));
+  const allPlayers = new Map<string, SideoutMetricRow>();
+  players.forEach((rotationPlayers) => {
+    rotationPlayers.forEach((row, key) => {
+      const current = allPlayers.get(key) ?? createSideoutMetricRow(key);
+      addSideoutMetricRow(current, row);
+      allPlayers.set(key, current);
+    });
+  });
+
+  const toRows = (total: SideoutMetricRow, rows: Map<string, SideoutMetricRow>) => [
+    total,
+    ...[...rows.values()]
+      .map((row) => ({
+        ...row,
+        label: getDisplayPlayerLabel(row.label, playerNames),
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, "ja", { numeric: true })),
+  ];
+
+  return {
+    sum: toRows(allTotal, allPlayers),
+    rotation: players.map((rows, index) => toRows(totals[index], rows)),
+  };
+}
+
 function getScopedMatch(
   input: AnalysisMatchInput,
   setScope: AggregateSetScope,
@@ -2225,5 +2381,6 @@ export function buildAggregateAnalysis(
       ),
       playerNames,
     ),
+    sideoutMetricRows: buildAggregateSideoutMetricRows(scopedInputs, playerNames),
   };
 }
