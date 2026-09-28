@@ -9,7 +9,30 @@ function formatMetric(kills: number, attempts: number): string {
   return `${formatRate(kills, attempts)} (${attempts})`;
 }
 
-export function SideoutMetricTable({ rows }: { rows: SideoutMetricRow[] }) {
+function getTotalAttempts(row: SideoutMetricRow): number {
+  return row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks;
+}
+
+function getTotalKills(row: SideoutMetricRow): number {
+  return row.abPassKills + row.cPassKills + row.dPassKills;
+}
+
+export function SideoutMetricTable({
+  rows,
+}: {
+  rows: SideoutMetricRow[];
+}) {
+  const playerRowsWithAttempts = rows.filter(
+    (row) => row.label !== "チーム全体" && getTotalAttempts(row) > 0,
+  );
+  const lowestRate = playerRowsWithAttempts.length > 0
+    ? Math.min(
+        ...playerRowsWithAttempts.map(
+          (row) => getTotalKills(row) / getTotalAttempts(row),
+        ),
+      )
+    : undefined;
+
   return (
     <div className="score-table-wrap">
       <table className="score-table analysis-player-table">
@@ -25,13 +48,19 @@ export function SideoutMetricTable({ rows }: { rows: SideoutMetricRow[] }) {
         </thead>
         <tbody>
           {rows.map((row) => {
-            const totalAttempts =
-              row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks;
-            const totalKills =
-              row.abPassKills + row.cPassKills + row.dPassKills;
+            const totalAttempts = getTotalAttempts(row);
+            const totalKills = getTotalKills(row);
+            const isLowest =
+              typeof lowestRate === "number" &&
+              row.label !== "チーム全体" &&
+              totalAttempts > 0 &&
+              totalKills / totalAttempts === lowestRate;
 
             return (
-              <tr key={row.label}>
+              <tr
+                key={row.label}
+                className={isLowest ? "sideout-lowest-rate-row" : undefined}
+              >
                 <td data-label="選手">{row.label}</td>
                 <td data-label="合計決定率">
                   {formatMetric(totalKills, totalAttempts)}

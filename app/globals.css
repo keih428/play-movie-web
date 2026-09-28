@@ -339,6 +339,12 @@ iframe {
   background: rgba(31, 94, 168, 0.1);
 }
 
+.sideout-lowest-rate-row td {
+  background: rgba(220, 79, 64, 0.12);
+  color: #8b2f26;
+  font-weight: 600;
+}
+
 .panel h2,
 .panel h3 {
   margin: 0 0 14px;
