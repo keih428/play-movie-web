@@ -43,7 +43,7 @@ export function SideoutMetricTable({
             <th>ABパス</th>
             <th>Cパス</th>
             <th>Dパス</th>
-            <th>アタックなし</th>
+            <th>アタックなし率</th>
           </tr>
         </thead>
         <tbody>
@@ -74,7 +74,9 @@ export function SideoutMetricTable({
                 <td data-label="Dパス">
                   {formatMetric(row.dPassKills, row.dAttempts)}
                 </td>
-                <td data-label="アタックなし">{row.noAttacks}</td>
+                <td data-label="アタックなし率">
+                  {formatMetric(row.noAttacks, totalAttempts)}
+                </td>
               </tr>
             );
           })}
