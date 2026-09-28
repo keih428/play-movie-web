@@ -285,6 +285,7 @@ export function PlayList({
       }
     >
       <span aria-hidden="true">{isPlayingRallies ? "■" : "▶"}</span>
+      <span>{isPlayingRallies ? "停止" : "連続再生"}</span>
     </button>
   );
 

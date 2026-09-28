@@ -960,14 +960,16 @@ iframe {
 }
 
 .video-player-header .clip-player-action {
-  flex: 0 0 30px;
-  width: 30px;
-  min-width: 30px;
-  max-width: 30px;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
+  max-width: none;
   min-height: 30px;
-  padding: 0;
+  padding: 5px 10px;
   font-size: 0.72rem;
   line-height: 1;
+  gap: 5px;
+  white-space: nowrap;
 }
 
 .video-placeholder {
@@ -1992,12 +1994,12 @@ iframe {
   }
 
   .video-player-header .clip-player-action {
-    flex-basis: 30px;
-    width: 30px;
-    min-width: 30px;
-    max-width: 30px;
+    flex-basis: auto;
+    width: max-content;
+    min-width: 0;
+    max-width: none;
     min-height: 30px;
-    padding: 0;
+    padding: 4px 8px;
     font-size: 0.72rem;
   }
 

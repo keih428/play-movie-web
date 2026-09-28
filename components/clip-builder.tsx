@@ -439,6 +439,7 @@ export function ClipBuilder({
       }
     >
       <span aria-hidden="true">{isPlaying ? "■" : "▶"}</span>
+      <span>{isPlaying ? "停止" : "連続再生"}</span>
     </button>
   );
 
