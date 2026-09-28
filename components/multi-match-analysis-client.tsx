@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SideoutMetricTable } from "@/components/sideout-metric-table";
 import {
   buildAggregateAnalysis,
   buildAttackMetricRows,
@@ -757,36 +758,7 @@ function SideoutSection({ analysis }: { analysis: AggregateAnalysis }) {
         </div>
       </div>
 
-      <div className="score-table-wrap">
-        <table className="score-table analysis-player-table">
-          <thead>
-            <tr>
-              <th>選手</th>
-              <th>ABパス</th>
-              <th>Cパス</th>
-              <th>Dパス</th>
-              <th>アタックなし</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
-                <td data-label="選手">{row.label}</td>
-                <td data-label="ABパス">
-                  {row.abPassKills}/{row.abAttempts}
-                </td>
-                <td data-label="Cパス">
-                  {row.cPassKills}/{row.cAttempts}
-                </td>
-                <td data-label="Dパス">
-                  {row.dPassKills}/{row.dAttempts}
-                </td>
-                <td data-label="アタックなし">{row.noAttacks}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SideoutMetricTable rows={rows} />
     </div>
   );
 }

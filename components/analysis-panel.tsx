@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SideoutMetricTable } from "@/components/sideout-metric-table";
 import { getEffectGrade, getSkillLabel } from "@/lib/domain/display";
 import { formatRotationLabel } from "@/lib/domain/rotation";
 import type { ParsedEvent, ParsedMatch, ParsedPlay, ParsedSet, TeamSide } from "@/lib/domain/types";
@@ -2366,54 +2367,11 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </select>
               </div>
               
-              <div className="score-table-wrap">
-                <table className="score-table analysis-player-table">
-                  <thead>
-                    <tr>
-                      <th>選手</th>
-                      <th>AB</th>
-                      <th>C</th>
-                      <th>D</th>
-                      <th>アタックなし</th>
-                    </tr>
-                  </thead>
-              
-                  <tbody>
-                    {(activeSideoutRotationIdx === -1?
-                    sideoutMetricRows.sum
-                      :
-                    sideoutMetricRows.rotation[activeSideoutRotationIdx]).map((row) => (
-                      <tr key={row.label}>
-                        <td data-label="選手">
-                          {row.label} {formatRate(
-                            row.abPassKills + row.cPassKills + row.dPassKills,
-                            row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks
-                          )}({row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks})
-                        </td>
-                    
-                        <td data-label="AB 決定">
-                          {formatRate(row.abPassKills,row.abAttempts)}
-                          ({row.abAttempts})
-                        </td>
-                    
-                        <td data-label="C 決定">
-                          {formatRate(row.cPassKills,row.cAttempts)}
-                          ({row.cAttempts})
-                        </td>
-                    
-                        <td data-label="D 決定">
-                          {formatRate(row.dPassKills,row.dAttempts)}
-                          ({row.dAttempts})
-                        </td>
-
-                        <td data-label="アタックなし">
-                          ({row.noAttacks})
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SideoutMetricTable
+                rows={activeSideoutRotationIdx === -1
+                  ? sideoutMetricRows.sum
+                  : sideoutMetricRows.rotation[activeSideoutRotationIdx]}
+              />
             </div>
               </>
             ) : null}
