@@ -277,13 +277,17 @@ export function PlayList({
       className={`button clip-player-action${isPlayingRallies ? " secondary" : ""}`}
       type="button"
       disabled={rallyItems.length === 0}
+      aria-label={isPlayingRallies ? "連続再生を停止" : "連続再生"}
       onClick={() =>
         isPlayingRallies
           ? stopRallyPlayback()
           : playRallyFrom(activeRallyIndex ?? 0)
       }
     >
-      {isPlayingRallies ? "■ 停止" : "▶ 連続再生"}
+      <span aria-hidden="true">{isPlayingRallies ? "■" : "▶"}</span>
+      <span className="clip-player-action-label">
+        {isPlayingRallies ? "停止" : "連続再生"}
+      </span>
     </button>
   );
 

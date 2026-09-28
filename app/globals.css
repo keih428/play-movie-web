@@ -966,6 +966,7 @@ iframe {
   font-size: clamp(0.72rem, 2.2vw, 0.82rem);
   line-height: 1;
   white-space: nowrap;
+  gap: 5px;
 }
 
 .video-placeholder {
@@ -1990,9 +1991,14 @@ iframe {
   }
 
   .clip-player-action {
+    width: 30px;
     min-height: 30px;
-    padding: 4px 8px;
+    padding: 0;
     font-size: clamp(0.68rem, 3.2vw, 0.76rem);
+  }
+
+  .clip-player-action-label {
+    display: none;
   }
 
   .site-header-inner {
