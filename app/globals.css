@@ -959,10 +959,11 @@ iframe {
   white-space: nowrap;
 }
 
-.clip-player-action {
-  flex: 0 0 auto;
+.video-player-header .clip-player-action {
+  flex: 0 0 30px;
   width: 30px;
   min-width: 30px;
+  max-width: 30px;
   min-height: 30px;
   padding: 0;
   font-size: 0.72rem;
@@ -1990,9 +1991,11 @@ iframe {
     font-size: clamp(0.95rem, 4.5vw, 1.1rem);
   }
 
-  .clip-player-action {
+  .video-player-header .clip-player-action {
+    flex-basis: 30px;
     width: 30px;
     min-width: 30px;
+    max-width: 30px;
     min-height: 30px;
     padding: 0;
     font-size: 0.72rem;
