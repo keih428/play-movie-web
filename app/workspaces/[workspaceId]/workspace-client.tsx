@@ -186,6 +186,44 @@ function normalizePlayerNumber(value: string | undefined) {
   return value.trim().replace(/^0+/, "") || "0";
 }
 
+function normalizePrimaryVideoSettings(settings: VideoSyncSettings): VideoSyncSettings {
+  const primaryIndex = settings.setVideos?.findIndex((entry) => entry.youtubeUrl) ?? -1;
+  if (primaryIndex < 0 || !settings.setVideos) {
+    return settings;
+  }
+
+  const primarySource = settings.setVideos[primaryIndex];
+  return {
+    ...settings,
+    youtubeUrl: primarySource.youtubeUrl,
+    offsetSeconds: primarySource.offsetSeconds,
+  };
+}
+
+function applyPrimaryVideoSettings(
+  settings: VideoSyncSettings,
+  markOffsetAsSetSpecific = false,
+): VideoSyncSettings {
+  const primaryIndex = settings.setVideos?.findIndex((entry) => entry.youtubeUrl) ?? -1;
+  if (primaryIndex < 0 || !settings.setVideos) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    setVideos: settings.setVideos.map((entry, index) =>
+      index === primaryIndex
+        ? {
+            ...entry,
+            youtubeUrl: settings.youtubeUrl,
+            offsetSeconds: settings.offsetSeconds,
+            ...(markOffsetAsSetSpecific ? { offsetMode: "set" as const } : {}),
+          }
+        : entry,
+    ),
+  };
+}
+
 export function WorkspaceClient({
   allowEditing = false,
   initialCollection,
@@ -200,7 +238,9 @@ export function WorkspaceClient({
   skipLocalRestore,
 }: WorkspaceClientProps) {
   const [collection, setCollection] = useState(initialCollection);
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useState(() =>
+    normalizePrimaryVideoSettings(initialSettings),
+  );
   const [selectedMatchIndex, setSelectedMatchIndex] = useState(initialSelectedMatchIndex);
   const [filters, setFilters] = useState<FilterState>({
     team: "all",
@@ -352,7 +392,7 @@ export function WorkspaceClient({
 
       window.setTimeout(() => {
         setCollection(persisted.collection);
-        setSettings(persisted.settings);
+        setSettings(normalizePrimaryVideoSettings(persisted.settings));
         setTeamSlug(persisted.teamSlug ?? "");
         setTeamName(persisted.teamName);
         setSelectedMatchIndex(
@@ -468,10 +508,15 @@ export function WorkspaceClient({
       return;
     }
 
-    setSettings((current) => ({
-      ...current,
-      offsetSeconds: Math.floor(currentPlayerSeconds),
-    }));
+    setSettings((current) =>
+      applyPrimaryVideoSettings(
+        {
+          ...current,
+          offsetSeconds: Math.floor(currentPlayerSeconds),
+        },
+        true,
+      ),
+    );
     setStatus(`Offset set to ${Math.floor(currentPlayerSeconds)}s`);
   }
 
@@ -519,7 +564,7 @@ export function WorkspaceClient({
     try {
       window.localStorage.removeItem(WORKSPACE_STORAGE_KEY);
       setCollection(initialCollection);
-      setSettings(initialSettings);
+      setSettings(normalizePrimaryVideoSettings(initialSettings));
       setSelectedMatchIndex(0);
       setFilters({
         team: "all",
@@ -633,7 +678,7 @@ export function WorkspaceClient({
 
       startTransition(() => {
         setCollection(workspace.collection);
-        setSettings(workspace.settings);
+        setSettings(normalizePrimaryVideoSettings(workspace.settings));
         setSelectedMatchIndex(workspace.selectedMatchIndex);
         setSelectedPlay(undefined);
         setSelectedReviewPlayKey(undefined);
@@ -757,7 +802,13 @@ export function WorkspaceClient({
     onLoadScoutFile: handleLoadScoutFile,
     onMatchChange: handleMatchChange,
     onTeamChange: handleTeamChange,
-    onSettingsChange: setSettings,
+    onSettingsChange: (nextSettings: VideoSyncSettings) =>
+      setSettings((current) =>
+        applyPrimaryVideoSettings(
+          nextSettings,
+          nextSettings.offsetSeconds !== current.offsetSeconds,
+        ),
+      ),
     onCaptureOffset: handleCaptureOffset,
     onClearSavedWorkspace: handleClearSavedWorkspace,
     onWorkspaceNameChange: setWorkspaceName,

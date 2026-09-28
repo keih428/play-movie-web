@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "WORKSPACE_STORE_PROVIDER=local next dev",
     "build": "next build",
     "start": "next start",
+    "start:local": "WORKSPACE_STORE_PROVIDER=local next start",
     "lint": "eslint ."
   },
   "dependencies": {

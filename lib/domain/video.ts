@@ -43,19 +43,35 @@ export function getVideoSourceForSet(
   settings: VideoSyncSettings,
   setIndex?: number,
 ): VideoSyncSetSource {
-  const configuredSources = (settings.setVideos ?? [])
-    .filter((entry) => entry.youtubeUrl)
-    .sort((left, right) => left.setIndex - right.setIndex);
+  const setSources = [...(settings.setVideos ?? [])].sort(
+    (left, right) => left.setIndex - right.setIndex,
+  );
 
   if (typeof setIndex === "number") {
-    const found = configuredSources
-      .filter((entry) => entry.setIndex <= setIndex)
+    const exactSource = setSources.find((entry) => entry.setIndex === setIndex);
+    const inheritedVideoSource = setSources
+      .filter((entry) => entry.youtubeUrl && entry.setIndex <= setIndex)
       .at(-1);
-    if (found) {
-      return found;
+
+    if (exactSource?.offsetMode === "set") {
+      return {
+        ...exactSource,
+        youtubeUrl: exactSource.youtubeUrl || inheritedVideoSource?.youtubeUrl || "",
+      };
     }
 
-    if (configuredSources.length > 0) {
+    // Older records only stored entries where the video changed. Their offset
+    // is relative to that source set, so keep using the inherited source set's
+    // VSM start time until a set-specific offset is explicitly saved.
+    const legacySource = setSources
+      .filter((entry) => entry.youtubeUrl)
+      .filter((entry) => entry.setIndex <= setIndex)
+      .at(-1);
+    if (legacySource) {
+      return legacySource;
+    }
+
+    if (setSources.some((entry) => entry.youtubeUrl)) {
       return {
         setIndex,
         youtubeUrl: "",
@@ -65,7 +81,7 @@ export function getVideoSourceForSet(
   }
 
   return {
-    setIndex: configuredSources[0]?.setIndex ?? 1,
+    setIndex: setSources.find((entry) => entry.youtubeUrl)?.setIndex ?? 1,
     youtubeUrl: settings.youtubeUrl,
     offsetSeconds: settings.offsetSeconds,
   };

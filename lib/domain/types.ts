@@ -92,6 +92,7 @@ export type VideoSyncSetSource = {
   setIndex: number;
   youtubeUrl: string;
   offsetSeconds: number;
+  offsetMode?: "set";
 };
 
 export type VideoSyncSettings = {

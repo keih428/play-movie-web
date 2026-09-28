@@ -11,3 +11,4 @@ yarn-error.log*
 .data
 .vercel
 .env*
+!.env.example
