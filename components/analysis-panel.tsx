@@ -2383,22 +2383,30 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                       :
                     sideoutMetricRows.rotation[activeSideoutRotationIdx]).map((row) => (
                       <tr key={row.label}>
-                        <td data-label="選手">{row.label}</td>
+                        <td data-label="選手">
+                          {row.label} {formatRate(
+                            row.abPassKills + row.cPassKills + row.dPassKills,
+                            row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks
+                          )}({row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks})
+                        </td>
                     
                         <td data-label="AB 決定">
-                          {row.abPassKills}/{row.abAttempts}
+                          {formatRate(row.abPassKills,row.abAttempts)}
+                          ({row.abAttempts})
                         </td>
                     
                         <td data-label="C 決定">
-                          {row.cPassKills }/{row.cAttempts}
+                          {formatRate(row.cPassKills,row.cAttempts)}
+                          ({row.cAttempts})
                         </td>
                     
                         <td data-label="D 決定">
-                          {row.dPassKills}/{row.dAttempts}
+                          {formatRate(row.dPassKills,row.dAttempts)}
+                          ({row.dAttempts})
                         </td>
 
                         <td data-label="アタックなし">
-                          {row.noAttacks}
+                          ({row.noAttacks})
                         </td>
                       </tr>
                     ))}
