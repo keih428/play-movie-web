@@ -21,6 +21,10 @@ function wantsBlobProvider() {
   return process.env.WORKSPACE_STORE_PROVIDER === "vercel-blob";
 }
 
+function wantsLocalProvider() {
+  return process.env.WORKSPACE_STORE_PROVIDER === "local";
+}
+
 function assertWritableDocumentStore() {
   if ((isRunningOnVercel() || wantsBlobProvider()) && !hasBlobToken()) {
     debugLog("writable store assertion failed", {
@@ -44,12 +48,15 @@ function getDocumentPath(key: string) {
 
 function shouldUseBlob() {
   const provider = process.env.WORKSPACE_STORE_PROVIDER;
-  const useBlob = hasBlobToken() || wantsBlobProvider();
+  const useBlob = wantsLocalProvider()
+    ? false
+    : wantsBlobProvider() || hasBlobToken();
   debugLog("resolve document store", {
     vercel: isRunningOnVercel(),
     envProvider: provider ?? null,
     hasBlobToken: hasBlobToken(),
     wantsBlobProvider: wantsBlobProvider(),
+    wantsLocalProvider: wantsLocalProvider(),
     useBlob,
   });
   return useBlob;

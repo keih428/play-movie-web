@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
-import { getRotationLabel } from "@/lib/domain/rotation";
+import { formatRotationLabel, getRotationLabel } from "@/lib/domain/rotation";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
 
@@ -55,10 +55,6 @@ function getRallyResultClass(point?: string) {
 
 function getRallyNumber(score: { home: number; away: number }) {
   return score.home + score.away + 1;
-}
-
-function formatRotationLabel(rotation: string): string {
-  return rotation.replace(/^ローテ(?=\d+$)/, "S");
 }
 
 function getRallyStartPlay(play: ParsedPlay, setIndex: number): ParsedPlay {
@@ -277,13 +273,15 @@ export function PlayList({
       className={`button clip-player-action${isPlayingRallies ? " secondary" : ""}`}
       type="button"
       disabled={rallyItems.length === 0}
+      aria-label={isPlayingRallies ? "連続再生を停止" : "連続再生"}
       onClick={() =>
         isPlayingRallies
           ? stopRallyPlayback()
           : playRallyFrom(activeRallyIndex ?? 0)
       }
     >
-      {isPlayingRallies ? "■ 停止" : "▶ 連続再生"}
+      <span aria-hidden="true">{isPlayingRallies ? "■" : "▶"}</span>
+      <span>{isPlayingRallies ? "停止" : "連続再生"}</span>
     </button>
   );
 

@@ -1,8 +1,5 @@
 import { getSkillLabel } from "@/lib/domain/display";
-
-function formatRotationLabel(rotation: string): string {
-  return rotation.replace(/^ローテ(?=\d+$)/, "S");
-}
+import { formatRotationLabel } from "@/lib/domain/rotation";
 
 type FiltersProps = {
   teamOptions: string[];

@@ -6,7 +6,11 @@ export function getRotationNumber(lineup?: MatchLineup): number | undefined {
 
 export function getRotationLabel(lineup?: MatchLineup): string {
   const value = getRotationNumber(lineup);
-  return typeof value === "number" ? `ローテ${value}` : "-";
+  return typeof value === "number" ? `S${value}` : "-";
+}
+
+export function formatRotationLabel(value: string): string {
+  return value.replace(/^ローテ(?=\d+$)/, "S");
 }
 
 export function getSideLabel(side: TeamSide): string {

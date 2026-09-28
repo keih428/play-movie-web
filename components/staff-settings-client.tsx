@@ -28,6 +28,25 @@ type StaffSettingsClientProps = {
   teamSlug?: string;
 };
 
+async function readApiJson(response: Response): Promise<unknown> {
+  const body = await response.text();
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      `APIがJSONではない応答を返しました（HTTP ${response.status}: ${response.url}）`,
+    );
+  }
+
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    throw new Error(
+      `APIのJSON応答を解析できませんでした（HTTP ${response.status}: ${response.url}）`,
+    );
+  }
+}
+
 type OffsetSecondsInputProps = {
   id: string;
   value: number;
@@ -236,7 +255,7 @@ export function StaffSettingsClient({
 
   const refreshWorkspaces = useCallback(async () => {
     const response = await fetch("/api/workspaces", { cache: "no-store" });
-    const payload = (await response.json()) as {
+    const payload = (await readApiJson(response)) as {
       workspaces?: SavedWorkspaceSummary[];
       error?: string;
     };
@@ -260,11 +279,11 @@ export function StaffSettingsClient({
         fetch(buildTeamApiPath("/api/scout-files", teamSlug), { cache: "no-store" }),
         fetch(buildTeamApiPath("/api/video-library", teamSlug), { cache: "no-store" }),
       ]);
-      const scoutPayload = (await scoutResponse.json()) as {
+      const scoutPayload = (await readApiJson(scoutResponse)) as {
         library?: ScoutFileLibrary;
         error?: string;
       };
-      const videoPayload = (await videoResponse.json()) as {
+      const videoPayload = (await readApiJson(videoResponse)) as {
         library?: VideoLibrary;
         error?: string;
       };
@@ -344,7 +363,7 @@ export function StaffSettingsClient({
         const response = await fetch(
           buildTeamApiPath(`/api/scout-files/${scoutFileId}`, teamSlug),
         );
-        const payload = (await response.json()) as {
+        const payload = (await readApiJson(response)) as {
           record?: {
             parsedCollection?: ParsedCollection;
           };
@@ -368,6 +387,7 @@ export function StaffSettingsClient({
             setIndex: set.setIndex,
             youtubeUrl: "",
             offsetSeconds: 0,
+            offsetMode: "set" as const,
           })) ?? [];
 
         if (!cancelled) {
@@ -404,8 +424,8 @@ export function StaffSettingsClient({
       setRegisterStatus("セット情報を取得できませんでした。");
       return;
     }
-    const configuredSetVideos = setVideos.filter((entry) => entry.youtubeUrl);
-    if (configuredSetVideos.length === 0) {
+    const configuredVideoEntries = setVideos.filter((entry) => entry.youtubeUrl);
+    if (configuredVideoEntries.length === 0) {
       setRegisterStatus("少なくとも1つのセットに試合動画を設定してください。");
       return;
     }
@@ -417,7 +437,7 @@ export function StaffSettingsClient({
       const scoutResponse = await fetch(
         buildTeamApiPath(`/api/scout-files/${scoutFileId}`, teamSlug),
       );
-      const scoutPayload = (await scoutResponse.json()) as {
+      const scoutPayload = (await readApiJson(scoutResponse)) as {
         record?: {
           parsedCollection?: ParsedCollection;
           fileName: string;
@@ -430,10 +450,10 @@ export function StaffSettingsClient({
       }
 
       const workspaceSettings: VideoSyncSettings = {
-        youtubeUrl: configuredSetVideos[0]?.youtubeUrl ?? "",
-        offsetSeconds: configuredSetVideos[0]?.offsetSeconds ?? 0,
+        youtubeUrl: configuredVideoEntries[0]?.youtubeUrl ?? "",
+        offsetSeconds: configuredVideoEntries[0]?.offsetSeconds ?? 0,
         prerollSeconds: 0,
-        setVideos: configuredSetVideos,
+        setVideos,
       };
 
       const workspaceResponse = await fetch("/api/workspaces", {
@@ -452,7 +472,7 @@ export function StaffSettingsClient({
           },
         }),
       });
-      const workspacePayload = (await workspaceResponse.json()) as {
+      const workspacePayload = (await readApiJson(workspaceResponse)) as {
         workspace?: SavedWorkspaceSummary & { id: string; createdAt: string; updatedAt: string };
         error?: string;
       };
@@ -489,7 +509,7 @@ export function StaffSettingsClient({
       const response = await fetch(`/api/workspaces/${workspaceId}`, {
         method: "DELETE",
       });
-      const payload = (await response.json()) as {
+      const payload = (await readApiJson(response)) as {
         ok?: boolean;
         error?: string;
       };
@@ -517,7 +537,7 @@ export function StaffSettingsClient({
       const response = await fetch(`/api/workspaces/${workspace.id}`, {
         cache: "no-store",
       });
-      const payload = (await response.json()) as {
+      const payload = (await readApiJson(response)) as {
         workspace?: {
           id: string;
           name: string;
@@ -534,7 +554,9 @@ export function StaffSettingsClient({
 
       const match =
         payload.workspace.collection.matches[payload.workspace.selectedMatchIndex];
-      const existingSetVideos = payload.workspace.settings.setVideos ?? [];
+      const workspaceSettings = payload.workspace.settings;
+      const storedSetVideos = workspaceSettings.setVideos ?? [];
+      const existingSetVideos = storedSetVideos;
       const firstFallback =
         existingSetVideos[0] ??
         (payload.workspace.settings.youtubeUrl
@@ -550,15 +572,30 @@ export function StaffSettingsClient({
             (entry) => entry.setIndex === set.setIndex,
           );
           if (existing) {
-            return existing;
+            const inherited = getInheritedSetVideo(
+              existingSetVideos,
+              set.setIndex,
+            );
+            return existing.offsetMode === "set" || existing.youtubeUrl
+              ? existing
+              : {
+                  ...existing,
+                  offsetSeconds: inherited?.offsetSeconds ?? existing.offsetSeconds,
+                };
           }
+
+          const inherited = getInheritedSetVideo(
+            existingSetVideos,
+            set.setIndex,
+          );
 
           return {
             setIndex: set.setIndex,
             youtubeUrl:
               index === 0 && firstFallback ? firstFallback.youtubeUrl : "",
             offsetSeconds:
-              index === 0 && firstFallback ? firstFallback.offsetSeconds : 0,
+              inherited?.offsetSeconds ??
+              (index === 0 && firstFallback ? firstFallback.offsetSeconds : 0),
           };
         }) ?? [];
 
@@ -587,10 +624,10 @@ export function StaffSettingsClient({
       setRegisterStatus("試合名を入力してください。");
       return;
     }
-    const configuredSetVideos = editingSetVideos.filter((entry) =>
+    const configuredVideoEntries = editingSetVideos.filter((entry) =>
       entry.youtubeUrl.trim(),
     );
-    if (configuredSetVideos.length === 0) {
+    if (configuredVideoEntries.length === 0) {
       setRegisterStatus("少なくとも1つのセットに動画URLを設定してください。");
       return;
     }
@@ -607,14 +644,14 @@ export function StaffSettingsClient({
         body: JSON.stringify({
           name: editingWorkspaceName.trim(),
           settings: {
-            youtubeUrl: configuredSetVideos[0]?.youtubeUrl ?? "",
-            offsetSeconds: configuredSetVideos[0]?.offsetSeconds ?? 0,
+            youtubeUrl: configuredVideoEntries[0]?.youtubeUrl ?? "",
+            offsetSeconds: configuredVideoEntries[0]?.offsetSeconds ?? 0,
             prerollSeconds: editingPrerollSeconds,
-            setVideos: configuredSetVideos,
+            setVideos: editingSetVideos,
           } satisfies VideoSyncSettings,
         }),
       });
-      const payload = (await response.json()) as {
+      const payload = (await readApiJson(response)) as {
         workspace?: SavedWorkspaceSummary;
         error?: string;
       };
@@ -720,7 +757,7 @@ export function StaffSettingsClient({
             <div className="section-heading">
               <h3>セットごとの試合動画</h3>
                 <p className="muted">
-                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。動画が切り替わるセットだけ YouTube リンクとオフセット秒を設定すると、未設定のセットは直前の設定を引き継ぎます。
+                `.vsm` / `.vsdb` を選ぶとセット数に応じた紐づけ欄が出ます。YouTube リンクは動画が切り替わるセットだけ設定し、未設定のセットでは直前の動画を引き継ぎます。オフセット秒はセットごとに設定してください。
                 </p>
               </div>
 
@@ -775,6 +812,7 @@ export function StaffSettingsClient({
                             updateSetVideo(entry.setIndex, (current) => ({
                               ...current,
                               offsetSeconds,
+                              offsetMode: "set",
                             }))
                           }
                         />
@@ -836,7 +874,7 @@ export function StaffSettingsClient({
                         <div className="section-heading">
                           <h4>セットごとの動画設定</h4>
                           <p className="muted">
-                            動画が切り替わるセットだけURLとオフセット秒を設定してください。未設定のセットは直前の設定を引き継ぎます。
+                            YouTube URLは動画が切り替わるセットだけ設定してください。未設定のセットでは直前の動画を引き継ぎます。オフセット秒はセットごとに設定してください。
                           </p>
                         </div>
 
@@ -902,6 +940,7 @@ export function StaffSettingsClient({
                                             (current) => ({
                                               ...current,
                                               offsetSeconds,
+                                              offsetMode: "set",
                                             }),
                                           )
                                         }

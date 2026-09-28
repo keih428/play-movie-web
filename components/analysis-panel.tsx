@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getEffectGrade, getSkillLabel } from "@/lib/domain/display";
+import { formatRotationLabel } from "@/lib/domain/rotation";
 import type { ParsedEvent, ParsedMatch, ParsedPlay, ParsedSet, TeamSide } from "@/lib/domain/types";
 
 type AnalysisPanelProps = {
@@ -1840,7 +1841,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                         return (
                           <div className="comparison-chart-row" key={rotationLabel}>
                             <div className="comparison-chart-label">
-                              <strong>{rotationLabel}</strong>
+                              <strong>{formatRotationLabel(rotationLabel)}</strong>
                               <span className="muted">勝ちセット / 負けセット</span>
                             </div>
                             <div className="comparison-metric-stack">
@@ -2358,7 +2359,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                   {Array.from({ length: 6 }, (_, index) => index).map(
                     (rotationIdx) => (
                       <option key={rotationIdx} value={rotationIdx}>
-                        ローテ{rotationIdx+1}
+                        S{rotationIdx+1}
                       </option>
                     ),
                   )}

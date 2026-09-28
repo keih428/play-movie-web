@@ -433,11 +433,13 @@ export function ClipBuilder({
       className={`button clip-player-action${isPlaying ? " secondary" : ""}`}
       type="button"
       disabled={clips.length === 0}
+      aria-label={isPlaying ? "連続再生を停止" : "連続再生"}
       onClick={() =>
         isPlaying ? stopPlayback() : playFrom(activeClipIndex ?? 0)
       }
     >
-      {isPlaying ? "■ 停止" : "▶ 連続再生"}
+      <span aria-hidden="true">{isPlaying ? "■" : "▶"}</span>
+      <span>{isPlaying ? "停止" : "連続再生"}</span>
     </button>
   );
 

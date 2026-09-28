@@ -40,6 +40,10 @@ function wantsBlobProvider() {
   return process.env.WORKSPACE_STORE_PROVIDER === "vercel-blob";
 }
 
+function wantsLocalProvider() {
+  return process.env.WORKSPACE_STORE_PROVIDER === "local";
+}
+
 function assertPersistentWorkspaceStore() {
   if ((isRunningOnVercel() || wantsBlobProvider()) && !hasBlobToken()) {
     debugLog("persistent store assertion failed", {
@@ -279,13 +283,16 @@ let storePromise: Promise<WorkspaceStore> | undefined;
 
 async function resolveStore(): Promise<WorkspaceStore> {
   const provider = process.env.WORKSPACE_STORE_PROVIDER;
-  const useBlob = hasBlobToken() || wantsBlobProvider();
+  const useBlob = wantsLocalProvider()
+    ? false
+    : wantsBlobProvider() || hasBlobToken();
 
   debugLog("resolve store", {
     vercel: isRunningOnVercel(),
     envProvider: provider ?? null,
     hasBlobToken: hasBlobToken(),
     wantsBlobProvider: wantsBlobProvider(),
+    wantsLocalProvider: wantsLocalProvider(),
     useBlob,
   });
 
