@@ -391,7 +391,7 @@ function getResultLabelForSide(match: ParsedMatch, side: TeamSide): string {
   if (lostSets > wonSets) {
     return "負け";
   }
-  return "結果未取得";
+  return "引き分け";
 }
 
 function buildInputs(
@@ -1328,7 +1328,7 @@ export function MultiMatchAnalysisClient({
                 const targetSide = getSideForTeam(candidate.match, selectedTeamName);
                 const resultLabel = targetSide
                   ? getResultLabelForSide(candidate.match, targetSide)
-                  : "結果未取得";
+                  : "引き分け";
                 const setScoreLabel = targetSide
                   ? getSetScoreLabelForSide(candidate.match, targetSide)
                   : "-";
