@@ -439,9 +439,6 @@ export function ClipBuilder({
       }
     >
       <span aria-hidden="true">{isPlaying ? "■" : "▶"}</span>
-      <span className="clip-player-action-label">
-        {isPlaying ? "停止" : "連続再生"}
-      </span>
     </button>
   );
 
