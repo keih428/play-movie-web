@@ -20,6 +20,7 @@ import {
 } from "@/lib/domain/analysis";
 import { areTeamNamesEquivalent, slugifyTeamName } from "@/lib/domain/team";
 import type { ParsedMatch, TeamSide } from "@/lib/domain/types";
+import { SideoutAttackMetricTable } from "./sideout-attack-metric-table";
 
 type MultiMatchCandidate = {
   id: string;
@@ -727,9 +728,14 @@ function AttackSection({ analysis }: { analysis: AggregateAnalysis }) {
 
 function SideoutSection({ analysis }: { analysis: AggregateAnalysis }) {
   const [rotationIndex, setRotationIndex] = useState(-1);
-  const rows =
+  const sideoutRows =
     rotationIndex === -1
       ? analysis.sideoutMetricRows.sum
+      : (analysis.sideoutMetricRows.rotation[rotationIndex] ?? []);
+
+  const sideoutAttackRows =
+    rotationIndex === -1
+      ? analysis.SideoutAttackMetricRows.sum
       : (analysis.sideoutMetricRows.rotation[rotationIndex] ?? []);
 
   return (
@@ -758,7 +764,11 @@ function SideoutSection({ analysis }: { analysis: AggregateAnalysis }) {
         </div>
       </div>
 
-      <SideoutMetricTable rows={rows} />
+      <h4>レシーバー毎</h4>
+      <SideoutMetricTable rows={sideoutRows} />
+
+      <h4>アタッカー毎</h4>
+      <SideoutAttackMetricTable rows={sideoutAttackRows} />
     </div>
   );
 }
