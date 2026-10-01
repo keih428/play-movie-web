@@ -1,4 +1,4 @@
-import type { SideoutMetricRow } from "@/lib/domain/analysis";
+import type { SideoutAttackMetricRow } from "@/lib/domain/analysis";
 
 function formatRate(kills: number, attempts: number): string {
   if (attempts === 0) return "-";
@@ -9,18 +9,18 @@ function formatMetric(kills: number, attempts: number): string {
   return `${formatRate(kills, attempts)} (${attempts})`;
 }
 
-function getTotalAttempts(row: SideoutMetricRow): number {
-  return row.abAttempts + row.cAttempts + row.dAttempts + row.noAttacks;
+function getTotalAttempts(row: SideoutAttackMetricRow): number {
+  return row.abAttempts + row.cAttempts + row.dAttempts;
 }
 
-function getTotalKills(row: SideoutMetricRow): number {
+function getTotalKills(row: SideoutAttackMetricRow): number {
   return row.abPassKills + row.cPassKills + row.dPassKills;
 }
 
-export function SideoutMetricTable({
+export function SideoutAttackMetricTable({
   rows,
 }: {
-  rows: SideoutMetricRow[];
+  rows: SideoutAttackMetricRow[];
 }) {
   const playerRowsWithAttempts = rows.filter(
     (row) => row.label !== "チーム全体" && getTotalAttempts(row) > 0,
@@ -38,12 +38,11 @@ export function SideoutMetricTable({
       <table className="score-table analysis-player-table">
         <thead>
           <tr>
-            <th>レシーバー</th>
+            <th>アタッカー</th>
             <th>合計決定率</th>
             <th>ABパス</th>
             <th>Cパス</th>
             <th>Dパス</th>
-            <th>アタックなし率</th>
           </tr>
         </thead>
         <tbody>
@@ -73,9 +72,6 @@ export function SideoutMetricTable({
                 </td>
                 <td data-label="Dパス">
                   {formatMetric(row.dPassKills, row.dAttempts)}
-                </td>
-                <td data-label="アタックなし率">
-                  {formatMetric(row.noAttacks, totalAttempts)}
                 </td>
               </tr>
             );

@@ -76,6 +76,7 @@ function normalizePlay(play: Record<string, unknown>, playIndex: number): Parsed
     originalTime:
       typeof play.originalTime === "number" ? play.originalTime : undefined,
     startZone: typeof play.startZone === "number" ? play.startZone : undefined,
+    startSubZone: typeof play.startSubZone === "number" ? play.startSubZone : undefined,
     endZone: typeof play.endZone === "number" ? play.endZone : undefined,
     endSubZone:
       typeof play.endSubZone === "string" ? play.endSubZone : undefined,

@@ -5,6 +5,7 @@ import { SideoutMetricTable } from "@/components/sideout-metric-table";
 import { getEffectGrade, getSkillLabel } from "@/lib/domain/display";
 import { formatRotationLabel } from "@/lib/domain/rotation";
 import type { ParsedEvent, ParsedMatch, ParsedPlay, ParsedSet, TeamSide } from "@/lib/domain/types";
+import { SideoutAttackMetricTable } from "./sideout-attack-metric-table";
 
 type AnalysisPanelProps = {
   match?: ParsedMatch;
@@ -123,6 +124,19 @@ type SideoutMetricRow = {
   dPassKills: number; 
   dPassErrors: number;
   noAttacks: number;
+}
+
+type SideoutAttackMetricRow = {
+  label: string;
+  abAttempts: number;
+  abPassKills: number; 
+  abPassErrors: number;
+  cAttempts: number;
+  cPassKills: number; 
+  cPassErrors: number; 
+  dAttempts: number;
+  dPassKills: number; 
+  dPassErrors: number;
 }
 
 type Point = {
@@ -1547,6 +1561,179 @@ function buildSideoutMetricRowsPair(match: ParsedMatch|undefined, side: TeamSide
     rotation: Array.from({ length: 6 }, (_, index) => index).map(i => getRowsWithTotal(players[i], total[i]))
   };
 }
+function buildSideoutAttackMetricRows(match: ParsedMatch|undefined, side: TeamSide): {sum: SideoutAttackMetricRow[], rotation: SideoutAttackMetricRow[][]} {
+  if(match === undefined) {
+    return {sum: [],rotation: []};
+  }
+  const defaultSideoutAttackMetricRow = {
+    label: "",
+    abAttempts: 0,
+    abPassKills: 0,
+    abPassErrors: 0,
+    cAttempts: 0,
+    cPassKills: 0,
+    cPassErrors: 0,
+    dAttempts: 0,
+    dPassKills: 0,
+    dPassErrors: 0,
+    noAttacks: 0,
+  };
+  const total: SideoutAttackMetricRow[] = Array.from({ length: 6 }, () => 0).map(() => {
+    return {
+      ...defaultSideoutAttackMetricRow,
+      label: "チーム全体",
+    };
+  });
+  const players = Array.from({ length: 6 }, () => 0).map(() => new Map<string, SideoutAttackMetricRow>());
+
+  const teamCode = getTeamCode(side);
+
+  match.sets.forEach((set) => {
+    set.events.forEach((event) => {
+      if(event.lineup[side].setterAt === undefined){
+        return;
+      }
+      const setterAtIndex = event.lineup[side].setterAt - 1
+      
+
+      let ballReturnedOrDead = false
+
+      let receptionEffect: string | undefined = undefined
+      let attackEffect: string | undefined = undefined
+      let attackedPlayerKey: string | undefined = undefined
+
+      event.plays.forEach((play) => {
+        if(ballReturnedOrDead){
+          return;
+        }
+
+        if(receptionEffect === undefined && play.team === teamCode && play.skill === "R"){
+          receptionEffect = play.effect;
+        }
+
+        if(receptionEffect !== undefined && play.team !== teamCode){
+          ballReturnedOrDead = true;
+        }
+
+        if(receptionEffect !== undefined && play.team === teamCode && play.skill === "A"){
+          attackEffect = play.effect;
+          attackedPlayerKey = getPlayerKey(play)
+        }
+      })
+
+      if(attackedPlayerKey === undefined || attackEffect === undefined || receptionEffect === undefined){
+        return;
+      }
+
+      const row: SideoutAttackMetricRow =
+          players[setterAtIndex].get(attackedPlayerKey) ??
+          {
+            ...defaultSideoutAttackMetricRow,
+            label: attackedPlayerKey,
+          };
+
+      switch(receptionEffect){
+        case "#":
+        case "+":
+          total[setterAtIndex].abAttempts += 1;
+          row.abAttempts += 1;
+          switch(attackEffect){
+            case "#":
+              total[setterAtIndex].abPassKills += 1;
+              row.abPassKills += 1;
+              break;
+            case "=":
+              total[setterAtIndex].abPassErrors += 1;
+              row.abPassErrors += 1;
+              break;
+          }
+          break;
+        case "!":
+          total[setterAtIndex].cAttempts += 1;
+          row.cAttempts += 1;
+          switch(attackEffect){
+            case "#":
+              total[setterAtIndex].cPassKills += 1;
+              row.cPassKills += 1;
+              break;
+            case "=":
+              total[setterAtIndex].cPassErrors += 1;
+              row.cPassErrors += 1;
+              break;
+          }
+          break;
+        case "-":
+          total[setterAtIndex].dAttempts += 1;
+          row.dAttempts += 1;
+          switch(attackEffect){
+            case "#":
+              total[setterAtIndex].dPassKills += 1;
+              row.dPassKills += 1;
+              break;
+            case "=":
+              total[setterAtIndex].dPassErrors += 1;
+              row.dPassErrors += 1;
+              break;
+          }
+          break;
+        default:
+          break;
+      }
+
+      players[setterAtIndex].set(attackedPlayerKey,row)
+    })
+  })
+
+  type SideoutAttackMetricKey = Exclude<keyof SideoutAttackMetricRow, "label">;
+
+  const sideoutMetricKeys: SideoutAttackMetricKey[] = [
+    "abAttempts",
+    "abPassKills",
+    "abPassErrors",
+    "cAttempts",
+    "cPassKills",
+    "cPassErrors",
+    "dAttempts",
+    "dPassKills",
+    "dPassErrors",
+  ];
+  
+  const sumTotal = total.reduce<SideoutAttackMetricRow>((acc, cur) => {
+    for (const key of sideoutMetricKeys) {
+      acc[key] += cur[key];
+    }
+    return acc;
+  },{...defaultSideoutAttackMetricRow,label: "チーム全体"})
+
+  const sumPlayers = players.reduce<Map<string, SideoutAttackMetricRow>>((acc, cur) => {
+    for (const [key, currentRow] of cur) {
+      const existingRow = acc.get(key);
+
+      if (!existingRow) {
+        acc.set(key, { ...currentRow });
+        continue;
+      }
+
+      const summedRow: SideoutAttackMetricRow = {
+        ...existingRow,
+      };
+
+      for (const metricKey of sideoutMetricKeys) {
+        summedRow[metricKey] =
+          existingRow[metricKey] + currentRow[metricKey];
+      }
+
+      acc.set(key, summedRow);
+    }
+
+    return acc;
+  }, new Map())
+
+  return {
+    sum: getRowsWithTotal(sumPlayers,sumTotal),
+    rotation: Array.from({ length: 6 }, (_, index) => index).map(i => getRowsWithTotal(players[i], total[i]))
+  };
+}
 
 export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const homeAnalysis = buildTeamAnalysis(match, "home");
@@ -1594,6 +1781,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
   const attackCourseRows = buildAttackCourseRows(activeTeamPlays);
   const serveBreakRows = buildServeBreakRows(match, activeAnalysis?.side ?? activeSide);
   const sideoutMetricRows = buildSideoutMetricRowsPair(match, activeAnalysis?.side ?? activeSide)
+  const SideoutAttackMetricRows = buildSideoutAttackMetricRows(match, activeAnalysis?.side ?? activeSide)
   const gradeOrder = ["A", "B", "C", "D", "E", "F"];
   const comparisonSkills = setOutcomeComparison
     ? [
@@ -2345,7 +2533,7 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
             {activeCategory === "sideout" ? (
               <>
             <div className="analysis-block analysis-section-block">
-              <h3>ローテーション別パス比較</h3>
+              <h3>サイドアウト</h3>
 
               <div className="field">
                 <label htmlFor="rotation-filter">ローテーション</label>
@@ -2367,10 +2555,17 @@ export function AnalysisPanel({ match }: AnalysisPanelProps) {
                 </select>
               </div>
               
+              <h4>レシーバー毎</h4>
               <SideoutMetricTable
                 rows={activeSideoutRotationIdx === -1
                   ? sideoutMetricRows.sum
                   : sideoutMetricRows.rotation[activeSideoutRotationIdx]}
+              />
+              <h4>アタッカー毎</h4>
+              <SideoutAttackMetricTable
+                rows={activeSideoutRotationIdx === -1
+                  ? SideoutAttackMetricRows.sum
+                  : SideoutAttackMetricRows.rotation[activeSideoutRotationIdx]}
               />
             </div>
               </>
