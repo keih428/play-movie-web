@@ -1,0 +1,894 @@
+/*
+ * トレーニングの画面だけの見た目。試合ビューアの見た目(globals.css)とは切り離してある。
+ * 配布版(鉄壁トレーニング)と同じ色・文字:鉄色の地 + コートの床の色、数字は等幅。
+ */
+body:has(.tp) {
+  --tp-bg: #f1f3f6;
+  --tp-surface: #ffffff;
+  --tp-fg: #17202a;
+  --tp-muted: #5b6776;
+  --tp-line: #d6dce4;
+  --tp-accent: #b3541e;
+  --tp-accent-soft: #f6e6db;
+  --tp-ok: #1f7a4d;
+  --tp-t0: #6b7684;
+  --tp-t1: #2f6db5;
+  --tp-t2: #b3541e;
+  --tp-t3: #7a2333;
+  --tp-warn-bg: #fff4d6;
+  --tp-warn-fg: #6a4a00;
+  --tp-danger-bg: #fbe4e1;
+  --tp-danger-fg: #8b2f26;
+  background: var(--tp-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:has(.tp) {
+    --tp-bg: #0f141a;
+    --tp-surface: #18202a;
+    --tp-fg: #e6ebf1;
+    --tp-muted: #9aa6b4;
+    --tp-line: #2a3542;
+    --tp-accent: #e38c4e;
+    --tp-accent-soft: #3a2618;
+    --tp-ok: #5fc591;
+    --tp-t0: #9aa6b4;
+    --tp-t1: #72a7e6;
+    --tp-t2: #e38c4e;
+    --tp-t3: #e57a8c;
+    --tp-warn-bg: #3a3014;
+    --tp-warn-fg: #f2d78a;
+    --tp-danger-bg: #40201d;
+    --tp-danger-fg: #f3b1aa;
+    color-scheme: dark;
+  }
+}
+
+/* 試合ビューアのヘッダーは出さず、この画面用の細いバーに替える。 */
+body:has(.tp) > .site-header {
+  display: none;
+}
+
+.tp {
+  --tp-display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --tp-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --tp-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  min-height: 100vh;
+  color: var(--tp-fg);
+  font-family: var(--tp-body);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.tp h1,
+.tp h2,
+.tp h3,
+.tp p {
+  margin: 0;
+}
+
+.tp h1,
+.tp h2,
+.tp h3 {
+  text-wrap: balance;
+}
+
+.tp h2 {
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+}
+
+.tp h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tp :focus-visible {
+  outline: 2px solid var(--tp-accent);
+  outline-offset: 2px;
+}
+
+.tp-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 16px 96px;
+}
+
+.tp-muted {
+  color: var(--tp-muted);
+}
+
+.tp-small {
+  font-size: 13px;
+}
+
+/* ---------- 上のバー ---------- */
+.tp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 6px;
+}
+
+.tp-brand {
+  font-family: var(--tp-display);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.tp-top nav {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.tp-top nav a {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--tp-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tp-top nav a[aria-current="page"] {
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+}
+
+/* ---------- 見出し ---------- */
+.tp-hero {
+  display: grid;
+  gap: 8px;
+  padding: 14px 0 16px;
+}
+
+.tp-eyebrow {
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.tp-hero h1 {
+  font-family: var(--tp-display);
+  font-size: clamp(26px, 7vw, 38px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.tp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-surface);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tp-tier {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 6px;
+  color: var(--tp-bg);
+  font-family: var(--tp-num);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.tp-tier.T0 { background: var(--tp-t0); }
+.tp-tier.T1 { background: var(--tp-t1); }
+.tp-tier.T2 { background: var(--tp-t2); }
+.tp-tier.T3 { background: var(--tp-t3); }
+
+.tp-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.tp-label {
+  margin-right: 4px;
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.tp-seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+}
+
+.tp-seg > * {
+  min-width: 42px;
+  padding: 6px 11px;
+  border: 0;
+  background: transparent;
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.tp-seg > * + * {
+  border-left: 1px solid var(--tp-line);
+}
+
+.tp-seg > [aria-current="true"],
+.tp-seg > [aria-pressed="true"] {
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+}
+
+/* ---------- 週と曜日の切り替え(上に固定) ---------- */
+.tp-bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--tp-line);
+  background: var(--tp-bg);
+}
+
+.tp-weeks {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.tp-weeks a {
+  display: grid;
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tp-weeks a b {
+  font-family: var(--tp-num);
+  font-size: 13px;
+}
+
+.tp-weeks a[aria-current="page"] {
+  border-color: var(--tp-accent);
+  box-shadow: inset 0 0 0 1px var(--tp-accent);
+}
+
+.tp-weeks .tp-now {
+  color: var(--tp-accent);
+  font-weight: 700;
+}
+
+.tp-days {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  width: 100%;
+}
+
+.tp-days button {
+  display: grid;
+  justify-items: center;
+  padding: 6px 4px;
+  line-height: 1.3;
+}
+
+.tp-days button small {
+  font-family: var(--tp-num);
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.tp-days .tp-done {
+  color: var(--tp-ok);
+}
+
+.tp-days [aria-pressed="true"] .tp-done {
+  color: inherit;
+}
+
+/* ---------- その週 ---------- */
+.tp-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.tp-weekhead {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+}
+
+.tp-weekhead .tp-k {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 13px;
+}
+
+.tp-note {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--tp-warn-bg);
+  color: var(--tp-warn-fg);
+  font-size: 14px;
+}
+
+.tp-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-dayhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.tp-when {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.1em;
+  height: 2.1em;
+  padding-inline: 0.45em;
+  border-radius: 7px;
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.tp-what {
+  font-weight: 700;
+}
+
+.tp-time {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 12px;
+}
+
+.tp-saved {
+  margin-left: auto;
+  color: var(--tp-ok);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tp-ex {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-ex li {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: baseline;
+  padding-block: 10px;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-ex li:first-child {
+  border-top: 0;
+}
+
+.tp-i {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 12px;
+}
+
+.tp-n {
+  min-width: 0;
+  font-weight: 500;
+}
+
+.tp-d {
+  font-family: var(--tp-num);
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tp-t {
+  grid-column: 2 / 4;
+  color: var(--tp-muted);
+  font-size: 12.5px;
+}
+
+.tp-main .tp-n {
+  font-weight: 700;
+}
+
+.tp-main .tp-d {
+  color: var(--tp-accent);
+  font-weight: 600;
+}
+
+.tp-swap,
+.tp-vid {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--tp-line);
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tp-swap {
+  color: var(--tp-muted);
+}
+
+.tp-vid {
+  color: var(--tp-accent);
+}
+
+/* 重さの欄:− と ＋ で 2.5kg ずつ。親指で押せる大きさ。 */
+.tp-weight {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2 / 4;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 6px;
+}
+
+.tp-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-bg);
+}
+
+.tp-stepper button {
+  width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-stepper button:active {
+  background: var(--tp-line);
+}
+
+.tp-stepper input {
+  width: 76px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  border-inline: 1px solid var(--tp-line);
+  border-radius: 0;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font-family: var(--tp-num);
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  appearance: textfield;
+}
+
+.tp-stepper input::-webkit-outer-spin-button,
+.tp-stepper input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.tp-unit {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 13px;
+}
+
+.tp-hint {
+  padding: 4px 10px;
+  border: 1px dashed var(--tp-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tp-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tp-hint b {
+  color: var(--tp-fg);
+  font-family: var(--tp-num);
+}
+
+.tp-clear {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--tp-muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tp-extra {
+  font-size: 13px;
+}
+
+.tp-field {
+  display: grid;
+  gap: 4px;
+}
+
+.tp-field label,
+.tp-field > span {
+  color: var(--tp-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.tp-field textarea,
+.tp-field input,
+.tp-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 16px;
+}
+
+.tp-field textarea {
+  resize: vertical;
+}
+
+/* 保存(下に固定) */
+.tp-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 -16px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--tp-line);
+  background: var(--tp-bg);
+}
+
+.tp-savebar p {
+  flex: 1;
+  min-width: 0;
+  color: var(--tp-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.tp-savebar .tp-dirty {
+  color: var(--tp-accent);
+  font-weight: 700;
+}
+
+.tp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 1px solid var(--tp-fg);
+  border-radius: 10px;
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tp-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tp-button.tp-ghost {
+  border-color: var(--tp-line);
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+}
+
+.tp-error,
+.tp-message {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--tp-danger-bg);
+  color: var(--tp-danger-fg);
+  font-size: 14px;
+}
+
+.tp-message {
+  background: var(--tp-accent-soft);
+  color: var(--tp-fg);
+}
+
+/* ---------- 測定 ---------- */
+.tp-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.tp-rm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.tp-rm select {
+  width: auto;
+  padding-inline: 6px;
+  font-size: 14px;
+}
+
+.tp-field input[type="number"] {
+  font-family: var(--tp-num);
+}
+
+.tp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.tp-stat {
+  display: grid;
+  padding-top: 6px;
+  border-top: 2px solid var(--tp-fg);
+}
+
+.tp-stat .tp-v {
+  font-family: var(--tp-num);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-stat .tp-l {
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tp-stat small {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 11px;
+}
+
+.tp-meter {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--tp-line);
+}
+
+.tp-meter i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: var(--tp-accent);
+}
+
+.tp-ticks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 11px;
+}
+
+/* ---------- ルールと説明 ---------- */
+.tp-ref {
+  padding: 0 16px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-ref summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+
+.tp-ref summary::-webkit-details-marker {
+  display: none;
+}
+
+.tp-ref summary::after {
+  content: "＋";
+  color: var(--tp-muted);
+}
+
+.tp-ref[open] summary::after {
+  content: "−";
+}
+
+.tp-ref-body {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 16px;
+  overflow-x: auto;
+}
+
+.tp-ref-body h3 {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.tp-ref-body ol,
+.tp-ref-body ul,
+.tp-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.3em;
+}
+
+.tp-ref-body a {
+  color: var(--tp-accent);
+  text-decoration: underline;
+}
+
+.tp table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.tp th,
+.tp td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--tp-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tp th {
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tp td.tp-num,
+.tp th.tp-num {
+  font-family: var(--tp-num);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tp-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.tp-scroll {
+  overflow-x: auto;
+}
+
+/* ---------- みんなの記録 ---------- */
+.tp-team td {
+  vertical-align: middle;
+}
+
+.tp-team .tp-sub {
+  display: block;
+  color: var(--tp-muted);
+  font-size: 11px;
+}
+
+.tp-team .tp-name {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tp-team .tp-big {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tp-comment {
+  display: grid;
+  gap: 6px;
+}
+
+.tp-comment p {
+  white-space: pre-wrap;
+}
+
+.tp-request {
+  padding: 8px 12px;
+  border-left: 3px solid var(--tp-accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--tp-accent-soft);
+}
+
+.tp-request b {
+  display: block;
+  color: var(--tp-accent);
+  font-size: 11.5px;
+}
+
+.tp-footer {
+  margin-top: 36px;
+  color: var(--tp-muted);
+  font-size: 12.5px;
+}
+
+.tp-footer details {
+  margin-top: 16px;
+}
+
+.tp-footer summary {
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp * {
+    scroll-behavior: auto !important;
+  }
+}

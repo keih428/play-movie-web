@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamTrainingPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
+import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import {
   TRAINING_DAY_LABELS,
   estimate1rm,
@@ -40,7 +40,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
   }
 
   const basePath = buildTeamTrainingRecordsPath(teamSlug);
-  await requireMember(teamSlug, basePath);
+  const current = await requireMember(teamSlug, basePath);
   const menu = await getTrainingMenu(teamSlug);
   if (!menu) {
     notFound();
@@ -70,118 +70,118 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
   }
 
   return (
-    <main className="page-shell stack">
-      <section className="panel">
-        <div className="panel-inner stack">
-          <div className="section-heading-row">
-            <div>
-              <p className="portal-note">
-                {week.k} ・ {formatMonthDay(week.s)}〜{formatMonthDay(week.e)}
-              </p>
-              <h2>みんなの記録</h2>
-              <p className="portal-note">
-                この週に記録した人 {recordedIds.size} / {players.length}人
-              </p>
-            </div>
-            <Link className="button secondary" href={`${buildTeamTrainingPath(teamSlug)}?week=${week.k}`}>
-              自分のメニュー
+    <>
+      <header className="tp-hero">
+        <span className="tp-eyebrow">{menu.s["小見出し"]}</span>
+        <h1>みんなの記録</h1>
+      </header>
+
+      <div className="tp-bar" role="region" aria-label="週の切り替え">
+        <nav className="tp-weeks" aria-label="週">
+          {menu.weeks.map((entry, index) => (
+            <Link
+              key={entry.k}
+              href={`${basePath}?week=${entry.k}`}
+              aria-current={index === weekIndex ? "page" : undefined}
+            >
+              <b>{entry.k}</b>
+              <span className={index === currentWeekIndex ? "tp-now" : undefined}>
+                {index === currentWeekIndex ? "今週" : `${formatMonthDay(entry.s)}〜`}
+              </span>
             </Link>
-          </div>
-          <nav className="training-weeks" aria-label="週">
-            {menu.weeks.map((entry, index) => (
-              <Link
-                key={entry.k}
-                href={`${basePath}?week=${entry.k}`}
-                className={index === weekIndex ? "tab-button tab-button-active" : "tab-button"}
-                aria-current={index === weekIndex ? "page" : undefined}
-              >
-                {entry.k}
-                <small>{index === currentWeekIndex ? "今週" : `${formatMonthDay(entry.s)}〜`}</small>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-inner stack">
-          <h2>メイン種目の重さ</h2>
-          <p className="portal-note">
-            SQ = スクワット、DL = トラップバーデッドリフト。上の数字がこの週にやった重さ(kg)、下の小さい数字は推定1RM。体重比 = スクワットの推定1RM ÷ 体重。
-          </p>
-          <div className="score-table-wrap portal-table-wrap">
-            <table className="score-table portal-table training-team-table">
-              <thead>
-                <tr>
-                  <th>名前</th>
-                  {LIFTS.map((lift) => (
-                    <th key={lift}>{LIFT_SHORT_LABELS[lift]}</th>
-                  ))}
-                  <th>体重比</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((member) => {
-                  const latest = measurements.get(member.id) ?? {};
-                  const squat = latest.sq ? estimate1rm(latest.sq) : null;
-                  const ratio = squat && latest.bw ? squat / latest.bw.value : null;
-                  return (
-                    <tr key={member.id}>
-                      <td>
-                        {member.name}
-                        <span className="portal-cell-sub">
-                          {[member.tier, recordedIds.has(member.id) ? null : "未記録"]
-                            .filter(Boolean)
-                            .join("・")}
-                        </span>
-                      </td>
-                      {LIFTS.map((lift) => {
-                        const weight = weights.get(`${member.id}:${lift}`);
-                        const measurement = latest[lift];
-                        return (
-                          <td key={lift}>
-                            {weight ?? "—"}
-                            {measurement ? (
-                              <span className="portal-cell-sub">
-                                {Math.round(estimate1rm(measurement) * 10) / 10}
-                              </span>
-                            ) : null}
-                          </td>
-                        );
-                      })}
-                      <td>
-                        {ratio ? ratio.toFixed(2) : "—"}
-                        {latest.bw ? <span className="portal-cell-sub">{latest.bw.value} kg</span> : null}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-inner stack">
-          <h2>気になること・リーダーとトレーニング担当へ</h2>
-          {comments.length === 0 ? <p className="portal-note">この週はまだありません。</p> : null}
-          {comments.map((comment) => (
-            <article key={`${comment.memberId}-${comment.day}`} className="soft-panel stack">
-              <p className="portal-note">
-                <b>{names.get(comment.memberId) ?? "—"}</b> ・ {TRAINING_DAY_LABELS[comment.day]}
-              </p>
-              {comment.memo ? <p className="training-comment">{comment.memo}</p> : null}
-              {comment.request ? (
-                <p className="training-comment training-comment-request">
-                  <span className="tag">リーダー・トレーニング担当へ</span>
-                  {comment.request}
-                </p>
-              ) : null}
-            </article>
           ))}
+        </nav>
+      </div>
+
+      <div className="tp-weekhead">
+        <span className="tp-k">
+          {week.k} ・ {formatMonthDay(week.s)}〜{formatMonthDay(week.e)}
+        </span>
+        <h2>{week.name}</h2>
+        <p className="tp-small tp-muted">
+          この週に記録した人 {recordedIds.size} / {players.length}人
+        </p>
+      </div>
+
+      <section className="tp-section">
+        <h2>メイン種目の重さ</h2>
+        <p className="tp-small tp-muted">
+          SQ = スクワット、DL = トラップバーデッドリフト。上がこの週にやった重さ(kg)、下の小さい数字は推定1RM。体重比
+          = スクワットの推定1RM ÷ 体重。
+        </p>
+        <div className="tp-card tp-scroll">
+          <table className="tp-team">
+            <thead>
+              <tr>
+                <th>名前</th>
+                {LIFTS.map((lift) => (
+                  <th key={lift} className="tp-num">
+                    {LIFT_SHORT_LABELS[lift]}
+                  </th>
+                ))}
+                <th className="tp-num">体重比</th>
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((member) => {
+                const latest = measurements.get(member.id) ?? {};
+                const squat = latest.sq ? estimate1rm(latest.sq) : null;
+                const ratio = squat && latest.bw ? squat / latest.bw.value : null;
+                return (
+                  <tr key={member.id}>
+                    <td>
+                      <span className="tp-name">
+                        {member.name}
+                        {member.id === current.id ? "(自分)" : ""}
+                      </span>
+                      <span className="tp-sub">
+                        {member.tier ? <span className={`tp-tier ${member.tier}`}>{member.tier}</span> : null}{" "}
+                        {recordedIds.has(member.id) ? "" : "未記録"}
+                      </span>
+                    </td>
+                    {LIFTS.map((lift) => {
+                      const weight = weights.get(`${member.id}:${lift}`);
+                      const measurement = latest[lift];
+                      return (
+                        <td key={lift} className="tp-num">
+                          <span className="tp-big">{weight ?? "—"}</span>
+                          {measurement ? (
+                            <span className="tp-sub">{Math.round(estimate1rm(measurement) * 10) / 10}</span>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                    <td className="tp-num">
+                      <span className="tp-big">{ratio ? ratio.toFixed(2) : "—"}</span>
+                      {latest.bw ? <span className="tp-sub">{latest.bw.value} kg</span> : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
-    </main>
+
+      <section className="tp-section">
+        <h2>書かれたこと</h2>
+        {comments.length === 0 ? <p className="tp-small tp-muted">この週はまだありません。</p> : null}
+        {comments.map((comment) => (
+          <article key={`${comment.memberId}-${comment.day}`} className="tp-card tp-comment">
+            <div className="tp-dayhead">
+              <span className="tp-when">{TRAINING_DAY_LABELS[comment.day]}</span>
+              <span className="tp-what">{names.get(comment.memberId) ?? "—"}</span>
+            </div>
+            {comment.memo ? <p>{comment.memo}</p> : null}
+            {comment.request ? (
+              <p className="tp-request">
+                <b>リーダー・トレーニング担当へ</b>
+                {comment.request}
+              </p>
+            ) : null}
+          </article>
+        ))}
+      </section>
+    </>
   );
 }

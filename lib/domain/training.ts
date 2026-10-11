@@ -58,9 +58,13 @@ export type TrainingMenu = {
     name1: string;
     name2: string;
     desc: string;
+    // 個人の追加:[目的, 種目の例]
+    addons?: [string, string][];
   };
   pos: Record<string, { A: string; B: string }>;
   vid: [string, string, string][];
+  // 「ルールと説明」:[見出し, HTML]。読み込むときに、許したタグだけに絞ってある。
+  ref?: [string, string][];
 };
 
 export const TRAINING_DAYS = ["tue", "thu", "sat", "self"] as const;
@@ -471,6 +475,41 @@ export function resolveWeek(
   };
 }
 
+const REF_TAGS = new Set([
+  "p", "ul", "ol", "li", "strong", "b", "em", "br", "h3", "h4",
+  "table", "thead", "tbody", "tr", "th", "td", "a",
+]);
+
+/**
+ * 「ルールと説明」の HTML を、文章と表のタグだけに絞る。属性はすべて落とし、
+ * リンクは http(s) の行き先だけ残す。それ以外のタグは文字として出す。
+ */
+export function sanitizeRefHtml(html: string): string {
+  const escapeText = (text: string) => text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let output = "";
+  let lastIndex = 0;
+
+  for (const match of html.matchAll(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^<>]*)>/g)) {
+    output += escapeText(html.slice(lastIndex, match.index));
+    lastIndex = match.index + match[0].length;
+
+    const [whole, closing, rawName, attributes] = match;
+    const name = rawName.toLowerCase();
+    if (!REF_TAGS.has(name)) {
+      output += escapeText(whole);
+    } else if (closing) {
+      output += `</${name}>`;
+    } else if (name === "a") {
+      const href = /href="(https?:\/\/[^"\s]+)"/.exec(attributes)?.[1];
+      output += href ? `<a href="${href}" target="_blank" rel="noopener noreferrer">` : "<a>";
+    } else {
+      output += `<${name}>`;
+    }
+  }
+
+  return output + escapeText(html.slice(lastIndex));
+}
+
 /** 読み込ませるデータが、メニューの形をしているかを確かめる。 */
 export function validateMenu(value: unknown): TrainingMenu | null {
   const menu = value as Partial<TrainingMenu> | null;
@@ -491,5 +530,10 @@ export function validateMenu(value: unknown): TrainingMenu | null {
   if (!menu.weeks.every((week) => /^\d{4}-\d{2}-\d{2}$/.test(week.s) && typeof week.k === "string")) {
     return null;
   }
-  return { ...menu, t3: menu.t3 ?? {}, vid: menu.vid ?? [] } as TrainingMenu;
+  const ref = Array.isArray(menu.ref)
+    ? menu.ref
+        .filter((entry) => Array.isArray(entry) && entry.every((part) => typeof part === "string"))
+        .map(([title, html]): [string, string] => [title, sanitizeRefHtml(html)])
+    : [];
+  return { ...menu, t3: menu.t3 ?? {}, vid: menu.vid ?? [], ref } as TrainingMenu;
 }

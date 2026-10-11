@@ -41,8 +41,8 @@ export function TrainingMenuUpload({ teamSlug }: { teamSlug: string }) {
   }
 
   return (
-    <div className="stack">
-      <div className="field">
+    <div className="tp-section">
+      <div className="tp-field">
         <label htmlFor="training-menu-file">メニューのデータ(menu.json)</label>
         <input
           id="training-menu-file"
@@ -52,12 +52,12 @@ export function TrainingMenuUpload({ teamSlug }: { teamSlug: string }) {
           disabled={busy}
         />
       </div>
-      <p className="portal-note">
+      <p className="tp-small tp-muted">
         入れ替えても、これまでの記録は消えない。種目の名前を変えると、その種目の「前回の重さ」は引き継がれない。
       </p>
-      {message ? <p className="portal-message">{message}</p> : null}
+      {message ? <p className="tp-message">{message}</p> : null}
       {error ? (
-        <p className="portal-error" role="alert">
+        <p className="tp-error" role="alert">
           {error}
         </p>
       ) : null}
