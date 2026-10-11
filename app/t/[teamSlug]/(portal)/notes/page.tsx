@@ -10,7 +10,7 @@ import {
   listPracticeDates,
   type NoteFeed,
 } from "@/lib/domain/notes";
-import { canAdminister, canViewLoginLog, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
+import { canAdminister, canExportNotes, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
 import {
   getUnreadCounts,
@@ -76,7 +76,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
               {unreadTotal > 0 ? <span className="tp-unread">新着 {unreadTotal}</span> : null}
             </Link>
           ) : null}
-          {canViewLoginLog(current.role) ? (
+          {canExportNotes(current.role) ? (
             <Link className="tp-button tp-ghost" href={`${basePath}/print`}>
               月ごとにまとめる(PDF)
             </Link>

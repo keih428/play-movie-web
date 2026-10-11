@@ -5,7 +5,7 @@ import { formatNoteDate, type Note, type NoteComment } from "@/lib/domain/notes"
 import {
   MEMBER_GROUPS,
   MEMBER_GROUP_LABELS,
-  canViewLoginLog,
+  canExportNotes,
   isPortalTeam,
 } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
@@ -45,7 +45,7 @@ export default async function TeamNotesPrintPage({ params, searchParams }: PageP
 
   const basePath = buildTeamNotesPath(teamSlug);
   const current = await requireMember(teamSlug, `${basePath}/print`);
-  if (!canViewLoginLog(current.role)) {
+  if (!canExportNotes(current.role)) {
     redirect(basePath);
   }
 

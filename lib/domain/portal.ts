@@ -78,6 +78,11 @@ export function canAdminister(role: MemberRole): boolean {
   return role === "training_lead";
 }
 
+/** バレーノートの月ごとのまとめ(PDF)は、トレーニング担当・副担当・スタッフが出せる。 */
+export function canExportNotes(role: MemberRole): boolean {
+  return role !== "member";
+}
+
 /** ログインの記録を見られるのも、トレーニング担当だけ。 */
 export function canViewLoginLog(role: MemberRole): boolean {
   return role === "training_lead";
