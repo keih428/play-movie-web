@@ -79,6 +79,15 @@ export async function countMembers(teamSlug: string): Promise<number> {
   return rows[0]?.count ?? 0;
 }
 
+/** 名簿に載っているトレーニング担当(名簿を変えられる人)。 */
+export async function listAdministrators(teamSlug: string): Promise<Member[]> {
+  const rows = await query<MemberRow>(
+    "SELECT * FROM members WHERE team_slug = $1 AND active AND role = 'training_lead'",
+    [teamSlug],
+  );
+  return rows.map(toMember);
+}
+
 export async function getMember(memberId: string): Promise<Member | null> {
   const rows = await query<MemberRow>("SELECT * FROM members WHERE id = $1", [memberId]);
   return rows[0] ? toMember(rows[0]) : null;

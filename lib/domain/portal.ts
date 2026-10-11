@@ -73,7 +73,13 @@ export function getMemberGroup(position: MemberPosition | null): MemberGroup | n
   return position === "OH" || position === "OP" ? "side" : position;
 }
 
-export function canManageMembers(role: MemberRole): boolean {
+/** 名簿を変えられるのは、トレーニング担当だけ。 */
+export function canAdminister(role: MemberRole): boolean {
+  return role === "training_lead";
+}
+
+/** ログインの記録は、トレーニング担当・副担当・スタッフが見られる。 */
+export function canViewLoginLog(role: MemberRole): boolean {
   return role !== "member";
 }
 

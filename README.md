@@ -264,8 +264,8 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | URL | 中身 |
 |---|---|
 | `/t/utvb/login` | 部の合言葉を入れて、自分の名前を選ぶ |
-| `/t/utvb/members` | 名簿。トレーニング担当・副担当・スタッフは直せる |
-| `/t/utvb/members/logins` | ログインの記録と、最後に開いた日時(直せる人だけ) |
+| `/t/utvb/members` | 名簿。直せるのはトレーニング担当だけ |
+| `/t/utvb/members/logins` | ログインの記録と、最後に開いた日時(トレーニング担当・副担当・スタッフ) |
 
 * ログインは、署名を付けたクッキー(`HttpOnly`、400日)。`middleware.ts` が開くたびに期限を延ばす。
 * 合言葉(`PORTAL_PASSPHRASE`)を変えると、全員がログインし直しになる。

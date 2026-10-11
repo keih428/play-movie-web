@@ -16,6 +16,7 @@ import { buildTeamApiPath, buildTeamLoginLogPath, buildTeamRootPath } from "@/li
 
 type PortalMembersClientProps = {
   canManage: boolean;
+  canViewLoginLog: boolean;
   currentMemberId: string;
   initialMembers: Member[];
   teamSlug: string;
@@ -82,6 +83,7 @@ function describeMember(member: Member) {
 
 export function PortalMembersClient({
   canManage,
+  canViewLoginLog,
   currentMemberId,
   initialMembers,
   teamSlug,
@@ -247,7 +249,7 @@ export function PortalMembersClient({
             </p>
           </div>
           <div className="button-row">
-            {canManage ? (
+            {canViewLoginLog ? (
               <Link className="button secondary" href={buildTeamLoginLogPath(teamSlug)}>
                 ログインの記録
               </Link>
