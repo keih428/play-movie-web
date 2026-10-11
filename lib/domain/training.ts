@@ -70,6 +70,33 @@ export type TrainingMenu = {
   gl?: Record<string, string>[];
 };
 
+// メニューは期間ごと(2か月など)に1つ。最初の週の開始日を、その期間の名前(キー)にする。
+export type TrainingProgram = {
+  key: string;
+  menu: TrainingMenu;
+};
+
+// 年間の方針。`build.py --json` が年間方針.md から作る plan.json の形。
+export type PlanBlock = {
+  s: string;
+  e: string;
+  name: string;
+  role: string;
+  aim: string;
+  what: string;
+  events: string;
+};
+
+export type TrainingPlan = {
+  kind: "plan";
+  s: Record<string, string>;
+  blocks: PlanBlock[];
+  // [見出し, HTML]。読み込むときに、許したタグだけに絞ってある。
+  sections: [string, string][];
+};
+
+export type PeriodStatus = "past" | "current" | "upcoming";
+
 export const TRAINING_DAYS = ["tue", "thu", "sat", "self"] as const;
 export type TrainingDay = (typeof TRAINING_DAYS)[number];
 
@@ -174,6 +201,65 @@ export function addDays(isoDate: string, days: number): string {
 export function formatMonthDay(isoDate: string): string {
   const [, month, day] = isoDate.split("-").map(Number);
   return `${month}/${day}`;
+}
+
+export function getProgramRange(menu: TrainingMenu): { start: string; end: string } {
+  return { start: menu.weeks[0].s, end: menu.weeks[menu.weeks.length - 1].e };
+}
+
+/** 「2026年11〜12月」の形。 */
+export function formatPeriod(start: string, end: string): string {
+  const [startYear, startMonth] = start.split("-").map(Number);
+  const [endYear, endMonth] = end.split("-").map(Number);
+  if (startYear !== endYear) {
+    return `${startYear}年${startMonth}月〜${endYear}年${endMonth}月`;
+  }
+  return startMonth === endMonth
+    ? `${startYear}年${startMonth}月`
+    : `${startYear}年${startMonth}〜${endMonth}月`;
+}
+
+export function getPeriodStatus(start: string, end: string, today: string): PeriodStatus {
+  if (today < start) {
+    return "upcoming";
+  }
+  return today > end ? "past" : "current";
+}
+
+/**
+ * 開くメニューを選ぶ。指定があればそれ、なければ今日が入る期間、
+ * それもなければ次に始まる期間、最後はいちばん新しい過去の期間。
+ */
+export function pickProgram(
+  programs: TrainingProgram[],
+  today: string,
+  requestedKey?: string,
+): TrainingProgram | null {
+  const sorted = [...programs].sort((left, right) => left.key.localeCompare(right.key));
+  const status = (program: TrainingProgram) => {
+    const { start, end } = getProgramRange(program.menu);
+    return getPeriodStatus(start, end, today);
+  };
+  return (
+    sorted.find((program) => program.key === requestedKey) ??
+    sorted.find((program) => status(program) === "current") ??
+    sorted.find((program) => status(program) === "upcoming") ??
+    sorted[sorted.length - 1] ??
+    null
+  );
+}
+
+/** その週(開始日)が入っているメニュー。 */
+export function findProgramForWeek(
+  programs: TrainingProgram[],
+  weekStart: string,
+): TrainingProgram | null {
+  return programs.find((program) => program.menu.weeks.some((week) => week.s === weekStart)) ?? null;
+}
+
+/** その日が入る、年間の方針の区切り。 */
+export function findPlanBlock(plan: TrainingPlan | null, date: string): PlanBlock | null {
+  return plan?.blocks.find((block) => date >= block.s && date <= block.e) ?? null;
 }
 
 /** 今日が入る週。期間の前なら最初の週、後なら最後の週。 */
@@ -556,4 +642,39 @@ export function validateMenu(value: unknown): TrainingMenu | null {
       )
     : [];
   return { ...menu, t3: menu.t3 ?? {}, vid: menu.vid ?? [], ref, en, gl } as TrainingMenu;
+}
+
+/** 読み込ませるデータが、年間の方針の形をしているかを確かめる。 */
+export function validatePlan(value: unknown): TrainingPlan | null {
+  const plan = value as Partial<TrainingPlan> | null;
+  const isDate = (text: unknown) => typeof text === "string" && /^\d{4}-\d{2}-\d{2}$/.test(text);
+  if (
+    !plan ||
+    typeof plan !== "object" ||
+    plan.kind !== "plan" ||
+    !plan.s ||
+    !Array.isArray(plan.blocks) ||
+    plan.blocks.length === 0 ||
+    !plan.blocks.every(
+      (block) =>
+        block &&
+        isDate(block.s) &&
+        isDate(block.e) &&
+        Object.values(block).every((cell) => typeof cell === "string"),
+    )
+  ) {
+    return null;
+  }
+
+  const sections = Array.isArray(plan.sections)
+    ? plan.sections
+        .filter((entry) => Array.isArray(entry) && entry.every((part) => typeof part === "string"))
+        .map(([title, html]): [string, string] => [title, sanitizeRefHtml(html)])
+    : [];
+  return {
+    kind: "plan",
+    s: plan.s,
+    blocks: [...plan.blocks].sort((left, right) => left.s.localeCompare(right.s)),
+    sections,
+  };
 }

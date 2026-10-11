@@ -107,6 +107,32 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: "003_training_programs_and_plan",
+    // メニューを期間ごとに何本も持てるようにする(キーは最初の週の開始日)。年間の方針は1つ。
+    sql: `
+      CREATE TABLE training_programs (
+        team_slug text NOT NULL,
+        start_date text NOT NULL,
+        data jsonb NOT NULL,
+        updated_by text,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_slug, start_date)
+      );
+
+      INSERT INTO training_programs (team_slug, start_date, data, updated_by, updated_at)
+      SELECT team_slug, data->'weeks'->0->>'s', data, updated_by, updated_at
+      FROM training_menus
+      WHERE data->'weeks'->0->>'s' IS NOT NULL;
+
+      CREATE TABLE training_plans (
+        team_slug text PRIMARY KEY,
+        data jsonb NOT NULL,
+        updated_by text,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

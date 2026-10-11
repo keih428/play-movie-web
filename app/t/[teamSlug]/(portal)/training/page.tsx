@@ -4,7 +4,7 @@ import { RichText } from "@/components/rich-text";
 import { TrainingMeasurementForm } from "@/components/training-measurement-form";
 import { TrainingGlossary as Glossary } from "@/components/training-glossary";
 import { TrainingMenuUpload } from "@/components/training-menu-upload";
-import { TrainingSession, type WeekLink } from "@/components/training-session";
+import { TrainingSession, type PeriodLink, type WeekLink } from "@/components/training-session";
 import {
   MEMBER_POSITIONS,
   MEMBER_SLOTS,
@@ -13,11 +13,16 @@ import {
   isMemberPosition,
   isPortalTeam,
 } from "@/lib/domain/portal";
-import { buildTeamTrainingPath } from "@/lib/domain/team";
+import { buildTeamTrainingPath, buildTeamTrainingPlanPath } from "@/lib/domain/team";
 import {
   FRESHMAN_GRADE,
+  findPlanBlock,
   findWeekIndex,
   formatMonthDay,
+  formatPeriod,
+  getPeriodStatus,
+  getProgramRange,
+  pickProgram,
   resolveWeek,
   type MenuSelection,
   type TrainingMenu,
@@ -27,7 +32,8 @@ import {
   getLatestMeasurements,
   getPreviousWeights,
   getTodayInJapan,
-  getTrainingMenu,
+  getTrainingPlan,
+  listTrainingPrograms,
   getWeekRecords,
   toEstimated1rm,
 } from "@/lib/server/portal-training-store";
@@ -37,6 +43,7 @@ type PageProps = {
     teamSlug: string;
   }>;
   searchParams: Promise<{
+    menu?: string;
     week?: string;
     tier?: string;
     slot?: string;
@@ -254,25 +261,37 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   const basePath = buildTeamTrainingPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
   const canManage = canAdminister(current.role);
-  const menu = await getTrainingMenu(teamSlug);
+  const query = await searchParams;
+  const today = getTodayInJapan();
+  const [programs, plan] = await Promise.all([
+    listTrainingPrograms(teamSlug),
+    getTrainingPlan(teamSlug),
+  ]);
+  const periods = programs.map((entry) => {
+    const { start, end } = getProgramRange(entry.menu);
+    return { key: entry.key, label: formatPeriod(start, end), status: getPeriodStatus(start, end, today) };
+  });
+  const program = pickProgram(programs, today, query.menu);
 
-  if (!menu) {
+  if (!program) {
     return (
       <section className="tp-section">
         <h2>トレーニング</h2>
         <p>
           メニューがまだ入っていません。{canManage ? "" : "トレーニング担当が入れるまで待ってください。"}
         </p>
-        {canManage ? <TrainingMenuUpload teamSlug={teamSlug} /> : null}
+        {canManage ? <TrainingMenuUpload programs={periods} teamSlug={teamSlug} /> : null}
       </section>
     );
   }
 
-  const query = await searchParams;
-  const today = getTodayInJapan();
-  const currentWeekIndex = findWeekIndex(menu, today);
+  // 「今週」の印は、いまの期間のメニューを開いているときだけ付ける。
+  const { menu } = program;
+  const period = periods.find((entry) => entry.key === program.key);
+  const defaultWeekIndex = findWeekIndex(menu, today);
+  const currentWeekIndex = period?.status === "current" ? defaultWeekIndex : -1;
   const requestedWeekIndex = menu.weeks.findIndex((week) => week.k === query.week);
-  const weekIndex = requestedWeekIndex >= 0 ? requestedWeekIndex : currentWeekIndex;
+  const weekIndex = requestedWeekIndex >= 0 ? requestedWeekIndex : defaultWeekIndex;
 
   // 名簿で決まっている項目はそれを使う。まだ決まっていない項目だけ、画面で選べる。
   const canRecord = Boolean(current.position);
@@ -296,7 +315,8 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
   function buildHref(overrides: Record<string, string>) {
     const search = new URLSearchParams({
-      week: menu!.weeks[weekIndex].k,
+      menu: program!.key,
+      week: menu.weeks[weekIndex].k,
       ...Object.fromEntries(choices.map((choice) => [choice.key, choice.value])),
       ...overrides,
     });
@@ -326,6 +346,14 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
     isCurrent: index === currentWeekIndex,
     isSelected: index === weekIndex,
   }));
+
+  // 期間の切り替え。開いた期間の、今日が入る週(なければ最初か最後の週)から始まる。
+  const periodLinks: PeriodLink[] = periods.map((entry) => ({
+    ...entry,
+    href: `${basePath}?menu=${entry.key}`,
+    isSelected: entry.key === program.key,
+  }));
+  const block = findPlanBlock(plan, week.s);
 
   return (
     <>
@@ -391,12 +419,13 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
       <TrainingSession
         // 測定を入れ直すと重さの目安が変わるので、欄を作り直す。
-        key={`${week.k}-${selection.tier}-${selection.slot}-${selection.position}-${JSON.stringify(estimated)}`}
+        key={`${program.key}-${week.k}-${selection.tier}-${selection.slot}-${selection.position}-${JSON.stringify(estimated)}`}
         canRecord={canRecord}
         days={resolved.days}
         initialDay={initialDay.day}
         previousWeights={previousWeights}
         records={records}
+        periodLinks={periodLinks}
         teamSlug={teamSlug}
         weekLinks={weekLinks}
         weekStart={week.s}
@@ -413,6 +442,16 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           <p className="tp-small tp-muted">
             <RichText text={week.desc} />
           </p>
+          {block ? (
+            <Link className="tp-position" href={buildTeamTrainingPlanPath(teamSlug)}>
+              <span className="tp-label">この時期の位置付け</span>
+              <b>{block.name}</b>
+              <span className="tp-small">
+                <RichText text={block.aim} />
+              </span>
+              <span className="tp-position-more">年間の方針を見る →</span>
+            </Link>
+          ) : null}
         </div>
         {resolved.notes.length > 0 ? (
           <div className="tp-section">
@@ -474,8 +513,8 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         <p className="tp-tango-only">{menu.s["単語帳の断り書き"]}</p>
         {canManage ? (
           <details>
-            <summary>メニューを入れ替える(トレーニング担当だけ)</summary>
-            <TrainingMenuUpload teamSlug={teamSlug} />
+            <summary>メニュー・年間の方針を入れる(トレーニング担当だけ)</summary>
+            <TrainingMenuUpload programs={periods} teamSlug={teamSlug} />
           </details>
         ) : null}
       </footer>

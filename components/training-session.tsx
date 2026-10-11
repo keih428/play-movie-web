@@ -21,11 +21,26 @@ export type WeekLink = {
   isSelected: boolean;
 };
 
+export type PeriodLink = {
+  key: string;
+  href: string;
+  label: string;
+  status: "past" | "current" | "upcoming";
+  isSelected: boolean;
+};
+
+const PERIOD_STATUS_LABELS: Record<PeriodLink["status"], string> = {
+  past: "これまで",
+  current: "いま",
+  upcoming: "これから",
+};
+
 type TrainingSessionProps = {
   canRecord: boolean;
   children: React.ReactNode;
   days: ResolvedDay[];
   initialDay: TrainingDay;
+  periodLinks: PeriodLink[];
   previousWeights: Record<string, number>;
   records: WeekRecords;
   teamSlug: string;
@@ -335,6 +350,7 @@ export function TrainingSession({
   children,
   days,
   initialDay,
+  periodLinks,
   previousWeights,
   records,
   teamSlug,
@@ -373,6 +389,22 @@ export function TrainingSession({
   return (
     <>
       <div className="tp-bar" role="region" aria-label="週と曜日の切り替え">
+        {periodLinks.length > 1 ? (
+          <nav className="tp-weeks tp-periods" aria-label="期間">
+            {periodLinks.map((period) => (
+              <Link
+                key={period.key}
+                href={period.href}
+                aria-current={period.isSelected ? "page" : undefined}
+              >
+                <b>{period.label}</b>
+                <span className={period.status === "current" ? "tp-now" : undefined}>
+                  {PERIOD_STATUS_LABELS[period.status]}
+                </span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
         <nav className="tp-weeks" aria-label="週">
           {weekLinks.map((week) => (
             <Link key={week.key} href={week.href} aria-current={week.isSelected ? "page" : undefined}>

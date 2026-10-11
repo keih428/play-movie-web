@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isPortalTeam } from "@/lib/domain/portal";
-import { TRAINING_DAYS, buildLiftKindMap, type TrainingDay } from "@/lib/domain/training";
+import {
+  TRAINING_DAYS,
+  buildLiftKindMap,
+  findProgramForWeek,
+  type TrainingDay,
+} from "@/lib/domain/training";
 import { getCurrentMember } from "@/lib/server/portal-session";
-import { getTrainingMenu, saveDayRecord } from "@/lib/server/portal-training-store";
+import { listTrainingPrograms, saveDayRecord } from "@/lib/server/portal-training-store";
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_WEIGHT_KG = 500;
@@ -29,15 +34,15 @@ export async function POST(request: NextRequest) {
     request?: unknown;
   };
 
-  const menu = await getTrainingMenu(teamSlug);
-  if (!menu || !menu.weeks.some((week) => week.s === payload.weekStart)) {
+  const program = findProgramForWeek(await listTrainingPrograms(teamSlug), payload.weekStart ?? "");
+  if (!program) {
     return NextResponse.json({ error: "その週はメニューにありません。" }, { status: 400 });
   }
   if (!TRAINING_DAYS.includes(payload.day as TrainingDay)) {
     return NextResponse.json({ error: "曜日が正しくありません。" }, { status: 400 });
   }
 
-  const liftKinds = buildLiftKindMap(menu);
+  const liftKinds = buildLiftKindMap(program.menu);
   const weights = [];
   for (const [exercise, raw] of Object.entries(payload.weights ?? {}).slice(0, 40)) {
     if (raw === null || raw === "") {

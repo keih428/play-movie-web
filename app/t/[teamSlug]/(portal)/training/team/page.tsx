@@ -7,6 +7,10 @@ import {
   estimate1rm,
   findWeekIndex,
   formatMonthDay,
+  formatPeriod,
+  getPeriodStatus,
+  getProgramRange,
+  pickProgram,
   type LiftKind,
 } from "@/lib/domain/training";
 import { listMembers } from "@/lib/server/portal-member-store";
@@ -15,7 +19,7 @@ import {
   getTeamLatestMeasurements,
   getTeamWeek,
   getTodayInJapan,
-  getTrainingMenu,
+  listTrainingPrograms,
 } from "@/lib/server/portal-training-store";
 
 type PageProps = {
@@ -23,6 +27,7 @@ type PageProps = {
     teamSlug: string;
   }>;
   searchParams: Promise<{
+    menu?: string;
     week?: string;
   }>;
 };
@@ -41,15 +46,28 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
 
   const basePath = buildTeamTrainingRecordsPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
-  const menu = await getTrainingMenu(teamSlug);
-  if (!menu) {
+  const { menu: menuKey, week: weekKey } = await searchParams;
+  const today = getTodayInJapan();
+  const programs = await listTrainingPrograms(teamSlug);
+  const program = pickProgram(programs, today, menuKey);
+  if (!program) {
     notFound();
   }
 
-  const { week: weekKey } = await searchParams;
-  const currentWeekIndex = findWeekIndex(menu, getTodayInJapan());
+  const { menu } = program;
+  const periods = programs.map((entry) => {
+    const { start, end } = getProgramRange(entry.menu);
+    return {
+      key: entry.key,
+      label: formatPeriod(start, end),
+      status: getPeriodStatus(start, end, today),
+    };
+  });
+  const isCurrentPeriod = periods.find((entry) => entry.key === program.key)?.status === "current";
+  const defaultWeekIndex = findWeekIndex(menu, today);
+  const currentWeekIndex = isCurrentPeriod ? defaultWeekIndex : -1;
   const requestedWeekIndex = menu.weeks.findIndex((week) => week.k === weekKey);
-  const weekIndex = requestedWeekIndex >= 0 ? requestedWeekIndex : currentWeekIndex;
+  const weekIndex = requestedWeekIndex >= 0 ? requestedWeekIndex : defaultWeekIndex;
   const week = menu.weeks[weekIndex];
 
   const [members, measurements, teamWeek] = await Promise.all([
@@ -77,11 +95,27 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
       </header>
 
       <div className="tp-bar" role="region" aria-label="週の切り替え">
+        {periods.length > 1 ? (
+          <nav className="tp-weeks tp-periods" aria-label="期間">
+            {periods.map((entry) => (
+              <Link
+                key={entry.key}
+                href={`${basePath}?menu=${entry.key}`}
+                aria-current={entry.key === program.key ? "page" : undefined}
+              >
+                <b>{entry.label}</b>
+                <span className={entry.status === "current" ? "tp-now" : undefined}>
+                  {{ past: "これまで", current: "いま", upcoming: "これから" }[entry.status]}
+                </span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
         <nav className="tp-weeks" aria-label="週">
           {menu.weeks.map((entry, index) => (
             <Link
               key={entry.k}
-              href={`${basePath}?week=${entry.k}`}
+              href={`${basePath}?menu=${program.key}&week=${entry.k}`}
               aria-current={index === weekIndex ? "page" : undefined}
             >
               <b>{entry.k}</b>

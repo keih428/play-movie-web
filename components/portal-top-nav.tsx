@@ -8,6 +8,7 @@ import {
   buildTeamMembersPath,
   buildTeamRootPath,
   buildTeamTrainingPath,
+  buildTeamTrainingPlanPath,
   buildTeamTrainingRecordsPath,
 } from "@/lib/domain/team";
 
@@ -37,7 +38,8 @@ export function PortalTopNav({ initialTango, teamSlug }: PortalTopNavProps) {
       ? []
       : [
           { href: buildTeamTrainingPath(teamSlug), label: "メニュー" },
-          { href: buildTeamTrainingRecordsPath(teamSlug), label: "みんなの記録" },
+          { href: buildTeamTrainingRecordsPath(teamSlug), label: "記録" },
+          { href: buildTeamTrainingPlanPath(teamSlug), label: "年間" },
           { href: buildTeamMembersPath(teamSlug), label: "名簿" },
         ]),
     { href: buildTeamRootPath(teamSlug), label: "試合" },
