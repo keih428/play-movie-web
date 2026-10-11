@@ -11,6 +11,7 @@ import {
   buildTeamMembersPath,
   buildTeamRootPath,
   buildTeamStaffSettingsPath,
+  buildTeamTrainingPath,
   buildTeamVideosPath,
   buildTeamWorkspacesPath,
 } from "@/lib/domain/team";
@@ -29,7 +30,10 @@ function getPortalLink(teamSlug: string | undefined, portalUser: SiteHeaderNavPr
     return [];
   }
   if (portalUser?.teamSlug === teamSlug) {
-    return [{ href: buildTeamMembersPath(teamSlug), label: portalUser.name, shortLabel: portalUser.name }];
+    return [
+      { href: buildTeamTrainingPath(teamSlug), label: "トレーニング", shortLabel: "トレ" },
+      { href: buildTeamMembersPath(teamSlug), label: portalUser.name, shortLabel: portalUser.name },
+    ];
   }
   return [{ href: buildTeamLoginPath(teamSlug), label: "ログイン", shortLabel: "ログイン" }];
 }

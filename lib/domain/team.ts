@@ -91,6 +91,14 @@ export function buildTeamLoginPath(teamSlug: string): string {
   return `/t/${teamSlug}/login`;
 }
 
+export function buildTeamTrainingPath(teamSlug: string): string {
+  return `/t/${teamSlug}/training`;
+}
+
+export function buildTeamTrainingRecordsPath(teamSlug: string): string {
+  return `/t/${teamSlug}/training/team`;
+}
+
 export function buildTeamMembersPath(teamSlug: string): string {
   return `/t/${teamSlug}/members`;
 }

@@ -2032,6 +2032,253 @@ iframe {
   margin-top: 14px;
 }
 
+.training-tier-tag {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.training-weeks {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.training-weeks .tab-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-height: 48px;
+  padding: 4px 14px;
+  font-weight: 600;
+}
+
+.training-weeks small {
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+.training-choice {
+  display: grid;
+  gap: 6px;
+}
+
+.training-choice .tab-button {
+  display: inline-flex;
+  align-items: center;
+}
+
+.training-note,
+.training-extra {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  font-size: 0.92rem;
+}
+
+.training-extra {
+  background: rgba(249, 252, 255, 0.88);
+  border: 1px solid rgba(24, 72, 132, 0.1);
+}
+
+.training-day > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.training-day > summary::-webkit-details-marker {
+  display: none;
+}
+
+.training-day-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.training-day-when {
+  display: grid;
+  justify-items: center;
+  flex: none;
+  min-width: 48px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+}
+
+.training-day-when small {
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+.training-day-title {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.training-day-title small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.training-day-body {
+  padding: 0 18px 18px;
+}
+
+.training-items {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid rgba(24, 72, 132, 0.1);
+}
+
+.training-item-main {
+  margin: 0 -10px;
+  padding: 12px 10px;
+  border-radius: 14px;
+  border-top-color: transparent;
+  background: rgba(240, 196, 25, 0.14);
+}
+
+.training-item-no {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.training-item-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.training-item-name {
+  font-weight: 600;
+}
+
+.training-item-name .tag {
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.training-item-dose {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.training-item-tip,
+.training-item-video {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.training-item-video {
+  width: fit-content;
+  color: var(--accent);
+}
+
+.training-weight {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.training-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.training-weight input {
+  width: 76px;
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  font-size: 1rem;
+  text-align: right;
+}
+
+.training-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.training-stat {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 72, 132, 0.1);
+  background: rgba(249, 252, 255, 0.88);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.training-stat b {
+  color: var(--text);
+  font-size: 1.15rem;
+}
+
+.training-measure-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.training-measure-row select {
+  width: auto;
+}
+
+.training-notes-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.training-team-table td:first-child {
+  white-space: nowrap;
+}
+
+.training-team-table th:not(:first-child),
+.training-team-table td:not(:first-child) {
+  text-align: right;
+}
+
+.training-comment {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.training-comment-request .tag {
+  display: block;
+  width: fit-content;
+  margin-bottom: 4px;
+}
+
 @media (max-width: 1120px) {
   .hero-grid,
   .layout-grid,

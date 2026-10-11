@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { isPortalTeam, type LoginChoice } from "@/lib/domain/portal";
-import { buildTeamMembersPath } from "@/lib/domain/team";
+import { buildTeamTrainingPath } from "@/lib/domain/team";
 import {
   LOCK_THRESHOLD,
   countRecentFailures,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.json({ redirectTo: buildTeamMembersPath(teamSlug) });
+  const response = NextResponse.json({ redirectTo: buildTeamTrainingPath(teamSlug) });
   response.cookies.set(SESSION_COOKIE, createSessionValue(member), getCookieOptions());
   response.cookies.set(DEVICE_COOKIE, deviceId, getCookieOptions());
   return response;

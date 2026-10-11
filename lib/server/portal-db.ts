@@ -62,6 +62,51 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: "002_training",
+    // 日付は 'YYYY-MM-DD' の文字で持つ(時差で日がずれないように)。
+    sql: `
+      CREATE TABLE training_menus (
+        team_slug text PRIMARY KEY,
+        data jsonb NOT NULL,
+        updated_by text,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE training_logs (
+        member_id text NOT NULL REFERENCES members (id),
+        week_start text NOT NULL,
+        day text NOT NULL,
+        exercise text NOT NULL,
+        lift text,
+        weight_kg double precision NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (member_id, week_start, day, exercise)
+      );
+      CREATE INDEX training_logs_week ON training_logs (week_start);
+
+      CREATE TABLE training_memos (
+        member_id text NOT NULL REFERENCES members (id),
+        week_start text NOT NULL,
+        day text NOT NULL,
+        memo text NOT NULL DEFAULT '',
+        request text NOT NULL DEFAULT '',
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (member_id, week_start, day)
+      );
+      CREATE INDEX training_memos_week ON training_memos (week_start);
+
+      CREATE TABLE measurements (
+        member_id text NOT NULL REFERENCES members (id),
+        measured_on text NOT NULL,
+        item text NOT NULL,
+        value double precision NOT NULL,
+        rm integer,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (member_id, measured_on, item)
+      );
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

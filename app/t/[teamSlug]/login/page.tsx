@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { PortalLoginClient } from "@/components/portal-login-client";
 import { isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamMembersPath, buildTeamRootPath, formatTeamSlugLabel } from "@/lib/domain/team";
+import { buildTeamRootPath, buildTeamTrainingPath, formatTeamSlugLabel } from "@/lib/domain/team";
 import { getCurrentMember } from "@/lib/server/portal-session";
 
 type PageProps = {
@@ -24,7 +24,7 @@ export default async function TeamLoginPage({ params, searchParams }: PageProps)
   // ログインのあとに戻る先は、このチームのページだけに限る。
   const { next } = await searchParams;
   const redirectTo =
-    next && next.startsWith(`${buildTeamRootPath(teamSlug)}/`) ? next : buildTeamMembersPath(teamSlug);
+    next && next.startsWith(`${buildTeamRootPath(teamSlug)}/`) ? next : buildTeamTrainingPath(teamSlug);
 
   if (await getCurrentMember(teamSlug)) {
     redirect(redirectTo);
