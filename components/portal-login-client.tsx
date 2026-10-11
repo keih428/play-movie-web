@@ -81,81 +81,80 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
   }
 
   return (
-    <section className="panel">
-      <div className="panel-inner stack">
-        <div>
-          <p className="portal-note">{teamName}</p>
-          <h2>部内ページにログイン</h2>
-        </div>
+    <>
+      <header className="tp-hero">
+        <span className="tp-eyebrow">{teamName}</span>
+        <h1>部内ページ</h1>
+        <p className="tp-small tp-muted">
+          {members === null
+            ? "トレーニングの記録や名簿は、部員とスタッフだけが見られます。"
+            : members.length === 0
+              ? "名簿がまだ空です。"
+              : "自分の名前を選んでください。ログアウトするまで、この端末で使い続けられます。"}
+        </p>
+      </header>
 
-        {members === null ? (
-          <form className="stack" onSubmit={submitPassphrase}>
-            <div className="field">
-              <label htmlFor="portal-passphrase">部の合言葉</label>
-              <input
-                id="portal-passphrase"
-                type="password"
-                autoComplete="current-password"
-                value={passphrase}
-                onChange={(event) => setPassphrase(event.target.value)}
-                required
-              />
-            </div>
-            <button className="button" type="submit" disabled={busy || !passphrase}>
-              次へ
-            </button>
-          </form>
-        ) : members.length === 0 ? (
-          <form className="stack" onSubmit={importRoster}>
-            <p>
-              名簿がまだ空です。名簿の表(Markdown)をここに貼ると、最初の名簿として取り込みます。
-            </p>
-            <div className="field">
-              <label htmlFor="portal-roster">名簿の表</label>
-              <textarea
-                id="portal-roster"
-                rows={10}
-                placeholder={"| 名前 | 学年 | ポジション | リーダー | 役割 |\n| --- | --- | --- | --- | --- |"}
-                value={rosterMarkdown}
-                onChange={(event) => setRosterMarkdown(event.target.value)}
-                required
-              />
-            </div>
-            <button className="button" type="submit" disabled={busy || !rosterMarkdown.trim()}>
-              名簿を取り込む
-            </button>
-          </form>
-        ) : (
-          <div className="stack">
-            <p>自分の名前を選んでください。ログアウトするまで、この端末で使い続けられます。</p>
-            {groupByGrade(members).map(([label, group]) => (
-              <div key={label} className="stack">
-                <span className="field-label">{label}</span>
-                <div className="portal-name-grid">
-                  {group.map((member) => (
-                    <button
-                      key={member.id}
-                      type="button"
-                      className="button secondary portal-name-button"
-                      disabled={busy}
-                      onClick={() => chooseMember(member.id)}
-                    >
-                      {member.name}
-                      <small>{member.position ?? member.title ?? ""}</small>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+      {members === null ? (
+        <form className="tp-card" onSubmit={submitPassphrase}>
+          <div className="tp-field">
+            <label htmlFor="portal-passphrase">部の合言葉</label>
+            <input
+              id="portal-passphrase"
+              type="password"
+              autoComplete="current-password"
+              value={passphrase}
+              onChange={(event) => setPassphrase(event.target.value)}
+              required
+            />
           </div>
-        )}
+          <button className="tp-button" type="submit" disabled={busy || !passphrase}>
+            {busy ? "確認中…" : "次へ"}
+          </button>
+        </form>
+      ) : members.length === 0 ? (
+        <form className="tp-card" onSubmit={importRoster}>
+          <p>名簿の表(Markdown)をここに貼ると、最初の名簿として取り込みます。</p>
+          <div className="tp-field">
+            <label htmlFor="portal-roster">名簿の表</label>
+            <textarea
+              id="portal-roster"
+              rows={10}
+              placeholder={"| 名前 | 学年 | ポジション | リーダー | 役割 |\n| --- | --- | --- | --- | --- |"}
+              value={rosterMarkdown}
+              onChange={(event) => setRosterMarkdown(event.target.value)}
+              required
+            />
+          </div>
+          <button className="tp-button" type="submit" disabled={busy || !rosterMarkdown.trim()}>
+            {busy ? "取り込み中…" : "名簿を取り込む"}
+          </button>
+        </form>
+      ) : (
+        groupByGrade(members).map(([label, group]) => (
+          <section key={label} className="tp-section">
+            <h3>{label}</h3>
+            <div className="tp-names">
+              {group.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => chooseMember(member.id)}
+                >
+                  <b>{member.name}</b>
+                  <small>{member.position ?? member.title ?? ""}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
 
-        {error ? (
-          <p className="portal-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    </section>
+      {error ? (
+        <p className="tp-error tp-gap" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </>
   );
 }

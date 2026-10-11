@@ -24,13 +24,11 @@ export default async function TeamMembersPage({ params }: PageProps) {
   const members = await listMembers(teamSlug, { includeInactive: canManage });
 
   return (
-    <main className="page-shell stack">
-      <PortalMembersClient
-        canManage={canManage}
-        currentMemberId={current.id}
-        initialMembers={members}
-        teamSlug={teamSlug}
-      />
-    </main>
+    <PortalMembersClient
+      canManage={canManage}
+      currentMemberId={current.id}
+      initialMembers={members}
+      teamSlug={teamSlug}
+    />
   );
 }

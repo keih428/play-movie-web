@@ -113,6 +113,7 @@ export function PortalMembersClient({
   }
 
   function startEditing(member: Member | null) {
+    window.scrollTo({ top: 0 });
     setEditingId(member ? member.id : "new");
     setDraft(member ? toDraft(member) : EMPTY_DRAFT);
     setError("");
@@ -171,65 +172,62 @@ export function PortalMembersClient({
 
   function renderTable(title: string, rows: Member[], isPlayerTable: boolean) {
     return (
-      <section className="panel">
-        <div className="panel-inner stack">
-          <h2>
-            {title}({rows.filter((member) => member.active).length}人)
-          </h2>
-          <div className="score-table-wrap portal-table-wrap">
-            <table className="score-table portal-table">
-              <thead>
-                <tr>
-                  <th>名前</th>
-                  {isPlayerTable ? <th>ポジション</th> : null}
-                  <th>役割</th>
-                  {canManage ? <th aria-label="操作" /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((member) => {
-                  const group = getMemberGroup(member.position);
-                  return (
-                    <tr key={member.id} className={member.active ? undefined : "portal-row-inactive"}>
+      <section className="tp-section">
+        <h2>
+          {title} <span className="tp-count">{rows.filter((member) => member.active).length}人</span>
+        </h2>
+        <div className="tp-card tp-scroll">
+          <table className="tp-roster">
+            <thead>
+              <tr>
+                <th>名前</th>
+                {isPlayerTable ? <th>ポジション</th> : null}
+                <th>役割</th>
+                {canManage ? <th aria-label="操作" /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((member) => {
+                const group = getMemberGroup(member.position);
+                return (
+                  <tr key={member.id} className={member.active ? undefined : "tp-inactive"}>
+                    <td>
+                      <span className="tp-name">{member.name}</span>
+                      {member.id === currentMemberId ? <span className="tp-sub">自分</span> : null}
+                      {member.active ? null : <span className="tp-sub">名簿から外した</span>}
+                    </td>
+                    {isPlayerTable ? (
                       <td>
-                        {member.name}
-                        {member.id === currentMemberId ? <span className="tag">自分</span> : null}
-                        {member.active ? null : <span className="tag">名簿から外した</span>}
-                      </td>
-                      {isPlayerTable ? (
-                        <td>
-                          {member.grade ? `${member.grade}年・` : ""}
+                        <span className="tp-num">
+                          {member.grade ? `${member.grade}年 ` : ""}
                           {member.position}
-                          {member.isLeader && group ? (
-                            <span className="tag">{MEMBER_GROUP_LABELS[group]}リーダー</span>
-                          ) : null}
-                        </td>
-                      ) : null}
-                      <td>
-                        {describeMember(member) || (member.tier || member.slot ? "" : "—")}
-                        {member.tier || member.slot ? (
-                          <span className="portal-cell-sub">
-                            {[member.tier, member.slot && `${member.slot}枠`].filter(Boolean).join("・")}
-                          </span>
+                        </span>
+                        {member.isLeader && group ? (
+                          <span className="tp-badge">{MEMBER_GROUP_LABELS[group]}リーダー</span>
                         ) : null}
                       </td>
-                      {canManage ? (
-                        <td>
-                          <button
-                            type="button"
-                            className="button secondary portal-small-button"
-                            onClick={() => startEditing(member)}
-                          >
-                            直す
-                          </button>
-                        </td>
+                    ) : null}
+                    <td>
+                      {describeMember(member) || (member.tier || member.slot ? "" : "—")}
+                      {member.tier || member.slot ? (
+                        <span className="tp-sub">
+                          {member.tier ? <span className={`tp-tier ${member.tier}`}>{member.tier}</span> : null}{" "}
+                          {member.slot ? `${member.slot}枠` : ""}
+                        </span>
                       ) : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    </td>
+                    {canManage ? (
+                      <td className="tp-num">
+                        <button type="button" className="tp-mini" onClick={() => startEditing(member)}>
+                          直す
+                        </button>
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
     );
@@ -237,41 +235,41 @@ export function PortalMembersClient({
 
   return (
     <>
-      <section className="panel">
-        <div className="panel-inner section-heading-row">
-          <div>
-            <h2>名簿</h2>
-            <p className="portal-note">
-              {current ? `${current.name} としてログイン中。` : null}
-              ログアウトするまで、この端末で使い続けられます。
-            </p>
-          </div>
-          <div className="button-row">
-            {canManage ? (
-              <Link className="button secondary" href={buildTeamLoginLogPath(teamSlug)}>
-                ログインの記録
-              </Link>
-            ) : null}
-            <button type="button" className="button secondary" onClick={logout} disabled={busy}>
-              ログアウト
-            </button>
-          </div>
+      <header className="tp-hero">
+        <span className="tp-eyebrow">部員とスタッフ</span>
+        <h1>名簿</h1>
+        <div className="tp-chips">
+          {current ? (
+            <span className="tp-chip">
+              <b>{current.name}</b> としてログイン中
+            </span>
+          ) : null}
         </div>
-      </section>
+        <div className="tp-actions">
+          {canManage ? (
+            <Link className="tp-button tp-ghost" href={buildTeamLoginLogPath(teamSlug)}>
+              ログインの記録
+            </Link>
+          ) : null}
+          <button type="button" className="tp-button tp-ghost" onClick={logout} disabled={busy}>
+            ログアウト
+          </button>
+        </div>
+      </header>
 
-      {message ? <p className="portal-message">{message}</p> : null}
+      {message ? <p className="tp-message">{message}</p> : null}
       {error ? (
-        <p className="portal-error" role="alert">
+        <p className="tp-error" role="alert">
           {error}
         </p>
       ) : null}
 
       {canManage && editingId ? (
-        <section className="panel">
-          <form className="panel-inner stack" onSubmit={saveDraft}>
-            <h2>{editingId === "new" ? "部員・スタッフを足す" : `${draft.name} を直す`}</h2>
-            <div className="field-grid">
-              <div className="field">
+        <section className="tp-section">
+          <h2>{editingId === "new" ? "部員・スタッフを足す" : `${draft.name} を直す`}</h2>
+          <form className="tp-card" onSubmit={saveDraft}>
+            <div className="tp-inputs">
+              <div className="tp-field">
                 <label htmlFor="member-name">名前</label>
                 <input
                   id="member-name"
@@ -280,7 +278,7 @@ export function PortalMembersClient({
                   required
                 />
               </div>
-              <div className="field">
+              <div className="tp-field">
                 <label htmlFor="member-grade">学年(スタッフは空でもよい)</label>
                 <input
                   id="member-grade"
@@ -289,7 +287,7 @@ export function PortalMembersClient({
                   onChange={(event) => setField("grade", event.target.value)}
                 />
               </div>
-              <div className="field">
+              <div className="tp-field">
                 <label htmlFor="member-position">ポジション(スタッフは「なし」)</label>
                 <select
                   id="member-position"
@@ -304,7 +302,7 @@ export function PortalMembersClient({
                   ))}
                 </select>
               </div>
-              <div className="field">
+              <div className="tp-field">
                 <label htmlFor="member-role">役割</label>
                 <select
                   id="member-role"
@@ -318,23 +316,7 @@ export function PortalMembersClient({
                   ))}
                 </select>
               </div>
-              <div className="field">
-                <label htmlFor="member-title">肩書(主将、マネージャー など)</label>
-                <input
-                  id="member-title"
-                  value={draft.title}
-                  onChange={(event) => setField("title", event.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="member-slack">Slack の ID</label>
-                <input
-                  id="member-slack"
-                  value={draft.slackId}
-                  onChange={(event) => setField("slackId", event.target.value)}
-                />
-              </div>
-              <div className="field">
+              <div className="tp-field">
                 <label htmlFor="member-tier">段階</label>
                 <select
                   id="member-tier"
@@ -349,7 +331,7 @@ export function PortalMembersClient({
                   ))}
                 </select>
               </div>
-              <div className="field">
+              <div className="tp-field">
                 <label htmlFor="member-slot">枠</label>
                 <select
                   id="member-slot"
@@ -364,8 +346,24 @@ export function PortalMembersClient({
                   ))}
                 </select>
               </div>
+              <div className="tp-field">
+                <label htmlFor="member-title">肩書(主将、マネージャー など)</label>
+                <input
+                  id="member-title"
+                  value={draft.title}
+                  onChange={(event) => setField("title", event.target.value)}
+                />
+              </div>
+              <div className="tp-field">
+                <label htmlFor="member-slack">Slack の ID</label>
+                <input
+                  id="member-slack"
+                  value={draft.slackId}
+                  onChange={(event) => setField("slackId", event.target.value)}
+                />
+              </div>
             </div>
-            <label className="portal-check">
+            <label className="tp-check">
               <input
                 type="checkbox"
                 checked={draft.isLeader}
@@ -373,7 +371,7 @@ export function PortalMembersClient({
               />
               ポジションのリーダー(OH のリーダーは OP も受け持つ)
             </label>
-            <label className="portal-check">
+            <label className="tp-check">
               <input
                 type="checkbox"
                 checked={draft.active}
@@ -381,12 +379,12 @@ export function PortalMembersClient({
               />
               名簿に載せる(外すと、その人はログインできなくなる)
             </label>
-            <div className="button-row">
-              <button className="button" type="submit" disabled={busy}>
-                保存
+            <div className="tp-actions">
+              <button className="tp-button" type="submit" disabled={busy}>
+                {busy ? "保存中…" : "保存"}
               </button>
               <button
-                className="button secondary"
+                className="tp-button tp-ghost"
                 type="button"
                 onClick={() => setEditingId(null)}
                 disabled={busy}
@@ -402,37 +400,37 @@ export function PortalMembersClient({
       {renderTable("スタッフ", staff, false)}
 
       {canManage ? (
-        <section className="panel">
-          <div className="panel-inner stack">
-            <h2>名簿を変える</h2>
-            <div className="button-row">
-              <button type="button" className="button secondary" onClick={() => startEditing(null)}>
-                1人足す
-              </button>
-            </div>
-            <details>
-              <summary>表(Markdown)を貼ってまとめて取り込む</summary>
-              <form className="stack portal-details-body" onSubmit={importRoster}>
-                <p className="portal-note">
-                  名前が同じ人は上書きし、いない人は足します。表にいない人はそのまま残ります。段階・枠・Slack
-                  の ID は変わりません。
-                </p>
-                <div className="field">
-                  <label htmlFor="roster-markdown">名簿の表</label>
-                  <textarea
-                    id="roster-markdown"
-                    rows={8}
-                    value={rosterMarkdown}
-                    onChange={(event) => setRosterMarkdown(event.target.value)}
-                    required
-                  />
-                </div>
-                <button className="button" type="submit" disabled={busy || !rosterMarkdown.trim()}>
+        <section className="tp-section">
+          <h2>名簿を変える</h2>
+          <div className="tp-actions">
+            <button type="button" className="tp-button tp-ghost" onClick={() => startEditing(null)}>
+              1人足す
+            </button>
+          </div>
+          <details className="tp-ref">
+            <summary>表(Markdown)を貼ってまとめて取り込む</summary>
+            <form className="tp-ref-body" onSubmit={importRoster}>
+              <p className="tp-small tp-muted">
+                名前が同じ人は上書きし、いない人は足します。表にいない人はそのまま残ります。段階・枠・Slack の ID
+                は変わりません。
+              </p>
+              <div className="tp-field">
+                <label htmlFor="roster-markdown">名簿の表</label>
+                <textarea
+                  id="roster-markdown"
+                  rows={8}
+                  value={rosterMarkdown}
+                  onChange={(event) => setRosterMarkdown(event.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <button className="tp-button" type="submit" disabled={busy || !rosterMarkdown.trim()}>
                   取り込む
                 </button>
-              </form>
-            </details>
-          </div>
+              </div>
+            </form>
+          </details>
         </section>
       ) : null}
     </>

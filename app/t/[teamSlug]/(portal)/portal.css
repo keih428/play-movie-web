@@ -1,5 +1,5 @@
 /*
- * トレーニングの画面だけの見た目。試合ビューアの見た目(globals.css)とは切り離してある。
+ * 部内ページ(ログイン・名簿・トレーニング)の見た目。試合ビューアの見た目(globals.css)とは切り離してある。
  * 配布版(鉄壁トレーニング)と同じ色・文字:鉄色の地 + コートの床の色、数字は等幅。
  */
 body:has(.tp) {
@@ -835,12 +835,6 @@ body:has(.tp) > .site-header {
   vertical-align: middle;
 }
 
-.tp-team .tp-sub {
-  display: block;
-  color: var(--tp-muted);
-  font-size: 11px;
-}
-
 .tp-team .tp-name {
   font-weight: 700;
   white-space: nowrap;
@@ -871,6 +865,138 @@ body:has(.tp) > .site-header {
   display: block;
   color: var(--tp-accent);
   font-size: 11.5px;
+}
+
+/* ---------- ログイン・名簿 ---------- */
+.tp-gap {
+  margin-top: 12px;
+}
+
+.tp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tp-count {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tp-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.tp-names button {
+  display: grid;
+  justify-items: center;
+  min-height: 60px;
+  padding: 8px 6px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.tp-names button:active {
+  border-color: var(--tp-accent);
+  box-shadow: inset 0 0 0 1px var(--tp-accent);
+}
+
+.tp-names button:disabled {
+  opacity: 0.5;
+}
+
+.tp-names b {
+  font-size: 16px;
+}
+
+.tp-names small {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 11px;
+}
+
+.tp-roster td {
+  vertical-align: middle;
+}
+
+.tp-roster .tp-name,
+.tp-nowrap {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tp-nowrap {
+  font-weight: 400;
+}
+
+.tp-sub {
+  display: block;
+  color: var(--tp-muted);
+  font-size: 11px;
+}
+
+.tp-badge {
+  display: block;
+  width: fit-content;
+  margin-top: 2px;
+  padding: 0 6px;
+  border: 1px solid var(--tp-accent);
+  border-radius: 5px;
+  color: var(--tp-accent);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tp-mini {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tp-inactive td {
+  opacity: 0.5;
+}
+
+.tp-warn td {
+  background: var(--tp-warn-bg);
+  color: var(--tp-warn-fg);
+}
+
+.tp-agent {
+  min-width: 220px;
+  color: var(--tp-muted);
+  font-size: 11.5px;
+}
+
+.tp-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.tp-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--tp-accent);
 }
 
 .tp-footer {

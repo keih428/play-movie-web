@@ -31,12 +31,10 @@ export default async function TeamLoginPage({ params, searchParams }: PageProps)
   }
 
   return (
-    <main className="page-shell stack portal-narrow">
-      <PortalLoginClient
-        teamName={formatTeamSlugLabel(teamSlug)}
-        teamSlug={teamSlug}
-        redirectTo={redirectTo}
-      />
-    </main>
+    <PortalLoginClient
+      teamName={formatTeamSlugLabel(teamSlug)}
+      teamSlug={teamSlug}
+      redirectTo={redirectTo}
+    />
   );
 }
