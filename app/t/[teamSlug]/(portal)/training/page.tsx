@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RichText } from "@/components/rich-text";
 import { TrainingMeasurementForm } from "@/components/training-measurement-form";
+import { TrainingGlossary as Glossary } from "@/components/training-glossary";
 import { TrainingMenuUpload } from "@/components/training-menu-upload";
 import { TrainingSession, type WeekLink } from "@/components/training-session";
 import {
   MEMBER_POSITIONS,
   MEMBER_SLOTS,
   MEMBER_TIERS,
-  canManageMembers,
+  canAdminister,
   isMemberPosition,
   isPortalTeam,
 } from "@/lib/domain/portal";
@@ -48,6 +49,21 @@ export const dynamic = "force-dynamic";
 function pick<T extends string>(choices: readonly T[], ...candidates: (string | null | undefined)[]): T {
   return (candidates.find((value) => choices.includes(value as T)) as T | undefined) ?? choices[0];
 }
+
+/** 見出し。単語帳の表示では「SECTION n」の札が付き、題も変わる。 */
+function SectionHead({ no, title, tangoTitle }: { no: number; title: string; tangoTitle?: string }) {
+  return (
+    <div className="tp-sh">
+      <span className="tp-sh-tag tp-tango-only">SECTION {no}</span>
+      <h2>
+        <span className="tp-std-only">{title}</span>
+        <span className="tp-tango-only">{tangoTitle ?? title}</span>
+      </h2>
+    </div>
+  );
+}
+
+const stripBold = (text: string | undefined) => (text ?? "").replace(/\*\*/g, "");
 
 function formatPercent(value: number | null) {
   return value === null ? "" : `${value}%`;
@@ -237,7 +253,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
   const basePath = buildTeamTrainingPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
-  const canManage = canManageMembers(current.role);
+  const canManage = canAdminister(current.role);
   const menu = await getTrainingMenu(teamSlug);
 
   if (!menu) {
@@ -314,8 +330,23 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   return (
     <>
       <header className="tp-hero">
-        <span className="tp-eyebrow">{menu.s["小見出し"]}</span>
-        <h1>{menu.s["タイトル"]}</h1>
+        <span className="tp-eyebrow tp-std-only">{menu.s["小見出し"]}</span>
+        <h1 className="tp-std-only">{menu.s["タイトル"]}</h1>
+        <div className="tp-cover tp-tango-only">
+          <span className="tp-band">{menu.s["単語帳の帯"]}</span>
+          <span className="tp-series">{menu.s["単語帳の上の文字"]}</span>
+          <p className="tp-cover-title">{menu.s["単語帳のタイトル"]}</p>
+          <p className="tp-cover-en">{menu.s["単語帳の英語"]}</p>
+          <div className="tp-ed">
+            <span>{menu.s["単語帳の編者"]}</span>
+            <span>担当 {menu.s["担当者"]}</span>
+          </div>
+        </div>
+        <div className="tp-motto tp-tango-only">
+          {["標語1", "標語2", "標語3"].map((key) => (
+            <span key={key}>{stripBold(menu.s[key])}</span>
+          ))}
+        </div>
         <div className="tp-chips">
           <span className="tp-chip">
             <b>{current.name}</b>
@@ -371,10 +402,14 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         weekStart={week.s}
       >
         <div className="tp-weekhead">
+          <SectionHead no={1} title="今週のメニュー" tangoTitle="今週の鉄壁" />
+          <p className="tp-small tp-muted tp-tango-only">
+            赤い字が今週の回数。赤シートをかけて、ジムに入る前に言えるか確かめよう。隠れた所はタップで1つずつ見える。
+          </p>
           <span className="tp-k">
             {week.k} ・ {formatMonthDay(week.s)}〜{formatMonthDay(week.e)}
           </span>
-          <h2>{week.name}</h2>
+          <h3 className="tp-weekname">{week.name}</h3>
           <p className="tp-small tp-muted">
             <RichText text={week.desc} />
           </p>
@@ -410,7 +445,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
       {canRecord ? (
         <section className="tp-section">
-          <h2>測定の記録</h2>
+          <SectionHead no={2} title="測定の記録" tangoTitle="重さを割り出す" />
           <p className="tp-small tp-muted">
             3RMと体重を測ったら、測った項目だけ入れます(今日の日付で記録)。推定1RM(3RM ×
             1.1)から、メイン種目の重さの目安が出ます。
@@ -419,8 +454,16 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         </section>
       ) : null}
 
+      {(menu.gl ?? []).length > 0 ? (
+        <section className="tp-section tp-tango-only">
+          <SectionHead no={3} title="必修語" />
+          <p className="tp-small tp-muted">トレーニングでよく出てくる言葉。意味は赤シートで隠せます。</p>
+          <Glossary entries={menu.gl ?? []} />
+        </section>
+      ) : null}
+
       <section className="tp-section">
-        <h2>ルールと説明</h2>
+        <SectionHead no={4} title="ルールと説明" tangoTitle="ルールと解説" />
         <ReferenceSections menu={menu} />
       </section>
 
@@ -428,9 +471,10 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         <p>
           トレーニング担当:{menu.s["担当者"]} ・ {menu.s["フッター"]}
         </p>
+        <p className="tp-tango-only">{menu.s["単語帳の断り書き"]}</p>
         {canManage ? (
           <details>
-            <summary>メニューを入れ替える(トレーニング担当・スタッフ)</summary>
+            <summary>メニューを入れ替える(トレーニング担当だけ)</summary>
             <TrainingMenuUpload teamSlug={teamSlug} />
           </details>
         ) : null}

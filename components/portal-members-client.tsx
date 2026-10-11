@@ -16,6 +16,7 @@ import { buildTeamApiPath, buildTeamLoginLogPath, buildTeamRootPath } from "@/li
 
 type PortalMembersClientProps = {
   canManage: boolean;
+  canViewLoginLog: boolean;
   currentMemberId: string;
   initialMembers: Member[];
   teamSlug: string;
@@ -82,6 +83,7 @@ function describeMember(member: Member) {
 
 export function PortalMembersClient({
   canManage,
+  canViewLoginLog,
   currentMemberId,
   initialMembers,
   teamSlug,
@@ -246,7 +248,7 @@ export function PortalMembersClient({
           ) : null}
         </div>
         <div className="tp-actions">
-          {canManage ? (
+          {canViewLoginLog ? (
             <Link className="tp-button tp-ghost" href={buildTeamLoginLogPath(teamSlug)}>
               ログインの記録
             </Link>
@@ -402,6 +404,7 @@ export function PortalMembersClient({
       {canManage ? (
         <section className="tp-section">
           <h2>名簿を変える</h2>
+          <p className="tp-small tp-muted">名簿を変えられるのは、トレーニング担当だけです。</p>
           <div className="tp-actions">
             <button type="button" className="tp-button tp-ghost" onClick={() => startEditing(null)}>
               1人足す

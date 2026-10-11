@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  canManageMembers,
+  canAdminister,
   isPortalTeam,
   parseRosterMarkdown,
   type MemberInput,
@@ -9,6 +9,7 @@ import { parseMemberInput } from "@/lib/server/portal-member-input";
 import {
   countMembers,
   createMember,
+  listAdministrators,
   listMembers,
   upsertMembers,
 } from "@/lib/server/portal-member-store";
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
   }
 
-  const members = await listMembers(teamSlug, { includeInactive: canManageMembers(current.role) });
+  const members = await listMembers(teamSlug, { includeInactive: canAdminister(current.role) });
   return NextResponse.json({ members });
 }
 
@@ -37,14 +38,15 @@ export async function POST(request: NextRequest) {
     passphrase?: string;
   };
 
-  // 名簿が空のあいだだけ、合言葉を知っている人が最初の取り込みをできる(まだ誰もログインできないため)。
+  // 名簿を変えられるのはトレーニング担当だけ。ただし名簿が空のあいだは、合言葉を知っている人が
+  // 最初の取り込みをできる(まだ誰もログインできないため)。
   const current = await getCurrentMember(teamSlug);
   const isFirstImport =
     !current &&
     typeof payload.markdown === "string" &&
     isCorrectPassphrase(payload.passphrase ?? "") &&
     (await countMembers(teamSlug)) === 0;
-  if (!isFirstImport && !(current && canManageMembers(current.role))) {
+  if (!isFirstImport && !(current && canAdminister(current.role))) {
     return NextResponse.json({ error: "名簿を変える権限がありません。" }, { status: 403 });
   }
 
@@ -53,6 +55,17 @@ export async function POST(request: NextRequest) {
     if (inputs.length === 0) {
       return NextResponse.json(
         { error: "表を読み取れませんでした。「名前」と「ポジション」の列がある表を貼ってください。" },
+        { status: 400 },
+      );
+    }
+    // 取り込んだあとに、名簿を変えられる人(トレーニング担当)が1人は残るようにする。
+    const importedNames = new Set(inputs.map((input) => input.name));
+    const keepsAdministrator =
+      inputs.some((input) => input.role === "training_lead") ||
+      (await listAdministrators(teamSlug)).some((member) => !importedNames.has(member.name));
+    if (!keepsAdministrator) {
+      return NextResponse.json(
+        { error: "表の中に「トレーニング担当」の人が1人は要ります(役割の列に「トレーニング担当」と書く)。" },
         { status: 400 },
       );
     }

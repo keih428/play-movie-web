@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { canManageMembers, isPortalTeam } from "@/lib/domain/portal";
+import { canViewLoginLog, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamLoginLogPath, buildTeamMembersPath } from "@/lib/domain/team";
 import {
   listLoginLogs,
@@ -41,7 +41,7 @@ export default async function TeamLoginLogPage({ params }: PageProps) {
   }
 
   const current = await requireMember(teamSlug, buildTeamLoginLogPath(teamSlug));
-  if (!canManageMembers(current.role)) {
+  if (!canViewLoginLog(current.role)) {
     redirect(buildTeamMembersPath(teamSlug));
   }
 

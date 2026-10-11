@@ -65,6 +65,9 @@ export type TrainingMenu = {
   vid: [string, string, string][];
   // 「ルールと説明」:[見出し, HTML]。読み込むときに、許したタグだけに絞ってある。
   ref?: [string, string][];
+  // 単語帳の表示で使う。en:[日本語, 英語, 発音]、gl:必修語(見出し語・発音・品詞・意味・説明・例文・訳・関連)
+  en?: [string, string, string][];
+  gl?: Record<string, string>[];
 };
 
 export const TRAINING_DAYS = ["tue", "thu", "sat", "self"] as const;
@@ -116,6 +119,8 @@ export type ResolvedItem = {
   kind: MenuItemKind;
   targetKg: number | null;
   videoUrl: string | null;
+  // 単語帳の表示の見出し([英語, 発音])。なければ日本語の名前を見出しにする。
+  english: [string, string] | null;
 };
 
 export type ResolvedDay = {
@@ -195,6 +200,12 @@ export function buildLiftKindMap(menu: TrainingMenu): Map<string, LiftKind> {
     }
   }
   return map;
+}
+
+/** 種目名に合う英語の見出し([英語, 発音])。単語帳の表示で使う。 */
+export function findEnglishName(menu: TrainingMenu, name: string): [string, string] | null {
+  const entry = (menu.en ?? []).find(([japanese]) => name.includes(japanese));
+  return entry ? [entry[1], entry[2]] : null;
 }
 
 function findVideoUrl(menu: TrainingMenu, name: string): string | null {
@@ -339,6 +350,7 @@ function resolveItems(
       kind: effectiveKind,
       targetKg,
       videoUrl: findVideoUrl(menu, name),
+      english: findEnglishName(menu, name),
     });
   }
 
@@ -356,6 +368,7 @@ function plainItem(name: string, dose: string, tip = ""): ResolvedItem {
     kind: "",
     targetKg: null,
     videoUrl: null,
+    english: null,
   };
 }
 
@@ -535,5 +548,12 @@ export function validateMenu(value: unknown): TrainingMenu | null {
         .filter((entry) => Array.isArray(entry) && entry.every((part) => typeof part === "string"))
         .map(([title, html]): [string, string] => [title, sanitizeRefHtml(html)])
     : [];
-  return { ...menu, t3: menu.t3 ?? {}, vid: menu.vid ?? [], ref } as TrainingMenu;
+  const isTextRow = (row: unknown) => Array.isArray(row) && row.every((cell) => typeof cell === "string");
+  const en = Array.isArray(menu.en) ? menu.en.filter(isTextRow) : [];
+  const gl = Array.isArray(menu.gl)
+    ? menu.gl.filter(
+        (row) => row && typeof row === "object" && Object.values(row).every((cell) => typeof cell === "string"),
+      )
+    : [];
+  return { ...menu, t3: menu.t3 ?? {}, vid: menu.vid ?? [], ref, en, gl } as TrainingMenu;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useState } from "react";
 import { RichText } from "@/components/rich-text";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import {
@@ -34,6 +34,7 @@ type TrainingSessionProps = {
 };
 
 const WEIGHT_STEP_KG = 2.5;
+const SHEET_STORAGE_KEY = "teppeki.sheet";
 
 // 保存した記録があればそれを、なければ目安(表の%)か前回の重さを、最初から欄に入れておく。
 function getInitialWeight(
@@ -52,6 +53,8 @@ function getInitialWeight(
 type DayPanelProps = {
   canRecord: boolean;
   day: ResolvedDay;
+  // 単語帳の表示の通し番号(001〜)を、前の曜日からの続きにする。
+  numberOffset: number;
   onSaved: () => void;
   previousWeights: Record<string, number>;
   record: DayRecord | undefined;
@@ -62,6 +65,7 @@ type DayPanelProps = {
 function DayPanel({
   canRecord,
   day,
+  numberOffset,
   onSaved,
   previousWeights,
   record,
@@ -101,6 +105,14 @@ function DayPanel({
     setDirty(true);
   }
 
+  // 赤シートをかけているとき、隠れた所をタップすると1つずつ見える。
+  function peek(event: MouseEvent) {
+    const answer = (event.target as HTMLElement).closest(".tp-ans");
+    if (answer && document.querySelector(".tp")?.getAttribute("data-sheet") === "on") {
+      answer.classList.toggle("tp-peek");
+    }
+  }
+
   async function save(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -125,47 +137,72 @@ function DayPanel({
     }
   }
 
+  const video = (item: ResolvedItem) =>
+    item.videoUrl ? (
+      <a
+        className="tp-vid"
+        href={item.videoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${item.name} のフォーム動画`}
+      >
+        ▶ 動画
+      </a>
+    ) : null;
+
   return (
     <form onSubmit={save}>
       <article className="tp-card">
         <div className="tp-dayhead">
           <span className="tp-when">{TRAINING_DAY_LABELS[day.day]}</span>
-          <span className="tp-what">{day.title}</span>
-          <span className="tp-time">
-            {[day.date ? formatMonthDay(day.date) : "", day.time].filter(Boolean).join(" ・ ")}
+          <span className="tp-dayname">
+            <span className="tp-what">{day.title}</span>
+            <span className="tp-time">
+              {[day.date ? formatMonthDay(day.date) : "", day.time].filter(Boolean).join(" ・ ")}
+            </span>
           </span>
           {saved ? <span className="tp-saved">✓ 記録済み</span> : null}
         </div>
 
         {day.items.length > 0 ? (
-          <ol className="tp-ex">
+          <ol className="tp-ex" onClick={peek}>
             {day.items.map((item, index) => {
               const previous = previousWeights[item.name];
               const value = weights[item.name] ?? "";
               return (
                 <li key={item.name} className={item.main ? "tp-main" : undefined}>
-                  <span className="tp-i">{index + 1}</span>
-                  <span className="tp-n">
+                  <span className="tp-i tp-std-only">{index + 1}</span>
+                  <span className="tp-n tp-std-only">
                     {item.name}
                     {item.swapped ? <span className="tp-swap">B枠の置き換え</span> : null}
-                    {item.videoUrl ? (
-                      <a
-                        className="tp-vid"
-                        href={item.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`${item.name} のフォーム動画`}
-                      >
-                        ▶ 動画
-                      </a>
-                    ) : null}
+                    {video(item)}
                   </span>
-                  <span className="tp-d">{item.dose}</span>
+                  <span className="tp-d tp-std-only">{item.dose}</span>
                   {item.tip ? (
-                    <span className="tp-t">
+                    <span className="tp-t tp-std-only">
                       <RichText text={item.tip} />
                     </span>
                   ) : null}
+
+                  <div className="tp-ent tp-tango-only">
+                    <div className="tp-eh">
+                      <span className="tp-no">{String(numberOffset + index + 1).padStart(3, "0")}</span>
+                      <span className="tp-hw">{item.english ? item.english[0] : item.name}</span>
+                      {item.english ? <span className="tp-pr">{item.english[1]}</span> : null}
+                    </div>
+                    <div className="tp-em">
+                      <span className="tp-pos">名</span>
+                      <span className="tp-ja">{item.name}</span>
+                      {video(item)}
+                      {item.swapped ? <span className="tp-swaptag">B枠</span> : null}
+                      {item.dose ? <span className="tp-ans">{item.dose}</span> : null}
+                    </div>
+                    {item.tip ? (
+                      <p className="tp-exl">
+                        <RichText text={item.tip} />
+                      </p>
+                    ) : null}
+                  </div>
 
                   {canRecord && item.weighted ? (
                     <div className="tp-weight">
@@ -308,6 +345,30 @@ export function TrainingSession({
   const [savedDays, setSavedDays] = useState<TrainingDay[]>(
     () => days.filter((day) => records[day.day]).map((day) => day.day),
   );
+  const [sheet, setSheet] = useState(false);
+
+  // 赤シート(単語帳の表示で、回数と重さを隠す)。端末ごとに覚える。
+  useEffect(() => {
+    try {
+      setSheet(window.localStorage.getItem(SHEET_STORAGE_KEY) === "on");
+    } catch {
+      // 保存場所が使えない端末では、毎回オフから始める。
+    }
+  }, []);
+  useEffect(() => {
+    document.querySelector(".tp")?.setAttribute("data-sheet", sheet ? "on" : "off");
+    document.querySelectorAll(".tp-peek").forEach((element) => element.classList.remove("tp-peek"));
+  }, [sheet]);
+
+  function toggleSheet() {
+    const next = !sheet;
+    setSheet(next);
+    try {
+      window.localStorage.setItem(SHEET_STORAGE_KEY, next ? "on" : "off");
+    } catch {
+      // 覚えられなくても、この画面では切り替わる。
+    }
+  }
 
   return (
     <>
@@ -320,6 +381,7 @@ export function TrainingSession({
             </Link>
           ))}
         </nav>
+        <div className="tp-dayrow">
         <div className="tp-seg tp-days">
           {days.map((day) => (
             <button
@@ -339,16 +401,26 @@ export function TrainingSession({
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className="tp-sheetbtn tp-tango-only"
+          aria-pressed={sheet}
+          onClick={toggleSheet}
+        >
+          赤シート
+        </button>
+        </div>
       </div>
 
       {children}
 
       <section className="tp-section">
-        {days.map((day) => (
+        {days.map((day, dayIndex) => (
           <div key={day.day} hidden={day.day !== selectedDay}>
             <DayPanel
               canRecord={canRecord}
               day={day}
+              numberOffset={days.slice(0, dayIndex).reduce((total, entry) => total + entry.items.length, 0)}
               onSaved={() =>
                 setSavedDays((previous) => (previous.includes(day.day) ? previous : [...previous, day.day]))
               }

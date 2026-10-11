@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canManageMembers, isPortalTeam } from "@/lib/domain/portal";
+import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
 import { validateMenu } from "@/lib/domain/training";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { saveTrainingMenu } from "@/lib/server/portal-training-store";
@@ -8,7 +8,7 @@ import { saveTrainingMenu } from "@/lib/server/portal-training-store";
 export async function POST(request: NextRequest) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
-  if (!current || !canManageMembers(current.role)) {
+  if (!current || !canAdminister(current.role)) {
     return NextResponse.json({ error: "メニューを変える権限がありません。" }, { status: 403 });
   }
 

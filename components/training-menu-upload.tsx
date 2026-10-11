@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ChangeEvent, useState } from "react";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
-/** トレーニング担当・スタッフ用。`build.py --json` で作った menu.json を読み込ませる。 */
+/** トレーニング担当用。`build.py --json` で作った menu.json を読み込ませる。 */
 export function TrainingMenuUpload({ teamSlug }: { teamSlug: string }) {
   const router = useRouter();
   const [message, setMessage] = useState("");

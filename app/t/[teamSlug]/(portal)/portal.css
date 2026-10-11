@@ -113,13 +113,6 @@ body:has(.tp) > .site-header {
   padding: 10px 0 6px;
 }
 
-.tp-brand {
-  font-family: var(--tp-display);
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
 .tp-top nav {
   display: flex;
   gap: 2px;
@@ -1017,4 +1010,529 @@ body:has(.tp) > .site-header {
   .tp * {
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------- 見た目の切り替え(上のバーの「鉄壁」スイッチ) ---------- */
+.tp[data-mode="std"] .tp-tango-only,
+.tp[data-mode="tango"] .tp-std-only {
+  display: none !important;
+}
+
+.tp-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--tp-fg);
+  font-family: var(--tp-display);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tp-mode-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-surface);
+}
+
+.tp-mode-track i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--tp-muted);
+  transition: transform 0.15s;
+}
+
+.tp-mode[aria-checked="true"] .tp-mode-track {
+  border-color: var(--tp-accent);
+  background: var(--tp-accent);
+}
+
+.tp-mode[aria-checked="true"] .tp-mode-track i {
+  background: var(--tp-surface);
+  transform: translateX(14px);
+}
+
+.tp-dayrow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.tp-dayname {
+  display: grid;
+  min-width: 0;
+}
+
+.tp-weekname {
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.tp-sh h2 {
+  margin: 0;
+}
+
+/*
+ * 鉄壁(単語帳)の表示。配布版の単語帳版と同じ:紙の色 + 緑の罫 + 赤い答え、明朝の見出し、角は丸めない。
+ * 色の名前は通常の表示と共通で、中身だけ入れ替える。
+ */
+body:has(.tp[data-mode="tango"]) {
+  --tp-bg: #f7f6f0;
+  --tp-surface: #ffffff;
+  --tp-fg: #1b211d;
+  --tp-muted: #5e665f;
+  --tp-line: #d9dcd2;
+  --tp-accent: #1f5b3f;
+  --tp-accent-soft: #e3ede6;
+  --tp-ok: #1f5b3f;
+  --tp-red: #c8261e;
+  --tp-sheet: #e9a9a3;
+  --tp-hl: #fff1a8;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:has(.tp[data-mode="tango"]) {
+    --tp-bg: #121714;
+    --tp-surface: #1a211d;
+    --tp-fg: #e7ece6;
+    --tp-muted: #a2ada4;
+    --tp-line: #2c3730;
+    --tp-accent: #7cc49e;
+    --tp-accent-soft: #1e3328;
+    --tp-ok: #7cc49e;
+    --tp-red: #ff7a70;
+    --tp-sheet: #7a2a26;
+    --tp-hl: #4a4214;
+  }
+}
+
+.tp[data-mode="tango"] {
+  --tp-mincho: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --tp-serif: "Noto Serif", Georgia, "Times New Roman", serif;
+}
+
+.tp[data-mode="tango"] :is(
+  .tp-card, .tp-chip, .tp-seg, .tp-weeks a, .tp-stepper, .tp-hint, .tp-button, .tp-mini, .tp-ref,
+  .tp-names button, .tp-field :is(input, textarea, select), .tp-note, .tp-error, .tp-message,
+  .tp-meter, .tp-meter i, .tp-vid, .tp-swap, .tp-badge, .tp-tier, .tp-when, .tp-request,
+  .tp-top nav a
+) {
+  border-radius: 0;
+}
+
+.tp[data-mode="tango"] :is(h1, h2, .tp-weekname) {
+  font-family: var(--tp-mincho);
+  font-weight: 800;
+}
+
+.tp[data-mode="tango"] .tp-hero h1 {
+  font-size: clamp(30px, 8vw, 44px);
+  letter-spacing: 0.04em;
+}
+
+.tp[data-mode="tango"] .tp-mode {
+  font-family: var(--tp-mincho);
+  font-weight: 800;
+}
+
+/* 表紙 */
+.tp-cover {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 22px 20px 18px;
+  border: 2px solid var(--tp-accent);
+  background: var(--tp-surface);
+}
+
+.tp-series {
+  color: var(--tp-accent);
+  font-family: var(--tp-mincho);
+  font-size: clamp(16px, 4.4vw, 22px);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.tp-cover-title {
+  font-family: var(--tp-mincho);
+  font-size: clamp(84px, 26vw, 150px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.tp-cover-en {
+  color: var(--tp-muted);
+  font-family: var(--tp-serif);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.tp-ed {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tp-line);
+  font-family: var(--tp-mincho);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tp-band {
+  position: absolute;
+  top: 22px;
+  right: -2px;
+  padding: 4px 10px;
+  background: var(--tp-accent);
+  color: var(--tp-bg);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.tp-motto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 13px;
+}
+
+.tp-motto span::before {
+  content: "■ ";
+  color: var(--tp-accent);
+}
+
+/* バー・見出し */
+.tp[data-mode="tango"] .tp-bar {
+  border-bottom: 2px solid var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-seg {
+  border-color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-seg > * + * {
+  border-left-color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-seg > :is([aria-current="true"], [aria-pressed="true"]),
+.tp[data-mode="tango"] .tp-top nav a[aria-current="page"] {
+  background: var(--tp-accent);
+  color: var(--tp-bg);
+}
+
+.tp[data-mode="tango"] .tp-weeks .tp-now {
+  color: var(--tp-red);
+}
+
+.tp-sheetbtn {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid var(--tp-red);
+  background: var(--tp-surface);
+  color: var(--tp-red);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.tp-sheetbtn[aria-pressed="true"] {
+  border-color: var(--tp-sheet);
+  background: var(--tp-sheet);
+  color: var(--tp-fg);
+}
+
+.tp[data-mode="tango"] .tp-sh {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 2px solid var(--tp-accent);
+}
+
+.tp-sh-tag {
+  display: grid;
+  place-items: center;
+  padding: 6px 10px;
+  background: var(--tp-accent);
+  color: var(--tp-bg);
+  font-family: var(--tp-num);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.tp[data-mode="tango"] .tp-sh h2 {
+  padding: 4px 12px;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.tp[data-mode="tango"] .tp-weekhead {
+  gap: 6px;
+}
+
+.tp[data-mode="tango"] .tp-tier {
+  border: 1px solid var(--tp-accent);
+  background: transparent;
+  color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-note {
+  border-left: 4px solid var(--tp-red);
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+}
+
+.tp[data-mode="tango"] .tp-note b {
+  color: var(--tp-red);
+}
+
+/* 曜日のカードと見出し語 */
+.tp[data-mode="tango"] form > .tp-card {
+  gap: 0;
+  padding: 0;
+}
+
+.tp[data-mode="tango"] .tp-dayhead {
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--tp-line);
+  background: var(--tp-accent-soft);
+}
+
+.tp[data-mode="tango"] .tp-when {
+  min-width: 1.6em;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--tp-accent);
+  font-family: var(--tp-mincho);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.tp[data-mode="tango"] .tp-what {
+  font-weight: 900;
+}
+
+.tp[data-mode="tango"] .tp-ex {
+  padding: 0 14px;
+}
+
+.tp[data-mode="tango"] .tp-ex li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  padding-block: 12px;
+  border-top: 1px dashed var(--tp-line);
+}
+
+.tp[data-mode="tango"] .tp-ex li:first-child {
+  border-top: 0;
+}
+
+.tp-ent {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tp-eh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+.tp-no {
+  align-self: center;
+  padding: 0 5px;
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+  font-family: var(--tp-num);
+  font-size: 12px;
+}
+
+.tp-hw {
+  font-family: var(--tp-serif);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.tp-main .tp-hw {
+  background: linear-gradient(transparent 62%, var(--tp-hl) 62%);
+}
+
+.tp-pr {
+  color: var(--tp-muted);
+  font-family: var(--tp-serif);
+  font-size: 13px;
+}
+
+.tp-em {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.tp-pos {
+  padding: 0 3px;
+  border: 1px solid var(--tp-fg);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.tp-ja {
+  font-weight: 700;
+}
+
+.tp-em .tp-vid {
+  margin-left: 0;
+  border-color: var(--tp-accent);
+}
+
+.tp-swaptag {
+  padding: 0 4px;
+  background: var(--tp-red);
+  color: var(--tp-bg);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.tp-ans {
+  color: var(--tp-red);
+  font-family: var(--tp-num);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tp-gl-ans {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.tp-exl {
+  padding-left: 1em;
+  color: var(--tp-muted);
+  font-size: 13px;
+  text-indent: -1em;
+}
+
+.tp-exl::before {
+  content: "▸ ";
+  color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-weight {
+  grid-column: auto;
+}
+
+.tp[data-mode="tango"] .tp-extra {
+  padding: 10px 14px;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp[data-mode="tango"] .tp-extra b {
+  color: var(--tp-accent);
+}
+
+/* 赤シート:回数と意味を隠す。タップすると1つずつ見える。 */
+.tp[data-mode="tango"][data-sheet="on"] .tp-ans {
+  background: var(--tp-sheet);
+  color: transparent;
+  cursor: pointer;
+}
+
+.tp[data-mode="tango"][data-sheet="on"] .tp-ans.tp-peek {
+  background: transparent;
+  color: var(--tp-red);
+}
+
+/* 必修語 */
+.tp-gl {
+  display: grid;
+  border: 1px solid var(--tp-line);
+  background: var(--tp-surface);
+}
+
+.tp-gl article {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border-top: 1px dashed var(--tp-line);
+}
+
+.tp-gl article:first-child {
+  border-top: 0;
+}
+
+.tp-sent {
+  font-family: var(--tp-serif);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.tp-tr {
+  color: var(--tp-muted);
+  font-size: 13px;
+}
+
+.tp-rel {
+  color: var(--tp-muted);
+  font-size: 12.5px;
+}
+
+.tp-rel b {
+  margin-right: 4px;
+  color: var(--tp-accent);
+  font-weight: 900;
+}
+
+/* そのほか */
+.tp[data-mode="tango"] .tp-stat {
+  border-top-color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-ref + .tp-ref {
+  margin-top: -13px;
+}
+
+.tp[data-mode="tango"] .tp-ref summary {
+  font-weight: 900;
+}
+
+.tp[data-mode="tango"] .tp-ref summary::after {
+  color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-ref-body h3 {
+  color: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] .tp-button:not(.tp-ghost) {
+  border-color: var(--tp-accent);
+  background: var(--tp-accent);
+}
+
+.tp[data-mode="tango"] :focus-visible {
+  outline-color: var(--tp-red);
 }
