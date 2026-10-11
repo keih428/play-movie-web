@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { SlackTestButton } from "@/components/slack-test-button";
 import {
   MEMBER_GROUP_LABELS,
   MEMBER_POSITIONS,
@@ -410,6 +411,12 @@ export function PortalMembersClient({
               1人足す
             </button>
           </div>
+          <details className="tp-ref">
+            <summary>Slack の知らせが届くか確かめる</summary>
+            <div className="tp-ref-body">
+              <SlackTestButton teamSlug={teamSlug} />
+            </div>
+          </details>
           <details className="tp-ref">
             <summary>表(Markdown)を貼ってまとめて取り込む</summary>
             <form className="tp-ref-body" onSubmit={importRoster}>

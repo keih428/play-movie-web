@@ -1922,3 +1922,28 @@ body:has(.tp[data-mode="tango"]) {
     break-before: auto;
   }
 }
+
+/* Slack のテストの結果 */
+.tp-checks {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-checks li {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--tp-ok);
+  background: var(--tp-surface);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.tp-checks .tp-check-ng {
+  border-left-color: var(--tp-danger-fg);
+  background: var(--tp-danger-bg);
+  color: var(--tp-danger-fg);
+}
