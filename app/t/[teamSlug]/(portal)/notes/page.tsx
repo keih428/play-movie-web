@@ -76,7 +76,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
               {unreadTotal > 0 ? <span className="tp-unread">新着 {unreadTotal}</span> : null}
             </Link>
           ) : null}
-          {canExportNotes(current.role) ? (
+          {canExportNotes(current) ? (
             <Link className="tp-button tp-ghost" href={`${basePath}/print`}>
               月ごとにまとめる(PDF)
             </Link>

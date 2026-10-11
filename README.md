@@ -300,7 +300,7 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | `/t/utvb/notes/mine` | 自分のノート。練習日ごとの枠が並び、書いていない日が分かる |
 | `/t/utvb/notes/write?date=YYYY-MM-DD` | その日のノートを書く・直す(1人・1日に1つ) |
 | `/t/utvb/notes/<id>` | 1つのノートとコメント |
-| `/t/utvb/notes/print?month=YYYY-MM` | 月ごとのまとめ(印刷して PDF にする)。トレーニング担当・副担当・スタッフ |
+| `/t/utvb/notes/print?month=YYYY-MM` | 月ごとのまとめ(印刷して PDF にする)。トレーニング担当・トレーナー(肩書が「トレーナー」の人)・ポジションのリーダー |
 
 * 書けるのはプレイヤーだけ。読む・コメントするのは、ログインした全員。
 * 練習日は 日・火・木・土。オフの日や、ほかの曜日の練習は、トレーニング担当が例外として登録する(`practice_day_overrides`)。
