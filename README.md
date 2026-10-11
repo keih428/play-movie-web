@@ -257,3 +257,26 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 4.  サーバー保存したワークスペースを `/?workspaceId=...` で開けることを確認する
 
 将来的に更新競合や検索機能が必要になった場合は、保存先を Vercel Postgres 等へ移行する。
+
+## 16. 部内ページ(ログイン・名簿)
+男子(`/t/utvb`)にだけ、部員とスタッフがログインして使う区画がある。試合ビューアの画面はログインなしのまま。
+
+| URL | 中身 |
+|---|---|
+| `/t/utvb/login` | 部の合言葉を入れて、自分の名前を選ぶ |
+| `/t/utvb/members` | 名簿。トレーニング担当・副担当・スタッフは直せる |
+| `/t/utvb/members/logins` | ログインの記録と、最後に開いた日時(直せる人だけ) |
+
+* ログインは、署名を付けたクッキー(`HttpOnly`、400日)。`middleware.ts` が開くたびに期限を延ばす。
+* 合言葉(`PORTAL_PASSPHRASE`)を変えると、全員がログインし直しになる。
+* 名簿はリポジトリに入れない。名簿が空のあいだは、合言葉を入れた人がログイン画面から Markdown の表を貼って取り込める。
+* 保存先は Postgres。`DATABASE_URL` がなければ、ローカルでは `.data/portal-db`(PGlite)に保存する。Vercel では `DATABASE_URL` が必須。
+* 表は `lib/server/portal-db.ts` の `MIGRATIONS` に書いてあり、最初の問い合わせのときに自動で作られる。変えるときは末尾に足す。
+
+### 環境変数
+| 名前 | 中身 |
+|---|---|
+| `DATABASE_URL` | Postgres の接続先(Vercel の Storage で Neon を作ると入る) |
+| `PORTAL_PASSPHRASE` | 部の合言葉。ローカルで未設定なら `utvb-dev` |
+| `PORTAL_SESSION_SECRET` | クッキーの署名用。`openssl rand -base64 32` で作る |
+| `PORTAL_ALERT_SLACK_WEBHOOK_URL` | 初めての端末・合言葉の連続間違いを知らせる先(なくても動く) |
