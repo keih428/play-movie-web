@@ -78,9 +78,9 @@ export function canAdminister(role: MemberRole): boolean {
   return role === "training_lead";
 }
 
-/** ログインの記録は、トレーニング担当・副担当・スタッフが見られる。 */
+/** ログインの記録を見られるのも、トレーニング担当だけ。 */
 export function canViewLoginLog(role: MemberRole): boolean {
-  return role !== "member";
+  return role === "training_lead";
 }
 
 export function receivesTrainingNotices(role: MemberRole): boolean {
