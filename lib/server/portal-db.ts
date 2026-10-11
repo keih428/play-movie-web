@@ -133,6 +133,43 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: "004_notes",
+    // バレーノート:1人・1練習日に1つ。書いたときのポジションとまとまりも残す(あとで転向しても、当時の振り分けのまま読める)。
+    sql: `
+      CREATE TABLE notes (
+        id text PRIMARY KEY,
+        team_slug text NOT NULL,
+        member_id text NOT NULL REFERENCES members (id),
+        practice_date text NOT NULL,
+        position text,
+        group_key text,
+        body text NOT NULL,
+        request text NOT NULL DEFAULT '',
+        author_seen_at timestamptz NOT NULL DEFAULT now(),
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (member_id, practice_date)
+      );
+      CREATE INDEX notes_team_date ON notes (team_slug, practice_date DESC);
+
+      CREATE TABLE note_comments (
+        id text PRIMARY KEY,
+        note_id text NOT NULL REFERENCES notes (id),
+        member_id text NOT NULL REFERENCES members (id),
+        body text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX note_comments_note ON note_comments (note_id, created_at);
+
+      CREATE TABLE practice_day_overrides (
+        team_slug text NOT NULL,
+        practice_date text NOT NULL,
+        kind text NOT NULL,
+        PRIMARY KEY (team_slug, practice_date)
+      );
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

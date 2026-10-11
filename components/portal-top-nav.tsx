@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   buildTeamLoginPath,
   buildTeamMembersPath,
+  buildTeamNotesPath,
   buildTeamRootPath,
   buildTeamTrainingPath,
   buildTeamTrainingPlanPath,
@@ -15,12 +16,14 @@ import {
 type PortalTopNavProps = {
   initialTango: boolean;
   teamSlug: string;
+  // 自分のノートに付いた、まだ読んでいないコメントの数。
+  unreadNotes: number;
 };
 
 const MODE_COOKIE = "portal_mode";
 const MODE_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60;
 
-export function PortalTopNav({ initialTango, teamSlug }: PortalTopNavProps) {
+export function PortalTopNav({ initialTango, teamSlug, unreadNotes }: PortalTopNavProps) {
   const pathname = usePathname();
   const [isTango, setIsTango] = useState(initialTango);
 
@@ -38,6 +41,7 @@ export function PortalTopNav({ initialTango, teamSlug }: PortalTopNavProps) {
       ? []
       : [
           { href: buildTeamTrainingPath(teamSlug), label: "メニュー" },
+          { href: buildTeamNotesPath(teamSlug), label: "ノート", badge: unreadNotes },
           { href: buildTeamTrainingRecordsPath(teamSlug), label: "記録" },
           { href: buildTeamTrainingPlanPath(teamSlug), label: "年間" },
           { href: buildTeamMembersPath(teamSlug), label: "名簿" },
@@ -45,10 +49,10 @@ export function PortalTopNav({ initialTango, teamSlug }: PortalTopNavProps) {
     { href: buildTeamRootPath(teamSlug), label: "試合" },
   ];
 
-  // 「名簿」は、その下の「ログインの記録」を開いているときも選ばれた表示にする。
-  const membersPath = buildTeamMembersPath(teamSlug);
+  // 「名簿」「ノート」は、その下のページを開いているときも選ばれた表示にする。
+  const sectionPaths = [buildTeamMembersPath(teamSlug), buildTeamNotesPath(teamSlug)];
   const isCurrent = (href: string) =>
-    pathname === href || (href === membersPath && pathname.startsWith(`${membersPath}/`));
+    pathname === href || (sectionPaths.includes(href) && pathname.startsWith(`${href}/`));
 
   return (
     <header className="tp-top">
@@ -68,6 +72,7 @@ export function PortalTopNav({ initialTango, teamSlug }: PortalTopNavProps) {
         {links.map((link) => (
           <Link key={link.href} href={link.href} aria-current={isCurrent(link.href) ? "page" : undefined}>
             {link.label}
+            {"badge" in link && link.badge ? <span className="tp-nav-badge">{link.badge}</span> : null}
           </Link>
         ))}
       </nav>

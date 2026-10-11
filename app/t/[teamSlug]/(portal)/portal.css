@@ -1698,3 +1698,227 @@ body:has(.tp[data-mode="tango"]) {
 .tp[data-mode="tango"] :is(.tp-position, .tp-programs li, .tp-block dl, .tp-block-status) {
   border-radius: 0;
 }
+
+/* ---------- バレーノート ---------- */
+.tp-note-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tp-note-clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.tp-note-clamp-2 {
+  white-space: normal;
+  -webkit-line-clamp: 2;
+}
+
+.tp-notecard .tp-when {
+  font-family: var(--tp-num);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tp-notecard .tp-request {
+  white-space: pre-wrap;
+}
+
+.tp-note-more {
+  width: fit-content;
+  color: var(--tp-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tp-unread,
+.tp-nav-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--tp-accent);
+  color: var(--tp-bg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.tp-nav-badge {
+  margin-left: 4px;
+  font-family: var(--tp-num);
+}
+
+.tp-link {
+  color: var(--tp-accent);
+  text-decoration: underline;
+}
+
+.tp-slots {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-slots li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-slots li:first-child {
+  border-top: 0;
+}
+
+.tp-slots .tp-when {
+  min-width: 5.6em;
+  font-family: var(--tp-num);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tp-slot-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tp-slot-empty {
+  padding: 4px 12px;
+  border: 1px dashed var(--tp-line);
+  border-radius: 8px;
+  color: var(--tp-accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tp-comments {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-comments li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-comments li:first-child {
+  border-top: 0;
+}
+
+.tp-comments p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tp-comment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tp-comment-head span {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 12px;
+}
+
+/* 月ごとのまとめ(印刷用)。画面でも同じ並びで見える。 */
+.tp-print {
+  display: grid;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.tp-print-title {
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.tp-print-group {
+  display: grid;
+  gap: 12px;
+}
+
+.tp-print-group > h2 {
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--tp-fg);
+}
+
+.tp-print-member {
+  display: grid;
+  gap: 8px;
+}
+
+.tp-print-member h3 .tp-count {
+  margin-left: 8px;
+}
+
+.tp-print-note {
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--tp-line);
+  break-inside: avoid;
+}
+
+.tp-print-note h4 {
+  margin: 0;
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 13px;
+}
+
+.tp-print-comment {
+  padding-left: 12px;
+  color: var(--tp-muted);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.tp-print-comment b {
+  margin-right: 8px;
+  color: var(--tp-fg);
+}
+
+@media print {
+  body:has(.tp) {
+    --tp-bg: #ffffff;
+    --tp-surface: #ffffff;
+    --tp-fg: #000000;
+    --tp-muted: #444444;
+    --tp-line: #bbbbbb;
+    --tp-accent: #000000;
+    --tp-accent-soft: #f2f2f2;
+  }
+
+  .tp-top,
+  .tp-no-print {
+    display: none !important;
+  }
+
+  .tp-wrap {
+    max-width: none;
+    padding: 0;
+  }
+
+  .tp-print-group {
+    break-before: page;
+  }
+
+  .tp-print-group:first-of-type {
+    break-before: auto;
+  }
+}

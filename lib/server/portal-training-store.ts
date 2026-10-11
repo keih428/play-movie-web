@@ -122,6 +122,19 @@ export async function getPreviousWeights(
   return Object.fromEntries(rows.map((row) => [row.exercise, row.weight_kg]));
 }
 
+/** その日に書いてある「リーダー・トレーニング担当へ」。変わったときだけ知らせるために使う。 */
+export async function getDayRequest(
+  memberId: string,
+  weekStart: string,
+  day: TrainingDay,
+): Promise<string> {
+  const rows = await query<{ request: string }>(
+    "SELECT request FROM training_memos WHERE member_id = $1 AND week_start = $2 AND day = $3",
+    [memberId, weekStart, day],
+  );
+  return rows[0]?.request ?? "";
+}
+
 /** その日の記録を、送られてきた内容で置き換える。空の欄の種目は消える。 */
 export async function saveDayRecord(input: {
   memberId: string;

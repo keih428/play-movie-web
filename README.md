@@ -293,6 +293,23 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 * **見た目の切り替え**:上のバーの「鉄壁」スイッチで、通常の表示と単語帳の表示(配布版の単語帳版と同じ。英語の見出し・発音・赤シート・必修語)を切り替える。端末ごとにクッキー `portal_mode` で覚える。枠の `data-mode` を変えるだけで、中身は CSS(`.tp-std-only` / `.tp-tango-only`)で出し分ける。
 * 「ルールと説明」の文章は `menu.json` の `ref`(HTML)から出す。読み込むときに `sanitizeRefHtml` で、文章と表のタグだけに絞る。
 
+### バレーノート
+| URL | 中身 |
+|---|---|
+| `/t/utvb/notes` | みんなのノート(まとまりごと:サイド / MB / S / Li / 全員)。自分がまだ書いていない練習日も出る |
+| `/t/utvb/notes/mine` | 自分のノート。練習日ごとの枠が並び、書いていない日が分かる |
+| `/t/utvb/notes/write?date=YYYY-MM-DD` | その日のノートを書く・直す(1人・1日に1つ) |
+| `/t/utvb/notes/<id>` | 1つのノートとコメント |
+| `/t/utvb/notes/print?month=YYYY-MM` | 月ごとのまとめ(印刷して PDF にする)。トレーニング担当・副担当・スタッフ |
+
+* 書けるのはプレイヤーだけ。読む・コメントするのは、ログインした全員。
+* 練習日は 日・火・木・土。オフの日や、ほかの曜日の練習は、トレーニング担当が例外として登録する(`practice_day_overrides`)。
+* 新着のコメントは、書いた本人がそのノートを開くと読んだことになる(`notes.author_seen_at`)。上のバーの「ノート」に数が出る。
+* **Slack の知らせ**(`lib/server/portal-slack.ts`):`SLACK_BOT_TOKEN` があり、名簿に Slack の ID がある人にだけ DM を送る。なければ何もしない。
+    * ノートにコメントが付いた → 書いた本人
+    * ノートに「リーダーへ」が書かれた → その人のまとまりのリーダー(OP は OH のリーダー)
+    * トレーニング録に「リーダー・トレーニング担当へ」が書かれた → まとまりのリーダー + トレーニング担当・副担当
+
 ### 環境変数
 | 名前 | 中身 |
 |---|---|
@@ -300,3 +317,4 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | `PORTAL_PASSPHRASE` | 部の合言葉。ローカルで未設定なら `utvb-dev` |
 | `PORTAL_SESSION_SECRET` | クッキーの署名用。`openssl rand -base64 32` で作る |
 | `PORTAL_ALERT_SLACK_WEBHOOK_URL` | 初めての端末・合言葉の連続間違いを知らせる先(なくても動く) |
+| `SLACK_BOT_TOKEN` | 部員に DM を送る Slack アプリのトークン(`xoxb-…`、権限は `chat:write`)。なくても動く |

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isPortalTeam } from "@/lib/domain/portal";
+import { getMemberGroup, isPortalTeam, receivesTrainingNotices } from "@/lib/domain/portal";
+import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import {
   TRAINING_DAYS,
   buildLiftKindMap,
@@ -7,7 +8,13 @@ import {
   type TrainingDay,
 } from "@/lib/domain/training";
 import { getCurrentMember } from "@/lib/server/portal-session";
-import { listTrainingPrograms, saveDayRecord } from "@/lib/server/portal-training-store";
+import { listMembers } from "@/lib/server/portal-member-store";
+import { excerpt, getBaseUrl, notifyMembers } from "@/lib/server/portal-slack";
+import {
+  getDayRequest,
+  listTrainingPrograms,
+  saveDayRecord,
+} from "@/lib/server/portal-training-store";
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_WEIGHT_KG = 500;
@@ -62,13 +69,34 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const weekStart = payload.weekStart as string;
+  const day = payload.day as TrainingDay;
+  const requestText = readText(payload.request);
+  const previousRequest = await getDayRequest(current.id, weekStart, day);
   await saveDayRecord({
     memberId: current.id,
-    weekStart: payload.weekStart as string,
-    day: payload.day as TrainingDay,
+    weekStart,
+    day,
     weights,
     memo: readText(payload.memo),
-    request: readText(payload.request),
+    request: requestText,
   });
+
+  // 「リーダー・トレーニング担当へ」が新しく書かれたか変わったら、まとまりのリーダー(OP は OH のリーダー)と、
+  // トレーニング担当・副担当に知らせる。同じ内容で保存し直しただけなら知らせない。
+  if (requestText && requestText !== previousRequest) {
+    const group = getMemberGroup(current.position);
+    const recipients = (await listMembers(teamSlug)).filter(
+      (member) =>
+        member.id !== current.id &&
+        (receivesTrainingNotices(member.role) ||
+          (member.isLeader && getMemberGroup(member.position) === group)),
+    );
+    const week = program.menu.weeks.find((entry) => entry.s === weekStart);
+    await notifyMembers(
+      recipients,
+      `${current.name} がトレーニング録に「リーダー・トレーニング担当へ」を書きました\n> ${excerpt(requestText)}\n${getBaseUrl(request)}${buildTeamTrainingRecordsPath(teamSlug)}?menu=${program.key}&week=${week?.k ?? ""}`,
+    );
+  }
   return NextResponse.json({ ok: true });
 }
