@@ -16,6 +16,10 @@ export type Member = {
   id: string;
   teamSlug: string;
   name: string;
+  // 背番号(なければ null)。
+  number: number | null;
+  // 画面と Slack に出す名前。背番号があれば前に付ける(15林)。
+  displayName: string;
   grade: number | null;
   position: MemberPosition | null;
   isLeader: boolean;
@@ -30,6 +34,8 @@ export type Member = {
 
 export type MemberInput = {
   name: string;
+  // 背番号。undefined は「触らない」(取り込む表に背番号の列がないとき)、null は「番号なし」。
+  number?: number | null;
   grade: number | null;
   position: MemberPosition | null;
   isLeader: boolean;
@@ -37,7 +43,7 @@ export type MemberInput = {
   title: string | null;
 };
 
-export type LoginChoice = Pick<Member, "id" | "name" | "grade" | "position" | "title">;
+export type LoginChoice = Pick<Member, "id" | "displayName" | "grade" | "position" | "title">;
 
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   member: "部員",
@@ -52,6 +58,13 @@ export const MEMBER_GROUP_LABELS: Record<MemberGroup, string> = {
   S: "S",
   Li: "Li",
 };
+
+/** 背番号 + 名前(15林)。背番号がなければ名前だけ。 */
+export function formatMemberName(name: string, number: number | null | undefined): string {
+  return number === null || number === undefined ? name : `${number}${name}`;
+}
+
+export const MEMBER_NUMBER_MAX = 999;
 
 export function isPortalTeam(teamSlug: string | undefined): boolean {
   return Boolean(teamSlug && PORTAL_TEAM_SLUGS.includes(teamSlug));
@@ -121,7 +134,7 @@ function parseRole(value: string): { role: MemberRole; title: string | null } {
 }
 
 /**
- * 名簿の Markdown の表(名前 | 学年 | ポジション | リーダー | 役割)を読む。
+ * 名簿の Markdown の表(背番号 | 名前 | 学年 | ポジション | リーダー | 役割)を読む。背番号の列は、なくてもよい。
  * ポジションの欄が OH/OP/MB/S/Li 以外(トレーナー、コーチ など)の行は、それを肩書として持つ。
  */
 export function parseRosterMarkdown(markdown: string): MemberInput[] {
@@ -156,9 +169,19 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
     const position = isMemberPosition(positionCell) ? positionCell : null;
     const { role, title } = parseRole(read("役割"));
     const grade = Number.parseInt(read("学年"), 10);
+    const numberCell = Number.parseInt(read("背番号"), 10);
+    const hasNumberColumn = columns.includes("背番号");
 
     members.push({
       name,
+      ...(hasNumberColumn
+        ? {
+            number:
+              Number.isInteger(numberCell) && numberCell >= 0 && numberCell <= MEMBER_NUMBER_MAX
+                ? numberCell
+                : null,
+          }
+        : {}),
       grade: Number.isFinite(grade) ? grade : null,
       position,
       isLeader: /[◯○〇]/.test(read("リーダー")),

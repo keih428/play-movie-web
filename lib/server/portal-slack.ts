@@ -121,7 +121,7 @@ export async function checkSlack(member: Member): Promise<SlackCheck[]> {
     checks.push({
       step: "名簿の Slack の ID",
       ok: false,
-      detail: `名簿の ${member.name} に Slack の ID が入っていません。名簿の「直す」から入れてください。`,
+      detail: `名簿の ${member.displayName} に Slack の ID が入っていません。名簿の「直す」から入れてください。`,
     });
     return checks;
   }

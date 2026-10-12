@@ -141,7 +141,7 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
                   disabled={busy}
                   onClick={() => chooseMember(member.id)}
                 >
-                  <b>{member.name}</b>
+                  <b>{member.displayName}</b>
                   <small>{member.position ?? member.title ?? ""}</small>
                 </button>
               ))}

@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
 
   const members = await listMembers(teamSlug);
   if (!payload.memberId) {
-    const choices: LoginChoice[] = members.map(({ id, name, grade, position, title }) => ({
+    const choices: LoginChoice[] = members.map(({ id, displayName, grade, position, title }) => ({
       id,
-      name,
+      displayName,
       grade,
       position,
       title,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     teamSlug,
     result: "ok",
     memberId: member.id,
-    memberName: member.name,
+    memberName: member.displayName,
     deviceId,
     newDevice: device.isNew,
     request: requestInfo,
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   // 初めてのログインは全員が「初めての端末」になるので、2台目からだけ知らせる。
   if (device.hadOtherDevices) {
     await notifyAdmin(
-      `部内ページ:${member.name} が初めての端末からログインしました(IP ${requestInfo.ip ?? "不明"} / ${requestInfo.userAgent ?? "端末不明"})`,
+      `部内ページ:${member.displayName} が初めての端末からログインしました(IP ${requestInfo.ip ?? "不明"} / ${requestInfo.userAgent ?? "端末不明"})`,
     );
   }
 

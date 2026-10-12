@@ -63,7 +63,7 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
     <>
       <header className="tp-hero">
         <span className="tp-eyebrow">
-          {current.name} ・ {current.position}
+          {current.displayName} ・ {current.position}
         </span>
         <h1>自分のノート</h1>
         <div className="tp-actions">

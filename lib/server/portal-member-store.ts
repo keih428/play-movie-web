@@ -1,11 +1,21 @@
 import { randomUUID } from "node:crypto";
-import type { Member, MemberInput, MemberPosition, MemberRole } from "@/lib/domain/portal";
+import {
+  formatMemberName,
+  type Member,
+  type MemberInput,
+  type MemberPosition,
+  type MemberRole,
+} from "@/lib/domain/portal";
 import { query, transaction } from "@/lib/server/portal-db";
+
+// ほかの表から名前を引くときに使う。背番号があれば前に付ける(15林)。members を m として結合しておく。
+export const MEMBER_DISPLAY_NAME_SQL = "(coalesce(m.number::text, '') || m.name)";
 
 type MemberRow = {
   id: string;
   team_slug: string;
   name: string;
+  number: number | null;
   grade: number | null;
   position: string | null;
   is_leader: boolean;
@@ -29,6 +39,7 @@ export type MemberPatch = Partial<
 
 const PATCH_COLUMNS: Record<keyof MemberPatch, string> = {
   name: "name",
+  number: "number",
   grade: "grade",
   position: "position",
   isLeader: "is_leader",
@@ -45,6 +56,8 @@ function toMember(row: MemberRow): Member {
     id: row.id,
     teamSlug: row.team_slug,
     name: row.name,
+    number: row.number,
+    displayName: formatMemberName(row.name, row.number),
     grade: row.grade,
     position: row.position as MemberPosition | null,
     isLeader: row.is_leader,
@@ -111,9 +124,10 @@ export async function upsertMembers(
         added += 1;
       }
       await run(
-        `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order, number)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (team_slug, name) DO UPDATE SET
+           number = CASE WHEN $11 THEN EXCLUDED.number ELSE members.number END,
            grade = EXCLUDED.grade,
            position = EXCLUDED.position,
            is_leader = EXCLUDED.is_leader,
@@ -132,6 +146,9 @@ export async function upsertMembers(
           input.role,
           input.title,
           index,
+          input.number ?? null,
+          // 表に背番号の列があるときだけ、背番号を書き換える。
+          input.number !== undefined,
         ],
       );
     }
@@ -142,8 +159,8 @@ export async function upsertMembers(
 
 export async function createMember(teamSlug: string, input: MemberInput): Promise<Member> {
   const rows = await query<MemberRow>(
-    `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+    `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, number, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
        (SELECT coalesce(max(sort_order), -1) + 1 FROM members WHERE team_slug = $2))
      RETURNING *`,
     [
@@ -155,6 +172,7 @@ export async function createMember(teamSlug: string, input: MemberInput): Promis
       input.isLeader,
       input.role,
       input.title,
+      input.number ?? null,
     ],
   );
   return toMember(rows[0]);

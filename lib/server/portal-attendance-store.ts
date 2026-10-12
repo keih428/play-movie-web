@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AttendanceKind, AttendanceReport } from "@/lib/domain/attendance";
 import type { MemberPosition } from "@/lib/domain/portal";
 import { query } from "@/lib/server/portal-db";
+import { MEMBER_DISPLAY_NAME_SQL } from "@/lib/server/portal-member-store";
 
 type ReportRow = {
   id: string;
@@ -16,7 +17,7 @@ type ReportRow = {
 };
 
 const REPORT_SELECT = `
-  SELECT r.id, r.member_id, m.name AS member_name, m.position, r.practice_date, r.kind,
+  SELECT r.id, r.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, m.position, r.practice_date, r.kind,
          r.arrive_at, r.leave_at, r.reason
   FROM attendance_reports r JOIN members m ON m.id = r.member_id`;
 

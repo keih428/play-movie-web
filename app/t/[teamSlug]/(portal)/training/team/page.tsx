@@ -76,7 +76,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
     getTeamWeek(teamSlug, week.s),
   ]);
   const players = members.filter((member) => member.position);
-  const names = new Map(members.map((member) => [member.id, member.name]));
+  const names = new Map(members.map((member) => [member.id, member.displayName]));
   const recordedIds = new Set(teamWeek.memos.map((memo) => memo.memberId));
   const comments = teamWeek.memos.filter((memo) => memo.memo || memo.request);
 
@@ -165,7 +165,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
                   <tr key={member.id}>
                     <td>
                       <span className="tp-name">
-                        {member.name}
+                        {member.displayName}
                         {member.id === current.id ? "(自分)" : ""}
                       </span>
                       <span className="tp-sub">

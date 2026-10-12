@@ -47,7 +47,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
     <>
       <header className="tp-hero">
         <span className="tp-eyebrow">
-          {current.name} ・ {current.position}
+          {current.displayName} ・ {current.position}
         </span>
         <h1>{formatRelativeNoteDate(date, today)}のノート</h1>
         <p className="tp-small tp-muted">

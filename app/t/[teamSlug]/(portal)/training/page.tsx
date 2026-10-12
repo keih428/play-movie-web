@@ -377,7 +377,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         </div>
         <div className="tp-chips">
           <span className="tp-chip">
-            <b>{current.name}</b>
+            <b>{current.displayName}</b>
           </span>
           <span className="tp-chip">
             <span className={`tp-tier ${selection.tier}`}>{selection.tier}</span>

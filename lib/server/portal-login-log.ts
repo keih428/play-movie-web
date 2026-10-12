@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { query } from "@/lib/server/portal-db";
+import { MEMBER_DISPLAY_NAME_SQL } from "@/lib/server/portal-member-store";
 
 export type LoginResult = "ok" | "bad_passphrase" | "unknown_member" | "locked";
 
@@ -113,8 +114,11 @@ export async function listLoginLogs(teamSlug: string, limit = 200): Promise<Logi
     user_agent: string | null;
     new_device: boolean;
   }>(
-    `SELECT id, at, result, member_name, ip, user_agent, new_device FROM login_logs
-     WHERE team_slug = $1 ORDER BY at DESC LIMIT $2`,
+    // 名前は、いまの名簿のもの(背番号つき)を出す。名簿にもういない人は、記録したときの名前。
+    `SELECT l.id, l.at, l.result, coalesce(${MEMBER_DISPLAY_NAME_SQL}, l.member_name) AS member_name,
+            l.ip, l.user_agent, l.new_device
+     FROM login_logs l LEFT JOIN members m ON m.id = l.member_id
+     WHERE l.team_slug = $1 ORDER BY l.at DESC LIMIT $2`,
     [teamSlug, limit],
   );
 
@@ -137,7 +141,7 @@ export async function listMemberDevices(teamSlug: string): Promise<MemberDeviceE
     first_seen_at: Date;
     last_seen_at: Date;
   }>(
-    `SELECT m.name, d.user_agent, d.last_ip, d.first_seen_at, d.last_seen_at
+    `SELECT ${MEMBER_DISPLAY_NAME_SQL} AS name, d.user_agent, d.last_ip, d.first_seen_at, d.last_seen_at
      FROM member_devices d JOIN members m ON m.id = d.member_id
      WHERE m.team_slug = $1 ORDER BY d.last_seen_at DESC`,
     [teamSlug],
