@@ -122,7 +122,7 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
             <textarea
               id="portal-roster"
               rows={10}
-              placeholder={"| 名前 | 学年 | ポジション | リーダー | 役割 |\n| --- | --- | --- | --- | --- |"}
+              placeholder={"| 背番号 | 名前 | 学年 | ポジション | リーダー | 役割 |\n| --- | --- | --- | --- | --- | --- |"}
               value={rosterMarkdown}
               onChange={(event) => setRosterMarkdown(event.target.value)}
               required
