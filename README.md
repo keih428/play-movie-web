@@ -310,6 +310,15 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
     * ノートに「リーダーへ」が書かれた → その人のまとまりのリーダー(OP は OH のリーダー)
     * トレーニング録に「リーダー・トレーニング担当へ」が書かれた → まとまりのリーダー + トレーニング担当・副担当
 
+### 出欠の連絡
+| URL | 中身 |
+|---|---|
+| `/t/utvb/attendance` | 遅刻・早退・欠席の連絡を出す・訂正する・取り消す。下に、練習ごとの出欠(ポジション別。連絡のない人は来られるものとして数える) |
+
+* 連絡できるのは、ログインした全員(スタッフも)。1人・1日に1つで、出し直すと訂正になる。過ぎた日の連絡は出せない。
+* 出す・訂正する・取り消すたびに、Slack の遅刻・欠席のチャンネル(`SLACK_ATTENDANCE_CHANNEL`)に流れる。ボットをそのチャンネルに招待しておく。未設定なら、サイトにだけ残る。
+* 文の形は `lib/domain/attendance.ts` の `formatAttendanceMessage`。
+
 ### 環境変数
 | 名前 | 中身 |
 |---|---|
@@ -318,3 +327,4 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | `PORTAL_SESSION_SECRET` | クッキーの署名用。`openssl rand -base64 32` で作る |
 | `PORTAL_ALERT_SLACK_WEBHOOK_URL` | 初めての端末・合言葉の連続間違いを知らせる先(なくても動く) |
 | `SLACK_BOT_TOKEN` | 部員に DM を送る Slack アプリのトークン(`xoxb-…`、権限は `chat:write`)。なくても動く |
+| `SLACK_ATTENDANCE_CHANNEL` | 遅刻・欠席の連絡を流すチャンネルの ID(`C` で始まる)。なくても動く |

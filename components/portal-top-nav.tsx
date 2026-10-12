@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  buildTeamAttendancePath,
   buildTeamLoginPath,
   buildTeamMembersPath,
   buildTeamNotesPath,
@@ -42,6 +43,7 @@ export function PortalTopNav({ initialTango, teamSlug, unreadNotes }: PortalTopN
       : [
           { href: buildTeamTrainingPath(teamSlug), label: "メニュー" },
           { href: buildTeamNotesPath(teamSlug), label: "ノート", badge: unreadNotes },
+          { href: buildTeamAttendancePath(teamSlug), label: "出欠" },
           { href: buildTeamTrainingRecordsPath(teamSlug), label: "記録" },
           { href: buildTeamTrainingPlanPath(teamSlug), label: "年間" },
           { href: buildTeamMembersPath(teamSlug), label: "名簿" },

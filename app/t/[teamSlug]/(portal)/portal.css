@@ -1947,3 +1947,57 @@ body:has(.tp[data-mode="tango"]) {
   background: var(--tp-danger-bg);
   color: var(--tp-danger-fg);
 }
+
+/* ---------- 出欠 ---------- */
+.tp-attendance {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-attendance li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 12px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-attendance li:first-child {
+  border-top: 0;
+}
+
+.tp-att-name {
+  font-weight: 500;
+}
+
+.tp-att-status {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tp-att-reason {
+  grid-column: 1 / -1;
+  color: var(--tp-muted);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.tp-att-absent .tp-att-name {
+  color: var(--tp-muted);
+  text-decoration: line-through;
+}
+
+.tp-att-absent .tp-att-status {
+  color: var(--tp-danger-fg);
+  font-weight: 700;
+}
+
+.tp-att-partial .tp-att-status {
+  color: var(--tp-accent);
+  font-weight: 700;
+}

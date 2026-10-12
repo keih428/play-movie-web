@@ -42,6 +42,36 @@ export async function notifyMembers(members: Member[], text: string) {
   );
 }
 
+/**
+ * 遅刻・欠席のチャンネルに流す。`SLACK_ATTENDANCE_CHANNEL`(チャンネルの ID、C で始まる)が未設定なら何もしない。
+ * ボットをそのチャンネルに招待しておく必要がある。うまくいったかどうかと、Slack が返した理由を返す。
+ */
+export async function postToAttendanceChannel(text: string): Promise<{ ok: boolean; detail: string }> {
+  const token = process.env.SLACK_BOT_TOKEN?.trim();
+  const channel = process.env.SLACK_ATTENDANCE_CHANNEL?.trim();
+  if (!token || !channel) {
+    return {
+      ok: false,
+      detail: !token
+        ? "SLACK_BOT_TOKEN が入っていません。"
+        : "SLACK_ATTENDANCE_CHANNEL(遅刻・欠席のチャンネルの ID)が入っていません。",
+    };
+  }
+
+  const result = await callSlack("chat.postMessage", token, { channel, text, unfurl_links: false });
+  if (!result.ok) {
+    console.error("[portal-slack] attendance channel failed", result.error);
+    return {
+      ok: false,
+      detail:
+        result.error === "not_in_channel"
+          ? "ボットがチャンネルに入っていません。Slack のそのチャンネルで、ボットを招待してください(/invite @ボットの名前)。"
+          : `Slack に断られました:${result.error}`,
+    };
+  }
+  return { ok: true, detail: "チャンネルに流しました。" };
+}
+
 export type SlackCheck = {
   step: string;
   ok: boolean;

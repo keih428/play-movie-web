@@ -170,6 +170,26 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: "005_attendance",
+    // 遅刻・早退・欠席の連絡。1人・1日に1つ(出し直すと上書き)。時刻は 'HH:MM' の文字で持つ。
+    sql: `
+      CREATE TABLE attendance_reports (
+        id text PRIMARY KEY,
+        team_slug text NOT NULL,
+        member_id text NOT NULL REFERENCES members (id),
+        practice_date text NOT NULL,
+        kind text NOT NULL,
+        arrive_at text,
+        leave_at text,
+        reason text NOT NULL DEFAULT '',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (member_id, practice_date)
+      );
+      CREATE INDEX attendance_reports_team_date ON attendance_reports (team_slug, practice_date);
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
