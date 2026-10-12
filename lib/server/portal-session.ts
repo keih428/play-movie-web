@@ -73,7 +73,7 @@ export function createSessionValue(member: Member): string {
   const session: PortalSession = {
     memberId: member.id,
     teamSlug: member.teamSlug,
-    name: member.name,
+    name: member.displayName,
     role: member.role,
     generation: getGeneration(),
   };

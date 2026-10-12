@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    await saveTrainingPlan(teamSlug, plan, current.name);
+    await saveTrainingPlan(teamSlug, plan, current.displayName);
     return NextResponse.json({ kind: "plan", blocks: plan.blocks.length });
   }
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  await saveTrainingProgram(teamSlug, menu, current.name);
+  await saveTrainingProgram(teamSlug, menu, current.displayName);
   const { start, end } = getProgramRange(menu);
   return NextResponse.json({ kind: "menu", label: formatPeriod(start, end), weeks: menu.weeks.length });
 }

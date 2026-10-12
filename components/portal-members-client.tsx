@@ -25,6 +25,7 @@ type PortalMembersClientProps = {
 
 type MemberDraft = {
   name: string;
+  number: string;
   grade: string;
   position: string;
   isLeader: boolean;
@@ -38,6 +39,7 @@ type MemberDraft = {
 
 const EMPTY_DRAFT: MemberDraft = {
   name: "",
+  number: "",
   grade: "",
   position: "",
   isLeader: false,
@@ -52,6 +54,7 @@ const EMPTY_DRAFT: MemberDraft = {
 function toDraft(member: Member): MemberDraft {
   return {
     name: member.name,
+    number: member.number === null ? "" : String(member.number),
     grade: member.grade === null ? "" : String(member.grade),
     position: member.position ?? "",
     isLeader: member.isLeader,
@@ -195,7 +198,7 @@ export function PortalMembersClient({
                 return (
                   <tr key={member.id} className={member.active ? undefined : "tp-inactive"}>
                     <td>
-                      <span className="tp-name">{member.name}</span>
+                      <span className="tp-name">{member.displayName}</span>
                       {member.id === currentMemberId ? <span className="tp-sub">自分</span> : null}
                       {member.active ? null : <span className="tp-sub">名簿から外した</span>}
                     </td>
@@ -244,7 +247,7 @@ export function PortalMembersClient({
         <div className="tp-chips">
           {current ? (
             <span className="tp-chip">
-              <b>{current.name}</b> としてログイン中
+              <b>{current.displayName}</b> としてログイン中
             </span>
           ) : null}
         </div>
@@ -279,6 +282,15 @@ export function PortalMembersClient({
                   value={draft.name}
                   onChange={(event) => setField("name", event.target.value)}
                   required
+                />
+              </div>
+              <div className="tp-field">
+                <label htmlFor="member-number">背番号(ない人は空)</label>
+                <input
+                  id="member-number"
+                  inputMode="numeric"
+                  value={draft.number}
+                  onChange={(event) => setField("number", event.target.value)}
                 />
               </div>
               <div className="tp-field">
@@ -422,7 +434,7 @@ export function PortalMembersClient({
             <form className="tp-ref-body" onSubmit={importRoster}>
               <p className="tp-small tp-muted">
                 名前が同じ人は上書きし、いない人は足します。表にいない人はそのまま残ります。段階・枠・Slack の ID
-                は変わりません。
+                は変わりません。背番号は、表に「背番号」の列があるときだけ書き換えます。
               </p>
               <div className="tp-field">
                 <label htmlFor="roster-markdown">名簿の表</label>

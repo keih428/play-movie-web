@@ -190,6 +190,13 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX attendance_reports_team_date ON attendance_reports (team_slug, practice_date);
     `,
   },
+  {
+    id: "006_member_number",
+    // 背番号。名前の前に付けて出す(15林)。スタッフなど、番号のない人は空。
+    sql: `
+      ALTER TABLE members ADD COLUMN number integer
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

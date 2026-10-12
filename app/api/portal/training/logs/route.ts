@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     const week = program.menu.weeks.find((entry) => entry.s === weekStart);
     await notifyMembers(
       recipients,
-      `${current.name} がトレーニング録に「リーダー・トレーニング担当へ」を書きました\n> ${excerpt(requestText)}\n${getBaseUrl(request)}${buildTeamTrainingRecordsPath(teamSlug)}?menu=${program.key}&week=${week?.k ?? ""}`,
+      `${current.displayName} がトレーニング録に「リーダー・トレーニング担当へ」を書きました\n> ${excerpt(requestText)}\n${getBaseUrl(request)}${buildTeamTrainingRecordsPath(teamSlug)}?menu=${program.key}&week=${week?.k ?? ""}`,
     );
   }
   return NextResponse.json({ ok: true });

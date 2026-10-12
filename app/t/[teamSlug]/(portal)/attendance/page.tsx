@@ -183,7 +183,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
                       }
                     >
                       <span className="tp-att-name">
-                        {member.name}
+                        {member.displayName}
                         {member.position ? "" : member.title ? `(${member.title})` : ""}
                       </span>
                       <span className="tp-att-status">{report ? describe(report) : "○"}</span>

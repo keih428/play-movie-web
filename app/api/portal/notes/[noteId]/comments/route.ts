@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (author?.active) {
       await notifyMembers(
         [author],
-        `${current.name} が ${formatNoteDate(note.practiceDate)} のノートにコメントしました\n> ${excerpt(body)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
+        `${current.displayName} が ${formatNoteDate(note.practiceDate)} のノートにコメントしました\n> ${excerpt(body)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
       );
     }
   }

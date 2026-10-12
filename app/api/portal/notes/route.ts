@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     );
     await notifyMembers(
       leaders,
-      `${current.name} が ${formatNoteDate(note.practiceDate)} のノートに「リーダーへ」を書きました\n> ${excerpt(note.request)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
+      `${current.displayName} が ${formatNoteDate(note.practiceDate)} のノートに「リーダーへ」を書きました\n> ${excerpt(note.request)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
     );
   }
 

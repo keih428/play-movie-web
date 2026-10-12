@@ -1,4 +1,5 @@
 import {
+  MEMBER_NUMBER_MAX,
   MEMBER_SLOTS,
   MEMBER_TIERS,
   isMemberPosition,
@@ -31,6 +32,13 @@ export function parseMemberInput(
         throw new Error("名前を入れてください。");
       }
       patch.name = name;
+    }
+    if ("number" in body) {
+      const number = body.number === null || body.number === "" ? null : Number(body.number);
+      if (number !== null && (!Number.isInteger(number) || number < 0 || number > MEMBER_NUMBER_MAX)) {
+        throw new Error("背番号の値が正しくありません。");
+      }
+      patch.number = number;
     }
     if ("grade" in body) {
       const grade = body.grade === null || body.grade === "" ? null : Number(body.grade);

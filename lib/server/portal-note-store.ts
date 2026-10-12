@@ -7,6 +7,7 @@ import {
   type MemberPosition,
 } from "@/lib/domain/portal";
 import { query, transaction } from "@/lib/server/portal-db";
+import { MEMBER_DISPLAY_NAME_SQL } from "@/lib/server/portal-member-store";
 
 type NoteRow = {
   id: string;
@@ -22,7 +23,7 @@ type NoteRow = {
 };
 
 const NOTE_SELECT = `
-  SELECT n.id, n.member_id, m.name AS member_name, n.practice_date, n.position, n.group_key,
+  SELECT n.id, n.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, n.practice_date, n.position, n.group_key,
          n.body, n.request, n.updated_at,
          (SELECT count(*) FROM note_comments c WHERE c.note_id = n.id)::int AS comment_count
   FROM notes n JOIN members m ON m.id = n.member_id`;
@@ -138,7 +139,7 @@ export async function listComments(noteIds: string[]): Promise<NoteComment[]> {
     body: string;
     created_at: Date;
   }>(
-    `SELECT c.id, c.note_id, c.member_id, m.name AS member_name, c.body, c.created_at
+    `SELECT c.id, c.note_id, c.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, c.body, c.created_at
      FROM note_comments c JOIN members m ON m.id = c.member_id
      WHERE c.note_id = ANY($1::text[])
      ORDER BY c.created_at`,
