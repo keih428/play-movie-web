@@ -4,9 +4,10 @@ import { AttendanceForm } from "@/components/attendance-form";
 import {
   ATTENDANCE_KIND_LABELS,
   describeAttendanceTime,
+  getLastAttendanceDate,
   type AttendanceReport,
 } from "@/lib/domain/attendance";
-import { addDaysToDate, formatNoteDate, isIsoDate, listPracticeDates } from "@/lib/domain/notes";
+import { formatNoteDate, isIsoDate, listPracticeDates } from "@/lib/domain/notes";
 import { MEMBER_POSITIONS, canAdminister, isPortalTeam, type Member } from "@/lib/domain/portal";
 import { buildTeamAttendancePath } from "@/lib/domain/team";
 import { listReports } from "@/lib/server/portal-attendance-store";
@@ -26,8 +27,6 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
-const DAYS_AHEAD = 21;
-
 /** 遅刻・早退・欠席の連絡を出す。下で、練習ごとに誰が来られるかをポジション別に見る。 */
 export default async function TeamAttendancePage({ params, searchParams }: PageProps) {
   const { teamSlug } = await params;
@@ -38,7 +37,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
   const basePath = buildTeamAttendancePath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
   const today = getTodayInJapan();
-  const until = addDaysToDate(today, DAYS_AHEAD);
+  const until = getLastAttendanceDate(today);
 
   const [overrides, members, reports] = await Promise.all([
     listPracticeDayOverrides(teamSlug),
@@ -52,7 +51,9 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
 
   const { date: requestedDate } = await searchParams;
   const selectedDate =
-    isIsoDate(requestedDate) && requestedDate >= today ? requestedDate : (practiceDates[0] ?? today);
+    isIsoDate(requestedDate) && requestedDate >= today && requestedDate <= until
+      ? requestedDate
+      : (practiceDates[0] ?? today);
   const dayReports = new Map(
     reports.filter((report) => report.practiceDate === selectedDate).map((report) => [report.memberId, report]),
   );
@@ -89,6 +90,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
           canTestChannel={canAdminister(current.role)}
           initialDate={selectedDate}
           myReports={reports.filter((report) => report.memberId === current.id)}
+          lastDate={until}
           practiceDates={practiceDates}
           teamSlug={teamSlug}
           today={today}

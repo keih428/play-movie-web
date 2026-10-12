@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   ATTENDANCE_REASON_MAX,
   formatAttendanceMessage,
+  getLastAttendanceDate,
   isAttendanceKind,
   isClockTime,
   needsArriveTime,
@@ -48,8 +49,12 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (!isIsoDate(payload.date) || payload.date < getTodayInJapan()) {
+  const today = getTodayInJapan();
+  if (!isIsoDate(payload.date) || payload.date < today) {
     return NextResponse.json({ error: "日付が正しくありません(過ぎた日の連絡は出せません)。" }, { status: 400 });
+  }
+  if (payload.date > getLastAttendanceDate(today)) {
+    return NextResponse.json({ error: "連絡を出せるのは、2か月先の日までです。" }, { status: 400 });
   }
   if (!isAttendanceKind(payload.kind)) {
     return NextResponse.json({ error: "欠席・遅刻・早退のどれかを選んでください。" }, { status: 400 });

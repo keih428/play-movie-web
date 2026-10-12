@@ -25,6 +25,18 @@ export type AttendanceReport = {
 };
 
 export const ATTENDANCE_REASON_MAX = 500;
+// 連絡は、今日から2か月先の日まで出せる。
+export const ATTENDANCE_MONTHS_AHEAD = 2;
+
+/** 今日から、連絡を出せるいちばん先の日(2か月後の同じ日。その月にない日なら月末)。 */
+export function getLastAttendanceDate(today: string): string {
+  const [year, month, day] = today.split("-").map(Number);
+  const lastDayOfTargetMonth = new Date(Date.UTC(year, month - 1 + ATTENDANCE_MONTHS_AHEAD + 1, 0)).getUTCDate();
+  const target = new Date(
+    Date.UTC(year, month - 1 + ATTENDANCE_MONTHS_AHEAD, Math.min(day, lastDayOfTargetMonth)),
+  );
+  return target.toISOString().slice(0, 10);
+}
 
 export function isAttendanceKind(value: unknown): value is AttendanceKind {
   return ATTENDANCE_KINDS.includes(value as AttendanceKind);

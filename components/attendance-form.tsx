@@ -18,6 +18,8 @@ import { buildTeamApiPath } from "@/lib/domain/team";
 type AttendanceFormProps = {
   canTestChannel: boolean;
   initialDate: string;
+  // 連絡を出せるいちばん先の日(今日から2か月先)。
+  lastDate: string;
   myReports: AttendanceReport[];
   practiceDates: string[];
   teamSlug: string;
@@ -31,6 +33,7 @@ const OTHER_DATE = "other";
 export function AttendanceForm({
   canTestChannel,
   initialDate,
+  lastDate,
   myReports,
   practiceDates,
   teamSlug,
@@ -156,6 +159,7 @@ export function AttendanceForm({
               id="attendance-other-date"
               type="date"
               min={today}
+              max={lastDate}
               value={date}
               onChange={(event) => chooseDate(event.target.value)}
               required
@@ -252,7 +256,7 @@ export function AttendanceForm({
         ) : null}
       </div>
       <p className="tp-small tp-muted">
-        連絡は、Slack の遅刻・欠席のチャンネルにも流れます。名前・日付・時刻・理由は、部の全員に見えます。
+        連絡は2か月先の日まで出せて、Slack の遅刻・欠席のチャンネルにも流れます。名前・日付・時刻・理由は、部の全員に見えます。
       </p>
     </form>
   );
