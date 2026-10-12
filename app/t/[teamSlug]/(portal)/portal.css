@@ -53,6 +53,8 @@ body:has(.tp) > .site-header {
   --tp-display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
   --tp-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --tp-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* 上のバーの高さ。その下に固定するもの(週と曜日の切り替え)が、この値を使って位置を決める。 */
+  --tp-top-h: 52px;
   min-height: 100vh;
   color: var(--tp-fg);
   font-family: var(--tp-body);
@@ -105,12 +107,21 @@ body:has(.tp) > .site-header {
 }
 
 /* ---------- 上のバー ---------- */
+/* スクロールしても上に残す。左右は .tp-wrap の余白の分だけ広げて、下を流れる中身が脇から見えないようにする。 */
 .tp-top {
+  position: sticky;
+  top: 0;
+  z-index: 15;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 0 6px;
+  box-sizing: border-box;
+  height: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
+  margin: 0 -16px;
+  padding: env(safe-area-inset-top, 0px) 16px 0;
+  border-bottom: 1px solid var(--tp-line);
+  background: var(--tp-bg);
 }
 
 .tp-top nav {
@@ -238,7 +249,8 @@ body:has(.tp) > .site-header {
 /* ---------- 週と曜日の切り替え(上に固定) ---------- */
 .tp-bar {
   position: sticky;
-  top: env(safe-area-inset-top, 0px);
+  /* 上のバー(.tp-top)のすぐ下に止める。 */
+  top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
   z-index: 5;
   display: grid;
   gap: 8px;

@@ -6,6 +6,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "バレーボール 試合ビューア",
   description: "VolleyStation の試合データと動画を同期する分析アプリ",
+  // iPhone の「ホーム画面に追加」で、URL の欄がない全画面で開く(Android は app/manifest.ts)。
+  appleWebApp: {
+    capable: true,
+    title: "東大バレー部",
+    statusBarStyle: "default",
+  },
 };
 
 // 配布版(鉄壁トレーニング)と同じ文字。日本語の書体はビルドに取り込むと数百ファイルになるので、
