@@ -197,6 +197,13 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE members ADD COLUMN number integer
     `,
   },
+  {
+    id: "007_member_number_text",
+    // スタッフは、背番号のところに T・M・C などの文字を使うので、数字ではなく文字で持つ。
+    sql: `
+      ALTER TABLE members ALTER COLUMN number TYPE text USING number::text
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

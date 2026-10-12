@@ -29,7 +29,10 @@ function groupByGrade(members: LoginChoice[]) {
     const label = member.position && member.grade ? `${member.grade}年` : "スタッフ";
     groups.set(label, [...(groups.get(label) ?? []), member]);
   }
-  return [...groups.entries()];
+  // スタッフは、学年の並びのあとにまとめて出す。
+  return [...groups.entries()].sort(
+    ([left], [right]) => Number(left === "スタッフ") - Number(right === "スタッフ"),
+  );
 }
 
 export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLoginClientProps) {

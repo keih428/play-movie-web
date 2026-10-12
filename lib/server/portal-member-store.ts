@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   formatMemberName,
+  sortMembers,
   type Member,
   type MemberInput,
   type MemberPosition,
@@ -9,13 +10,13 @@ import {
 import { query, transaction } from "@/lib/server/portal-db";
 
 // ほかの表から名前を引くときに使う。背番号があれば前に付ける(15林)。members を m として結合しておく。
-export const MEMBER_DISPLAY_NAME_SQL = "(coalesce(m.number::text, '') || m.name)";
+export const MEMBER_DISPLAY_NAME_SQL = "(coalesce(m.number, '') || m.name)";
 
 type MemberRow = {
   id: string;
   team_slug: string;
   name: string;
-  number: number | null;
+  number: string | null;
   grade: number | null;
   position: string | null;
   is_leader: boolean;
@@ -81,7 +82,7 @@ export async function listMembers(
      ORDER BY sort_order, name`,
     [teamSlug, Boolean(options.includeInactive)],
   );
-  return rows.map(toMember);
+  return sortMembers(rows.map(toMember));
 }
 
 export async function countMembers(teamSlug: string): Promise<number> {

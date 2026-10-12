@@ -269,7 +269,8 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 
 * ログインは、署名を付けたクッキー(`HttpOnly`、400日)。`middleware.ts` が開くたびに期限を延ばす。
 * 合言葉(`PORTAL_PASSPHRASE`)を変えると、全員がログインし直しになる。
-* **背番号**:名簿に背番号(`members.number`)があれば、画面でも Slack の文でも、名前の前に付けて出す(`15林`。`Member.displayName`、SQL では `MEMBER_DISPLAY_NAME_SQL`)。取り込む表に「背番号」の列があるときだけ書き換える。
+* **名簿の並び**:学年の上から、同じ学年の中は背番号の順(数字 → 文字 → なし)。`sortMembers` で、名簿を使うすべての一覧に効く。
+* **背番号**:プレイヤーは数字、スタッフは T・M・C などの文字(4文字まで)。名簿に背番号(`members.number`)があれば、画面でも Slack の文でも、名前の前に付けて出す(`15林`。`Member.displayName`、SQL では `MEMBER_DISPLAY_NAME_SQL`)。取り込む表に「背番号」の列があるときだけ書き換える。
 * 名簿はリポジトリに入れない。名簿が空のあいだは、合言葉を入れた人がログイン画面から Markdown の表を貼って取り込める。
 * 保存先は Postgres。`DATABASE_URL` がなければ、ローカルでは `.data/portal-db`(PGlite)に保存する。Vercel では `DATABASE_URL` が必須。
 * 表は `lib/server/portal-db.ts` の `MIGRATIONS` に書いてあり、最初の問い合わせのときに自動で作られる。変えるときは末尾に足す。
