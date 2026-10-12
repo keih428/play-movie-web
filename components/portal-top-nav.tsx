@@ -13,6 +13,7 @@ import {
   buildTeamTrainingPlanPath,
   buildTeamTrainingRecordsPath,
 } from "@/lib/domain/team";
+import { TANGO_MODE_ENABLED } from "@/lib/domain/portal";
 
 type PortalTopNavProps = {
   initialTango: boolean;
@@ -58,18 +59,20 @@ export function PortalTopNav({ initialTango, teamSlug, unreadNotes }: PortalTopN
 
   return (
     <header className="tp-top">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={isTango}
-        className="tp-mode"
-        onClick={toggleMode}
-      >
-        <span className="tp-mode-track" aria-hidden="true">
-          <i />
-        </span>
-        鉄壁
-      </button>
+      {TANGO_MODE_ENABLED ? (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isTango}
+          className="tp-mode"
+          onClick={toggleMode}
+        >
+          <span className="tp-mode-track" aria-hidden="true">
+            <i />
+          </span>
+          鉄壁
+        </button>
+      ) : null}
       <nav aria-label="部内ページ">
         {links.map((link) => (
           <Link key={link.href} href={link.href} aria-current={isCurrent(link.href) ? "page" : undefined}>

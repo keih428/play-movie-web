@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { PortalTopNav } from "@/components/portal-top-nav";
-import { isPortalTeam } from "@/lib/domain/portal";
+import { TANGO_MODE_ENABLED, isPortalTeam } from "@/lib/domain/portal";
 import { getUnreadCounts } from "@/lib/server/portal-note-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import "./portal.css";
@@ -18,7 +18,8 @@ type LayoutProps = {
 export default async function PortalLayout({ children, params }: LayoutProps) {
   const { teamSlug } = await params;
   // 見た目の切り替え(通常 / 鉄壁=単語帳)。端末ごとにクッキーで覚える。
-  const isTango = (await cookies()).get(MODE_COOKIE)?.value === "tango";
+  // トグルを止めている間は、前に鉄壁を選んだ端末も通常の見た目で開く(戻す手段がなくなるため)。
+  const isTango = TANGO_MODE_ENABLED && (await cookies()).get(MODE_COOKIE)?.value === "tango";
 
   // 上のバーの「ノート」に、新着のコメントの数を出す(ログインしていなければ 0)。
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
