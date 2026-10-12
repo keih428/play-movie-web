@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addDaysToDate, formatNoteDate, listPracticeDates } from "@/lib/domain/notes";
+import { describePracticeEvents } from "@/lib/domain/calendar";
+import { addDaysToDate, formatNoteDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
-import {
-  getUnreadCounts,
-  listNotes,
-  listPracticeDayOverrides,
-} from "@/lib/server/portal-note-store";
+import { getPracticeSchedule } from "@/lib/server/portal-calendar";
+import { getUnreadCounts, listNotes } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
 
@@ -36,15 +34,15 @@ export default async function TeamMyNotesPage({ params }: PageProps) {
 
   const today = getTodayInJapan();
   const from = addDaysToDate(today, -7 * WEEKS_SHOWN);
-  const [notes, overrides, unreadCounts] = await Promise.all([
+  const [notes, schedule, unreadCounts] = await Promise.all([
     listNotes(teamSlug, { memberId: current.id, from }),
-    listPracticeDayOverrides(teamSlug),
+    getPracticeSchedule(teamSlug, from, today),
     getUnreadCounts(current.id),
   ]);
   const noteByDate = new Map(notes.map((note) => [note.practiceDate, note]));
 
   // 練習日の枠に、練習日ではない日に書いたノートも混ぜて、新しい順に並べる。
-  const dates = [...new Set([...listPracticeDates(from, today, overrides), ...noteByDate.keys()])].sort(
+  const dates = [...new Set([...schedule.dates, ...noteByDate.keys()])].sort(
     (left, right) => right.localeCompare(left),
   );
   // いちばん古いノートより前の「書いていない日」は出さない(使い始める前の日を責めないため)。
@@ -83,6 +81,9 @@ export default async function TeamMyNotesPage({ params }: PageProps) {
                   </Link>
                 ) : (
                   <Link className="tp-slot-body tp-slot-empty" href={`${basePath}/write?date=${date}`}>
+                    {schedule.eventsByDate[date]
+                      ? `${describePracticeEvents(schedule.eventsByDate[date])}:`
+                      : ""}
                     まだ書いていない → 書く
                   </Link>
                 )}

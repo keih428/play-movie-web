@@ -7,7 +7,6 @@ import {
   NOTE_FEED_LABELS,
   addDaysToDate,
   formatNoteDate,
-  listPracticeDates,
   type NoteFeed,
 } from "@/lib/domain/notes";
 import { canAdminister, canExportNotes, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
@@ -17,6 +16,7 @@ import {
   listNotes,
   listPracticeDayOverrides,
 } from "@/lib/server/portal-note-store";
+import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
 
@@ -50,9 +50,10 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
   const ownFeed: NoteFeed = getMemberGroup(current.position) ?? "all";
   const feed = NOTE_FEEDS.includes(requestedFeed as NoteFeed) ? (requestedFeed as NoteFeed) : ownFeed;
 
-  const [notes, overrides, unreadCounts, recentOwnNotes] = await Promise.all([
+  const [notes, overrides, schedule, unreadCounts, recentOwnNotes] = await Promise.all([
     listNotes(teamSlug, { group: feed === "all" ? undefined : feed, limit: FEED_LIMIT }),
     listPracticeDayOverrides(teamSlug),
+    getPracticeSchedule(teamSlug, addDaysToDate(today, -7), today),
     getUnreadCounts(current.id),
     canWrite ? listNotes(teamSlug, { memberId: current.id, from: addDaysToDate(today, -7) }) : [],
   ]);
@@ -61,7 +62,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
   // この1週間の練習日で、まだ書いていない日(新しい順)。
   const writtenDates = new Set(recentOwnNotes.map((note) => note.practiceDate));
   const missingDates = canWrite
-    ? listPracticeDates(addDaysToDate(today, -7), today, overrides).filter((date) => !writtenDates.has(date))
+    ? [...schedule.dates].reverse().filter((date) => !writtenDates.has(date))
     : [];
 
   return (
@@ -135,10 +136,14 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
 
       {canAdminister(current.role) ? (
         <footer className="tp-footer">
-          <details>
-            <summary>練習日を変える(トレーニング担当だけ)</summary>
-            <PracticeDayForm overrides={overrides} teamSlug={teamSlug} />
-          </details>
+          {schedule.source === "calendar" ? (
+            <p>練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日)。</p>
+          ) : (
+            <details>
+              <summary>練習日を変える(トレーニング担当だけ)</summary>
+              <PracticeDayForm overrides={overrides} teamSlug={teamSlug} />
+            </details>
+          )}
         </footer>
       ) : null}
     </>

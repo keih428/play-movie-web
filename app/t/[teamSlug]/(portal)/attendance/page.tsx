@@ -7,12 +7,13 @@ import {
   getLastAttendanceDate,
   type AttendanceReport,
 } from "@/lib/domain/attendance";
-import { formatNoteDate, isIsoDate, listPracticeDates } from "@/lib/domain/notes";
+import { describePracticeEvents } from "@/lib/domain/calendar";
+import { formatNoteDate, isIsoDate } from "@/lib/domain/notes";
 import { MEMBER_POSITIONS, canAdminister, isPortalTeam, type Member } from "@/lib/domain/portal";
 import { buildTeamAttendancePath } from "@/lib/domain/team";
 import { listReports } from "@/lib/server/portal-attendance-store";
 import { listMembers } from "@/lib/server/portal-member-store";
-import { listPracticeDayOverrides } from "@/lib/server/portal-note-store";
+import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
 
@@ -39,15 +40,18 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
   const today = getTodayInJapan();
   const until = getLastAttendanceDate(today);
 
-  const [overrides, members, reports] = await Promise.all([
-    listPracticeDayOverrides(teamSlug),
+  const [schedule, members, reports] = await Promise.all([
+    getPracticeSchedule(teamSlug, today, until),
     listMembers(teamSlug),
     listReports(teamSlug, { from: today, to: until }),
   ]);
-  // これからの練習日(古い順)。練習日ではない日に出された連絡があれば、その日も並べる。
+  // これからの予定がある日(古い順)。予定のない日に出された連絡があれば、その日も並べる。
   const practiceDates = [
-    ...new Set([...listPracticeDates(today, until, overrides), ...reports.map((report) => report.practiceDate)]),
+    ...new Set([...schedule.dates, ...reports.map((report) => report.practiceDate)]),
   ].sort();
+  const eventLabels = Object.fromEntries(
+    Object.entries(schedule.eventsByDate).map(([date, events]) => [date, describePracticeEvents(events)]),
+  );
 
   const { date: requestedDate } = await searchParams;
   const selectedDate =
@@ -90,6 +94,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
           canTestChannel={canAdminister(current.role)}
           initialDate={selectedDate}
           myReports={reports.filter((report) => report.memberId === current.id)}
+          eventLabels={eventLabels}
           lastDate={until}
           practiceDates={practiceDates}
           teamSlug={teamSlug}
@@ -108,6 +113,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
               scroll={false}
             >
               <b>{formatNoteDate(date)}</b>
+              {eventLabels[date] ? <span>{eventLabels[date]}</span> : null}
               <span className={date === today ? "tp-now" : undefined}>
                 {date === today ? "今日 ・ " : ""}
                 連絡 {countByDate.get(date) ?? 0}件
@@ -117,8 +123,17 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
         </nav>
 
         <p className="tp-small tp-muted">
-          {formatNoteDate(selectedDate)}:連絡のない人は、来られるものとして数えています。
+          {formatNoteDate(selectedDate)}
+          {eventLabels[selectedDate] ? ` ${eventLabels[selectedDate]}` : ""}
+          :連絡のない人は、来られるものとして数えています。
         </p>
+        {canAdminister(current.role) ? (
+          <p className="tp-small tp-muted">
+            {schedule.source === "calendar"
+              ? "練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日。直してから反映まで、長くて10分)。"
+              : `練習日は、曜日の決め打ち(日・火・木・土)です。${schedule.error ? `カレンダーを読めませんでした:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
+          </p>
+        ) : null}
 
         {groups.map((group) => {
           const absent = group.members.filter((member) => dayReports.get(member.id)?.kind === "absent");

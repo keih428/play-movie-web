@@ -303,7 +303,8 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | `/t/utvb/notes/print?month=YYYY-MM` | 月ごとのまとめ(印刷して PDF にする)。トレーニング担当・トレーナー(肩書が「トレーナー」の人)・ポジションのリーダー |
 
 * 書けるのはプレイヤーだけ。読む・コメントするのは、ログインした全員。
-* 練習日は 日・火・木・土。オフの日や、ほかの曜日の練習は、トレーニング担当が例外として登録する(`practice_day_overrides`)。
+* **練習日は、部の Google カレンダーから取る**(`lib/server/portal-calendar.ts`、10分ごとに読み直す)。「オフ」で始まる予定以外は、時刻つきも終日も対象。ノートの枠と出欠の日付に使う。
+* カレンダーが未設定か読めないときは、日・火・木・土の決め打ちに戻り、オフの日などはトレーニング担当が例外として登録する(`practice_day_overrides`)。
 * 新着のコメントは、書いた本人がそのノートを開くと読んだことになる(`notes.author_seen_at`)。上のバーの「ノート」に数が出る。
 * **Slack の知らせ**(`lib/server/portal-slack.ts`):`SLACK_BOT_TOKEN` があり、名簿に Slack の ID がある人にだけ DM を送る。なければ何もしない。
     * ノートにコメントが付いた → 書いた本人
@@ -328,3 +329,4 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | `PORTAL_ALERT_SLACK_WEBHOOK_URL` | 初めての端末・合言葉の連続間違いを知らせる先(なくても動く) |
 | `SLACK_BOT_TOKEN` | 部員に DM を送る Slack アプリのトークン(`xoxb-…`、権限は `chat:write`)。なくても動く |
 | `SLACK_ATTENDANCE_CHANNEL` | 遅刻・欠席の連絡を流すチャンネルの ID(`C` で始まる)。なくても動く |
+| `PRACTICE_CALENDAR_ICS_URL` | 部の Google カレンダーの「iCal 形式の非公開 URL」。練習日をここから取る。なくても動く(日・火・木・土の決め打ちになる) |

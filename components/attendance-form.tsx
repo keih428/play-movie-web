@@ -17,6 +17,8 @@ import { buildTeamApiPath } from "@/lib/domain/team";
 
 type AttendanceFormProps = {
   canTestChannel: boolean;
+  // 日付 → その日の予定(「通常練習 17:00〜21:00」)。カレンダーを読めているときだけ入る。
+  eventLabels: Record<string, string>;
   initialDate: string;
   // 連絡を出せるいちばん先の日(今日から2か月先)。
   lastDate: string;
@@ -32,6 +34,7 @@ const OTHER_DATE = "other";
 
 export function AttendanceForm({
   canTestChannel,
+  eventLabels,
   initialDate,
   lastDate,
   myReports,
@@ -146,6 +149,7 @@ export function AttendanceForm({
               <option key={entry} value={entry}>
                 {entry === today ? "今日 " : ""}
                 {formatNoteDate(entry)}
+                {eventLabels[entry] ? ` ${eventLabels[entry]}` : ""}
                 {reportByDate.has(entry) ? "(連絡済み)" : ""}
               </option>
             ))}
