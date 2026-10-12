@@ -87,6 +87,38 @@ export function buildTeamAnalysisPath(teamSlug: string): string {
   return `/t/${teamSlug}/analysis`;
 }
 
+export function buildTeamLoginPath(teamSlug: string): string {
+  return `/t/${teamSlug}/login`;
+}
+
+export function buildTeamAttendancePath(teamSlug: string): string {
+  return `/t/${teamSlug}/attendance`;
+}
+
+export function buildTeamNotesPath(teamSlug: string): string {
+  return `/t/${teamSlug}/notes`;
+}
+
+export function buildTeamTrainingPath(teamSlug: string): string {
+  return `/t/${teamSlug}/training`;
+}
+
+export function buildTeamTrainingPlanPath(teamSlug: string): string {
+  return `/t/${teamSlug}/training/plan`;
+}
+
+export function buildTeamTrainingRecordsPath(teamSlug: string): string {
+  return `/t/${teamSlug}/training/team`;
+}
+
+export function buildTeamMembersPath(teamSlug: string): string {
+  return `/t/${teamSlug}/members`;
+}
+
+export function buildTeamLoginLogPath(teamSlug: string): string {
+  return `/t/${teamSlug}/members/logins`;
+}
+
 export function buildWorkspacePath(input: {
   teamSlug?: string;
   workspaceId: string;

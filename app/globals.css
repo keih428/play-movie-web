@@ -1,15 +1,39 @@
 :root {
-  --bg: #ffffff;
-  --panel: rgba(255, 255, 255, 0.96);
-  --panel-strong: #ffffff;
-  --border: rgba(24, 72, 132, 0.14);
-  --text: #10233c;
-  --muted: #4d6481;
-  --accent: #1f5ea8;
-  --accent-strong: #153f74;
-  --accent-soft: rgba(31, 94, 168, 0.12);
-  --success: #f0c419;
-  --shadow: 0 24px 64px rgba(20, 56, 103, 0.12);
+  /* 通常の表示の色:鉄色の地 + コートの床の色。部内ページ(portal.css)の通常の表示と同じ。単語帳(鉄壁)の表示ではない。 */
+  --bg: #f1f3f6;
+  --surface: #ffffff;
+  --surface-soft: #f7f8fa;
+  --panel: var(--surface);
+  --panel-strong: var(--surface);
+  --border: #d6dce4;
+  --text: #17202a;
+  --muted: #5b6776;
+  --accent: #b3541e;
+  --accent-strong: #8f4217;
+  --accent-soft: #f6e6db;
+  --on-accent: #ffffff;
+  --success: #b3541e;
+  --shadow: none;
+  --font-display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f141a;
+    --surface: #18202a;
+    --surface-soft: #141b23;
+    --border: #2a3542;
+    --text: #e6ebf1;
+    --muted: #9aa6b4;
+    --accent: #e38c4e;
+    --accent-strong: #f0a56f;
+    --accent-soft: #3a2618;
+    --on-accent: #0f141a;
+    --success: #e38c4e;
+    color-scheme: dark;
+  }
 }
 
 * {
@@ -17,12 +41,7 @@
 }
 
 html {
-  font-family:
-    "Source Han Sans JP",
-    "Noto Sans CJK JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
+  font-family: var(--font-body);
 }
 
 body {
@@ -30,19 +49,16 @@ body {
   min-height: 100vh;
   color: var(--text);
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at top left, rgba(31, 94, 168, 0.08), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(240, 196, 25, 0.12), transparent 26%),
-    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: var(--bg);
 }
 
 .site-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(14px);
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom: 1px solid rgba(24, 72, 132, 0.08);
+  backdrop-filter: none;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .site-header-inner {
@@ -67,7 +83,7 @@ body {
 .site-brand-logo {
   flex: none;
   width: auto;
-  border-radius: 10px;
+  border-radius: 8px;
   object-fit: contain;
 }
 
@@ -117,8 +133,8 @@ iframe {
   margin-bottom: 24px;
   padding: 28px;
   border: 1px solid var(--border);
-  border-radius: 28px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(246, 250, 255, 0.95));
+  border-radius: 12px;
+  background: var(--surface);
   box-shadow: var(--shadow);
 }
 
@@ -134,7 +150,7 @@ iframe {
   width: 320px;
   height: 320px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(240, 196, 25, 0.22), transparent 70%);
+  background: none;
   pointer-events: none;
 }
 
@@ -152,8 +168,8 @@ iframe {
   margin-bottom: 12px;
   padding: 7px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(24, 72, 132, 0.12);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
   color: var(--accent-strong);
   font-size: 0.84rem;
   letter-spacing: 0.08em;
@@ -197,12 +213,12 @@ iframe {
 }
 
 .badge-link {
-  border: 1px solid rgba(24, 72, 132, 0.14);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .badge-button {
   cursor: pointer;
-  border: 1px solid rgba(24, 72, 132, 0.14);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .layout-grid {
@@ -274,10 +290,10 @@ iframe {
 
 .panel {
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: 12px;
   background: var(--panel);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
   min-width: 0;
 }
 
@@ -292,9 +308,9 @@ iframe {
 
 .soft-panel {
   padding: 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(24, 72, 132, 0.1);
-  background: rgba(249, 252, 255, 0.88);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface-soft);
 }
 
 .score-table-wrap {
@@ -315,7 +331,7 @@ iframe {
 .score-table th,
 .score-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(24, 72, 132, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -325,10 +341,10 @@ iframe {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(249, 252, 255, 0.98);
+  background: var(--surface-soft);
   color: var(--muted);
   font-weight: 600;
-  box-shadow: 0 1px 0 rgba(24, 72, 132, 0.1);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 10%, transparent);
 }
 
 .score-table tbody tr:last-child td {
@@ -336,7 +352,7 @@ iframe {
 }
 
 .score-table-row-highlight td {
-  background: rgba(31, 94, 168, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .sideout-lowest-rate-row td {
@@ -491,7 +507,7 @@ iframe {
 
 .clip-play-button {
   padding: 5px 9px;
-  background: rgba(31, 94, 168, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--accent-strong);
 }
 
@@ -532,12 +548,12 @@ iframe {
 }
 
 .course-court-line {
-  stroke: rgba(255, 255, 255, 0.92);
+  stroke: color-mix(in srgb, var(--surface) 92%, transparent);
   stroke-width: 3;
 }
 
 .course-net {
-  stroke: #263647;
+  stroke: var(--text);
   stroke-width: 7;
 }
 
@@ -576,8 +592,8 @@ iframe {
   gap: 4px;
   width: min(80%, 320px);
   padding: 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   text-align: center;
   box-shadow: var(--shadow);
 }
@@ -640,8 +656,8 @@ iframe {
   gap: 10px;
   padding: 11px 14px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
   color: var(--muted);
   cursor: pointer;
 }
@@ -667,8 +683,8 @@ iframe {
   min-width: 38px;
   padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
   color: var(--muted);
   font: inherit;
   font-weight: 700;
@@ -678,19 +694,19 @@ iframe {
 }
 
 .clip-grade-button:hover {
-  border-color: rgba(31, 94, 168, 0.4);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--accent-strong);
 }
 
 .clip-grade-button-active {
   border-color: var(--accent);
   background: var(--accent);
-  color: white;
-  box-shadow: 0 3px 10px rgba(31, 94, 168, 0.18);
+  color: var(--on-accent);
+  box-shadow: none;
 }
 
 .clip-grade-button:focus-visible {
-  outline: 3px solid rgba(31, 94, 168, 0.22);
+  outline: 3px solid color-mix(in srgb, var(--accent) 22%, transparent);
   outline-offset: 2px;
 }
 
@@ -717,8 +733,8 @@ iframe {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
 }
 
 .field-disabled label,
@@ -732,7 +748,7 @@ iframe {
   cursor: not-allowed;
   opacity: 0.52;
   color: var(--muted);
-  background: rgba(235, 242, 250, 0.72);
+  background: var(--surface-soft);
 }
 
 .video-url-picker {
@@ -747,8 +763,8 @@ iframe {
   overflow-y: auto;
   padding: 0.45rem;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
 .video-option-button {
@@ -757,8 +773,8 @@ iframe {
   width: 100%;
   padding: 0.7rem 0.8rem;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -767,7 +783,7 @@ iframe {
 .video-option-button:hover,
 .video-option-button-active {
   border-color: var(--accent);
-  background: rgba(20, 100, 165, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .video-option-button small {
@@ -792,9 +808,9 @@ iframe {
   flex: none;
   gap: 4px;
   padding: 4px;
-  border: 1px solid rgba(24, 72, 132, 0.14);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
 .toggle-switch-button {
@@ -809,8 +825,8 @@ iframe {
 
 .toggle-switch-button.active {
   background: var(--accent);
-  color: white;
-  box-shadow: 0 8px 18px rgba(21, 63, 116, 0.14);
+  color: var(--on-accent);
+  box-shadow: none;
 }
 
 .analysis-tab-toolbar {
@@ -853,12 +869,12 @@ iframe {
   border: 0;
   border-radius: 999px;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   cursor: pointer;
 }
 
 .button.secondary {
-  background: white;
+  background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
 }
@@ -878,17 +894,17 @@ iframe {
   min-height: 42px;
   padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid rgba(24, 72, 132, 0.14);
-  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: color-mix(in srgb, var(--surface) 66%, transparent);
   color: var(--muted);
   cursor: pointer;
 }
 
 .tab-button-active {
-  background: linear-gradient(135deg, var(--accent), #3d7fca);
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   border-color: transparent;
-  box-shadow: 0 14px 28px rgba(21, 63, 116, 0.16);
+  box-shadow: none;
 }
 
 .meta-grid {
@@ -905,7 +921,7 @@ iframe {
 
 .meta-card {
   padding: 14px;
-  border-radius: 18px;
+  border-radius: 12px;
   background: var(--panel-strong);
   border: 1px solid var(--border);
 }
@@ -924,7 +940,7 @@ iframe {
 
 .video-meta-card {
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: 8px;
 }
 
 .video-meta-card .muted {
@@ -980,17 +996,9 @@ iframe {
 
 .video-placeholder {
   aspect-ratio: 16 / 9;
-  border-radius: 24px;
-  border: 1px dashed rgba(31, 94, 168, 0.32);
-  background:
-    linear-gradient(160deg, rgba(31, 94, 168, 0.16), rgba(255, 255, 255, 0.55)),
-    repeating-linear-gradient(
-      -45deg,
-      rgba(31, 94, 168, 0.08) 0,
-      rgba(31, 94, 168, 0.08) 10px,
-      transparent 10px,
-      transparent 20px
-    );
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 32%, transparent);
+  background: var(--surface);
   display: grid;
   place-items: center;
   color: var(--accent-strong);
@@ -1000,9 +1008,9 @@ iframe {
 
 .video-embed-shell {
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.68);
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
   min-height: 560px;
 }
 
@@ -1047,9 +1055,9 @@ iframe {
   gap: 12px;
   align-items: center;
   padding: 14px 16px;
-  border-radius: 20px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
 }
 
 .workspace-row-title {
@@ -1076,9 +1084,9 @@ iframe {
 
 .tree-node {
   padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(24, 72, 132, 0.1);
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 .tree-node-header {
@@ -1107,9 +1115,9 @@ iframe {
 .tree-toggle {
   width: 28px;
   height: 28px;
-  border-radius: 10px;
-  border: 1px solid rgba(24, 72, 132, 0.12);
-  background: rgba(244, 248, 255, 0.92);
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: var(--surface-soft);
   color: var(--accent-strong);
   cursor: pointer;
   flex-shrink: 0;
@@ -1129,9 +1137,9 @@ iframe {
 .tree-menu-trigger {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(24, 72, 132, 0.12);
-  background: rgba(255, 255, 255, 0.96);
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
   color: var(--accent-strong);
   cursor: pointer;
   font-size: 1.2rem;
@@ -1144,10 +1152,10 @@ iframe {
   right: 0;
   min-width: 132px;
   padding: 6px;
-  border-radius: 14px;
-  border: 1px solid rgba(24, 72, 132, 0.12);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 40px rgba(20, 55, 99, 0.12);
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--surface) 98%, transparent);
+  box-shadow: none;
   display: grid;
   gap: 4px;
   z-index: 2;
@@ -1157,7 +1165,7 @@ iframe {
   width: 100%;
   padding: 10px 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   text-align: left;
   color: var(--text);
@@ -1165,7 +1173,7 @@ iframe {
 }
 
 .tree-menu-item:hover {
-  background: rgba(31, 94, 168, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .tree-menu-item-danger {
@@ -1176,7 +1184,7 @@ iframe {
   margin-top: 12px;
   margin-left: 18px;
   padding-left: 14px;
-  border-left: 1px solid rgba(24, 72, 132, 0.12);
+  border-left: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
   display: grid;
   gap: 10px;
 }
@@ -1190,11 +1198,9 @@ iframe {
   min-height: 160px;
   overflow: hidden;
   max-width: 100%;
-  border-radius: 28px;
-  border: 1px dashed rgba(31, 94, 168, 0.32);
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.8), transparent 55%),
-    linear-gradient(145deg, rgba(31, 94, 168, 0.18), rgba(237, 245, 255, 0.95));
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 32%, transparent);
+  background: var(--surface);
   color: var(--accent-strong);
   text-align: center;
   padding: 18px;
@@ -1228,9 +1234,7 @@ iframe {
 }
 
 .home-landing-panel {
-  background:
-    radial-gradient(circle at top left, rgba(31, 94, 168, 0.12), transparent 36%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(242, 248, 255, 0.96));
+  background: var(--surface);
 }
 
 .home-intro {
@@ -1250,10 +1254,9 @@ iframe {
   grid-template-columns: 56px minmax(0, 1fr);
   gap: 14px;
   padding: 16px;
-  border-radius: 20px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(234, 243, 252, 0.76));
+  background: var(--surface);
 }
 
 .home-step p {
@@ -1265,19 +1268,18 @@ iframe {
   place-items: center;
   width: 56px;
   height: 56px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--accent), #3d7fca);
-  color: white;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 1.1rem;
   letter-spacing: 0.08em;
 }
 
 .home-callout {
   padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(24, 72, 132, 0.14);
-  background:
-    linear-gradient(135deg, rgba(31, 94, 168, 0.1), rgba(255, 255, 255, 0.78));
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: var(--surface);
 }
 
 .home-callout p {
@@ -1293,39 +1295,39 @@ iframe {
 .feature-chip {
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(24, 72, 132, 0.12);
-  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
   color: var(--text);
 }
 
 .workspace-card {
   padding: 16px;
-  border-radius: 22px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
 }
 
 .list-item {
   padding: 12px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   border: 1px solid var(--border);
 }
 
 .list-item-active {
-  border-color: rgba(31, 94, 168, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(31, 94, 168, 0.25);
-  background: rgba(239, 246, 255, 0.96);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  background: var(--surface-soft);
 }
 
 .list-item-won {
-  border-color: rgba(31, 94, 168, 0.22);
-  background: rgba(238, 246, 255, 0.9);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--surface-soft);
 }
 
 .list-item-lost {
   border-color: rgba(180, 58, 45, 0.18);
-  background: rgba(255, 242, 240, 0.92);
+  background: color-mix(in srgb, #d45a3d 12%, var(--surface));
 }
 
 .list-item-header {
@@ -1392,7 +1394,7 @@ iframe {
 .play-list-actions .play-list-jump {
   min-height: 30px;
   padding: 5px 9px;
-  background: rgba(31, 94, 168, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--accent-strong);
 }
 
@@ -1403,13 +1405,13 @@ iframe {
 .tag {
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(240, 196, 25, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-strong);
   font-size: 0.82rem;
 }
 
 .tag-link {
-  border: 1px solid rgba(240, 196, 25, 0.24);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .play-list-jump {
@@ -1435,14 +1437,14 @@ iframe {
 
 .play-rally-detail {
   padding: 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(24, 72, 132, 0.1);
-  background: rgba(246, 249, 253, 0.88);
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface-soft);
 }
 
 .play-rally-detail-active {
-  border-color: rgba(31, 94, 168, 0.4);
-  background: rgba(239, 246, 255, 0.9);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--surface-soft);
 }
 
 .play-rally-detail-row {
@@ -1460,9 +1462,9 @@ iframe {
 
 .analysis-block {
   padding: 16px;
-  border-radius: 20px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 .analysis-summary-grid {
@@ -1510,13 +1512,13 @@ iframe {
   overflow: hidden;
   height: 12px;
   border-radius: 999px;
-  background: rgba(31, 94, 168, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .skill-bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), #5d99dc);
+  background: var(--accent);
 }
 
 .skill-bar-track-stacked {
@@ -1530,37 +1532,37 @@ iframe {
 .skill-bar-grade-A,
 .skill-grade-tag-A {
   background: #1f8f4c;
-  color: white;
+  color: var(--on-accent);
 }
 
 .skill-bar-grade-B,
 .skill-grade-tag-B {
   background: #5ca956;
-  color: white;
+  color: var(--on-accent);
 }
 
 .skill-bar-grade-C,
 .skill-grade-tag-C {
   background: #d0b122;
-  color: #10233c;
+  color: var(--text);
 }
 
 .skill-bar-grade-D,
 .skill-grade-tag-D {
   background: #e28d2c;
-  color: white;
+  color: var(--on-accent);
 }
 
 .skill-bar-grade-E,
 .skill-grade-tag-E {
   background: #d45a3d;
-  color: white;
+  color: var(--on-accent);
 }
 
 .skill-bar-grade-F,
 .skill-grade-tag-F {
   background: #a63d32;
-  color: white;
+  color: var(--on-accent);
 }
 
 .skill-grade-tag {
@@ -1590,9 +1592,9 @@ iframe {
   gap: 12px;
   align-items: center;
   padding: 12px;
-  border: 1px solid rgba(24, 72, 132, 0.1);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
 .comparison-chart-label {
@@ -1646,7 +1648,7 @@ iframe {
   height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(31, 94, 168, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .comparison-bar-fill {
@@ -1694,9 +1696,9 @@ iframe {
   gap: 12px;
   align-items: center;
   padding: 12px;
-  border: 1px solid rgba(24, 72, 132, 0.1);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
 .team-comparison-label {
@@ -1730,7 +1732,7 @@ iframe {
   height: 14px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(31, 94, 168, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .team-comparison-fill {
@@ -1791,7 +1793,7 @@ iframe {
 }
 
 .timeline-axis {
-  stroke: rgba(77, 100, 129, 0.35);
+  stroke: color-mix(in srgb, var(--text) 35%, transparent);
   stroke-width: 1;
 }
 
@@ -1805,7 +1807,7 @@ iframe {
 
 .timeline-away {
   fill: none;
-  stroke: #f0c419;
+  stroke: var(--accent);
   stroke-width: 2.4;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -1831,9 +1833,9 @@ iframe {
 
 .rotation-team-card {
   padding: 16px;
-  border-radius: 20px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 .rotation-lineup-card {
@@ -1855,8 +1857,8 @@ iframe {
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #0f172a;
+  border-radius: 8px;
+  background: var(--text);
 }
 
 .rotation-team-header {
@@ -1876,9 +1878,9 @@ iframe {
 .court-cell {
   min-height: 78px;
   padding: 10px;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  background: rgba(239, 246, 255, 0.82);
+  background: var(--surface-soft);
   display: grid;
   align-content: space-between;
 }
@@ -1892,9 +1894,9 @@ iframe {
 }
 
 .court-cell-setter {
-  border-color: rgba(31, 94, 168, 0.45);
-  background: rgba(233, 243, 255, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(31, 94, 168, 0.2);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--surface-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .status-list {
@@ -1907,9 +1909,9 @@ iframe {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(24, 72, 132, 0.1);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
 }
 
 .status-row span {
@@ -2037,9 +2039,9 @@ iframe {
   .site-nav-link {
     min-height: 36px;
     padding: 0 8px;
-    border: 1px solid rgba(24, 72, 132, 0.12);
+    border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.7);
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
   }
 
   .site-nav-label {
@@ -2057,7 +2059,7 @@ iframe {
 
   .hero {
     padding: 20px;
-    border-radius: 22px;
+    border-radius: 12px;
   }
 
   .hero-grid,
@@ -2117,7 +2119,7 @@ iframe {
   }
 
   .panel {
-    border-radius: 20px;
+    border-radius: 12px;
   }
 
   .panel-inner {
@@ -2148,7 +2150,7 @@ iframe {
   .workspace-row,
   .list-item,
   .meta-card {
-    border-radius: 16px;
+    border-radius: 8px;
   }
 
   .button-row {
@@ -2399,17 +2401,17 @@ iframe {
   .home-step-index {
     width: 44px;
     height: 44px;
-    border-radius: 14px;
+    border-radius: 8px;
     font-size: 0.95rem;
   }
 
   .video-placeholder {
-    border-radius: 18px;
+    border-radius: 12px;
     padding: 16px;
   }
 
   .video-embed-shell {
-    border-radius: 18px;
+    border-radius: 12px;
     min-height: 320px;
   }
 
@@ -2495,9 +2497,9 @@ iframe {
   .analysis-player-table tr,
   .comparison-table tr,
   .rotation-rate-table tr {
-    border: 1px solid rgba(24, 72, 132, 0.1);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
     overflow: hidden;
   }
 
@@ -2511,7 +2513,7 @@ iframe {
     padding: 8px 10px;
     white-space: normal;
     overflow-wrap: anywhere;
-    border-bottom: 1px solid rgba(24, 72, 132, 0.08);
+    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
   }
 
   .analysis-player-table td:last-child,
@@ -2628,4 +2630,195 @@ iframe {
   .video-embed {
     min-height: min(56dvh, 420px);
   }
+}
+
+/*
+ * ---------- 通常の表示:部品の形 ----------
+ * 上の決まりを、部内ページ(portal.css)と同じ形に上書きする。平らな面・細い線・太い見出し、
+ * 押すものは鉄色、選ばれたものは反転、数字は等幅。
+ */
+body {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+.panel h2,
+.hero h1,
+.hero h2,
+.dashboard-header h1,
+.dashboard-header h2 {
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.site-header-inner {
+  min-height: 52px;
+}
+
+.site-brand {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.site-nav {
+  flex-wrap: nowrap;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.site-nav-link {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.site-nav-link[aria-current="page"] {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.button {
+  border: 1px solid var(--text);
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.button.secondary {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.tab-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-color: var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tab-button-active {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.tag {
+  padding: 1px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.hero-kicker {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.field label,
+.field-label {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.field input,
+.field select,
+.field textarea {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.score-table th {
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.score-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.home-step-index,
+.analysis-summary-card strong,
+.meta-card strong {
+  font-family: var(--font-num);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* ロゴは明るい地の上で作ってあるので、暗い配色では白い台に乗せる。 */
+  .site-brand-logo,
+  .logo-image {
+    padding: 2px 6px;
+    background: #ffffff;
+  }
+}
+
+@media (max-width: 720px) {
+  .site-header-inner {
+    flex-wrap: nowrap;
+  }
+
+  .site-brand-text {
+    display: none;
+  }
+
+  .site-nav {
+    display: flex;
+    width: auto;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .site-nav-link {
+    min-height: 0;
+    padding: 6px 8px;
+    border: 0;
+    background: transparent;
+  }
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 5vw, 38px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+/* スコア推移:自チームはコートの床の色、相手は鉄色で見分ける。 */
+.timeline-away {
+  stroke: var(--muted);
 }

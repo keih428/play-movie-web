@@ -2,12 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
+import { isPortalTeam } from "@/lib/domain/portal";
 import {
   buildTeamAnalysisPath,
   buildTeamDataLibraryPath,
+  buildTeamLoginPath,
+  buildTeamMembersPath,
   buildTeamRootPath,
   buildTeamStaffSettingsPath,
+  buildTeamTrainingPath,
   buildTeamVideosPath,
   buildTeamWorkspacesPath,
 } from "@/lib/domain/team";
@@ -17,9 +21,30 @@ function getTeamSlugFromParams(params: ReturnType<typeof useParams>): string | u
   return typeof value === "string" ? value : undefined;
 }
 
-export function SiteHeaderNav() {
+type SiteHeaderNavProps = {
+  portalUser: { name: string; teamSlug: string } | null;
+};
+
+function getPortalLink(teamSlug: string | undefined, portalUser: SiteHeaderNavProps["portalUser"]) {
+  if (!teamSlug || !isPortalTeam(teamSlug)) {
+    return [];
+  }
+  if (portalUser?.teamSlug === teamSlug) {
+    return [
+      { href: buildTeamTrainingPath(teamSlug), label: "トレーニング", shortLabel: "トレ" },
+      { href: buildTeamMembersPath(teamSlug), label: portalUser.name, shortLabel: portalUser.name },
+    ];
+  }
+  return [{ href: buildTeamLoginPath(teamSlug), label: "ログイン", shortLabel: "ログイン" }];
+}
+
+export function SiteHeaderNav({ portalUser }: SiteHeaderNavProps) {
   const params = useParams();
+  const pathname = usePathname();
   const teamSlug = getTeamSlugFromParams(params);
+  // 試合の中のページ(/workspaces/<id> など)でも、親の項目を選ばれた表示にする。
+  const isCurrent = (href: string) =>
+    pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
 
   const links = teamSlug
     ? [
@@ -28,6 +53,7 @@ export function SiteHeaderNav() {
         { href: buildTeamVideosPath(teamSlug), label: "動画ライブラリ", shortLabel: "動画" },
         { href: buildTeamDataLibraryPath(teamSlug), label: "試合データ管理", shortLabel: "データ" },
         { href: buildTeamStaffSettingsPath(teamSlug), label: "設定", shortLabel: "設定" },
+        ...getPortalLink(teamSlug, portalUser),
       ]
     : [
         { href: "/", label: "ホーム", shortLabel: "ホーム" },
@@ -51,11 +77,16 @@ export function SiteHeaderNav() {
           sizes="(max-width: 720px) 130px, 150px"
           priority
         />
-        バレーボール 試合ビューア
+        <span className="site-brand-text">バレーボール 試合ビューア</span>
       </Link>
       <nav className="site-nav" aria-label="Global">
         {links.map((link) => (
-          <Link key={link.href} href={link.href} className="site-nav-link">
+          <Link
+            key={link.href}
+            href={link.href}
+            className="site-nav-link"
+            aria-current={isCurrent(link.href) ? "page" : undefined}
+          >
             <span className="site-nav-label">{link.label}</span>
             <span className="site-nav-label-short">{link.shortLabel}</span>
           </Link>
