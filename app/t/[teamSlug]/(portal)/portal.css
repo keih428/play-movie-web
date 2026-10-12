@@ -2001,3 +2001,9 @@ body:has(.tp[data-mode="tango"]) {
   color: var(--tp-accent);
   font-weight: 700;
 }
+
+/* 連絡は出ているが、カレンダーから予定がなくなった日 */
+.tp-weeks a.tp-no-event {
+  border-style: dashed;
+  color: var(--tp-muted);
+}

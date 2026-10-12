@@ -52,12 +52,21 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
   const eventLabels = Object.fromEntries(
     Object.entries(schedule.eventsByDate).map(([date, events]) => [date, describePracticeEvents(events)]),
   );
+  // 連絡を出したあとで、カレンダーからその日の予定がなくなることがある(急なオフなど)。
+  // 連絡は消さずに残し、その日には「予定なし」と出す。
+  const scheduledDates = new Set(schedule.dates);
+  const hasNoEvent = (date: string) => schedule.source === "calendar" && !scheduledDates.has(date);
+  for (const date of practiceDates) {
+    if (hasNoEvent(date)) {
+      eventLabels[date] = "予定なし";
+    }
+  }
 
   const { date: requestedDate } = await searchParams;
   const selectedDate =
     isIsoDate(requestedDate) && requestedDate >= today && requestedDate <= until
       ? requestedDate
-      : (practiceDates[0] ?? today);
+      : (schedule.dates[0] ?? practiceDates[0] ?? today);
   const dayReports = new Map(
     reports.filter((report) => report.practiceDate === selectedDate).map((report) => [report.memberId, report]),
   );
@@ -110,6 +119,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
               key={date}
               href={`${basePath}?date=${date}`}
               aria-current={date === selectedDate ? "page" : undefined}
+              className={hasNoEvent(date) ? "tp-no-event" : undefined}
               scroll={false}
             >
               <b>{formatNoteDate(date)}</b>
@@ -127,6 +137,11 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
           {eventLabels[selectedDate] ? ` ${eventLabels[selectedDate]}` : ""}
           :連絡のない人は、来られるものとして数えています。
         </p>
+        {hasNoEvent(selectedDate) ? (
+          <p className="tp-note">
+            この日は、部のカレンダーに予定がありません(オフになった、など)。出してあった連絡は、そのまま残してあります。
+          </p>
+        ) : null}
         {canAdminister(current.role) ? (
           <p className="tp-small tp-muted">
             {schedule.source === "calendar"
