@@ -6,7 +6,7 @@ import {
   type MemberGroup,
   type MemberPosition,
 } from "@/lib/domain/portal";
-import { query } from "@/lib/server/portal-db";
+import { query, transaction } from "@/lib/server/portal-db";
 
 type NoteRow = {
   id: string;
@@ -116,6 +116,14 @@ export async function saveNote(input: {
     note: note!,
     requestChanged: Boolean(input.request) && input.request !== (existing?.request ?? ""),
   };
+}
+
+/** ノートと、それに付いたコメントを消す。 */
+export async function deleteNote(noteId: string) {
+  await transaction(async (run) => {
+    await run("DELETE FROM note_comments WHERE note_id = $1", [noteId]);
+    await run("DELETE FROM notes WHERE id = $1", [noteId]);
+  });
 }
 
 export async function listComments(noteIds: string[]): Promise<NoteComment[]> {

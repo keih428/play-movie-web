@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NoteComments } from "@/components/note-comments";
+import { NoteDeleteButton } from "@/components/note-delete-button";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { isPortalTeam } from "@/lib/domain/portal";
+import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
 import { getNote, listComments, markNoteSeen } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
@@ -57,6 +58,13 @@ export default async function TeamNotePage({ params }: PageProps) {
             <Link className="tp-button tp-ghost" href={`${basePath}/write?date=${note.practiceDate}`}>
               直す
             </Link>
+          ) : null}
+          {isAuthor || canAdminister(current.role) ? (
+            <NoteDeleteButton
+              noteId={note.id}
+              redirectTo={isAuthor ? `${basePath}/mine` : basePath}
+              teamSlug={teamSlug}
+            />
           ) : null}
         </div>
       </header>
