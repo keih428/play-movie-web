@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { NoteEditor } from "@/components/note-editor";
-import { formatNoteDate, isIsoDate } from "@/lib/domain/notes";
+import {
+  formatNoteDate,
+  formatRelativeNoteDate,
+  getLastNoteDate,
+  isIsoDate,
+} from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
 import { getNoteByDate } from "@/lib/server/portal-note-store";
@@ -29,7 +34,8 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
   const basePath = buildTeamNotesPath(teamSlug);
   const today = getTodayInJapan();
   const { date: requestedDate } = await searchParams;
-  const date = isIsoDate(requestedDate) && requestedDate <= today ? requestedDate : today;
+  const date =
+    isIsoDate(requestedDate) && requestedDate <= getLastNoteDate(today) ? requestedDate : today;
   const current = await requireMember(teamSlug, `${basePath}/write?date=${date}`);
   if (!current.position) {
     redirect(basePath);
@@ -43,7 +49,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
         <span className="tp-eyebrow">
           {current.name} ・ {current.position}
         </span>
-        <h1>{date === today ? "今日" : formatNoteDate(date)}のノート</h1>
+        <h1>{formatRelativeNoteDate(date, today)}のノート</h1>
         <p className="tp-small tp-muted">
           {date.slice(0, 4)}年 {formatNoteDate(date)}
           {existing ? " ・ 書いてあるノートを直しています" : ""}

@@ -97,3 +97,16 @@ export function listPracticeDates(
 export function addDaysToDate(isoDate: string, days: number): string {
   return shiftDate(isoDate, days);
 }
+
+/** ノートを書ける、いちばん先の日。過去はいつでも書けて、先は明日まで。 */
+export function getLastNoteDate(today: string): string {
+  return shiftDate(today, 1);
+}
+
+/** 「今日」「明日」「11/3(火)」。 */
+export function formatRelativeNoteDate(isoDate: string, today: string): string {
+  if (isoDate === today) {
+    return "今日";
+  }
+  return isoDate === shiftDate(today, 1) ? "明日" : formatNoteDate(isoDate);
+}

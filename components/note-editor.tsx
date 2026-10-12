@@ -42,7 +42,7 @@ export function NoteEditor({ date, initialBody, initialRequest, teamSlug }: Note
     <form onSubmit={save}>
       <div className="tp-section">
         <div className="tp-field">
-          <label htmlFor="note-body">今日の練習で気付いたこと(自由に)</label>
+          <label htmlFor="note-body">練習で気付いたこと・次にやること(自由に)</label>
           <textarea
             id="note-body"
             rows={10}

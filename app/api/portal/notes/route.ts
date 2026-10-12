@@ -3,6 +3,7 @@ import {
   NOTE_BODY_MAX,
   NOTE_REQUEST_MAX,
   formatNoteDate,
+  getLastNoteDate,
   isIsoDate,
 } from "@/lib/domain/notes";
 import { getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
@@ -29,8 +30,8 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = (await request.json()) as { date?: unknown; body?: unknown; request?: unknown };
-  if (!isIsoDate(payload.date) || payload.date > getTodayInJapan()) {
-    return NextResponse.json({ error: "日付が正しくありません(先の日付は書けません)。" }, { status: 400 });
+  if (!isIsoDate(payload.date) || payload.date > getLastNoteDate(getTodayInJapan())) {
+    return NextResponse.json({ error: "日付が正しくありません(書けるのは明日の分までです)。" }, { status: 400 });
   }
   const body = readText(payload.body, NOTE_BODY_MAX);
   if (!body) {
