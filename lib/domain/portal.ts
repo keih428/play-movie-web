@@ -16,8 +16,8 @@ export type Member = {
   id: string;
   teamSlug: string;
   name: string;
-  // 背番号(なければ null)。
-  number: number | null;
+  // 背番号(なければ null)。プレイヤーは数字、スタッフは T・M・C などの文字。
+  number: string | null;
   // 画面と Slack に出す名前。背番号があれば前に付ける(15林)。
   displayName: string;
   grade: number | null;
@@ -35,7 +35,7 @@ export type Member = {
 export type MemberInput = {
   name: string;
   // 背番号。undefined は「触らない」(取り込む表に背番号の列がないとき)、null は「番号なし」。
-  number?: number | null;
+  number?: string | null;
   grade: number | null;
   position: MemberPosition | null;
   isLeader: boolean;
@@ -59,12 +59,48 @@ export const MEMBER_GROUP_LABELS: Record<MemberGroup, string> = {
   Li: "Li",
 };
 
-/** 背番号 + 名前(15林)。背番号がなければ名前だけ。 */
-export function formatMemberName(name: string, number: number | null | undefined): string {
-  return number === null || number === undefined ? name : `${number}${name}`;
+/** 背番号 + 名前(15林、T藤本)。背番号がなければ名前だけ。 */
+export function formatMemberName(name: string, number: string | null | undefined): string {
+  return number ? `${number}${name}` : name;
 }
 
-export const MEMBER_NUMBER_MAX = 999;
+export const MEMBER_NUMBER_MAX_LENGTH = 4;
+
+/** 背番号の欄に書かれたものを整える。空なら null、長すぎる・空白や記号が混じるものは受け付けない(undefined)。 */
+export function normalizeMemberNumber(value: unknown): string | null | undefined {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const text = String(value).normalize("NFKC").trim();
+  if (!text) {
+    return null;
+  }
+  return text.length <= MEMBER_NUMBER_MAX_LENGTH && /^[\p{Letter}\p{Number}]+$/u.test(text)
+    ? text
+    : undefined;
+}
+
+/** 背番号の並び:数字は小さい順、そのあとに文字(T・M・C など)、背番号のない人は最後。 */
+function compareMemberNumbers(left: string | null, right: string | null): number {
+  const rank = (value: string | null) => (value === null ? 2 : /^\d+$/.test(value) ? 0 : 1);
+  if (rank(left) !== rank(right)) {
+    return rank(left) - rank(right);
+  }
+  if (left === null || right === null) {
+    return 0;
+  }
+  return rank(left) === 0 ? Number(left) - Number(right) : left.localeCompare(right, "ja");
+}
+
+/** 名簿の並び:学年の上から、同じ学年の中は背番号の順。学年のない人(コーチなど)は最後。 */
+export function sortMembers<T extends Pick<Member, "grade" | "number" | "sortOrder">>(members: T[]): T[] {
+  return [...members].sort(
+    (left, right) =>
+      (right.grade ?? -1) - (left.grade ?? -1) ||
+      compareMemberNumbers(left.number, right.number) ||
+      left.sortOrder - right.sortOrder,
+  );
+}
 
 export function isPortalTeam(teamSlug: string | undefined): boolean {
   return Boolean(teamSlug && PORTAL_TEAM_SLUGS.includes(teamSlug));
@@ -169,19 +205,11 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
     const position = isMemberPosition(positionCell) ? positionCell : null;
     const { role, title } = parseRole(read("役割"));
     const grade = Number.parseInt(read("学年"), 10);
-    const numberCell = Number.parseInt(read("背番号"), 10);
     const hasNumberColumn = columns.includes("背番号");
 
     members.push({
       name,
-      ...(hasNumberColumn
-        ? {
-            number:
-              Number.isInteger(numberCell) && numberCell >= 0 && numberCell <= MEMBER_NUMBER_MAX
-                ? numberCell
-                : null,
-          }
-        : {}),
+      ...(hasNumberColumn ? { number: normalizeMemberNumber(read("背番号")) ?? null } : {}),
       grade: Number.isFinite(grade) ? grade : null,
       position,
       isLeader: /[◯○〇]/.test(read("リーダー")),

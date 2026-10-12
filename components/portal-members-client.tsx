@@ -11,6 +11,7 @@ import {
   MEMBER_SLOTS,
   MEMBER_TIERS,
   getMemberGroup,
+  sortMembers,
   type Member,
 } from "@/lib/domain/portal";
 import { buildTeamApiPath, buildTeamLoginLogPath, buildTeamRootPath } from "@/lib/domain/team";
@@ -54,7 +55,7 @@ const EMPTY_DRAFT: MemberDraft = {
 function toDraft(member: Member): MemberDraft {
   return {
     name: member.name,
-    number: member.number === null ? "" : String(member.number),
+    number: member.number ?? "",
     grade: member.grade === null ? "" : String(member.grade),
     position: member.position ?? "",
     isLeader: member.isLeader,
@@ -135,7 +136,7 @@ export function PortalMembersClient({
           "POST",
           { member: draft },
         );
-        setMembers((previous) => [...previous, result.member]);
+        setMembers((previous) => sortMembers([...previous, result.member]));
       } else {
         const result = await sendJson<{ member: Member }>(
           buildTeamApiPath(`/api/portal/members/${editingId}`, teamSlug),
@@ -143,7 +144,7 @@ export function PortalMembersClient({
           draft,
         );
         setMembers((previous) =>
-          previous.map((member) => (member.id === result.member.id ? result.member : member)),
+          sortMembers(previous.map((member) => (member.id === result.member.id ? result.member : member))),
         );
       }
       setEditingId(null);
@@ -285,10 +286,9 @@ export function PortalMembersClient({
                 />
               </div>
               <div className="tp-field">
-                <label htmlFor="member-number">背番号(ない人は空)</label>
+                <label htmlFor="member-number">背番号(スタッフは T・M・C など。ない人は空)</label>
                 <input
                   id="member-number"
-                  inputMode="numeric"
                   value={draft.number}
                   onChange={(event) => setField("number", event.target.value)}
                 />

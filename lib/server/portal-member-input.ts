@@ -1,9 +1,9 @@
 import {
-  MEMBER_NUMBER_MAX,
   MEMBER_SLOTS,
   MEMBER_TIERS,
   isMemberPosition,
   isMemberRole,
+  normalizeMemberNumber,
 } from "@/lib/domain/portal";
 import type { MemberPatch } from "@/lib/server/portal-member-store";
 
@@ -34,9 +34,9 @@ export function parseMemberInput(
       patch.name = name;
     }
     if ("number" in body) {
-      const number = body.number === null || body.number === "" ? null : Number(body.number);
-      if (number !== null && (!Number.isInteger(number) || number < 0 || number > MEMBER_NUMBER_MAX)) {
-        throw new Error("背番号の値が正しくありません。");
+      const number = normalizeMemberNumber(body.number);
+      if (number === undefined) {
+        throw new Error("背番号は、数字か文字で4文字までにしてください(例:15、T、M)。");
       }
       patch.number = number;
     }
