@@ -52,6 +52,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 名簿から外れた人には送らない(listMembers は名簿に載っている人だけを返す)。
     const members = await listMembers(teamSlug);
     const noteDate = formatNoteDate(note.practiceDate);
+    // 書いた本人が返したときは「佐藤 が、あなたがコメントした 佐藤 の…」とならないようにする。
+    const owner = note.memberId === current.id ? "自分の" : `${note.memberName} の`;
     const tail = `\n> ${excerpt(body)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`;
     await Promise.all([
       notifyMembers(
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ),
       notifyMembers(
         members.filter((member) => recipients.participants.includes(member.id)),
-        `${current.displayName} が、あなたがコメントした ${note.memberName} の ${noteDate} のノートに返信しました${tail}`,
+        `${current.displayName} が、あなたがコメントした ${owner} ${noteDate} のノートに返信しました${tail}`,
       ),
     ]);
   }
