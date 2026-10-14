@@ -22,6 +22,25 @@ export type NoteComment = {
   createdAt: string;
 };
 
+/**
+ * コメントが付いたときに知らせる相手。Slack のスレッドと同じで、そのノートの会話に入っている人
+ * (ノートを書いた人と、これまでにコメントした人)みんなに知らせる。コメントした本人には知らせない。
+ * 書いた人は `author` に、それ以外は `participants` に分ける(知らせの文面が違うため)。
+ */
+export function pickCommentRecipients(input: {
+  authorId: string;
+  commenterIds: string[];
+  senderId: string;
+}): { author: string | null; participants: string[] } {
+  const participants = [...new Set(input.commenterIds)].filter(
+    (memberId) => memberId !== input.senderId && memberId !== input.authorId,
+  );
+  return {
+    author: input.authorId === input.senderId ? null : input.authorId,
+    participants,
+  };
+}
+
 // 練習日の例外。off = その日は練習なし、extra = いつもの曜日ではないが練習あり。
 export type PracticeDayOverride = {
   date: string;

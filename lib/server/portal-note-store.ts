@@ -155,6 +155,15 @@ export async function listComments(noteIds: string[]): Promise<NoteComment[]> {
   }));
 }
 
+/** そのノートにコメントしたことのある人(重なりなし)。 */
+export async function listCommenterIds(noteId: string): Promise<string[]> {
+  const rows = await query<{ member_id: string }>(
+    "SELECT DISTINCT member_id FROM note_comments WHERE note_id = $1",
+    [noteId],
+  );
+  return rows.map((row) => row.member_id);
+}
+
 export async function addComment(noteId: string, memberId: string, body: string) {
   await query("INSERT INTO note_comments (id, note_id, member_id, body) VALUES ($1, $2, $3, $4)", [
     randomUUID(),
