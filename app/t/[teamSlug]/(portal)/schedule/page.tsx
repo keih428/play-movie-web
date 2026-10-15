@@ -214,7 +214,7 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
         {canAdminister(current.role) ? (
           <p className="tp-small tp-muted">
             {schedule.source === "calendar"
-              ? `予定は、部の Google カレンダーから取っています(「オフ」の予定は出しません。場所が空なら「${DEFAULT_PRACTICE_LOCATION}」。直してから反映まで、長くて10分)。`
+              ? `予定は、部の Google カレンダーから取っています(「オフ」の予定は出しません。場所が空なら「${DEFAULT_PRACTICE_LOCATION}」。直してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。`
               : `カレンダーを読めないので、曜日の決め打ち(日・火・木・土)の日を出しています。${schedule.error ? `理由:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
           </p>
         ) : null}
