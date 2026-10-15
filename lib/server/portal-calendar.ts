@@ -12,8 +12,8 @@ export type PracticeSchedule = {
   error?: string;
 };
 
-// カレンダーは10分ごとに読み直す(予定を直してから、長くても10分で反映される)。
-const REVALIDATE_SECONDS = 600;
+// カレンダーは1分ごとに読み直す(サイト側の遅れは長くて1分。Google が iCal の中身を新しくするまでの遅れは別にある)。
+const REVALIDATE_SECONDS = 60;
 
 async function fetchCalendarText(url: string): Promise<string> {
   const response = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
