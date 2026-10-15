@@ -95,6 +95,10 @@ export function buildTeamAttendancePath(teamSlug: string): string {
   return `/t/${teamSlug}/attendance`;
 }
 
+export function buildTeamSchedulePath(teamSlug: string): string {
+  return `/t/${teamSlug}/schedule`;
+}
+
 export function buildTeamNotesPath(teamSlug: string): string {
   return `/t/${teamSlug}/notes`;
 }

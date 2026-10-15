@@ -7,7 +7,12 @@ export type PracticeEvent = {
   // 時刻つきの予定の始まりと終わり('HH:MM'、日本時間)。終日の予定は null。
   start: string | null;
   end: string | null;
+  // カレンダーの「場所」。書かれていなければ null(画面では「駒場」と出す)。
+  location: string | null;
 };
+
+// 場所が書かれていない練習は、駒場でやる。
+export const DEFAULT_PRACTICE_LOCATION = "駒場";
 
 const TIME_ZONE = "Asia/Tokyo";
 const MAX_OCCURRENCES = 5000;
@@ -40,16 +45,21 @@ function shiftDate(isoDate: string, days: number): string {
 }
 
 /** 1回ぶんの予定を、日ごとの行にする。終日で何日か続く予定(合宿など)は、1日ずつに分ける。 */
-function expandOccurrence(title: string, start: ICAL.Time, end: ICAL.Time | null): PracticeEvent[] {
+function expandOccurrence(
+  title: string,
+  location: string | null,
+  start: ICAL.Time,
+  end: ICAL.Time | null,
+): PracticeEvent[] {
   if (start.isDate) {
     const first = toDateOnly(start);
     // 終日の予定の終わりは「次の日」で書かれている。
     const last = end ? shiftDate(toDateOnly(end), -1) : first;
     const events: PracticeEvent[] = [];
     for (let date = first; date <= last && events.length < 60; date = shiftDate(date, 1)) {
-      events.push({ date, title, start: null, end: null });
+      events.push({ date, title, start: null, end: null, location });
     }
-    return events.length > 0 ? events : [{ date: first, title, start: null, end: null }];
+    return events.length > 0 ? events : [{ date: first, title, start: null, end: null, location }];
   }
 
   const startDate = start.toJSDate();
@@ -59,6 +69,7 @@ function expandOccurrence(title: string, start: ICAL.Time, end: ICAL.Time | null
       title,
       start: timeFormatter.format(startDate),
       end: end ? timeFormatter.format(end.toJSDate()) : null,
+      location,
     },
   ];
 }
@@ -93,9 +104,10 @@ export function parseCalendarEvents(icsText: string, from: string, to: string): 
     if (isOffEvent(title)) {
       continue;
     }
+    const location = (event.location ?? "").trim() || null;
 
     if (!event.isRecurring()) {
-      events.push(...expandOccurrence(title, event.startDate, event.endDate));
+      events.push(...expandOccurrence(title, location, event.startDate, event.endDate));
       continue;
     }
 
@@ -114,7 +126,7 @@ export function parseCalendarEvents(icsText: string, from: string, to: string): 
       }
       const end = next.clone();
       end.addDuration(event.duration);
-      events.push(...expandOccurrence(title, next, end));
+      events.push(...expandOccurrence(title, location, next, end));
     }
   }
 

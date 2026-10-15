@@ -2019,3 +2019,206 @@ body:has(.tp[data-mode="tango"]) {
   border-style: dashed;
   color: var(--tp-muted);
 }
+
+/* ---------- 予定表(月のカレンダー) ---------- */
+.tp-cal-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.tp-cal-head h2 {
+  font-family: var(--tp-num);
+  text-align: center;
+}
+
+.tp-cal-move {
+  justify-self: start;
+  padding: 4px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tp-cal-head .tp-cal-move:last-child {
+  justify-self: end;
+}
+
+.tp-cal {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tp-cal th {
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--tp-line);
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tp-cal [data-weekday="0"] .tp-cal-day,
+.tp-cal th[data-weekday="0"] {
+  color: var(--tp-danger-fg);
+}
+
+.tp-cal [data-weekday="6"] .tp-cal-day,
+.tp-cal th[data-weekday="6"] {
+  color: var(--tp-t1);
+}
+
+.tp-cal td {
+  height: 92px;
+  padding: 4px;
+  border: 1px solid var(--tp-line);
+  vertical-align: top;
+  overflow: hidden;
+}
+
+.tp-cal-day {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.7em;
+  height: 1.7em;
+  border-radius: 999px;
+  font-family: var(--tp-num);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tp-cal td.tp-cal-today .tp-cal-day {
+  background: var(--tp-accent);
+  color: #fff;
+}
+
+.tp-cal td.tp-cal-out {
+  background: var(--tp-bg);
+}
+
+.tp-cal td.tp-cal-out > *,
+.tp-cal td.tp-cal-past > * {
+  opacity: 0.5;
+}
+
+.tp-cal-event {
+  display: grid;
+  gap: 1px;
+  margin-top: 3px;
+  padding: 3px 5px;
+  border-left: 3px solid var(--tp-accent);
+  border-radius: 4px;
+  background: var(--tp-accent-soft);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.tp-cal-event > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-cal-event span {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+}
+
+.tp-cal-event span:last-child {
+  font-family: var(--tp-body);
+}
+
+.tp-cal-event .tp-cal-short {
+  display: none;
+}
+
+.tp-cal-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+}
+
+.tp-cal-list li {
+  display: grid;
+  grid-template-columns: 6.5em 1fr auto;
+  grid-template-areas:
+    "date title time"
+    "date place place";
+  gap: 2px 10px;
+  align-items: baseline;
+  padding: 10px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+}
+
+.tp-cal-list li.tp-cal-today {
+  border-color: var(--tp-accent);
+  box-shadow: inset 0 0 0 1px var(--tp-accent);
+}
+
+.tp-cal-list li.tp-cal-past {
+  opacity: 0.55;
+}
+
+.tp-cal-date {
+  grid-area: date;
+  font-family: var(--tp-num);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tp-cal-list b {
+  grid-area: title;
+  min-width: 0;
+}
+
+.tp-cal-time {
+  grid-area: time;
+  font-family: var(--tp-num);
+  font-size: 13px;
+}
+
+.tp-cal-place {
+  grid-area: place;
+  color: var(--tp-muted);
+  font-size: 13px;
+}
+
+/* スマホでは、マスの中は予定名と時間だけにする(場所までは下の一覧で見る)。 */
+@media (max-width: 600px) {
+  .tp-cal td {
+    height: 72px;
+    padding: 2px;
+  }
+
+  .tp-cal-event {
+    padding: 2px 3px;
+    border-left-width: 2px;
+    font-size: 10px;
+  }
+
+  .tp-cal-event .tp-cal-long {
+    display: none;
+  }
+
+  .tp-cal-event .tp-cal-short {
+    display: block;
+  }
+
+  .tp-cal-list li {
+    grid-template-columns: 5.8em 1fr;
+    grid-template-areas:
+      "date title"
+      "date time"
+      "date place";
+  }
+}

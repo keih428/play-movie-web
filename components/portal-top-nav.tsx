@@ -9,6 +9,7 @@ import {
   buildTeamMembersPath,
   buildTeamNotesPath,
   buildTeamRootPath,
+  buildTeamSchedulePath,
   buildTeamTrainingPath,
   buildTeamTrainingPlanPath,
   buildTeamTrainingRecordsPath,
@@ -43,6 +44,7 @@ export function PortalTopNav({ initialTango, teamSlug, unreadNotes }: PortalTopN
       ? []
       : [
           { href: buildTeamTrainingPath(teamSlug), label: "メニュー" },
+          { href: buildTeamSchedulePath(teamSlug), label: "予定" },
           { href: buildTeamNotesPath(teamSlug), label: "ノート", badge: unreadNotes },
           { href: buildTeamAttendancePath(teamSlug), label: "出欠" },
           { href: buildTeamTrainingRecordsPath(teamSlug), label: "記録" },
