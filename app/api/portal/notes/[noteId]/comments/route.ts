@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { NOTE_COMMENT_MAX, formatNoteDate } from "@/lib/domain/notes";
+import { NOTE_COMMENT_MAX, formatNoteDate, pickCommentRecipients } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
-import { getMember } from "@/lib/server/portal-member-store";
-import { addComment, getNote, listComments } from "@/lib/server/portal-note-store";
+import { listMembers } from "@/lib/server/portal-member-store";
+import {
+  addComment,
+  getNote,
+  listCommenterIds,
+  listComments,
+} from "@/lib/server/portal-note-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { excerpt, getBaseUrl, notifyMembers } from "@/lib/server/portal-slack";
 
@@ -13,7 +18,8 @@ type RouteContext = {
   }>;
 };
 
-// コメントは、部員もスタッフも書ける。付いたら、ノートを書いた本人に知らせる。
+// コメントは、部員もスタッフも書ける。付いたら、ノートを書いた本人と、
+// そのノートにコメントしたことのある人みんなに知らせる(Slack のスレッドと同じ)。
 export async function POST(request: NextRequest, context: RouteContext) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
@@ -33,16 +39,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "コメントを書いてください。" }, { status: 400 });
   }
 
+  // 知らせる相手は、このコメントが入る前の顔ぶれで決める。
+  const recipients = pickCommentRecipients({
+    authorId: note.memberId,
+    commenterIds: await listCommenterIds(note.id),
+    senderId: current.id,
+  });
+
   await addComment(note.id, current.id, body);
 
-  if (note.memberId !== current.id) {
-    const author = await getMember(note.memberId);
-    if (author?.active) {
-      await notifyMembers(
-        [author],
-        `${current.displayName} が ${formatNoteDate(note.practiceDate)} のノートにコメントしました\n> ${excerpt(body)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
-      );
-    }
+  if (recipients.author || recipients.participants.length > 0) {
+    // 名簿から外れた人には送らない(listMembers は名簿に載っている人だけを返す)。
+    const members = await listMembers(teamSlug);
+    const noteDate = formatNoteDate(note.practiceDate);
+    // 書いた本人が返したときは「佐藤 が、あなたがコメントした 佐藤 の…」とならないようにする。
+    const owner = note.memberId === current.id ? "自分の" : `${note.memberName} の`;
+    const tail = `\n> ${excerpt(body)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`;
+    await Promise.all([
+      notifyMembers(
+        members.filter((member) => member.id === recipients.author),
+        `${current.displayName} が ${noteDate} のノートにコメントしました${tail}`,
+      ),
+      notifyMembers(
+        members.filter((member) => recipients.participants.includes(member.id)),
+        `${current.displayName} が、あなたがコメントした ${owner} ${noteDate} のノートに返信しました${tail}`,
+      ),
+    ]);
   }
 
   return NextResponse.json({ comments: await listComments([note.id]) });

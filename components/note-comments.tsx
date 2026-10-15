@@ -84,6 +84,9 @@ export function NoteComments({ initialComments, noteId, teamSlug }: NoteComments
             onChange={(event) => setBody(event.target.value)}
             required
           />
+          <p className="tp-small tp-muted">
+            ノートを書いた人と、ここにコメントした人みんなに Slack で知らせます。
+          </p>
         </div>
         {error ? (
           <p className="tp-error" role="alert">
