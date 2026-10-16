@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NoteComments } from "@/components/note-comments";
 import { NoteDeleteButton } from "@/components/note-delete-button";
+import { RefreshOnMount } from "@/components/refresh-on-mount";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
-import { getNote, listComments, markNoteSeen } from "@/lib/server/portal-note-store";
+import { getNote, getUnreadCounts, listComments, markNoteSeen } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
 
 type PageProps = {
@@ -33,12 +34,15 @@ export default async function TeamNotePage({ params }: PageProps) {
 
   const isAuthor = note.memberId === current.id;
   const comments = await listComments([note.id]);
+  // 未読のコメントがあれば読んだことにし、開いたあとで上のメニューの新着の数を消す。
+  const hadUnread = isAuthor && ((await getUnreadCounts(current.id))[note.id] ?? 0) > 0;
   if (isAuthor) {
     await markNoteSeen(note.id, current.id);
   }
 
   return (
     <>
+      {hadUnread ? <RefreshOnMount /> : null}
       <header className="tp-hero">
         <span className="tp-eyebrow">
           {note.practiceDate.slice(0, 4)}年 {formatNoteDate(note.practiceDate)}
