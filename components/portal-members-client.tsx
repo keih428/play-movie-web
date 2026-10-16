@@ -187,6 +187,7 @@ export function PortalMembersClient({
           <table className="tp-roster">
             <thead>
               <tr>
+                <th className="tp-roster-number">背番号</th>
                 <th>名前</th>
                 {isPlayerTable ? <th>ポジション</th> : null}
                 <th>役割</th>
@@ -198,8 +199,10 @@ export function PortalMembersClient({
                 const group = getMemberGroup(member.position);
                 return (
                   <tr key={member.id} className={member.active ? undefined : "tp-inactive"}>
+                    {/* 背番号は左の列に出すので、名前の欄は名前だけにする。 */}
+                    <td className="tp-num tp-roster-number">{member.number ?? "—"}</td>
                     <td>
-                      <span className="tp-name">{member.displayName}</span>
+                      <span className="tp-name">{member.name}</span>
                       {member.id === currentMemberId ? <span className="tp-sub">自分</span> : null}
                       {member.active ? null : <span className="tp-sub">名簿から外した</span>}
                     </td>
