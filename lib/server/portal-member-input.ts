@@ -60,6 +60,9 @@ export function parseMemberInput(
       }
       patch.role = body.role;
     }
+    if ("isSystemAdmin" in body) {
+      patch.isSystemAdmin = Boolean(body.isSystemAdmin);
+    }
     if ("isLeader" in body) {
       patch.isLeader = Boolean(body.isLeader);
     }

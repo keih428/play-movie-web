@@ -9,7 +9,14 @@ import {
 } from "@/lib/domain/attendance";
 import { describePracticeEvents } from "@/lib/domain/calendar";
 import { formatNoteDate, isIsoDate } from "@/lib/domain/notes";
-import { MEMBER_POSITIONS, MEMBER_SLOTS, canAdminister, isPortalTeam, type Member } from "@/lib/domain/portal";
+import {
+  MEMBER_POSITIONS,
+  MEMBER_SLOTS,
+  canAdminister,
+  canManageSite,
+  isPortalTeam,
+  type Member,
+} from "@/lib/domain/portal";
 import { buildTeamAttendancePath } from "@/lib/domain/team";
 import { listReports } from "@/lib/server/portal-attendance-store";
 import { listMembers } from "@/lib/server/portal-member-store";
@@ -114,7 +121,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
         <AttendanceForm
           // 連絡を出したあとに、欄を新しい状態で作り直す。
           key={`${selectedDate}-${reports.filter((report) => report.memberId === current.id).length}`}
-          canTestChannel={canAdminister(current.role)}
+          canTestChannel={canManageSite(current)}
           initialDate={selectedDate}
           myReports={reports.filter((report) => report.memberId === current.id)}
           eventLabels={eventLabels}
@@ -173,7 +180,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
             この日は、部のカレンダーに予定がありません(オフになった、など)。出してあった連絡は、そのまま残してあります。
           </p>
         ) : null}
-        {canAdminister(current.role) ? (
+        {canAdminister(current.role) || canManageSite(current) ? (
           <p className="tp-small tp-muted">
             {schedule.source === "calendar"
               ? "練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日。直してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。"

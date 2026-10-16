@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canManageSite, isPortalTeam } from "@/lib/domain/portal";
 import { parseMemberInput } from "@/lib/server/portal-member-input";
-import { listAdministrators, updateMember } from "@/lib/server/portal-member-store";
+import { listSystemAdmins, updateMember } from "@/lib/server/portal-member-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 
 type RouteContext = {
@@ -13,7 +13,7 @@ type RouteContext = {
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
-  if (!current || !canAdminister(current.role)) {
+  if (!current || !canManageSite(current)) {
     return NextResponse.json({ error: "名簿を変える権限がありません。" }, { status: 403 });
   }
 
@@ -24,15 +24,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { memberId } = await context.params;
 
-  // 名簿を変えられる人がいなくならないよう、最後のトレーニング担当は外せない。
-  const removesAdministrator =
-    (input.patch.role !== undefined && input.patch.role !== "training_lead") ||
-    input.patch.active === false;
+  // 名簿を変えられる人がいなくならないよう、最後のシステム担当は外せない。
+  const removesAdministrator = input.patch.isSystemAdmin === false || input.patch.active === false;
   if (removesAdministrator) {
-    const administrators = await listAdministrators(teamSlug);
+    const administrators = await listSystemAdmins(teamSlug);
     if (administrators.length === 1 && administrators[0].id === memberId) {
       return NextResponse.json(
-        { error: "トレーニング担当が1人もいなくなります。先に、ほかの人をトレーニング担当にしてください。" },
+        { error: "システム担当が1人もいなくなります。先に、ほかの人をシステム担当にしてください。" },
         { status: 400 },
       );
     }

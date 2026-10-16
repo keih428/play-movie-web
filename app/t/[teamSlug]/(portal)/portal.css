@@ -933,6 +933,13 @@ body:has(.tp) > .site-header {
   vertical-align: middle;
 }
 
+.tp-roster .tp-roster-number {
+  width: 3.5em;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .tp-roster .tp-name,
 .tp-nowrap {
   font-weight: 700;
