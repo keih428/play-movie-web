@@ -204,6 +204,15 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE members ALTER COLUMN number TYPE text USING number::text
     `,
   },
+  {
+    id: "008_member_system_admin",
+    // システム担当(名簿・ログインの記録・Slack のテスト)。役割とは別の印にして、トレーニング担当と兼ねられるようにする。
+    // これまで名簿を変えられたのはトレーニング担当なので、その人をそのままシステム担当にする(名簿を触れる人がいなくならないように)。
+    sql: `
+      ALTER TABLE members ADD COLUMN is_system_admin boolean NOT NULL DEFAULT false;
+      UPDATE members SET is_system_admin = true WHERE role = 'training_lead' AND active
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

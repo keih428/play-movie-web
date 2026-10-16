@@ -9,7 +9,7 @@ import {
   needsLeaveTime,
 } from "@/lib/domain/attendance";
 import { isIsoDate } from "@/lib/domain/notes";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canManageSite, isPortalTeam } from "@/lib/domain/portal";
 import { deleteReport, saveReport } from "@/lib/server/portal-attendance-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { postToAttendanceChannel } from "@/lib/server/portal-slack";
@@ -39,10 +39,10 @@ export async function POST(request: NextRequest) {
     test?: unknown;
   };
 
-  // トレーニング担当が、チャンネルに流れるかを試すとき。
+  // システム担当が、チャンネルに流れるかを試すとき。
   if (payload.test === true) {
-    if (!canAdminister(current.role)) {
-      return NextResponse.json({ error: "テストできるのはトレーニング担当だけです。" }, { status: 403 });
+    if (!canManageSite(current)) {
+      return NextResponse.json({ error: "テストできるのはシステム担当だけです。" }, { status: 403 });
     }
     return NextResponse.json({
       slack: await postToAttendanceChannel("部内ページからのテストです。遅刻・欠席の連絡は、ここに流れます。"),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  canAdminister,
+  canManageSite,
   isPortalTeam,
   parseRosterMarkdown,
   type MemberInput,
@@ -9,7 +9,7 @@ import { parseMemberInput } from "@/lib/server/portal-member-input";
 import {
   countMembers,
   createMember,
-  listAdministrators,
+  listSystemAdmins,
   listMembers,
   upsertMembers,
 } from "@/lib/server/portal-member-store";
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
   }
 
-  const members = await listMembers(teamSlug, { includeInactive: canAdminister(current.role) });
+  const members = await listMembers(teamSlug, { includeInactive: canManageSite(current) });
   return NextResponse.json({ members });
 }
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     passphrase?: string;
   };
 
-  // 名簿を変えられるのはトレーニング担当だけ。ただし名簿が空のあいだは、合言葉を知っている人が
+  // 名簿を変えられるのはシステム担当だけ。ただし名簿が空のあいだは、合言葉を知っている人が
   // 最初の取り込みをできる(まだ誰もログインできないため)。
   const current = await getCurrentMember(teamSlug);
   const isFirstImport =
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     typeof payload.markdown === "string" &&
     isCorrectPassphrase(payload.passphrase ?? "") &&
     (await countMembers(teamSlug)) === 0;
-  if (!isFirstImport && !(current && canAdminister(current.role))) {
+  if (!isFirstImport && !(current && canManageSite(current))) {
     return NextResponse.json({ error: "名簿を変える権限がありません。" }, { status: 403 });
   }
 
@@ -58,14 +58,16 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    // 取り込んだあとに、名簿を変えられる人(トレーニング担当)が1人は残るようにする。
-    const importedNames = new Set(inputs.map((input) => input.name));
+    // 取り込んだあとに、名簿を変えられる人(システム担当)が1人は残るようにする。取り込みでは外れないので、
+    // 今いなければ(最初の取り込みなど)、表の中に1人は要る。
     const keepsAdministrator =
-      inputs.some((input) => input.role === "training_lead") ||
-      (await listAdministrators(teamSlug)).some((member) => !importedNames.has(member.name));
+      inputs.some((input) => input.isSystemAdmin) || (await listSystemAdmins(teamSlug)).length > 0;
     if (!keepsAdministrator) {
       return NextResponse.json(
-        { error: "表の中に「トレーニング担当」の人が1人は要ります(役割の列に「トレーニング担当」と書く)。" },
+        {
+          error:
+            "表の中に「システム担当」の人が1人は要ります(役割の列に「システム担当」と書く。兼ねるなら「トレーニング担当・システム担当」)。",
+        },
         { status: 400 },
       );
     }
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
       position: input.patch.position ?? null,
       isLeader: input.patch.isLeader ?? false,
       role: input.patch.role ?? "member",
+      isSystemAdmin: input.patch.isSystemAdmin ?? false,
       title: input.patch.title ?? null,
     });
     return NextResponse.json({ member });

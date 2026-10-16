@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DEFAULT_PRACTICE_LOCATION, type PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canAdminister, canManageSite, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamSchedulePath } from "@/lib/domain/team";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
@@ -211,7 +211,7 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
           </ul>
         )}
 
-        {canAdminister(current.role) ? (
+        {canAdminister(current.role) || canManageSite(current) ? (
           <p className="tp-small tp-muted">
             {schedule.source === "calendar"
               ? `予定は、部の Google カレンダーから取っています(「オフ」の予定は出しません。場所が空なら「${DEFAULT_PRACTICE_LOCATION}」。直してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。`

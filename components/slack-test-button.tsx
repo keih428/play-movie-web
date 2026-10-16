@@ -5,7 +5,7 @@ import { buildTeamApiPath } from "@/lib/domain/team";
 
 type Check = { step: string; ok: boolean; detail: string };
 
-/** トレーニング担当用。自分あてにテストの DM を送り、どこで止まっているかを出す。 */
+/** システム担当用。自分あてにテストの DM を送り、どこで止まっているかを出す。 */
 export function SlackTestButton({ teamSlug }: { teamSlug: string }) {
   const [checks, setChecks] = useState<Check[] | null>(null);
   const [error, setError] = useState("");
