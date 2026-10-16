@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMemberGroup, isPortalTeam, receivesTrainingNotices } from "@/lib/domain/portal";
+import { isPortalTeam, receivesTrainingNotices } from "@/lib/domain/portal";
 import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import {
   TRAINING_DAYS,
+  TRAINING_REQUEST_LABEL,
   buildLiftKindMap,
   findProgramForWeek,
   type TrainingDay,
@@ -82,20 +83,16 @@ export async function POST(request: NextRequest) {
     request: requestText,
   });
 
-  // 「リーダー・トレーニング担当へ」が新しく書かれたか変わったら、まとまりのリーダー(OP は OH のリーダー)と、
-  // トレーニング担当に知らせる。同じ内容で保存し直しただけなら知らせない。
+  // 「トレーニング担当へ」が新しく書かれたか変わったら、トレーニング担当にだけ知らせる。
+  // 同じ内容で保存し直しただけなら知らせない。
   if (requestText && requestText !== previousRequest) {
-    const group = getMemberGroup(current.position);
     const recipients = (await listMembers(teamSlug)).filter(
-      (member) =>
-        member.id !== current.id &&
-        (receivesTrainingNotices(member) ||
-          (member.isLeader && getMemberGroup(member.position) === group)),
+      (member) => member.id !== current.id && receivesTrainingNotices(member),
     );
     const week = program.menu.weeks.find((entry) => entry.s === weekStart);
     await notifyMembers(
       recipients,
-      `${current.displayName} がトレーニング録に「リーダー・トレーニング担当へ」を書きました\n> ${excerpt(requestText)}\n${getBaseUrl(request)}${buildTeamTrainingRecordsPath(teamSlug)}?menu=${program.key}&week=${week?.k ?? ""}`,
+      `${current.displayName} がトレーニング録に「${TRAINING_REQUEST_LABEL}」を書きました\n> ${excerpt(requestText)}\n${getBaseUrl(request)}${buildTeamTrainingRecordsPath(teamSlug)}?menu=${program.key}&week=${week?.k ?? ""}#req-${current.id}-${day}`,
     );
   }
   return NextResponse.json({ ok: true });

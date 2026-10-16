@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { isPortalTeam } from "@/lib/domain/portal";
+import { TrainingRequestReplies } from "@/components/training-request-replies";
+import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import {
   TRAINING_DAY_LABELS,
+  TRAINING_REQUEST_LABEL,
   estimate1rm,
   findWeekIndex,
   formatMonthDay,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/domain/training";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
+import { listWeekReplies } from "@/lib/server/portal-training-reply-store";
 import {
   getTeamLatestMeasurements,
   getTeamWeek,
@@ -70,11 +73,13 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
   const weekIndex = requestedWeekIndex >= 0 ? requestedWeekIndex : defaultWeekIndex;
   const week = menu.weeks[weekIndex];
 
-  const [members, measurements, teamWeek] = await Promise.all([
+  const [members, measurements, teamWeek, replies] = await Promise.all([
     listMembers(teamSlug),
     getTeamLatestMeasurements(teamSlug),
     getTeamWeek(teamSlug, week.s),
+    listWeekReplies(teamSlug, week.s),
   ]);
+  const isTrainingLead = canAdminister(current);
   const players = members.filter((member) => member.position);
   const names = new Map(members.map((member) => [member.id, member.displayName]));
   const recordedIds = new Set(teamWeek.memos.map((memo) => memo.memberId));
@@ -201,17 +206,33 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
         <h2>書かれたこと</h2>
         {comments.length === 0 ? <p className="tp-small tp-muted">この週はまだありません。</p> : null}
         {comments.map((comment) => (
-          <article key={`${comment.memberId}-${comment.day}`} className="tp-card tp-comment">
+          <article
+            key={`${comment.memberId}-${comment.day}`}
+            id={`req-${comment.memberId}-${comment.day}`}
+            className="tp-card tp-comment"
+          >
             <div className="tp-dayhead">
               <span className="tp-when">{TRAINING_DAY_LABELS[comment.day]}</span>
               <span className="tp-what">{names.get(comment.memberId) ?? "—"}</span>
             </div>
             {comment.memo ? <p>{comment.memo}</p> : null}
             {comment.request ? (
-              <p className="tp-request">
-                <b>リーダー・トレーニング担当へ</b>
-                {comment.request}
-              </p>
+              <>
+                <p className="tp-request">
+                  <b>{TRAINING_REQUEST_LABEL}</b>
+                  {comment.request}
+                </p>
+                <TrainingRequestReplies
+                  canReply={isTrainingLead || comment.memberId === current.id}
+                  day={comment.day}
+                  initialReplies={replies.filter(
+                    (reply) => reply.memberId === comment.memberId && reply.day === comment.day,
+                  )}
+                  memberId={comment.memberId}
+                  teamSlug={teamSlug}
+                  weekStart={week.s}
+                />
+              </>
             ) : null}
           </article>
         ))}

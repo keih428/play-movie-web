@@ -304,7 +304,7 @@ function DayPanel({
             </div>
             <div className="tp-field">
               <label htmlFor={`request-${day.day}`}>
-                リーダー・トレーニング担当へ(反応してほしいこと。なければ空のまま)
+                トレーニング担当へ(反応してほしいこと。なければ空のまま)
               </label>
               <textarea
                 id={`request-${day.day}`}
