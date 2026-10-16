@@ -22,7 +22,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!note) {
     return NextResponse.json({ error: "ノートが見つかりません。" }, { status: 404 });
   }
-  if (note.memberId !== current.id && !canAdminister(current.role)) {
+  if (note.memberId !== current.id && !canAdminister(current)) {
     return NextResponse.json({ error: "このノートを消す権限がありません。" }, { status: 403 });
   }
 

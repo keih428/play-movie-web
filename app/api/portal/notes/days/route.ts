@@ -8,7 +8,7 @@ import { getCurrentMember } from "@/lib/server/portal-session";
 export async function POST(request: NextRequest) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
-  if (!current || !canAdminister(current.role)) {
+  if (!current || !canAdminister(current)) {
     return NextResponse.json({ error: "練習日を変える権限がありません。" }, { status: 403 });
   }
 

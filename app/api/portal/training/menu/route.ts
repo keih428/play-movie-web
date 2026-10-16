@@ -11,7 +11,7 @@ import {
 async function getAdministrator(request: NextRequest) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
-  return current && canAdminister(current.role) ? { teamSlug, current } : null;
+  return current && canAdminister(current) ? { teamSlug, current } : null;
 }
 
 // メニュー(menu.json)と年間の方針(plan.json)は、リポジトリに置かず、ここから読み込ませる。

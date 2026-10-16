@@ -7,7 +7,8 @@ export const TANGO_MODE_ENABLED = false;
 export const MEMBER_POSITIONS = ["OH", "OP", "MB", "S", "Li"] as const;
 export type MemberPosition = (typeof MEMBER_POSITIONS)[number];
 
-export const MEMBER_ROLES = ["member", "training_lead", "training_sub", "staff"] as const;
+// 役割は部員かスタッフか。トレーニング担当・システム担当・ポジションのリーダーは、役割とは別の印(チェック)で持つ。
+export const MEMBER_ROLES = ["member", "staff"] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 
 export const MEMBER_GROUPS = ["side", "MB", "S", "Li"] as const;
@@ -41,7 +42,9 @@ export type Member = {
   position: MemberPosition | null;
   isLeader: boolean;
   role: MemberRole;
-  // システム担当(名簿・ログインの記録・Slack のテストを扱う)。役割とは別に持つので、トレーニング担当と兼ねられる。
+  // トレーニング担当(メニュー・練習日の例外・ノートの削除を扱う)。
+  isTrainingLead: boolean;
+  // システム担当(名簿・ログインの記録・Slack のテストを扱う)。トレーニング担当と兼ねられる。
   isSystemAdmin: boolean;
   title: string | null;
   tier: string | null;
@@ -59,7 +62,8 @@ export type MemberInput = {
   position: MemberPosition | null;
   isLeader: boolean;
   role: MemberRole;
-  // undefined は「触らない」(取り込む表で「システム担当」と書かれていない人)。
+  // undefined は「触らない」(取り込む表で「トレーニング担当」「システム担当」と書かれていない人)。
+  isTrainingLead?: boolean;
   isSystemAdmin?: boolean;
   title: string | null;
 };
@@ -68,10 +72,10 @@ export type LoginChoice = Pick<Member, "id" | "displayName" | "grade" | "positio
 
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   member: "部員",
-  training_lead: "トレーニング担当",
-  training_sub: "トレーニング副担当",
   staff: "スタッフ",
 };
+
+export const TRAINING_LEAD_LABEL = "トレーニング担当";
 
 export const MEMBER_GROUP_LABELS: Record<MemberGroup, string> = {
   side: "サイド",
@@ -146,8 +150,8 @@ export function getMemberGroup(position: MemberPosition | null): MemberGroup | n
 export const SYSTEM_ADMIN_LABEL = "システム担当";
 
 /** メニュー・練習日の例外を変えたり、ほかの人のノートを消したりできるのは、トレーニング担当だけ。 */
-export function canAdminister(role: MemberRole): boolean {
-  return role === "training_lead";
+export function canAdminister(member: Pick<Member, "isTrainingLead">): boolean {
+  return member.isTrainingLead;
 }
 
 // 名簿の肩書がこれの人(トレーナー)は、ノートのまとめを出せる。
@@ -157,8 +161,8 @@ const TRAINER_TITLE = "トレーナー";
  * バレーノートの月ごとのまとめ(PDF)を出せる人:トレーニング担当、トレーナー、ポジションのリーダー。
  * 副担当・ほかのスタッフ・ふつうの部員は出せない。
  */
-export function canExportNotes(member: Pick<Member, "role" | "isLeader" | "title">): boolean {
-  return canAdminister(member.role) || member.isLeader || member.title === TRAINER_TITLE;
+export function canExportNotes(member: Pick<Member, "isTrainingLead" | "isLeader" | "title">): boolean {
+  return canAdminister(member) || member.isLeader || member.title === TRAINER_TITLE;
 }
 
 /** 名簿を変える・Slack の知らせを試すのは、システム担当だけ。 */
@@ -171,8 +175,8 @@ export function canViewLoginLog(member: Pick<Member, "isSystemAdmin">): boolean 
   return member.isSystemAdmin;
 }
 
-export function receivesTrainingNotices(role: MemberRole): boolean {
-  return role === "training_lead" || role === "training_sub";
+export function receivesTrainingNotices(member: Pick<Member, "isTrainingLead">): boolean {
+  return member.isTrainingLead;
 }
 
 function splitTableRow(line: string): string[] {
@@ -185,27 +189,25 @@ function splitTableRow(line: string): string[] {
 }
 
 /**
- * 役割の欄を読む。「トレーニング担当・システム担当」のように、システム担当はほかの役割と並べて書ける。
- * システム担当と書かれていなければ isSystemAdmin は undefined(今の値を変えない)。
+ * 役割の欄を読む。「スタッフ」「トレーニング担当」「システム担当」は「・」で並べて書ける(例:トレーニング担当・システム担当)。
+ * それ以外の言葉は肩書になる。トレーニング担当・システム担当は、書かれていなければ undefined(今の値を変えない)。
+ * 「トレーニング副担当」は 2026-10-16 になくしたので、書かれていても読み飛ばす。
  */
-function parseRole(cell: string): { role: MemberRole; title: string | null; isSystemAdmin?: boolean } {
+function parseRole(cell: string): {
+  role: MemberRole;
+  title: string | null;
+  isTrainingLead?: boolean;
+  isSystemAdmin?: boolean;
+} {
   const parts = cell.split(/[・、,，\s]+/).filter(Boolean);
-  const isSystemAdmin = parts.includes(SYSTEM_ADMIN_LABEL) ? true : undefined;
-  const value = parts.filter((part) => part !== SYSTEM_ADMIN_LABEL).join("・");
-  return { ...parseBaseRole(value), ...(isSystemAdmin ? { isSystemAdmin } : {}) };
-}
-
-function parseBaseRole(value: string): { role: MemberRole; title: string | null } {
-  if (value === "トレーニング担当") {
-    return { role: "training_lead", title: null };
-  }
-  if (value === "トレーニング副担当") {
-    return { role: "training_sub", title: null };
-  }
-  if (value === "スタッフ") {
-    return { role: "staff", title: null };
-  }
-  return { role: "member", title: value || null };
+  const flags = new Set([TRAINING_LEAD_LABEL, SYSTEM_ADMIN_LABEL, "スタッフ", "部員", "トレーニング副担当"]);
+  const title = parts.filter((part) => !flags.has(part)).join("・");
+  return {
+    role: parts.includes("スタッフ") ? "staff" : "member",
+    title: title || null,
+    ...(parts.includes(TRAINING_LEAD_LABEL) ? { isTrainingLead: true } : {}),
+    ...(parts.includes(SYSTEM_ADMIN_LABEL) ? { isSystemAdmin: true } : {}),
+  };
 }
 
 /**
@@ -242,7 +244,7 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
 
     const positionCell = read("ポジション");
     const position = isMemberPosition(positionCell) ? positionCell : null;
-    const { role, title, isSystemAdmin } = parseRole(read("役割"));
+    const { role, title, isTrainingLead, isSystemAdmin } = parseRole(read("役割"));
     const grade = Number.parseInt(read("学年"), 10);
     const hasNumberColumn = columns.includes("背番号");
 
@@ -253,6 +255,7 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
       position,
       isLeader: /[◯○〇]/.test(read("リーダー")),
       role,
+      ...(isTrainingLead ? { isTrainingLead } : {}),
       ...(isSystemAdmin ? { isSystemAdmin } : {}),
       title: position ? title : positionCell || title,
     });

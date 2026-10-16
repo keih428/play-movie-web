@@ -261,7 +261,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
   const basePath = buildTeamTrainingPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
-  const canManage = canAdminister(current.role);
+  const canManage = canAdminister(current);
   const query = await searchParams;
   const today = getTodayInJapan();
   const [programs, plan] = await Promise.all([
