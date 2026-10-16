@@ -21,6 +21,7 @@ type MemberRow = {
   position: string | null;
   is_leader: boolean;
   role: string;
+  is_training_lead: boolean;
   is_system_admin: boolean;
   title: string | null;
   tier: string | null;
@@ -46,6 +47,7 @@ const PATCH_COLUMNS: Record<keyof MemberPatch, string> = {
   position: "position",
   isLeader: "is_leader",
   role: "role",
+  isTrainingLead: "is_training_lead",
   isSystemAdmin: "is_system_admin",
   title: "title",
   tier: "tier",
@@ -65,6 +67,7 @@ function toMember(row: MemberRow): Member {
     position: row.position as MemberPosition | null,
     isLeader: row.is_leader,
     role: row.role as MemberRole,
+    isTrainingLead: row.is_training_lead,
     isSystemAdmin: row.is_system_admin,
     title: row.title,
     tier: row.tier,
@@ -128,11 +131,12 @@ export async function upsertMembers(
         added += 1;
       }
       await run(
-        `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order, number, is_system_admin)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12)
+        `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order, number, is_system_admin, is_training_lead)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12, $13)
          ON CONFLICT (team_slug, name) DO UPDATE SET
            number = CASE WHEN $11 THEN EXCLUDED.number ELSE members.number END,
            is_system_admin = members.is_system_admin OR EXCLUDED.is_system_admin,
+           is_training_lead = members.is_training_lead OR EXCLUDED.is_training_lead,
            grade = EXCLUDED.grade,
            position = EXCLUDED.position,
            is_leader = EXCLUDED.is_leader,
@@ -156,6 +160,8 @@ export async function upsertMembers(
           input.number !== undefined,
           // システム担当は、表で付けることはできるが、外すのは名簿の「直す」から(取り込みで外れないように)。
           input.isSystemAdmin ?? false,
+          // トレーニング担当も同じく、表で付けられるが、外すのは「直す」から。
+          input.isTrainingLead ?? false,
         ],
       );
     }
@@ -166,8 +172,8 @@ export async function upsertMembers(
 
 export async function createMember(teamSlug: string, input: MemberInput): Promise<Member> {
   const rows = await query<MemberRow>(
-    `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, number, is_system_admin, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+    `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, number, is_system_admin, is_training_lead, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
        (SELECT coalesce(max(sort_order), -1) + 1 FROM members WHERE team_slug = $2))
      RETURNING *`,
     [
@@ -181,6 +187,7 @@ export async function createMember(teamSlug: string, input: MemberInput): Promis
       input.title,
       input.number ?? null,
       input.isSystemAdmin ?? false,
+      input.isTrainingLead ?? false,
     ],
   );
   return toMember(rows[0]);

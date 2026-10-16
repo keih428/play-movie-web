@@ -220,6 +220,17 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       UPDATE members SET slot = 'C' WHERE slot = 'B'
     `,
   },
+  {
+    id: "010_member_training_lead_flag",
+    // 役割を「部員/スタッフ」だけにし、トレーニング担当はチェックの印にした。トレーニング副担当はなくした。
+    // 担当・副担当だった人は、ポジションがあれば部員、なければスタッフにする。
+    sql: `
+      ALTER TABLE members ADD COLUMN is_training_lead boolean NOT NULL DEFAULT false;
+      UPDATE members SET is_training_lead = true WHERE role = 'training_lead';
+      UPDATE members SET role = CASE WHEN position IS NULL THEN 'staff' ELSE 'member' END
+        WHERE role IN ('training_lead', 'training_sub')
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

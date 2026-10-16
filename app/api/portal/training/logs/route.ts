@@ -83,13 +83,13 @@ export async function POST(request: NextRequest) {
   });
 
   // 「リーダー・トレーニング担当へ」が新しく書かれたか変わったら、まとまりのリーダー(OP は OH のリーダー)と、
-  // トレーニング担当・副担当に知らせる。同じ内容で保存し直しただけなら知らせない。
+  // トレーニング担当に知らせる。同じ内容で保存し直しただけなら知らせない。
   if (requestText && requestText !== previousRequest) {
     const group = getMemberGroup(current.position);
     const recipients = (await listMembers(teamSlug)).filter(
       (member) =>
         member.id !== current.id &&
-        (receivesTrainingNotices(member.role) ||
+        (receivesTrainingNotices(member) ||
           (member.isLeader && getMemberGroup(member.position) === group)),
     );
     const week = program.menu.weeks.find((entry) => entry.s === weekStart);

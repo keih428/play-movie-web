@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
       position: input.patch.position ?? null,
       isLeader: input.patch.isLeader ?? false,
       role: input.patch.role ?? "member",
+      isTrainingLead: input.patch.isTrainingLead ?? false,
       isSystemAdmin: input.patch.isSystemAdmin ?? false,
       title: input.patch.title ?? null,
     });

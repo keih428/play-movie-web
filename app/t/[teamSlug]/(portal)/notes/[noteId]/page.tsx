@@ -63,7 +63,7 @@ export default async function TeamNotePage({ params }: PageProps) {
               直す
             </Link>
           ) : null}
-          {isAuthor || canAdminister(current.role) ? (
+          {isAuthor || canAdminister(current) ? (
             <NoteDeleteButton
               noteId={note.id}
               redirectTo={isAuthor ? `${basePath}/mine` : basePath}

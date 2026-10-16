@@ -134,7 +134,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
         ) : null}
       </section>
 
-      {canAdminister(current.role) ? (
+      {canAdminister(current) ? (
         <footer className="tp-footer">
           {schedule.source === "calendar" ? (
             <p>練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日)。</p>

@@ -9,6 +9,7 @@ import {
   MEMBER_ROLES,
   MEMBER_ROLE_LABELS,
   SYSTEM_ADMIN_LABEL,
+  TRAINING_LEAD_LABEL,
   MEMBER_SLOTS,
   MEMBER_TIERS,
   getMemberGroup,
@@ -32,6 +33,7 @@ type MemberDraft = {
   position: string;
   isLeader: boolean;
   role: string;
+  isTrainingLead: boolean;
   isSystemAdmin: boolean;
   title: string;
   tier: string;
@@ -47,6 +49,7 @@ const EMPTY_DRAFT: MemberDraft = {
   position: "",
   isLeader: false,
   role: "member",
+  isTrainingLead: false,
   isSystemAdmin: false,
   title: "",
   tier: "",
@@ -63,6 +66,7 @@ function toDraft(member: Member): MemberDraft {
     position: member.position ?? "",
     isLeader: member.isLeader,
     role: member.role,
+    isTrainingLead: member.isTrainingLead,
     isSystemAdmin: member.isSystemAdmin,
     title: member.title ?? "",
     tier: member.tier ?? "",
@@ -88,6 +92,7 @@ async function sendJson<T>(url: string, method: string, body?: unknown): Promise
 function describeMember(member: Member) {
   const parts = [
     member.role === "member" ? null : MEMBER_ROLE_LABELS[member.role],
+    member.isTrainingLead ? TRAINING_LEAD_LABEL : null,
     member.isSystemAdmin ? SYSTEM_ADMIN_LABEL : null,
     member.title,
   ];
@@ -329,7 +334,7 @@ export function PortalMembersClient({
                 </select>
               </div>
               <div className="tp-field">
-                <label htmlFor="member-role">役割</label>
+                <label htmlFor="member-role">役割(部員かスタッフか)</label>
                 <select
                   id="member-role"
                   value={draft.role}
@@ -400,6 +405,14 @@ export function PortalMembersClient({
             <label className="tp-check">
               <input
                 type="checkbox"
+                checked={draft.isTrainingLead}
+                onChange={(event) => setField("isTrainingLead", event.target.checked)}
+              />
+              {TRAINING_LEAD_LABEL}(メニューを入れる・練習日を変える・ノートを消す。「リーダー・トレーニング担当へ」の知らせが届く)
+            </label>
+            <label className="tp-check">
+              <input
+                type="checkbox"
                 checked={draft.isSystemAdmin}
                 onChange={(event) => setField("isSystemAdmin", event.target.checked)}
               />
@@ -454,7 +467,8 @@ export function PortalMembersClient({
               <p className="tp-small tp-muted">
                 名前が同じ人は上書きし、いない人は足します。表にいない人はそのまま残ります。段階・枠・Slack の ID
                 は変わりません。背番号は、表に「背番号」の列があるときだけ書き換えます。役割の列に「システム担当」と
-                書くと(兼ねるなら「トレーニング担当・システム担当」)システム担当になります。外すのは「直す」からです。
+                書くとシステム担当、「トレーニング担当」と書くとトレーニング担当になります(兼ねるなら「トレーニング担当・システム担当」、
+                スタッフは「スタッフ」も並べる)。外すのは「直す」からです。
               </p>
               <div className="tp-field">
                 <label htmlFor="roster-markdown">名簿の表</label>
