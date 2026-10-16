@@ -408,7 +408,7 @@ export function PortalMembersClient({
                 checked={draft.isTrainingLead}
                 onChange={(event) => setField("isTrainingLead", event.target.checked)}
               />
-              {TRAINING_LEAD_LABEL}(メニューを入れる・練習日を変える・ノートを消す。「リーダー・トレーニング担当へ」の知らせが届く)
+              {TRAINING_LEAD_LABEL}(メニューを入れる・練習日を変える・ノートを消す。「トレーニング担当へ」の知らせが届く)
             </label>
             <label className="tp-check">
               <input

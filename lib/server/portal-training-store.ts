@@ -122,7 +122,7 @@ export async function getPreviousWeights(
   return Object.fromEntries(rows.map((row) => [row.exercise, row.weight_kg]));
 }
 
-/** その日に書いてある「リーダー・トレーニング担当へ」。変わったときだけ知らせるために使う。 */
+/** その日に書いてある「トレーニング担当へ」。変わったときだけ知らせるために使う。 */
 export async function getDayRequest(
   memberId: string,
   weekStart: string,

@@ -679,3 +679,18 @@ export function validatePlan(value: unknown): TrainingPlan | null {
     sections,
   };
 }
+
+// トレーニング録で、トレーニング担当に向けて書く欄の名前(2026-10-16 までは「リーダー・トレーニング担当へ」)。
+export const TRAINING_REQUEST_LABEL = "トレーニング担当へ";
+export const TRAINING_REPLY_MAX = 1000;
+
+/** 「トレーニング担当へ」に付いた返信。memberId は書いた部員、authorId は返信した人。 */
+export type TrainingRequestReply = {
+  id: string;
+  memberId: string;
+  day: TrainingDay;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+};

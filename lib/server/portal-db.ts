@@ -231,6 +231,22 @@ const MIGRATIONS: { id: string; sql: string }[] = [
         WHERE role IN ('training_lead', 'training_sub')
     `,
   },
+  {
+    id: "011_training_request_replies",
+    // トレーニング録の「トレーニング担当へ」への返信。member_id・week_start・day で、どの日の記録かを決める。
+    sql: `
+      CREATE TABLE training_request_replies (
+        id text PRIMARY KEY,
+        member_id text NOT NULL REFERENCES members (id),
+        week_start text NOT NULL,
+        day text NOT NULL,
+        author_id text NOT NULL REFERENCES members (id),
+        body text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX training_request_replies_week ON training_request_replies (week_start)
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

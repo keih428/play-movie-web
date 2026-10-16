@@ -2229,3 +2229,20 @@ body:has(.tp[data-mode="tango"]) {
       "date place";
   }
 }
+
+/* トレーニング録の「トレーニング担当へ」への返信 */
+.tp-replies {
+  display: grid;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 2px solid var(--tp-line);
+}
+
+.tp-replies .tp-comments li:first-child {
+  padding-top: 0;
+}
+
+.tp-reply-form {
+  display: grid;
+  gap: 8px;
+}
