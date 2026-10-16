@@ -41,7 +41,7 @@ export default async function TeamLoginLogPage({ params }: PageProps) {
   }
 
   const current = await requireMember(teamSlug, buildTeamLoginLogPath(teamSlug));
-  if (!canViewLoginLog(current.role)) {
+  if (!canViewLoginLog(current)) {
     redirect(buildTeamMembersPath(teamSlug));
   }
 
@@ -50,7 +50,7 @@ export default async function TeamLoginLogPage({ params }: PageProps) {
   return (
     <>
       <header className="tp-hero">
-        <span className="tp-eyebrow">トレーニング担当用</span>
+        <span className="tp-eyebrow">システム担当用</span>
         <h1>ログインの記録</h1>
         <p className="tp-small tp-muted">
           新しい順に200件まで。知らない端末や合言葉の間違いが続いたら、合言葉を変える(全員がログインし直しになる)。

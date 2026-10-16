@@ -8,6 +8,7 @@ import {
   MEMBER_POSITIONS,
   MEMBER_ROLES,
   MEMBER_ROLE_LABELS,
+  SYSTEM_ADMIN_LABEL,
   MEMBER_SLOTS,
   MEMBER_TIERS,
   getMemberGroup,
@@ -31,6 +32,7 @@ type MemberDraft = {
   position: string;
   isLeader: boolean;
   role: string;
+  isSystemAdmin: boolean;
   title: string;
   tier: string;
   slot: string;
@@ -45,6 +47,7 @@ const EMPTY_DRAFT: MemberDraft = {
   position: "",
   isLeader: false,
   role: "member",
+  isSystemAdmin: false,
   title: "",
   tier: "",
   slot: "",
@@ -60,6 +63,7 @@ function toDraft(member: Member): MemberDraft {
     position: member.position ?? "",
     isLeader: member.isLeader,
     role: member.role,
+    isSystemAdmin: member.isSystemAdmin,
     title: member.title ?? "",
     tier: member.tier ?? "",
     slot: member.slot ?? "",
@@ -82,7 +86,11 @@ async function sendJson<T>(url: string, method: string, body?: unknown): Promise
 }
 
 function describeMember(member: Member) {
-  const parts = [member.role === "member" ? null : MEMBER_ROLE_LABELS[member.role], member.title];
+  const parts = [
+    member.role === "member" ? null : MEMBER_ROLE_LABELS[member.role],
+    member.isSystemAdmin ? SYSTEM_ADMIN_LABEL : null,
+    member.title,
+  ];
   return parts.filter(Boolean).join("・");
 }
 
@@ -389,6 +397,14 @@ export function PortalMembersClient({
             <label className="tp-check">
               <input
                 type="checkbox"
+                checked={draft.isSystemAdmin}
+                onChange={(event) => setField("isSystemAdmin", event.target.checked)}
+              />
+              {SYSTEM_ADMIN_LABEL}(名簿を変える・ログインの記録を見る・Slack の知らせを試す。役割と兼ねられる)
+            </label>
+            <label className="tp-check">
+              <input
+                type="checkbox"
                 checked={draft.active}
                 onChange={(event) => setField("active", event.target.checked)}
               />
@@ -417,7 +433,7 @@ export function PortalMembersClient({
       {canManage ? (
         <section className="tp-section">
           <h2>名簿を変える</h2>
-          <p className="tp-small tp-muted">名簿を変えられるのは、トレーニング担当だけです。</p>
+          <p className="tp-small tp-muted">名簿を変えられるのは、システム担当だけです。</p>
           <div className="tp-actions">
             <button type="button" className="tp-button tp-ghost" onClick={() => startEditing(null)}>
               1人足す
@@ -434,7 +450,8 @@ export function PortalMembersClient({
             <form className="tp-ref-body" onSubmit={importRoster}>
               <p className="tp-small tp-muted">
                 名前が同じ人は上書きし、いない人は足します。表にいない人はそのまま残ります。段階・枠・Slack の ID
-                は変わりません。背番号は、表に「背番号」の列があるときだけ書き換えます。
+                は変わりません。背番号は、表に「背番号」の列があるときだけ書き換えます。役割の列に「システム担当」と
+                書くと(兼ねるなら「トレーニング担当・システム担当」)システム担当になります。外すのは「直す」からです。
               </p>
               <div className="tp-field">
                 <label htmlFor="roster-markdown">名簿の表</label>

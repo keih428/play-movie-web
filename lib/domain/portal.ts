@@ -28,6 +28,8 @@ export type Member = {
   position: MemberPosition | null;
   isLeader: boolean;
   role: MemberRole;
+  // システム担当(名簿・ログインの記録・Slack のテストを扱う)。役割とは別に持つので、トレーニング担当と兼ねられる。
+  isSystemAdmin: boolean;
   title: string | null;
   tier: string | null;
   slot: string | null;
@@ -44,6 +46,8 @@ export type MemberInput = {
   position: MemberPosition | null;
   isLeader: boolean;
   role: MemberRole;
+  // undefined は「触らない」(取り込む表で「システム担当」と書かれていない人)。
+  isSystemAdmin?: boolean;
   title: string | null;
 };
 
@@ -126,7 +130,9 @@ export function getMemberGroup(position: MemberPosition | null): MemberGroup | n
   return position === "OH" || position === "OP" ? "side" : position;
 }
 
-/** 名簿とメニューを変えられるのは、トレーニング担当だけ。 */
+export const SYSTEM_ADMIN_LABEL = "システム担当";
+
+/** メニュー・練習日の例外を変えたり、ほかの人のノートを消したりできるのは、トレーニング担当だけ。 */
 export function canAdminister(role: MemberRole): boolean {
   return role === "training_lead";
 }
@@ -142,9 +148,14 @@ export function canExportNotes(member: Pick<Member, "role" | "isLeader" | "title
   return canAdminister(member.role) || member.isLeader || member.title === TRAINER_TITLE;
 }
 
-/** ログインの記録を見られるのも、トレーニング担当だけ。 */
-export function canViewLoginLog(role: MemberRole): boolean {
-  return role === "training_lead";
+/** 名簿を変える・Slack の知らせを試すのは、システム担当だけ。 */
+export function canManageSite(member: Pick<Member, "isSystemAdmin">): boolean {
+  return member.isSystemAdmin;
+}
+
+/** ログインの記録を見られるのも、システム担当だけ。 */
+export function canViewLoginLog(member: Pick<Member, "isSystemAdmin">): boolean {
+  return member.isSystemAdmin;
 }
 
 export function receivesTrainingNotices(role: MemberRole): boolean {
@@ -160,7 +171,18 @@ function splitTableRow(line: string): string[] {
     .map((cell) => cell.trim());
 }
 
-function parseRole(value: string): { role: MemberRole; title: string | null } {
+/**
+ * 役割の欄を読む。「トレーニング担当・システム担当」のように、システム担当はほかの役割と並べて書ける。
+ * システム担当と書かれていなければ isSystemAdmin は undefined(今の値を変えない)。
+ */
+function parseRole(cell: string): { role: MemberRole; title: string | null; isSystemAdmin?: boolean } {
+  const parts = cell.split(/[・、,，\s]+/).filter(Boolean);
+  const isSystemAdmin = parts.includes(SYSTEM_ADMIN_LABEL) ? true : undefined;
+  const value = parts.filter((part) => part !== SYSTEM_ADMIN_LABEL).join("・");
+  return { ...parseBaseRole(value), ...(isSystemAdmin ? { isSystemAdmin } : {}) };
+}
+
+function parseBaseRole(value: string): { role: MemberRole; title: string | null } {
   if (value === "トレーニング担当") {
     return { role: "training_lead", title: null };
   }
@@ -207,7 +229,7 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
 
     const positionCell = read("ポジション");
     const position = isMemberPosition(positionCell) ? positionCell : null;
-    const { role, title } = parseRole(read("役割"));
+    const { role, title, isSystemAdmin } = parseRole(read("役割"));
     const grade = Number.parseInt(read("学年"), 10);
     const hasNumberColumn = columns.includes("背番号");
 
@@ -218,6 +240,7 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
       position,
       isLeader: /[◯○〇]/.test(read("リーダー")),
       role,
+      ...(isSystemAdmin ? { isSystemAdmin } : {}),
       title: position ? title : positionCell || title,
     });
   }

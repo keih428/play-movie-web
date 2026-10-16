@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PortalMembersClient } from "@/components/portal-members-client";
-import { canAdminister, canViewLoginLog, isPortalTeam } from "@/lib/domain/portal";
+import { canManageSite, canViewLoginLog, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMembersPath } from "@/lib/domain/team";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
@@ -20,13 +20,13 @@ export default async function TeamMembersPage({ params }: PageProps) {
   }
 
   const current = await requireMember(teamSlug, buildTeamMembersPath(teamSlug));
-  const canManage = canAdminister(current.role);
+  const canManage = canManageSite(current);
   const members = await listMembers(teamSlug, { includeInactive: canManage });
 
   return (
     <PortalMembersClient
       canManage={canManage}
-      canViewLoginLog={canViewLoginLog(current.role)}
+      canViewLoginLog={canViewLoginLog(current)}
       currentMemberId={current.id}
       initialMembers={members}
       teamSlug={teamSlug}
