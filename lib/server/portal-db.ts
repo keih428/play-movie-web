@@ -213,6 +213,13 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       UPDATE members SET is_system_admin = true WHERE role = 'training_lead' AND active
     `,
   },
+  {
+    id: "009_member_slot_abc",
+    // 枠を A・B・C にした(A と B は同じメニュー、C は別)。これまでの B(練習の後)は、いまの C にあたる。
+    sql: `
+      UPDATE members SET slot = 'C' WHERE slot = 'B'
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

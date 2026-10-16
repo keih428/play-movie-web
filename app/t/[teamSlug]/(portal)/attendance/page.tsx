@@ -9,7 +9,14 @@ import {
 } from "@/lib/domain/attendance";
 import { describePracticeEvents } from "@/lib/domain/calendar";
 import { formatNoteDate, isIsoDate } from "@/lib/domain/notes";
-import { MEMBER_POSITIONS, canAdminister, canManageSite, isPortalTeam, type Member } from "@/lib/domain/portal";
+import {
+  MEMBER_POSITIONS,
+  MEMBER_SLOTS,
+  canAdminister,
+  canManageSite,
+  isPortalTeam,
+  type Member,
+} from "@/lib/domain/portal";
 import { buildTeamAttendancePath } from "@/lib/domain/team";
 import { listReports } from "@/lib/server/portal-attendance-store";
 import { listMembers } from "@/lib/server/portal-member-store";
@@ -23,6 +30,7 @@ type PageProps = {
   }>;
   searchParams: Promise<{
     date?: string;
+    by?: string;
   }>;
 };
 
@@ -62,7 +70,11 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
     }
   }
 
-  const { date: requestedDate } = await searchParams;
+  const { date: requestedDate, by } = await searchParams;
+  // 練習ごとの出欠を、ポジション別に並べるか、枠(A・B・C)別に並べるか。
+  const groupBy: "position" | "slot" = by === "slot" ? "slot" : "position";
+  const hrefFor = (date: string, view: "position" | "slot" = groupBy) =>
+    `${basePath}?date=${date}${view === "slot" ? "&by=slot" : ""}`;
   const selectedDate =
     isIsoDate(requestedDate) && requestedDate >= today && requestedDate <= until
       ? requestedDate
@@ -75,11 +87,20 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
     countByDate.set(report.practiceDate, (countByDate.get(report.practiceDate) ?? 0) + 1);
   }
 
+  const players = members.filter((member) => member.position);
   const groups: { label: string; members: Member[] }[] = [
-    ...MEMBER_POSITIONS.map((position) => ({
-      label: position as string,
-      members: members.filter((member) => member.position === position),
-    })),
+    ...(groupBy === "slot"
+      ? [
+          ...MEMBER_SLOTS.map((slot) => ({
+            label: slot as string,
+            members: players.filter((member) => member.slot === slot),
+          })),
+          { label: "枠なし", members: players.filter((member) => !member.slot) },
+        ]
+      : MEMBER_POSITIONS.map((position) => ({
+          label: position as string,
+          members: players.filter((member) => member.position === position),
+        }))),
     { label: "スタッフ", members: members.filter((member) => !member.position) },
   ].filter((group) => group.members.length > 0);
 
@@ -117,7 +138,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
           {practiceDates.map((date) => (
             <Link
               key={date}
-              href={`${basePath}?date=${date}`}
+              href={hrefFor(date)}
               aria-current={date === selectedDate ? "page" : undefined}
               className={hasNoEvent(date) ? "tp-no-event" : undefined}
               scroll={false}
@@ -130,6 +151,23 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
               </span>
             </Link>
           ))}
+        </nav>
+
+        <nav className="tp-seg tp-days" aria-label="出欠の並べ方">
+          <Link
+            href={hrefFor(selectedDate, "position")}
+            aria-current={groupBy === "position" ? "true" : undefined}
+            scroll={false}
+          >
+            ポジション別
+          </Link>
+          <Link
+            href={hrefFor(selectedDate, "slot")}
+            aria-current={groupBy === "slot" ? "true" : undefined}
+            scroll={false}
+          >
+            ABC別
+          </Link>
         </nav>
 
         <p className="tp-small tp-muted">

@@ -189,7 +189,7 @@ function DayPanel({
                   <span className="tp-i tp-std-only">{index + 1}</span>
                   <span className="tp-n tp-std-only">
                     {item.name}
-                    {item.swapped ? <span className="tp-swap">B枠の置き換え</span> : null}
+                    {item.swapped ? <span className="tp-swap">C枠の置き換え</span> : null}
                     {video(item)}
                   </span>
                   <span className="tp-d tp-std-only">{item.dose}</span>
@@ -209,7 +209,7 @@ function DayPanel({
                       <span className="tp-pos">名</span>
                       <span className="tp-ja">{item.name}</span>
                       {video(item)}
-                      {item.swapped ? <span className="tp-swaptag">B枠</span> : null}
+                      {item.swapped ? <span className="tp-swaptag">C枠</span> : null}
                       {item.dose ? <span className="tp-ans">{item.dose}</span> : null}
                     </div>
                     {item.tip ? (

@@ -14,7 +14,20 @@ export const MEMBER_GROUPS = ["side", "MB", "S", "Li"] as const;
 export type MemberGroup = (typeof MEMBER_GROUPS)[number];
 
 export const MEMBER_TIERS = ["T0", "T1", "T2", "T3"] as const;
-export const MEMBER_SLOTS = ["A", "B"] as const;
+// 名簿の枠。A と B はいつも一緒に動き(スタメンとそれ以外)、C は別に動く。
+export const MEMBER_SLOTS = ["A", "B", "C"] as const;
+
+// トレーニングのメニューと時間の分け方。A・B の人は AB(練習の前)、C の人は C(練習の後)。
+// 2026-10-16 までの A/B を、AB/C と呼び直したもの(中身と時間は A→AB、B→C)。
+export const TRAINING_GROUPS = ["AB", "C"] as const;
+export type TrainingGroup = (typeof TRAINING_GROUPS)[number];
+
+/** 名簿の枠から、トレーニングのまとまりを決める。枠が決まっていなければ null。 */
+export function toTrainingGroup(slot: string | null | undefined): TrainingGroup | null {
+  if (slot === "C") return "C";
+  if (slot === "A" || slot === "B") return "AB";
+  return null;
+}
 
 export type Member = {
   id: string;

@@ -7,7 +7,8 @@ import { TrainingMenuUpload } from "@/components/training-menu-upload";
 import { TrainingSession, type PeriodLink, type WeekLink } from "@/components/training-session";
 import {
   MEMBER_POSITIONS,
-  MEMBER_SLOTS,
+  TRAINING_GROUPS,
+  toTrainingGroup,
   MEMBER_TIERS,
   canAdminister,
   isMemberPosition,
@@ -297,13 +298,14 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   const canRecord = Boolean(current.position);
   const selection: MenuSelection = {
     tier: pick(MEMBER_TIERS, current.tier, query.tier, "T1"),
-    slot: pick(MEMBER_SLOTS, current.slot, query.slot),
+    // 名簿の枠(A・B・C)から、メニューのまとまり(AB・C)を決める。
+    slot: pick(TRAINING_GROUPS, toTrainingGroup(current.slot), query.slot),
     position: isMemberPosition(current.position) ? current.position : pick(MEMBER_POSITIONS, query.pos),
     fresh: current.grade === FRESHMAN_GRADE,
   };
   const choices = [
     { key: "tier", label: "段階", values: MEMBER_TIERS, value: selection.tier, fixed: Boolean(current.tier) },
-    { key: "slot", label: "枠", values: MEMBER_SLOTS, value: selection.slot, fixed: Boolean(current.slot) },
+    { key: "slot", label: "枠", values: TRAINING_GROUPS, value: selection.slot, fixed: Boolean(toTrainingGroup(current.slot)) },
     {
       key: "pos",
       label: "ポジション",
