@@ -1,4 +1,4 @@
-import type { MemberPosition } from "@/lib/domain/portal";
+import type { MemberPosition, TrainingGroup } from "@/lib/domain/portal";
 
 // メニューのデータ。配布版の Markdown から `build.py --json` で作ったものを、そのままの形で持つ。
 export type LiftKind = "sq" | "dl" | "bp";
@@ -131,7 +131,8 @@ export const FRESHMAN_GRADE = 2;
 
 export type MenuSelection = {
   tier: string;
-  slot: "A" | "B";
+  // トレーニングのまとまり。AB = 練習の前、C = 練習の後。配布版の menu.json では、AB を「A」、C を「B」の名前で持っている。
+  slot: TrainingGroup;
   position: MemberPosition;
   fresh: boolean;
 };
@@ -351,7 +352,7 @@ function resolveLift(
   };
 
   let sets = load.sets;
-  if (!t3Load && (day === "sat" || selection.slot === "A")) {
+  if (!t3Load && (day === "sat" || selection.slot === "AB")) {
     sets = Math.min(3, load.sets);
   }
   if (selection.fresh && week.k === "W6" && day === "tue") {
@@ -368,7 +369,7 @@ function resolveLift(
 
 function resolveItems(
   items: MenuItem[],
-  context: LiftContext & { lightJumps?: boolean; slot: "A" | "B" },
+  context: LiftContext & { lightJumps?: boolean; slot: TrainingGroup },
 ): ResolvedItem[] {
   const { menu, selection, estimated } = context;
   const resolved: ResolvedItem[] = [];
@@ -400,7 +401,7 @@ function resolveItems(
       targetKg = base ? roundToPlate((base * item.pct) / 100) : null;
     }
 
-    if (context.slot === "B" && item.b !== undefined) {
+    if (context.slot === "C" && item.b !== undefined) {
       if (item.b === null) {
         continue;
       }
@@ -480,10 +481,10 @@ export function resolveWeek(
   if (selection.tier === "T2" && week.mode === "load") notes.push(settings["T2の導入"]);
   if (week.mode === "test") notes.push(settings["測定週の注意"]);
 
-  const weekdayTime = slot === "A" ? settings["火の枠A"] : settings["火の枠B"];
-  const positionLine = `**ポジション別の追加(10〜15分)** ${menu.pos[selection.position]?.[slot] ?? ""}`;
+  const weekdayTime = slot === "AB" ? settings["火の枠A"] : settings["火の枠B"];
+  const positionLine = `**ポジション別の追加(10〜15分)** ${menu.pos[selection.position]?.[slot === "AB" ? "A" : "B"] ?? ""}`;
   const hasTabata =
-    slot === "A" &&
+    slot === "AB" &&
     ((week.mode !== "test" && !week.deload && !freshBeforeMeet) || freshAfterMeet);
   const weekdayExtras = [positionLine, ...(hasTabata ? [settings["タバタ"]] : [])];
 
@@ -534,7 +535,7 @@ export function resolveWeek(
       });
     } else {
       const extras: string[] = [];
-      if (slot === "B" && week.brun) {
+      if (slot === "C" && week.brun) {
         extras.push(
           `**10:30〜12:00 外で体力づくり:**${week.brun}。${settings["B枠の体力づくりの注意"]}`,
         );
@@ -543,12 +544,12 @@ export function resolveWeek(
       days.push({
         day: "sat",
         title: menu.upper.name1,
-        time: slot === "A" ? settings["土の枠A"] : settings["土の枠B"],
+        time: slot === "AB" ? settings["土の枠A"] : settings["土の枠B"],
         date: addDays(week.s, 5),
-        items: resolveItems(slot === "A" ? menu.upper.satA : menu.upper.satB, {
+        items: resolveItems(slot === "AB" ? menu.upper.satA : menu.upper.satB, {
           ...base,
           day: "sat",
-          slot: "A",
+          slot: "AB",
         }),
         extras,
       });
@@ -559,7 +560,7 @@ export function resolveWeek(
       title: menu.upper.name2,
       time: settings["自主の時間"],
       date: null,
-      items: resolveItems(menu.upper.self, { ...base, day: "self", slot: "A" }),
+      items: resolveItems(menu.upper.self, { ...base, day: "self", slot: "AB" }),
       extras: [],
     });
   }

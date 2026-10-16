@@ -347,7 +347,7 @@ export function PortalMembersClient({
                 </select>
               </div>
               <div className="tp-field">
-                <label htmlFor="member-slot">枠</label>
+                <label htmlFor="member-slot">枠(A と B はいつも一緒。トレーニングも同じ。C は別)</label>
                 <select
                   id="member-slot"
                   value={draft.slot}

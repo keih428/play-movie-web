@@ -204,6 +204,13 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE members ALTER COLUMN number TYPE text USING number::text
     `,
   },
+  {
+    id: "009_member_slot_abc",
+    // 枠を A・B・C にした(A と B は同じメニュー、C は別)。これまでの B(練習の後)は、いまの C にあたる。
+    sql: `
+      UPDATE members SET slot = 'C' WHERE slot = 'B'
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
