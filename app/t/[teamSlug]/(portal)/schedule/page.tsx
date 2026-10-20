@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EventDetail, ScheduleCalendar } from "@/components/schedule-calendar";
 import { DEFAULT_PRACTICE_LOCATION, type PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { canAdminister, canManageSite, isPortalTeam } from "@/lib/domain/portal";
@@ -14,12 +15,14 @@ type PageProps = {
   }>;
   searchParams: Promise<{
     month?: string;
+    // view=week なら週の表示。week は表示する週の日曜('YYYY-MM-DD')。
+    view?: string;
+    week?: string;
   }>;
 };
 
 export const dynamic = "force-dynamic";
 
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 // 前後に動ける月の幅(カレンダーを読む量を抑えるため)。
 const MONTH_RANGE = 12;
 
@@ -70,7 +73,15 @@ function describeTime(event: PracticeEvent): string {
   return event.start ? `${event.start}〜${event.end ?? ""}` : "終日";
 }
 
-/** 部の予定を月のカレンダーで見る。練習日には、Google カレンダーの予定名・時間・場所を出す。 */
+/** 'YYYY-MM-DD' が入っている週の日曜。 */
+function startOfWeek(isoDate: string): string {
+  return shiftDate(isoDate, -getWeekday(isoDate));
+}
+
+/**
+ * 部の予定を、月のカレンダーか週の一覧で見る。Google カレンダーの予定名・時間・場所・説明を出す。
+ * 月のカレンダーは、日付を押すとその日の詳細が開く。週の一覧は、直近の予定を詳細つきで並べる(部員の声、2026-10-20)。
+ */
 export default async function TeamSchedulePage({ params, searchParams }: PageProps) {
   const { teamSlug } = await params;
   if (!isPortalTeam(teamSlug)) {
@@ -82,7 +93,7 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
   const today = getTodayInJapan();
   const thisMonth = today.slice(0, 7);
 
-  const { month: requestedMonth } = await searchParams;
+  const { month: requestedMonth, view, week: requestedWeek } = await searchParams;
   const month =
     requestedMonth &&
     /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) &&
@@ -90,14 +101,25 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
       ? requestedMonth
       : thisMonth;
 
+  const isWeekView = view === "week";
+  const thisWeek = startOfWeek(today);
+  const weekStart =
+    requestedWeek && /^\d{4}-\d{2}-\d{2}$/.test(requestedWeek) && getWeekday(requestedWeek) === 0 &&
+    Math.abs(monthDistance(thisMonth, requestedWeek.slice(0, 7))) <= MONTH_RANGE
+      ? requestedWeek
+      : thisWeek;
+  const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(weekStart, index));
+
   const weeks = buildMonthGrid(month);
-  const schedule = await getPracticeSchedule(teamSlug, weeks[0][0], weeks[weeks.length - 1][6]);
+  const schedule = isWeekView
+    ? await getPracticeSchedule(teamSlug, weekDates[0], weekDates[6])
+    : await getPracticeSchedule(teamSlug, weeks[0][0], weeks[weeks.length - 1][6]);
   // カレンダーを読めないときは、曜日の決め打ちの日を「練習」として出す(時間はわからない)。
   const eventsOn = (date: string): PracticeEvent[] =>
     schedule.source === "calendar"
       ? (schedule.eventsByDate[date] ?? [])
       : schedule.dates.includes(date)
-        ? [{ date, title: "練習", start: null, end: null, location: null }]
+        ? [{ date, title: "練習", start: null, end: null, location: null, description: null }]
         : [];
 
   const [year, monthIndex] = month.split("-").map(Number);
@@ -106,6 +128,103 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
   const previous = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   const canGo = (target: string) => Math.abs(monthDistance(thisMonth, target)) <= MONTH_RANGE;
+  const previousWeek = shiftDate(weekStart, -7);
+  const nextWeek = shiftDate(weekStart, 7);
+  const eventsByDate = Object.fromEntries(
+    (isWeekView ? weekDates : weeks.flat()).map((date) => [date, eventsOn(date)]),
+  );
+  const sourceNote =
+    canAdminister(current) || canManageSite(current) ? (
+      <p className="tp-small tp-muted">
+        {schedule.source === "calendar"
+          ? `予定は、部の Google カレンダーから取っています(「オフ」の予定は出しません。場所が空なら「${DEFAULT_PRACTICE_LOCATION}」。練習試合の相手などは、カレンダーの「説明」に書くと出ます。直してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。`
+          : `カレンダーを読めないので、曜日の決め打ち(日・火・木・土)の日を出しています。${schedule.error ? `理由:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
+      </p>
+    ) : null;
+  const viewSwitch = (
+    <div className="tp-seg tp-cal-view" role="group" aria-label="表示の切り替え">
+      <Link href={basePath} aria-current={isWeekView ? undefined : "true"} scroll={false}>
+        月
+      </Link>
+      <Link href={`${basePath}?view=week`} aria-current={isWeekView ? "true" : undefined} scroll={false}>
+        週
+      </Link>
+    </div>
+  );
+
+  if (isWeekView) {
+    const [, fromMonth, fromDay] = weekDates[0].split("-").map(Number);
+    const [, toMonth, toDay] = weekDates[6].split("-").map(Number);
+    const canGoWeek = (target: string) => canGo(target.slice(0, 7));
+    return (
+      <>
+        <header className="tp-hero">
+          <span className="tp-eyebrow">練習・試合の予定</span>
+          <h1>予定表</h1>
+        </header>
+
+        <section className="tp-section">
+          {viewSwitch}
+          <div className="tp-cal-head">
+            {canGoWeek(previousWeek) ? (
+              <Link href={`${basePath}?view=week&week=${previousWeek}`} className="tp-cal-move" scroll={false}>
+                ← 前の週
+              </Link>
+            ) : (
+              <span />
+            )}
+            <h2>
+              {fromMonth}/{fromDay}〜{toMonth}/{toDay}
+            </h2>
+            {canGoWeek(nextWeek) ? (
+              <Link href={`${basePath}?view=week&week=${nextWeek}`} className="tp-cal-move" scroll={false}>
+                次の週 →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+          {weekStart !== thisWeek ? (
+            <p className="tp-small">
+              <Link href={`${basePath}?view=week`} scroll={false}>
+                今週に戻る
+              </Link>
+            </p>
+          ) : null}
+
+          <ol className="tp-week">
+            {weekDates.map((date) => {
+              const events = eventsByDate[date] ?? [];
+              return (
+                <li
+                  key={date}
+                  className={[date < today ? "tp-cal-past" : "", date === today ? "tp-cal-today" : ""]
+                    .filter(Boolean)
+                    .join(" ") || undefined}
+                  data-weekday={getWeekday(date)}
+                >
+                  <span className="tp-week-date">
+                    {formatNoteDate(date)}
+                    {date === today ? <span className="tp-week-today">今日</span> : null}
+                  </span>
+                  <div className="tp-week-events">
+                    {events.length ? (
+                      events.map((event, index) => (
+                        <EventDetail key={index} event={event} defaultLocation={DEFAULT_PRACTICE_LOCATION} />
+                      ))
+                    ) : (
+                      <span className="tp-muted tp-small">予定なし</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+          {sourceNote}
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
@@ -115,6 +234,7 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
       </header>
 
       <section className="tp-section">
+        {viewSwitch}
         <div className="tp-cal-head">
           {canGo(previous) ? (
             <Link href={`${basePath}?month=${previous}`} className="tp-cal-move" scroll={false}>
@@ -142,46 +262,14 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
           </p>
         ) : null}
 
-        <table className="tp-cal">
-          <thead>
-            <tr>
-              {WEEKDAYS.map((label, index) => (
-                <th key={label} scope="col" data-weekday={index}>
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {weeks.map((week) => (
-              <tr key={week[0]}>
-                {week.map((date) => {
-                  const events = eventsOn(date);
-                  const classNames = [
-                    date.startsWith(month) ? "" : "tp-cal-out",
-                    date < today ? "tp-cal-past" : "",
-                    date === today ? "tp-cal-today" : "",
-                    events.length > 0 ? "tp-cal-has" : "",
-                  ].filter(Boolean);
-                  return (
-                    <td key={date} className={classNames.join(" ") || undefined} data-weekday={getWeekday(date)}>
-                      <span className="tp-cal-day">{Number(date.slice(8))}</span>
-                      {events.map((event, index) => (
-                        <span key={index} className="tp-cal-event">
-                          <b>{event.title}</b>
-                          <span className="tp-cal-long">{describeTime(event)}</span>
-                          {/* スマホではマスが狭いので、始まりの時刻だけにする。 */}
-                          <span className="tp-cal-short">{event.start ?? "終日"}</span>
-                          <span className="tp-cal-long">{event.location ?? DEFAULT_PRACTICE_LOCATION}</span>
-                        </span>
-                      ))}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <p className="tp-small tp-muted">予定のある日を押すと、詳しい内容が開きます。</p>
+        <ScheduleCalendar
+          weeks={weeks}
+          month={month}
+          today={today}
+          eventsByDate={eventsByDate}
+          defaultLocation={DEFAULT_PRACTICE_LOCATION}
+        />
       </section>
 
       <section className="tp-section">
@@ -205,19 +293,14 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
                   <b>{event.title}</b>
                   <span className="tp-cal-time">{describeTime(event)}</span>
                   <span className="tp-cal-place">{event.location ?? DEFAULT_PRACTICE_LOCATION}</span>
+                  {event.description ? <span className="tp-cal-desc">{event.description}</span> : null}
                 </li>
               )),
             )}
           </ul>
         )}
 
-        {canAdminister(current) || canManageSite(current) ? (
-          <p className="tp-small tp-muted">
-            {schedule.source === "calendar"
-              ? `予定は、部の Google カレンダーから取っています(「オフ」の予定は出しません。場所が空なら「${DEFAULT_PRACTICE_LOCATION}」。直してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。`
-              : `カレンダーを読めないので、曜日の決め打ち(日・火・木・土)の日を出しています。${schedule.error ? `理由:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
-          </p>
-        ) : null}
+        {sourceNote}
       </section>
     </>
   );
