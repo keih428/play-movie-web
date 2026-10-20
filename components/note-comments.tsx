@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { MemberAvatar } from "@/components/member-avatar";
 import { NOTE_COMMENT_MAX, type NoteComment } from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
@@ -8,6 +9,9 @@ type NoteCommentsProps = {
   initialComments: NoteComment[];
   noteId: string;
   teamSlug: string;
+  // 一覧の中で開くとき:見出しを出さず、詰めて出す。コメントが増えたら親に知らせる。
+  compact?: boolean;
+  onChange?: (comments: NoteComment[]) => void;
 };
 
 function formatDateTime(value: string) {
@@ -20,7 +24,7 @@ function formatDateTime(value: string) {
   });
 }
 
-export function NoteComments({ initialComments, noteId, teamSlug }: NoteCommentsProps) {
+export function NoteComments({ initialComments, noteId, teamSlug, compact = false, onChange }: NoteCommentsProps) {
   const [comments, setComments] = useState(initialComments);
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
@@ -44,6 +48,7 @@ export function NoteComments({ initialComments, noteId, teamSlug }: NoteComments
         throw new Error(payload.error ?? "送れませんでした。もう一度試してください。");
       }
       setComments(payload.comments);
+      onChange?.(payload.comments);
       setBody("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "送れませんでした。");
@@ -53,10 +58,12 @@ export function NoteComments({ initialComments, noteId, teamSlug }: NoteComments
   }
 
   return (
-    <section className="tp-section">
-      <h2>
-        コメント <span className="tp-count">{comments.length}件</span>
-      </h2>
+    <section className={compact ? "tp-comments-inline" : "tp-section"}>
+      {compact ? null : (
+        <h2>
+          コメント <span className="tp-count">{comments.length}件</span>
+        </h2>
+      )}
       {comments.length === 0 ? (
         <p className="tp-small tp-muted">まだコメントはありません。</p>
       ) : (
@@ -64,6 +71,7 @@ export function NoteComments({ initialComments, noteId, teamSlug }: NoteComments
           {comments.map((comment) => (
             <li key={comment.id}>
               <div className="tp-comment-head">
+                <MemberAvatar name={comment.memberName} number={comment.memberNumber} />
                 <b>{comment.memberName}</b>
                 <span suppressHydrationWarning>{formatDateTime(comment.createdAt)}</span>
               </div>
@@ -73,12 +81,12 @@ export function NoteComments({ initialComments, noteId, teamSlug }: NoteComments
         </ol>
       )}
 
-      <form className="tp-card" onSubmit={send}>
+      <form className={compact ? "tp-comment-form" : "tp-card"} onSubmit={send}>
         <div className="tp-field">
-          <label htmlFor="comment-body">コメントを書く</label>
+          <label htmlFor={`comment-body-${noteId}`}>コメントを書く</label>
           <textarea
-            id="comment-body"
-            rows={3}
+            id={`comment-body-${noteId}`}
+            rows={compact ? 2 : 3}
             maxLength={NOTE_COMMENT_MAX}
             value={body}
             onChange={(event) => setBody(event.target.value)}

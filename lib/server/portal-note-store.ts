@@ -136,10 +136,12 @@ export async function listComments(noteIds: string[]): Promise<NoteComment[]> {
     note_id: string;
     member_id: string;
     member_name: string;
+    member_number: string | null;
     body: string;
     created_at: Date;
   }>(
-    `SELECT c.id, c.note_id, c.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, c.body, c.created_at
+    `SELECT c.id, c.note_id, c.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, m.number AS member_number,
+            c.body, c.created_at
      FROM note_comments c JOIN members m ON m.id = c.member_id
      WHERE c.note_id = ANY($1::text[])
      ORDER BY c.created_at`,
@@ -150,8 +152,9 @@ export async function listComments(noteIds: string[]): Promise<NoteComment[]> {
     noteId: row.note_id,
     memberId: row.member_id,
     memberName: row.member_name,
+    memberNumber: row.member_number,
     body: row.body,
-    createdAt: row.created_at.toISOString(),
+    createdAt: new Date(row.created_at).toISOString(),
   }));
 }
 

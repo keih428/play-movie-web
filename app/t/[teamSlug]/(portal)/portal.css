@@ -2676,3 +2676,83 @@ body:has(.tp[data-mode="tango"]) {
 .tp-log-lines li {
   overflow-wrap: anywhere;
 }
+
+/* ---------- 部員のアイコン(背番号)・ノートのコメントをその場で開く ---------- */
+.tp-avatar,
+.tp-comment-head .tp-avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--tp-surface);
+  border-radius: 999px;
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
+  font-family: var(--tp-num);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tp-avatar[data-long] {
+  font-size: 9px;
+}
+
+.tp-avatar-more {
+  background: var(--tp-muted);
+}
+
+.tp-comment-head:has(.tp-avatar) {
+  align-items: center;
+}
+
+.tp-avatars {
+  display: inline-flex;
+}
+
+.tp-avatars .tp-avatar + .tp-avatar {
+  margin-left: -7px;
+}
+
+.tp-note-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tp-note-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--tp-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-note-toggle .tp-unread {
+  margin-left: 0;
+}
+
+.tp-note-chevron {
+  font-size: 10px;
+}
+
+.tp-comments-inline {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-comment-form {
+  display: grid;
+  gap: 8px;
+}
