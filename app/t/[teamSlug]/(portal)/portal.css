@@ -2154,25 +2154,19 @@ body:has(.tp[data-mode="tango"]) {
   white-space: pre-wrap;
 }
 
-/* ---------- 予定の詳細(日付を押すと下から開く) ---------- */
+/* ---------- 予定の詳細(日付を押すと、画面の中央に開く) ---------- */
 .tp-sheet {
-  width: min(560px, 100%);
+  width: min(560px, calc(100% - 32px));
   max-width: 100%;
   max-height: 80vh;
-  margin: auto auto 0;
+  margin: auto;
   padding: 0;
+  overflow-y: auto;
   border: 0;
-  border-radius: 16px 16px 0 0;
+  border-radius: 16px;
   background: var(--tp-surface);
   color: var(--tp-fg);
   font-family: var(--tp-body);
-}
-
-@media (min-width: 601px) {
-  .tp-sheet {
-    margin: auto;
-    border-radius: 16px;
-  }
 }
 
 .tp-sheet::backdrop {
@@ -2182,7 +2176,7 @@ body:has(.tp[data-mode="tango"]) {
 .tp-sheet-body {
   display: grid;
   gap: 12px;
-  padding: 16px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 18px 20px;
 }
 
 .tp-sheet-head {
