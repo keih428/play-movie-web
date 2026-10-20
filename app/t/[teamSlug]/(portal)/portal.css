@@ -1,6 +1,7 @@
 /*
  * 部内ページ(ログイン・名簿・トレーニング)の見た目。試合ビューアの見た目(globals.css)とは切り離してある。
- * 配布版(鉄壁トレーニング)と同じ色・文字:鉄色の地 + コートの床の色、数字は等幅。
+ * 配布版(鉄壁トレーニング)と同じ文字。色は鉄色の地 + チームカラーの淡青(2026-10-20 から。それまではコートの床の色)。数字は等幅。
+ * 選ばれた表示・主なボタンは、黒ではなくチームの色(--tp-accent)にする(部員の声:「色・メニュー・ボタン・ヘッダーを統一」)。
  */
 body:has(.tp) {
   --tp-bg: #f1f3f6;
@@ -8,8 +9,9 @@ body:has(.tp) {
   --tp-fg: #17202a;
   --tp-muted: #5b6776;
   --tp-line: #d6dce4;
-  --tp-accent: #b3541e;
-  --tp-accent-soft: #f6e6db;
+  --tp-accent: #1d6fa5;
+  --tp-accent-soft: #e2f0f9;
+  --tp-on-accent: #ffffff;
   --tp-ok: #1f7a4d;
   --tp-t0: #6b7684;
   --tp-t1: #2f6db5;
@@ -29,8 +31,9 @@ body:has(.tp) {
     --tp-fg: #e6ebf1;
     --tp-muted: #9aa6b4;
     --tp-line: #2a3542;
-    --tp-accent: #e38c4e;
-    --tp-accent-soft: #3a2618;
+    --tp-accent: #7cc3ea;
+    --tp-accent-soft: #11303f;
+    --tp-on-accent: #0f141a;
     --tp-ok: #5fc591;
     --tp-t0: #9aa6b4;
     --tp-t1: #72a7e6;
@@ -44,17 +47,13 @@ body:has(.tp) {
   }
 }
 
-/* 試合ビューアのヘッダーは出さず、この画面用の細いバーに替える。 */
-body:has(.tp) > .site-header {
-  display: none;
-}
-
 .tp {
   --tp-display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
   --tp-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --tp-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  /* 上のバーの高さ。その下に固定するもの(週と曜日の切り替え)が、この値を使って位置を決める。 */
-  --tp-top-h: 52px;
+  /* 上のバー(globals.css の .team-header)の高さ。帯 4px と下の線 1px を足す。
+     その下に固定するもの(週と曜日の切り替え)が、この値を使って位置を決める。 */
+  --tp-top-h: calc(var(--team-header-h) + 5px);
   min-height: 100vh;
   color: var(--tp-fg);
   font-family: var(--tp-body);
@@ -104,44 +103,6 @@ body:has(.tp) > .site-header {
 
 .tp-small {
   font-size: 13px;
-}
-
-/* ---------- 上のバー ---------- */
-/* スクロールしても上に残す。左右は .tp-wrap の余白の分だけ広げて、下を流れる中身が脇から見えないようにする。 */
-.tp-top {
-  position: sticky;
-  top: 0;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  box-sizing: border-box;
-  height: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
-  margin: 0 -16px;
-  padding: env(safe-area-inset-top, 0px) 16px 0;
-  border-bottom: 1px solid var(--tp-line);
-  background: var(--tp-bg);
-}
-
-.tp-top nav {
-  display: flex;
-  gap: 2px;
-  overflow-x: auto;
-}
-
-.tp-top nav a {
-  flex: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  color: var(--tp-muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.tp-top nav a[aria-current="page"] {
-  background: var(--tp-fg);
-  color: var(--tp-bg);
 }
 
 /* ---------- 見出し ---------- */
@@ -242,14 +203,14 @@ body:has(.tp) > .site-header {
 
 .tp-seg > [aria-current="true"],
 .tp-seg > [aria-pressed="true"] {
-  background: var(--tp-fg);
-  color: var(--tp-bg);
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
 }
 
 /* ---------- 週と曜日の切り替え(上に固定) ---------- */
 .tp-bar {
   position: sticky;
-  /* 上のバー(.tp-top)のすぐ下に止める。 */
+  /* 上のバー(globals.css の .team-header)のすぐ下に止める。 */
   top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
   z-index: 5;
   display: grid;
@@ -627,10 +588,10 @@ body:has(.tp) > .site-header {
   justify-content: center;
   min-height: 44px;
   padding: 0 22px;
-  border: 1px solid var(--tp-fg);
+  border: 1px solid var(--tp-accent);
   border-radius: 10px;
-  background: var(--tp-fg);
-  color: var(--tp-bg);
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
   font: inherit;
   font-weight: 700;
   white-space: nowrap;
@@ -1144,8 +1105,7 @@ body:has(.tp[data-mode="tango"]) {
 .tp[data-mode="tango"] :is(
   .tp-card, .tp-chip, .tp-seg, .tp-weeks a, .tp-stepper, .tp-hint, .tp-button, .tp-mini, .tp-ref,
   .tp-names button, .tp-field :is(input, textarea, select), .tp-note, .tp-error, .tp-message,
-  .tp-meter, .tp-meter i, .tp-vid, .tp-swap, .tp-badge, .tp-tier, .tp-when, .tp-request,
-  .tp-top nav a
+  .tp-meter, .tp-meter i, .tp-vid, .tp-swap, .tp-badge, .tp-tier, .tp-when, .tp-request
 ) {
   border-radius: 0;
 }
@@ -1249,8 +1209,7 @@ body:has(.tp[data-mode="tango"]) {
   border-left-color: var(--tp-accent);
 }
 
-.tp[data-mode="tango"] .tp-seg > :is([aria-current="true"], [aria-pressed="true"]),
-.tp[data-mode="tango"] .tp-top nav a[aria-current="page"] {
+.tp[data-mode="tango"] .tp-seg > :is([aria-current="true"], [aria-pressed="true"]) {
   background: var(--tp-accent);
   color: var(--tp-bg);
 }
@@ -1923,7 +1882,6 @@ body:has(.tp[data-mode="tango"]) {
     --tp-accent-soft: #f2f2f2;
   }
 
-  .tp-top,
   .tp-no-print {
     display: none !important;
   }
@@ -2245,4 +2203,110 @@ body:has(.tp[data-mode="tango"]) {
 .tp-reply-form {
   display: grid;
   gap: 8px;
+}
+
+/* ---------- ホーム(ポータル) ---------- */
+.tp-goal {
+  display: grid;
+  gap: 8px;
+  padding: 18px 18px 16px;
+  border-left: 6px solid var(--tp-accent);
+  border-radius: 12px;
+  background: var(--tp-accent-soft);
+}
+
+.tp-goal-headline {
+  font-family: var(--tp-display);
+  font-size: clamp(22px, 6vw, 30px);
+  line-height: 1.3;
+}
+
+.tp-goal-details {
+  white-space: pre-wrap;
+}
+
+.tp-goal-edit {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.tp-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tp-tile {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-tile strong {
+  color: var(--tp-accent);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.tp-tile span {
+  color: var(--tp-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tp-tile:hover,
+.tp-card-link:hover {
+  border-color: var(--tp-accent);
+}
+
+.tp-card-link {
+  color: inherit;
+}
+
+.tp-upcoming,
+.tp-plain-list,
+.tp-linklist {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-upcoming li {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+}
+
+.tp-upcoming-date {
+  font-family: var(--tp-num);
+  font-weight: 600;
+}
+
+.tp-upcoming-event {
+  display: block;
+}
+
+.tp-plain-list li::before {
+  content: "・";
+}
+
+.tp-linklist a,
+.tp-more {
+  color: var(--tp-accent);
+  font-weight: 700;
+}
+
+.tp-more {
+  justify-self: start;
+  font-size: 14px;
 }

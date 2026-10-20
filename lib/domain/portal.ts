@@ -1,7 +1,8 @@
 export const PORTAL_TEAM_SLUGS = ["utvb"];
 
 // 鉄壁(単語帳)の見た目に切り替えるトグルを出すかどうか。2026-10-13 からいったん止めている。
-// 見た目そのもの(portal.css の data-mode="tango"、tp-tango-only の中身)は消していないので、true に戻せばそのまま使える。
+// 見た目そのもの(portal.css の data-mode="tango"、tp-tango-only の中身)は消していない。
+// トグルのボタンは、2026-10-20 に上のバーを1つにしたときに外した。戻すなら、git の履歴の components/portal-top-nav.tsx から上のバーに足す。
 export const TANGO_MODE_ENABLED = false;
 
 export const MEMBER_POSITIONS = ["OH", "OP", "MB", "S", "Li"] as const;
@@ -163,6 +164,19 @@ const TRAINER_TITLE = "トレーナー";
  */
 export function canExportNotes(member: Pick<Member, "isTrainingLead" | "isLeader" | "title">): boolean {
   return canAdminister(member) || member.isLeader || member.title === TRAINER_TITLE;
+}
+
+// 部内ページの文章の種類。goal はホームに大きく出すチームの目標。
+export const PORTAL_TEXT_KEYS = ["goal"] as const;
+export type PortalTextKey = (typeof PORTAL_TEXT_KEYS)[number];
+export const PORTAL_TEXT_MAX_LENGTH = 2000;
+
+/**
+ * ホームの目標などを書き直せる人。いまはトレーニング担当とシステム担当。
+ * 幹部が書き直せるようにするのは、データベース/マニュアルのページを作るときに名簿の印と一緒に足す(部員の声、2026-10-20)。
+ */
+export function canEditPortalTexts(member: Pick<Member, "isTrainingLead" | "isSystemAdmin">): boolean {
+  return member.isTrainingLead || member.isSystemAdmin;
 }
 
 /** 名簿を変える・Slack の知らせを試すのは、システム担当だけ。 */

@@ -247,6 +247,20 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX training_request_replies_week ON training_request_replies (week_start)
     `,
   },
+  {
+    id: "012_portal_texts",
+    // ホームに出すチームの目標など、部内ページの文章。key ごとに1つ(今は goal だけ)。
+    sql: `
+      CREATE TABLE portal_texts (
+        team_slug text NOT NULL,
+        key text NOT NULL,
+        body text NOT NULL,
+        updated_by text REFERENCES members (id),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_slug, key)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
