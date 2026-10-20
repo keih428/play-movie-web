@@ -22,7 +22,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
   }
 
-  const members = await listMembers(teamSlug, { includeInactive: canManageSite(current) });
+  const canManage = canManageSite(current);
+  // 幹部の印は、名簿を直せる人(システム担当)にだけ渡す(けーいちの決定、2026-10-20)。
+  const members = (await listMembers(teamSlug, { includeInactive: canManage })).map((member) =>
+    canManage ? member : { ...member, isExecutive: false },
+  );
   return NextResponse.json({ members });
 }
 
