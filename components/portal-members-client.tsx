@@ -9,6 +9,7 @@ import {
   MEMBER_ROLES,
   MEMBER_ROLE_LABELS,
   SYSTEM_ADMIN_LABEL,
+  EXECUTIVE_LABEL,
   TRAINING_LEAD_LABEL,
   MEMBER_SLOTS,
   MEMBER_TIERS,
@@ -35,6 +36,7 @@ type MemberDraft = {
   role: string;
   isTrainingLead: boolean;
   isSystemAdmin: boolean;
+  isExecutive: boolean;
   title: string;
   tier: string;
   slot: string;
@@ -51,6 +53,7 @@ const EMPTY_DRAFT: MemberDraft = {
   role: "member",
   isTrainingLead: false,
   isSystemAdmin: false,
+  isExecutive: false,
   title: "",
   tier: "",
   slot: "",
@@ -68,6 +71,7 @@ function toDraft(member: Member): MemberDraft {
     role: member.role,
     isTrainingLead: member.isTrainingLead,
     isSystemAdmin: member.isSystemAdmin,
+    isExecutive: member.isExecutive,
     title: member.title ?? "",
     tier: member.tier ?? "",
     slot: member.slot ?? "",
@@ -94,6 +98,7 @@ function describeMember(member: Member) {
     member.role === "member" ? null : MEMBER_ROLE_LABELS[member.role],
     member.isTrainingLead ? TRAINING_LEAD_LABEL : null,
     member.isSystemAdmin ? SYSTEM_ADMIN_LABEL : null,
+    member.isExecutive ? EXECUTIVE_LABEL : null,
     member.title,
   ];
   return parts.filter(Boolean).join("・");
@@ -417,6 +422,14 @@ export function PortalMembersClient({
                 onChange={(event) => setField("isSystemAdmin", event.target.checked)}
               />
               {SYSTEM_ADMIN_LABEL}(名簿を変える・ログインの記録を見る・Slack の知らせを試す。役割と兼ねられる)
+            </label>
+            <label className="tp-check">
+              <input
+                type="checkbox"
+                checked={draft.isExecutive}
+                onChange={(event) => setField("isExecutive", event.target.checked)}
+              />
+              {EXECUTIVE_LABEL}(ホームのチームの目標と、データベース/マニュアルを書き直せる)
             </label>
             <label className="tp-check">
               <input

@@ -47,6 +47,8 @@ export type Member = {
   isTrainingLead: boolean;
   // システム担当(名簿・ログインの記録・Slack のテストを扱う)。トレーニング担当と兼ねられる。
   isSystemAdmin: boolean;
+  // 幹部(主将・副将・主務など)。ホームの目標と、データベース/マニュアルを書き直せる(2026-10-20 から)。
+  isExecutive: boolean;
   title: string | null;
   tier: string | null;
   slot: string | null;
@@ -149,6 +151,7 @@ export function getMemberGroup(position: MemberPosition | null): MemberGroup | n
 }
 
 export const SYSTEM_ADMIN_LABEL = "システム担当";
+export const EXECUTIVE_LABEL = "幹部";
 
 /** メニュー・練習日の例外を変えたり、ほかの人のノートを消したりできるのは、トレーニング担当だけ。 */
 export function canAdminister(member: Pick<Member, "isTrainingLead">): boolean {
@@ -166,17 +169,36 @@ export function canExportNotes(member: Pick<Member, "isTrainingLead" | "isLeader
   return canAdminister(member) || member.isLeader || member.title === TRAINER_TITLE;
 }
 
-// 部内ページの文章の種類。goal はホームに大きく出すチームの目標。
-export const PORTAL_TEXT_KEYS = ["goal"] as const;
+// 部内ページの文章の種類。goal はホームに大きく出すチームの目標。ほかはデータベース/マニュアルの見出しごとの文章。
+export const PORTAL_TEXT_KEYS = ["goal", "policy", "rules", "attendance", "roles", "manual", "training"] as const;
 export type PortalTextKey = (typeof PORTAL_TEXT_KEYS)[number];
-export const PORTAL_TEXT_MAX_LENGTH = 2000;
+export const PORTAL_TEXT_MAX_LENGTH = 10000;
 
 /**
- * ホームの目標などを書き直せる人。いまはトレーニング担当とシステム担当。
- * 幹部が書き直せるようにするのは、データベース/マニュアルのページを作るときに名簿の印と一緒に足す(部員の声、2026-10-20)。
+ * データベース/マニュアルの見出し(部員の声、2026-10-20)。中身は幹部が書く。
+ * hint は、まだ書かれていないときに出す「何を書くか」の目安。
  */
-export function canEditPortalTexts(member: Pick<Member, "isTrainingLead" | "isSystemAdmin">): boolean {
-  return member.isTrainingLead || member.isSystemAdmin;
+export const MANUAL_SECTIONS: { key: Exclude<PortalTextKey, "goal">; title: string; hint: string }[] = [
+  { key: "policy", title: "チームとして目指す方針", hint: "1年の目標、大事にすること、目指すチームの姿" },
+  { key: "rules", title: "部のルール", hint: "練習・試合・部室・連絡などの決まり" },
+  {
+    key: "attendance",
+    title: "出欠・遅刻のルール",
+    hint: "いつまでに入力するか、変えるときどうするか、遅刻・早退・欠席するときの決まりと注意",
+  },
+  { key: "roles", title: "役職ごとの仕事内容・引き継ぎ", hint: "役職ごとの仕事、時期ごとにやること、引き継ぐこと" },
+  { key: "manual", title: "部内マニュアル", hint: "練習の準備・片付け、遠征、会計など、やり方の手順" },
+  { key: "training", title: "筋トレの内容・推奨メニュー", hint: "筋トレの考え方、推奨メニュー、自分でメニューを組むときの目安" },
+];
+
+/**
+ * ホームの目標と、データベース/マニュアルを書き直せる人:幹部と、トレーニング担当・システム担当
+ * (けーいちの決定、2026-10-20:「幹部が書いて、サイトで直せる」)。幹部の印は名簿で付ける。
+ */
+export function canEditPortalTexts(
+  member: Pick<Member, "isTrainingLead" | "isSystemAdmin" | "isExecutive">,
+): boolean {
+  return member.isExecutive || member.isTrainingLead || member.isSystemAdmin;
 }
 
 /** 名簿を変える・Slack の知らせを試すのは、システム担当だけ。 */

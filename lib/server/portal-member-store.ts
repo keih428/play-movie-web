@@ -23,6 +23,7 @@ type MemberRow = {
   role: string;
   is_training_lead: boolean;
   is_system_admin: boolean;
+  is_executive: boolean;
   title: string | null;
   tier: string | null;
   slot: string | null;
@@ -33,6 +34,7 @@ type MemberRow = {
 
 export type MemberPatch = Partial<
   MemberInput & {
+    isExecutive: boolean;
     tier: string | null;
     slot: string | null;
     slackId: string | null;
@@ -49,6 +51,7 @@ const PATCH_COLUMNS: Record<keyof MemberPatch, string> = {
   role: "role",
   isTrainingLead: "is_training_lead",
   isSystemAdmin: "is_system_admin",
+  isExecutive: "is_executive",
   title: "title",
   tier: "tier",
   slot: "slot",
@@ -69,6 +72,7 @@ function toMember(row: MemberRow): Member {
     role: row.role as MemberRole,
     isTrainingLead: row.is_training_lead,
     isSystemAdmin: row.is_system_admin,
+    isExecutive: row.is_executive,
     title: row.title,
     tier: row.tier,
     slot: row.slot,

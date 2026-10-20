@@ -310,6 +310,11 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX training_request_replies_session ON training_request_replies (member_id, session_date)
     `,
   },
+  {
+    id: "014_member_executive",
+    // 幹部の印。ホームの目標と、データベース/マニュアルを書き直せる。
+    sql: `ALTER TABLE members ADD COLUMN is_executive boolean NOT NULL DEFAULT false`,
+  },
 ];
 
 function getDatabaseUrl() {
