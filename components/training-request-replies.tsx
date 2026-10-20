@@ -2,15 +2,15 @@
 
 import { FormEvent, useState } from "react";
 import { buildTeamApiPath } from "@/lib/domain/team";
-import { TRAINING_REPLY_MAX, type TrainingDay, type TrainingRequestReply } from "@/lib/domain/training";
+import { TRAINING_REPLY_MAX, type TrainingRequestReply } from "@/lib/domain/training";
 
 type TrainingRequestRepliesProps = {
   canReply: boolean;
-  day: TrainingDay;
   initialReplies: TrainingRequestReply[];
   memberId: string;
+  // 返信を付ける記録の日付。
+  sessionDate: string;
   teamSlug: string;
-  weekStart: string;
 };
 
 function formatDateTime(value: string) {
@@ -26,17 +26,16 @@ function formatDateTime(value: string) {
 /** 「トレーニング担当へ」の下に出す返信のやりとり。書けるのはトレーニング担当と、書いた本人。 */
 export function TrainingRequestReplies({
   canReply,
-  day,
   initialReplies,
   memberId,
+  sessionDate,
   teamSlug,
-  weekStart,
 }: TrainingRequestRepliesProps) {
   const [replies, setReplies] = useState(initialReplies);
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const fieldId = `reply-${memberId}-${day}`;
+  const fieldId = `reply-${memberId}-${sessionDate}`;
 
   async function send(event: FormEvent) {
     event.preventDefault();
@@ -46,7 +45,7 @@ export function TrainingRequestReplies({
       const response = await fetch(buildTeamApiPath("/api/portal/training/replies", teamSlug), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ memberId, weekStart, day, body }),
+        body: JSON.stringify({ memberId, sessionDate, body }),
       });
       const payload = (await response.json()) as { error?: string; replies?: TrainingRequestReply[] };
       if (!response.ok || !payload.replies) {

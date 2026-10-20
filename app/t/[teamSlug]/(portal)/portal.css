@@ -2501,3 +2501,178 @@ body:has(.tp[data-mode="tango"]) {
   justify-self: start;
   font-size: 14px;
 }
+
+/* ---------- トレーニング録(日付ごと) ---------- */
+.tp-log-start {
+  width: 100%;
+  min-height: 56px;
+  font-size: 17px;
+}
+
+.tp-log-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.tp-log-date {
+  display: grid;
+  gap: 4px;
+}
+
+.tp-log-date input {
+  max-width: 220px;
+}
+
+.tp-log-ex {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+/* 固定の3種目(スクワット・ベンチ・トラップバーDL)は、チームの色の線で目立たせる。 */
+.tp-log-fixed {
+  border-left: 4px solid var(--tp-accent);
+}
+
+.tp-log-exhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+}
+
+.tp-log-exhead b {
+  flex: 1;
+  font-size: 16px;
+}
+
+.tp-log-name {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tp-log-sets {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-log-sets li {
+  display: grid;
+  grid-template-columns: 1.4em minmax(0, 1fr) auto minmax(0, 0.8fr) auto 36px;
+  align-items: center;
+  gap: 6px;
+}
+
+.tp-log-sets input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font-family: var(--tp-num);
+  font-size: 16px;
+  text-align: right;
+}
+
+.tp-log-no {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 12px;
+  text-align: center;
+}
+
+.tp-log-x,
+.tp-log-add,
+.tp-log-edit {
+  padding: 6px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+  color: var(--tp-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-log-x:disabled,
+.tp-log-add:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tp-log-add {
+  justify-self: start;
+  color: var(--tp-accent);
+}
+
+.tp-log-edit {
+  color: var(--tp-accent);
+}
+
+.tp-log-bw input {
+  max-width: 160px;
+}
+
+.tp-log-delete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tp-log-delete .tp-clear {
+  margin-left: 0;
+}
+
+.tp-button.tp-danger {
+  border-color: var(--tp-danger-fg);
+  background: var(--tp-danger-fg);
+  color: var(--tp-surface);
+}
+
+.tp-log-history {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-log-histhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tp-log-lines {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.tp-log-lines li {
+  overflow-wrap: anywhere;
+}

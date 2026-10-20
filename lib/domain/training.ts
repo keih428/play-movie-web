@@ -688,9 +688,154 @@ export const TRAINING_REPLY_MAX = 1000;
 export type TrainingRequestReply = {
   id: string;
   memberId: string;
-  day: TrainingDay;
+  // 返信が付いている記録の日付(2026-10-20 から。それまでの返信も日付に直してある)。
+  sessionDate: string;
   authorId: string;
   authorName: string;
   body: string;
   createdAt: string;
 };
+
+// ---------- 日付ごとのトレーニング録(2026-10-20 から) ----------
+// 部員の声:「筋トレした日に、その日の記録を追加する」「セットごとに重量・回数を変えられる」。1人・1日に記録は1つ。
+
+export type SessionSet = {
+  kg: number | null;
+  reps: number | null;
+};
+
+export type SessionExercise = {
+  name: string;
+  // スクワット・トラップバーDL・ベンチなら、その印(みんなの記録の集計に使う)。ほかは null。
+  lift: LiftKind | null;
+  sets: SessionSet[];
+};
+
+export type TrainingSessionRecord = {
+  date: string;
+  exercises: SessionExercise[];
+  bodyWeightKg: number | null;
+  memo: string;
+  request: string;
+  updatedAt: string;
+};
+
+// 一番上に固定で置く種目(けーいちの決定、2026-10-20:デッドリフトは今のメニューと同じトラップバーDL)。体重は別の欄。
+export const FIXED_SESSION_LIFTS: { lift: LiftKind; name: string }[] = [
+  { lift: "sq", name: "スクワット" },
+  { lift: "bp", name: "ベンチプレス" },
+  { lift: "dl", name: "トラップバーDL" },
+];
+
+export const SESSION_LIMITS = {
+  exercises: 40,
+  setsPerExercise: 20,
+  maxKg: 500,
+  maxReps: 200,
+  nameLength: 60,
+};
+
+/** 「5回 × 3」「3〜5回 × 3」から、回数とセット数を読む。読めなければ null。 */
+export function parseDose(dose: string): { reps: number | null; sets: number | null } {
+  const text = dose.replace(/\*\*/g, "");
+  const full = text.match(/(\d+)(?:\s*[〜~-]\s*\d+)?\s*回\s*[×xX]\s*(\d+)/);
+  if (full) {
+    return { reps: Number(full[1]), sets: Number(full[2]) };
+  }
+  const setsOnly = text.match(/[×xX]\s*(\d+)/);
+  return { reps: null, sets: setsOnly ? Number(setsOnly[1]) : null };
+}
+
+/**
+ * 記録の欄の最初の形。その日のメニューの、重さを記録する種目を、メニューの回数・セット数で並べる。
+ * 一番上はいつも スクワット・ベンチプレス・トラップバーDL(その日にやらなければ、空のまま保存すれば残らない)。
+ * 重さは、メニューの目安か、その種目の前回の重さを入れておく。
+ */
+export function buildDefaultExercises(
+  day: ResolvedDay | null,
+  previousKg: Record<string, number>,
+): SessionExercise[] {
+  const fromMenu = (day?.items ?? []).filter((item) => item.weighted);
+  const used = new Set<ResolvedItem>();
+
+  const toSets = (item: ResolvedItem | undefined, previous: number | undefined): SessionSet[] => {
+    const { reps, sets } = item ? parseDose(item.dose) : { reps: null, sets: null };
+    const kg = item?.targetKg ?? previous ?? null;
+    return Array.from({ length: Math.min(sets ?? 1, SESSION_LIMITS.setsPerExercise) }, () => ({ kg, reps }));
+  };
+
+  const fixed = FIXED_SESSION_LIFTS.map(({ lift, name }) => {
+    const item = fromMenu.find((entry) => entry.kind === lift && !used.has(entry));
+    if (item) {
+      used.add(item);
+    }
+    return { name, lift, sets: item ? toSets(item, previousKg[name]) : [{ kg: null, reps: null }] };
+  });
+
+  const others = fromMenu
+    .filter((item) => !used.has(item))
+    .map((item) => ({
+      name: item.name,
+      lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : null,
+      sets: toSets(item, previousKg[item.name]),
+    }));
+
+  return [...fixed, ...others];
+}
+
+/** その日のメニュー(火・木・土はその曜日、ほかの日は自主の分)。メニューの期間の外なら null。 */
+export function findDayForDate(
+  programs: TrainingProgram[],
+  date: string,
+  selection: MenuSelection,
+  estimated: Estimated1rm,
+): ResolvedDay | null {
+  for (const program of programs) {
+    const weekIndex = program.menu.weeks.findIndex((week) => date >= week.s && date <= week.e);
+    if (weekIndex < 0) {
+      continue;
+    }
+    const { days } = resolveWeek(program.menu, weekIndex, selection, estimated);
+    return days.find((day) => day.date === date) ?? days.find((day) => day.day === "self") ?? null;
+  }
+  return null;
+}
+
+/** 保存する前に、空のセット・空の種目を除く。 */
+export function compactExercises(exercises: SessionExercise[]): SessionExercise[] {
+  return exercises
+    .map((exercise) => ({
+      ...exercise,
+      name: exercise.name.trim(),
+      sets: exercise.sets.filter((set) => set.kg !== null || set.reps !== null),
+    }))
+    .filter((exercise) => exercise.name && exercise.sets.length > 0);
+}
+
+function formatKg(kg: number): string {
+  return `${Math.round(kg * 100) / 100}kg`;
+}
+
+/** 「100kg × 5回 × 3set」。セットごとに違えば「100kg × 5回、90kg × 8回」。 */
+export function summarizeSets(sets: SessionSet[]): string {
+  const describe = (set: SessionSet) =>
+    [set.kg !== null ? formatKg(set.kg) : "", set.reps !== null ? `${set.reps}回` : ""].filter(Boolean).join(" × ") ||
+    "—";
+  const groups: { text: string; count: number }[] = [];
+  for (const set of sets) {
+    const text = describe(set);
+    const last = groups[groups.length - 1];
+    if (last && last.text === text) {
+      last.count += 1;
+    } else {
+      groups.push({ text, count: 1 });
+    }
+  }
+  return groups.map((group) => (group.count > 1 ? `${group.text} × ${group.count}set` : group.text)).join("、");
+}
+
+/** その種目で一番重いセットの重さ(みんなの記録の集計に使う)。 */
+export function topSetKg(exercise: SessionExercise): number | null {
+  const weights = exercise.sets.map((set) => set.kg).filter((kg): kg is number => kg !== null);
+  return weights.length ? Math.max(...weights) : null;
+}
