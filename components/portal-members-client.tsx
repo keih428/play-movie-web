@@ -98,7 +98,7 @@ function describeMember(member: Member) {
     member.role === "member" ? null : MEMBER_ROLE_LABELS[member.role],
     member.isTrainingLead ? TRAINING_LEAD_LABEL : null,
     member.isSystemAdmin ? SYSTEM_ADMIN_LABEL : null,
-    member.isExecutive ? EXECUTIVE_LABEL : null,
+    // 幹部かどうかは、名簿の一覧には出さない(「直す」の中だけで見える。けーいちの決定、2026-10-20)。
     member.title,
   ];
   return parts.filter(Boolean).join("・");
