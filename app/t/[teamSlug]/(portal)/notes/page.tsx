@@ -13,6 +13,7 @@ import { canAdminister, canExportNotes, getMemberGroup, isPortalTeam } from "@/l
 import { buildTeamNotesPath } from "@/lib/domain/team";
 import {
   getUnreadCounts,
+  listComments,
   listNotes,
   listPracticeDayOverrides,
 } from "@/lib/server/portal-note-store";
@@ -58,6 +59,8 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
     canWrite ? listNotes(teamSlug, { memberId: current.id, from: addDaysToDate(today, -7) }) : [],
   ]);
   const unreadTotal = Object.values(unreadCounts).reduce((total, count) => total + count, 0);
+  // 一覧の中でコメントを開けるように、並べるノートのコメントをまとめて読む。
+  const comments = await listComments(notes.map((note) => note.id));
 
   // この1週間の練習日で、まだ書いていない日(新しい順)。
   const writtenDates = new Set(recentOwnNotes.map((note) => note.practiceDate));
@@ -125,6 +128,9 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
               key={note.id}
               href={`${basePath}/${note.id}`}
               note={note}
+              comments={comments.filter((comment) => comment.noteId === note.id)}
+              isMine={note.memberId === current.id}
+              teamSlug={teamSlug}
               unread={unreadCounts[note.id]}
             />
           ))

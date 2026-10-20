@@ -18,6 +18,8 @@ export type NoteComment = {
   noteId: string;
   memberId: string;
   memberName: string;
+  // 背番号(アイコンに出す)。ない人は null。
+  memberNumber: string | null;
   body: string;
   createdAt: string;
 };
