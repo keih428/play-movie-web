@@ -8,6 +8,7 @@ import {
 } from "@/lib/domain/notes";
 import { getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
+import { getWeekDuties } from "@/lib/server/portal-comment-duty-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { saveNote } from "@/lib/server/portal-note-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "本文を書いてください。" }, { status: 400 });
   }
 
-  const { note, requestChanged } = await saveNote({
+  const { note, requestChanged, created } = await saveNote({
     member: current,
     practiceDate: payload.date,
     body,
@@ -56,6 +57,24 @@ export async function POST(request: NextRequest) {
       leaders,
       `${current.displayName} が ${formatNoteDate(note.practiceDate)} のノートに「リーダーへ」を書きました\n> ${excerpt(note.request)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
     );
+  }
+
+  // コメント当番:今週この人を受け持っている人に、新しいノートが書かれたことを知らせて、コメントを促す。
+  // 書き直しでは知らせない。
+  if (created) {
+    try {
+      const duty = (await getWeekDuties(teamSlug, getTodayInJapan())).find((pair) => pair.targetId === current.id);
+      const commenter = duty ? (await listMembers(teamSlug)).find((member) => member.id === duty.commenterId) : null;
+      if (commenter) {
+        await notifyMembers(
+          [commenter],
+          `コメント当番:${current.displayName} が ${formatNoteDate(note.practiceDate)} のノートを書きました。今週はあなたの担当です。コメントしてください\n> ${excerpt(note.body)}\n${getBaseUrl(request)}${buildTeamNotesPath(teamSlug)}/${note.id}`,
+        );
+      }
+    } catch (error) {
+      // 当番の知らせが送れなくても、ノートの保存は成功として返す。
+      console.error("[notes] comment duty notice", error);
+    }
   }
 
   return NextResponse.json({ note });

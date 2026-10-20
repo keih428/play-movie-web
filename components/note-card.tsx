@@ -14,6 +14,8 @@ type NoteCardProps = {
   isMine: boolean;
   // トレーニング担当は、ほかの人のノートも削除できる。
   canDelete: boolean;
+  // 今週、自分がコメント当番で受け持っている人のノート。
+  isDutyTarget?: boolean;
   teamSlug: string;
   unread?: number;
 };
@@ -30,6 +32,7 @@ export function NoteCard({
   comments: initialComments,
   isMine,
   canDelete,
+  isDutyTarget = false,
   teamSlug,
   unread = 0,
 }: NoteCardProps) {
@@ -140,6 +143,7 @@ export function NoteCard({
         <span className="tp-when">{formatNoteDate(note.practiceDate)}</span>
         <span className="tp-what">{note.memberName}</span>
         <span className="tp-time">{note.position ?? ""}</span>
+        {isDutyTarget ? <span className="tp-duty-badge">当番</span> : null}
         {hasMenu && mode === "view" ? (
           <div className="tp-kebab" ref={menuRef}>
             <button

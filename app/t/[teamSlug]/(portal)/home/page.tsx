@@ -19,6 +19,8 @@ import {
   buildTeamWorkspacesPath,
 } from "@/lib/domain/team";
 import { formatPeriod } from "@/lib/domain/training";
+import { getWeekDuties } from "@/lib/server/portal-comment-duty-store";
+import { listMembers } from "@/lib/server/portal-member-store";
 import { getUnreadCounts } from "@/lib/server/portal-note-store";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
@@ -56,12 +58,18 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
   const current = await requireMember(teamSlug, buildTeamHomePath(teamSlug));
   const today = getTodayInJapan();
 
-  const [texts, plan, schedule, unread] = await Promise.all([
+  const [texts, plan, schedule, unread, duties, members] = await Promise.all([
     listPortalTexts(teamSlug),
     getTrainingPlan(teamSlug),
     getPracticeSchedule(teamSlug, today, shiftDate(today, UPCOMING_DAYS)),
     getUnreadCounts(current.id),
+    current.position ? getWeekDuties(teamSlug, today) : Promise.resolve([]),
+    listMembers(teamSlug),
   ]);
+  // コメント当番:今週、自分が受け持つ人(プレイヤーだけ)。
+  const dutyTarget = members.find(
+    (member) => member.id === duties.find((pair) => pair.commenterId === current.id)?.targetId,
+  );
   const unreadNotes = Object.values(unread).reduce((total, count) => total + count, 0);
   const goal = texts.goal;
   const manualPath = buildTeamManualPath(teamSlug);
@@ -98,6 +106,17 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
       <section className="tp-section">
         <PortalGoal teamSlug={teamSlug} body={goal?.body ?? null} canEdit={canEditPortalTexts(current)} />
       </section>
+
+      {dutyTarget ? (
+        <section className="tp-section">
+          <Link className="tp-card tp-card-link tp-duty" href={buildTeamNotesPath(teamSlug)}>
+            <span className="tp-eyebrow">今週のコメント当番</span>
+            <span>
+              <b>{dutyTarget.displayName}</b> さんのノートにコメントする →
+            </span>
+          </Link>
+        </section>
+      ) : null}
 
       <section className="tp-section">
         <h2>メインのページ</h2>

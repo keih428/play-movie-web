@@ -83,15 +83,17 @@ function TeamHeader({
           href={loggedIn ? buildTeamHomePath(teamSlug) : root}
           aria-label="東大バレー部 ホーム"
         >
+          {/* 東大のロゴ(web アプリのアイコンと同じ)+ UTVB(けーいちの決定、2026-10-21)。 */}
           <Image
-            src="/logo-top.png"
+            src="/icons/icon-192.png"
             alt=""
-            width={100}
-            height={24}
-            className="team-brand-logo"
-            sizes="100px"
+            width={28}
+            height={28}
+            className="team-brand-mark"
+            sizes="28px"
             priority
           />
+          <span className="team-brand-text">UTVB</span>
         </Link>
         <nav className="team-nav" aria-label="部内ページ">
           {mainLinks.map((link) => (

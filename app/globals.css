@@ -2866,11 +2866,19 @@ body:has(.tp) .team-header-inner {
   display: inline-flex;
   flex: none;
   align-items: center;
+  gap: 6px;
 }
 
-.team-brand-logo {
-  width: auto;
-  height: 22px;
+.team-brand-mark {
+  width: 28px;
+  height: 28px;
+}
+
+.team-brand-text {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.04em;
 }
 
 .team-nav {
@@ -2953,8 +2961,13 @@ body:has(.tp) .team-header-inner {
     padding: 0 10px;
   }
 
-  .team-brand-logo {
-    height: 18px;
+  .team-brand-mark {
+    width: 24px;
+    height: 24px;
+  }
+
+  .team-brand-text {
+    font-size: 16px;
   }
 
   .team-nav a {
