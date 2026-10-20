@@ -186,7 +186,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
         {canAdminister(current) || canManageSite(current) ? (
           <p className="tp-small tp-muted">
             {schedule.source === "calendar"
-              ? "練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日。直してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。"
+              ? "練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日。カレンダーを編集してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。"
               : `練習日は、曜日の決め打ち(日・火・木・土)です。${schedule.error ? `カレンダーを読めませんでした:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
           </p>
         ) : null}

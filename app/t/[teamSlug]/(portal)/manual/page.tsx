@@ -47,7 +47,7 @@ export default async function TeamManualPage({ params }: PageProps) {
         </nav>
         {canEdit ? (
           <p className="tp-small tp-muted">
-            幹部・トレーニング担当・システム担当は、見出しの「書く」「書き直す」から直せます。
+            幹部・トレーニング担当・システム担当は、見出しの「書く」「編集」から編集できます。
           </p>
         ) : null}
       </header>

@@ -69,7 +69,7 @@ export function NoteEditor({ date, initialBody, initialRequest, teamSlug }: Note
         ) : null}
       </div>
       <div className="tp-savebar">
-        <p>書いたことは部の全員に見えます。あとから直せます。</p>
+        <p>書いたことは部の全員に見えます。あとから編集できます。</p>
         <button className="tp-button" type="submit" disabled={busy || !body.trim()}>
           {busy ? "保存中…" : "保存"}
         </button>

@@ -98,7 +98,7 @@ export function PortalGoal({ teamSlug, body, canEdit }: PortalGoalProps) {
       {canEdit ? (
         <div>
           <button type="button" className="tp-button tp-ghost tp-goal-edit" onClick={() => setEditing(true)}>
-            {body ? "書き直す" : "目標を書く"}
+            {body ? "編集" : "目標を書く"}
           </button>
         </div>
       ) : null}

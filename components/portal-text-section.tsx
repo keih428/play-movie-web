@@ -69,7 +69,7 @@ export function PortalTextSection({
         <h2>{title}</h2>
         {canEdit && !editing ? (
           <button type="button" className="tp-button tp-ghost tp-goal-edit" onClick={() => setEditing(true)}>
-            {body ? "書き直す" : "書く"}
+            {body ? "編集" : "書く"}
           </button>
         ) : null}
       </div>
