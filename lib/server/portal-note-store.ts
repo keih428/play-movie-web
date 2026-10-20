@@ -94,7 +94,7 @@ export async function saveNote(input: {
   practiceDate: string;
   body: string;
   request: string;
-}): Promise<{ note: Note; requestChanged: boolean }> {
+}): Promise<{ note: Note; requestChanged: boolean; created: boolean }> {
   const existing = await getNoteByDate(input.member.id, input.practiceDate);
   await query(
     `INSERT INTO notes (id, team_slug, member_id, practice_date, position, group_key, body, request)
@@ -116,6 +116,7 @@ export async function saveNote(input: {
   return {
     note: note!,
     requestChanged: Boolean(input.request) && input.request !== (existing?.request ?? ""),
+    created: !existing,
   };
 }
 

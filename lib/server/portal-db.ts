@@ -315,6 +315,27 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // 幹部の印。ホームの目標と、データベース/マニュアルを書き直せる。
     sql: `ALTER TABLE members ADD COLUMN is_executive boolean NOT NULL DEFAULT false`,
   },
+  {
+    id: "015_comment_duties",
+    // コメント当番。週(月曜)ごとの組み合わせを、その週に初めて開かれたときに作って残す(週の途中で名簿が変わっても、組は変えない)。
+    // comment_duty_weeks は「この週の組はもう作った」の印。先に印を立てた1回だけが組を書き込む。
+    sql: `
+      CREATE TABLE comment_duty_weeks (
+        team_slug text NOT NULL,
+        week_start text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_slug, week_start)
+      );
+      CREATE TABLE comment_duties (
+        team_slug text NOT NULL,
+        week_start text NOT NULL,
+        commenter_id text NOT NULL REFERENCES members (id),
+        target_id text NOT NULL REFERENCES members (id),
+        PRIMARY KEY (team_slug, week_start, commenter_id)
+      );
+      CREATE INDEX comment_duties_target ON comment_duties (team_slug, week_start, target_id)
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
