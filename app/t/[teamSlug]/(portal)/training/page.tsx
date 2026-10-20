@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { RichText } from "@/components/rich-text";
 import { TrainingMeasurementForm } from "@/components/training-measurement-form";
 import { TrainingGlossary as Glossary } from "@/components/training-glossary";
+import { TrainingLog } from "@/components/training-log";
 import { TrainingMenuUpload } from "@/components/training-menu-upload";
 import { TrainingSession, type PeriodLink, type WeekLink } from "@/components/training-session";
 import {
@@ -17,6 +18,9 @@ import {
 import { buildTeamTrainingPath, buildTeamTrainingPlanPath } from "@/lib/domain/team";
 import {
   FRESHMAN_GRADE,
+  addDays,
+  buildDefaultExercises,
+  findDayForDate,
   findPlanBlock,
   findWeekIndex,
   formatMonthDay,
@@ -26,16 +30,17 @@ import {
   pickProgram,
   resolveWeek,
   type MenuSelection,
+  type SessionExercise,
   type TrainingMenu,
 } from "@/lib/domain/training";
 import { requireMember } from "@/lib/server/portal-session";
 import {
+  getLatestKgByExercise,
   getLatestMeasurements,
-  getPreviousWeights,
   getTodayInJapan,
   getTrainingPlan,
+  listMemberSessions,
   listTrainingPrograms,
-  getWeekRecords,
   toEstimated1rm,
 } from "@/lib/server/portal-training-store";
 
@@ -53,6 +58,9 @@ type PageProps = {
 };
 
 export const dynamic = "force-dynamic";
+
+// 記録の欄の最初の形を、今日から何日前の分まで作っておくか(それより前の日は、固定の3種目から始める)。
+const DEFAULT_PAST_DAYS = 60;
 
 function pick<T extends string>(choices: readonly T[], ...candidates: (string | null | undefined)[]): T {
   return (candidates.find((value) => choices.includes(value as T)) as T | undefined) ?? choices[0];
@@ -329,17 +337,27 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   const estimated = toEstimated1rm(latest);
   const resolved = resolveWeek(menu, weekIndex, selection, estimated);
   const { week } = resolved;
-  const [records, previousWeights] = canRecord
-    ? await Promise.all([getWeekRecords(current.id, week.s), getPreviousWeights(current.id, week.s)])
-    : [{}, {}];
+  // 日付ごとの記録(2026-10-20 から)。欄の最初の形は、その日のメニューの種目と回数・セット数。
+  const sessions = canRecord ? await listMemberSessions(current.id) : [];
+  const previousKg = getLatestKgByExercise(sessions);
+  const defaultsByDate: Record<string, SessionExercise[]> = {};
+  const menuTitles: Record<string, string> = {};
+  if (canRecord) {
+    for (let offset = -DEFAULT_PAST_DAYS; offset <= 1; offset += 1) {
+      const date = addDays(today, offset);
+      const day = findDayForDate(programs, date, selection, estimated);
+      if (day) {
+        defaultsByDate[date] = buildDefaultExercises(day, previousKg);
+        menuTitles[date] = day.day === "self" && day.date !== date ? `${day.title}(自主)` : day.title;
+      }
+    }
+  }
 
-  // 今週なら、今日の曜日(なければ、まだ記録していない最初の曜日)を開く。
+  // 今週なら、今日の曜日を開く。
   const recordableDays = resolved.days.filter((day) => day.items.length > 0);
   const initialDay =
-    (weekIndex === currentWeekIndex
-      ? (recordableDays.find((day) => day.date === today) ??
-        recordableDays.find((day) => !records[day.day]))
-      : undefined) ?? resolved.days[0];
+    (weekIndex === currentWeekIndex ? recordableDays.find((day) => day.date === today) : undefined) ??
+    resolved.days[0];
 
   const weekLinks: WeekLink[] = menu.weeks.map((entry, index) => ({
     key: entry.k,
@@ -419,18 +437,23 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         ) : null}
       </header>
 
+      {canRecord ? (
+        <TrainingLog
+          teamSlug={teamSlug}
+          today={today}
+          sessions={sessions}
+          defaultsByDate={defaultsByDate}
+          menuTitles={menuTitles}
+          previousKg={previousKg}
+        />
+      ) : null}
+
       <TrainingSession
-        // 測定を入れ直すと重さの目安が変わるので、欄を作り直す。
         key={`${program.key}-${week.k}-${selection.tier}-${selection.slot}-${selection.position}-${JSON.stringify(estimated)}`}
-        canRecord={canRecord}
         days={resolved.days}
         initialDay={initialDay.day}
-        previousWeights={previousWeights}
-        records={records}
         periodLinks={periodLinks}
-        teamSlug={teamSlug}
         weekLinks={weekLinks}
-        weekStart={week.s}
       >
         <div className="tp-weekhead">
           <SectionHead no={1} title="今週のメニュー" tangoTitle="今週の鉄壁" />

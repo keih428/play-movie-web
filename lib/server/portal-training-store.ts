@@ -1,38 +1,18 @@
 import {
   estimate1rm,
+  topSetKg,
   type Estimated1rm,
-  type LiftKind,
   type Measurement,
   type MeasurementItem,
-  type TrainingDay,
+  type SessionExercise,
   type TrainingMenu,
   type TrainingPlan,
   type TrainingProgram,
+  type TrainingSessionRecord,
 } from "@/lib/domain/training";
-import { query, transaction } from "@/lib/server/portal-db";
+import { query } from "@/lib/server/portal-db";
 
-export type DayRecord = {
-  weights: Record<string, number>;
-  memo: string;
-  request: string;
-  saved: boolean;
-};
-
-export type WeekRecords = Partial<Record<TrainingDay, DayRecord>>;
-
-export type TeamLiftLog = {
-  memberId: string;
-  lift: LiftKind;
-  weightKg: number;
-};
-
-export type TeamMemo = {
-  memberId: string;
-  day: TrainingDay;
-  memo: string;
-  request: string;
-  updatedAt: string;
-};
+export type TeamSession = TrainingSessionRecord & { memberId: string };
 
 /** 日本時間の今日('YYYY-MM-DD')。 */
 export function getTodayInJapan(): string {
@@ -85,86 +65,97 @@ export async function saveTrainingPlan(teamSlug: string, plan: TrainingPlan, upd
   );
 }
 
-export async function getWeekRecords(memberId: string, weekStart: string): Promise<WeekRecords> {
-  const [logs, memos] = await Promise.all([
-    query<{ day: TrainingDay; exercise: string; weight_kg: number }>(
-      "SELECT day, exercise, weight_kg FROM training_logs WHERE member_id = $1 AND week_start = $2",
-      [memberId, weekStart],
-    ),
-    query<{ day: TrainingDay; memo: string; request: string }>(
-      "SELECT day, memo, request FROM training_memos WHERE member_id = $1 AND week_start = $2",
-      [memberId, weekStart],
-    ),
-  ]);
+type SessionRow = {
+  member_id: string;
+  date: string;
+  exercises: SessionExercise[] | string;
+  body_weight_kg: number | null;
+  memo: string;
+  request: string;
+  updated_at: Date | string;
+};
 
-  const records: WeekRecords = {};
-  for (const memo of memos) {
-    records[memo.day] = { weights: {}, memo: memo.memo, request: memo.request, saved: true };
-  }
-  for (const log of logs) {
-    const record = (records[log.day] ??= { weights: {}, memo: "", request: "", saved: true });
-    record.weights[log.exercise] = log.weight_kg;
-  }
-  return records;
+const SESSION_COLUMNS = "s.member_id, s.date, s.exercises, s.body_weight_kg, s.memo, s.request, s.updated_at";
+
+function toSession(row: SessionRow): TeamSession {
+  return {
+    memberId: row.member_id,
+    date: row.date,
+    // PGlite と pg で、jsonb が文字で返ることがある。
+    exercises: typeof row.exercises === "string" ? (JSON.parse(row.exercises) as SessionExercise[]) : row.exercises,
+    bodyWeightKg: row.body_weight_kg,
+    memo: row.memo,
+    request: row.request,
+    updatedAt: new Date(row.updated_at).toISOString(),
+  };
 }
 
-/** 種目ごとの、この週より前でいちばん新しい重さ(「先週の重さ」として欄に入れておく)。 */
-export async function getPreviousWeights(
-  memberId: string,
-  weekStart: string,
-): Promise<Record<string, number>> {
-  const rows = await query<{ exercise: string; weight_kg: number }>(
-    `SELECT DISTINCT ON (exercise) exercise, weight_kg FROM training_logs
-     WHERE member_id = $1 AND week_start < $2
-     ORDER BY exercise, week_start DESC`,
-    [memberId, weekStart],
+/** 自分の記録を、新しい日付から順に。 */
+export async function listMemberSessions(memberId: string, limit = 120): Promise<TrainingSessionRecord[]> {
+  const rows = await query<SessionRow>(
+    `SELECT ${SESSION_COLUMNS} FROM training_sessions s WHERE s.member_id = $1 ORDER BY s.date DESC LIMIT $2`,
+    [memberId, limit],
   );
-  return Object.fromEntries(rows.map((row) => [row.exercise, row.weight_kg]));
+  return rows.map(toSession);
 }
 
-/** その日に書いてある「トレーニング担当へ」。変わったときだけ知らせるために使う。 */
-export async function getDayRequest(
-  memberId: string,
-  weekStart: string,
-  day: TrainingDay,
-): Promise<string> {
+/** 種目ごとの、いちばん新しい記録の一番重いセット(記録の欄に、前回の重さとして入れておく)。 */
+export function getLatestKgByExercise(sessions: TrainingSessionRecord[]): Record<string, number> {
+  const latest: Record<string, number> = {};
+  // sessions は新しい順。先に見つかったものがいちばん新しい。
+  for (const session of sessions) {
+    for (const exercise of session.exercises) {
+      const kg = topSetKg(exercise);
+      if (kg !== null && latest[exercise.name] === undefined) {
+        latest[exercise.name] = kg;
+      }
+    }
+  }
+  return latest;
+}
+
+/** その日の記録に書いてある「トレーニング担当へ」。変わったときだけ知らせるために使う。 */
+export async function getSessionRequest(memberId: string, date: string): Promise<string> {
   const rows = await query<{ request: string }>(
-    "SELECT request FROM training_memos WHERE member_id = $1 AND week_start = $2 AND day = $3",
-    [memberId, weekStart, day],
+    "SELECT request FROM training_sessions WHERE member_id = $1 AND date = $2",
+    [memberId, date],
   );
   return rows[0]?.request ?? "";
 }
 
-/** その日の記録を、送られてきた内容で置き換える。空の欄の種目は消える。 */
-export async function saveDayRecord(input: {
-  memberId: string;
-  weekStart: string;
-  day: TrainingDay;
-  weights: { exercise: string; lift: LiftKind | null; weightKg: number }[];
-  memo: string;
-  request: string;
-}) {
-  await transaction(async (run) => {
-    await run("DELETE FROM training_logs WHERE member_id = $1 AND week_start = $2 AND day = $3", [
-      input.memberId,
-      input.weekStart,
-      input.day,
-    ]);
-    for (const weight of input.weights) {
-      await run(
-        `INSERT INTO training_logs (member_id, week_start, day, exercise, lift, weight_kg)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [input.memberId, input.weekStart, input.day, weight.exercise, weight.lift, weight.weightKg],
-      );
-    }
-    await run(
-      `INSERT INTO training_memos (member_id, week_start, day, memo, request)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (member_id, week_start, day) DO UPDATE SET
-         memo = EXCLUDED.memo, request = EXCLUDED.request, updated_at = now()`,
-      [input.memberId, input.weekStart, input.day, input.memo, input.request],
-    );
-  });
+/** その日の記録を、送られてきた内容で置き換える(1人・1日に1つ)。 */
+export async function saveSession(
+  memberId: string,
+  record: Omit<TrainingSessionRecord, "updatedAt">,
+) {
+  await query(
+    `INSERT INTO training_sessions (member_id, date, exercises, body_weight_kg, memo, request)
+     VALUES ($1, $2, $3::jsonb, $4, $5, $6)
+     ON CONFLICT (member_id, date) DO UPDATE SET
+       exercises = EXCLUDED.exercises, body_weight_kg = EXCLUDED.body_weight_kg,
+       memo = EXCLUDED.memo, request = EXCLUDED.request, updated_at = now()`,
+    [memberId, record.date, JSON.stringify(record.exercises), record.bodyWeightKg, record.memo, record.request],
+  );
+}
+
+export async function deleteSession(memberId: string, date: string): Promise<boolean> {
+  const rows = await query<{ date: string }>(
+    "DELETE FROM training_sessions WHERE member_id = $1 AND date = $2 RETURNING date",
+    [memberId, date],
+  );
+  return rows.length > 0;
+}
+
+/** チームの、from〜to の記録(新しく書き直された順)。みんなの記録に使う。 */
+export async function listTeamSessions(teamSlug: string, from: string, to: string): Promise<TeamSession[]> {
+  const rows = await query<SessionRow>(
+    `SELECT ${SESSION_COLUMNS} FROM training_sessions s
+     JOIN members m ON m.id = s.member_id
+     WHERE m.team_slug = $1 AND s.date BETWEEN $2 AND $3
+     ORDER BY s.updated_at DESC`,
+    [teamSlug, from, to],
+  );
+  return rows.map(toSession);
 }
 
 type MeasurementRow = {
@@ -238,36 +229,4 @@ export async function saveMeasurements(
       [memberId, measuredOn, entry.item, entry.value, entry.rm],
     );
   }
-}
-
-export async function getTeamWeek(
-  teamSlug: string,
-  weekStart: string,
-): Promise<{ lifts: TeamLiftLog[]; memos: TeamMemo[] }> {
-  const [lifts, memos] = await Promise.all([
-    query<{ member_id: string; lift: LiftKind; weight_kg: number }>(
-      `SELECT l.member_id, l.lift, l.weight_kg FROM training_logs l
-       JOIN members m ON m.id = l.member_id
-       WHERE m.team_slug = $1 AND l.week_start = $2 AND l.lift IS NOT NULL`,
-      [teamSlug, weekStart],
-    ),
-    query<{ member_id: string; day: TrainingDay; memo: string; request: string; updated_at: Date }>(
-      `SELECT t.member_id, t.day, t.memo, t.request, t.updated_at FROM training_memos t
-       JOIN members m ON m.id = t.member_id
-       WHERE m.team_slug = $1 AND t.week_start = $2
-       ORDER BY t.updated_at DESC`,
-      [teamSlug, weekStart],
-    ),
-  ]);
-
-  return {
-    lifts: lifts.map((row) => ({ memberId: row.member_id, lift: row.lift, weightKg: row.weight_kg })),
-    memos: memos.map((row) => ({
-      memberId: row.member_id,
-      day: row.day,
-      memo: row.memo,
-      request: row.request,
-      updatedAt: row.updated_at.toISOString(),
-    })),
-  };
 }

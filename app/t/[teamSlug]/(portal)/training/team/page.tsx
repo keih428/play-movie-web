@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { TrainingRequestReplies } from "@/components/training-request-replies";
 import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
+import { formatNoteDate } from "@/lib/domain/notes";
 import {
-  TRAINING_DAY_LABELS,
   TRAINING_REQUEST_LABEL,
   estimate1rm,
   findWeekIndex,
@@ -13,15 +13,17 @@ import {
   getPeriodStatus,
   getProgramRange,
   pickProgram,
+  summarizeSets,
+  topSetKg,
   type LiftKind,
 } from "@/lib/domain/training";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
-import { listWeekReplies } from "@/lib/server/portal-training-reply-store";
+import { listRangeReplies } from "@/lib/server/portal-training-reply-store";
 import {
   getTeamLatestMeasurements,
-  getTeamWeek,
   getTodayInJapan,
+  listTeamSessions,
   listTrainingPrograms,
 } from "@/lib/server/portal-training-store";
 
@@ -32,6 +34,8 @@ type PageProps = {
   searchParams: Promise<{
     menu?: string;
     week?: string;
+    // 知らせのリンクから来たとき:その日が入る週を開く。
+    date?: string;
   }>;
 };
 
@@ -49,10 +53,14 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
 
   const basePath = buildTeamTrainingRecordsPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
-  const { menu: menuKey, week: weekKey } = await searchParams;
+  const { menu: menuKey, week: weekKey, date } = await searchParams;
   const today = getTodayInJapan();
   const programs = await listTrainingPrograms(teamSlug);
-  const program = pickProgram(programs, today, menuKey);
+  const linkedDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+  const linkedProgram = linkedDate
+    ? programs.find((entry) => entry.menu.weeks.some((week) => linkedDate >= week.s && linkedDate <= week.e))
+    : undefined;
+  const program = pickProgram(programs, today, menuKey ?? linkedProgram?.key);
   if (!program) {
     notFound();
   }
@@ -67,29 +75,34 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
     };
   });
   const isCurrentPeriod = periods.find((entry) => entry.key === program.key)?.status === "current";
-  const defaultWeekIndex = findWeekIndex(menu, today);
+  const defaultWeekIndex = findWeekIndex(menu, linkedDate ?? today);
   const currentWeekIndex = isCurrentPeriod ? defaultWeekIndex : -1;
   const requestedWeekIndex = menu.weeks.findIndex((week) => week.k === weekKey);
   const weekIndex = requestedWeekIndex >= 0 ? requestedWeekIndex : defaultWeekIndex;
   const week = menu.weeks[weekIndex];
 
-  const [members, measurements, teamWeek, replies] = await Promise.all([
+  const [members, measurements, sessions, replies] = await Promise.all([
     listMembers(teamSlug),
     getTeamLatestMeasurements(teamSlug),
-    getTeamWeek(teamSlug, week.s),
-    listWeekReplies(teamSlug, week.s),
+    listTeamSessions(teamSlug, week.s, week.e),
+    listRangeReplies(teamSlug, week.s, week.e),
   ]);
   const isTrainingLead = canAdminister(current);
   const players = members.filter((member) => member.position);
   const names = new Map(members.map((member) => [member.id, member.displayName]));
-  const recordedIds = new Set(teamWeek.memos.map((memo) => memo.memberId));
-  const comments = teamWeek.memos.filter((memo) => memo.memo || memo.request);
+  const recordedIds = new Set(sessions.map((session) => session.memberId));
+  const comments = sessions.filter((session) => session.memo || session.request);
 
-  // 同じ種目を週に2回やることはないが、あった場合は重いほうを出す。
+  // この週にやった一番重いセット(同じ種目を週に何回かやっていれば、重いほう)。
   const weights = new Map<string, number>();
-  for (const log of teamWeek.lifts) {
-    const key = `${log.memberId}:${log.lift}`;
-    weights.set(key, Math.max(weights.get(key) ?? 0, log.weightKg));
+  for (const session of sessions) {
+    for (const exercise of session.exercises) {
+      const kg = exercise.lift ? topSetKg(exercise) : null;
+      if (exercise.lift && kg !== null) {
+        const key = `${session.memberId}:${exercise.lift}`;
+        weights.set(key, Math.max(weights.get(key) ?? 0, kg));
+      }
+    }
   }
 
   return (
@@ -145,7 +158,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
       <section className="tp-section">
         <h2>メイン種目の重さ</h2>
         <p className="tp-small tp-muted">
-          SQ = スクワット、DL = トラップバーデッドリフト。上がこの週にやった重さ(kg)、下の小さい数字は推定1RM。体重比
+          SQ = スクワット、DL = トラップバーデッドリフト。上がこの週にやった一番重いセット(kg)、下の小さい数字は推定1RM。体重比
           = スクワットの推定1RM ÷ 体重。
         </p>
         <div className="tp-card tp-scroll">
@@ -207,14 +220,26 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
         {comments.length === 0 ? <p className="tp-small tp-muted">この週はまだありません。</p> : null}
         {comments.map((comment) => (
           <article
-            key={`${comment.memberId}-${comment.day}`}
-            id={`req-${comment.memberId}-${comment.day}`}
+            key={`${comment.memberId}-${comment.date}`}
+            id={`req-${comment.memberId}-${comment.date}`}
             className="tp-card tp-comment"
           >
             <div className="tp-dayhead">
-              <span className="tp-when">{TRAINING_DAY_LABELS[comment.day]}</span>
+              <span className="tp-when">{formatNoteDate(comment.date)}</span>
               <span className="tp-what">{names.get(comment.memberId) ?? "—"}</span>
             </div>
+            {comment.exercises.length > 0 ? (
+              <details className="tp-small">
+                <summary>この日の記録</summary>
+                <ul className="tp-log-lines">
+                  {comment.exercises.map((exercise, index) => (
+                    <li key={index}>
+                      {exercise.name}:{summarizeSets(exercise.sets)}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
             {comment.memo ? <p>{comment.memo}</p> : null}
             {comment.request ? (
               <>
@@ -224,13 +249,12 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
                 </p>
                 <TrainingRequestReplies
                   canReply={isTrainingLead || comment.memberId === current.id}
-                  day={comment.day}
                   initialReplies={replies.filter(
-                    (reply) => reply.memberId === comment.memberId && reply.day === comment.day,
+                    (reply) => reply.memberId === comment.memberId && reply.sessionDate === comment.date,
                   )}
                   memberId={comment.memberId}
+                  sessionDate={comment.date}
                   teamSlug={teamSlug}
-                  weekStart={week.s}
                 />
               </>
             ) : null}

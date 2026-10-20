@@ -261,6 +261,55 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "013_training_sessions",
+    // トレーニング録を「日付ごと」にする(部員の声、2026-10-20)。1人・1日に1つ。
+    // exercises は [{ name, lift, sets: [{ kg, reps }] }]。セットごとに重さ・回数を変えられる。
+    // これまでの記録(週・曜日ごと、種目に重さ1つ)は日付に直して移す。週の始まりは月曜で、
+    // 火 +1・木 +3・土 +5、自主は日曜(+6)に置く。回数は残っていないので空にする。古い表は消さずに残す。
+    // 「トレーニング担当へ」への返信も、記録の日付で結びつける(session_date)。
+    sql: `
+      CREATE TABLE training_sessions (
+        member_id text NOT NULL REFERENCES members (id),
+        date text NOT NULL,
+        exercises jsonb NOT NULL DEFAULT '[]'::jsonb,
+        body_weight_kg double precision,
+        memo text NOT NULL DEFAULT '',
+        request text NOT NULL DEFAULT '',
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (member_id, date)
+      );
+      CREATE INDEX training_sessions_date ON training_sessions (date);
+
+      INSERT INTO training_sessions (member_id, date, exercises, memo, request, updated_at)
+      SELECT keys.member_id,
+        to_char(keys.week_start::date + CASE keys.day WHEN 'tue' THEN 1 WHEN 'thu' THEN 3 WHEN 'sat' THEN 5 ELSE 6 END, 'YYYY-MM-DD'),
+        COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'name', l.exercise, 'lift', l.lift,
+            'sets', jsonb_build_array(jsonb_build_object('kg', l.weight_kg, 'reps', NULL))
+          ) ORDER BY l.exercise)
+          FROM training_logs l
+          WHERE l.member_id = keys.member_id AND l.week_start = keys.week_start AND l.day = keys.day
+        ), '[]'::jsonb),
+        COALESCE(mm.memo, ''),
+        COALESCE(mm.request, ''),
+        COALESCE(mm.updated_at, now())
+      FROM (
+        SELECT member_id, week_start, day FROM training_logs
+        UNION
+        SELECT member_id, week_start, day FROM training_memos
+      ) keys
+      LEFT JOIN training_memos mm
+        ON mm.member_id = keys.member_id AND mm.week_start = keys.week_start AND mm.day = keys.day
+      ON CONFLICT (member_id, date) DO NOTHING;
+
+      ALTER TABLE training_request_replies ADD COLUMN session_date text;
+      UPDATE training_request_replies SET session_date = to_char(
+        week_start::date + CASE day WHEN 'tue' THEN 1 WHEN 'thu' THEN 3 WHEN 'sat' THEN 5 ELSE 6 END, 'YYYY-MM-DD');
+      CREATE INDEX training_request_replies_session ON training_request_replies (member_id, session_date)
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
