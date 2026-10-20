@@ -17,7 +17,10 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "ログインしてください。" }, { status: 401 });
   }
   if (!canEditPortalTexts(current)) {
-    return NextResponse.json({ error: "書き直せるのはトレーニング担当とシステム担当だけです。" }, { status: 403 });
+    return NextResponse.json(
+      { error: "書き直せるのは、幹部・トレーニング担当・システム担当だけです。" },
+      { status: 403 },
+    );
   }
 
   const payload = (await request.json().catch(() => null)) as { key?: unknown; body?: unknown } | null;

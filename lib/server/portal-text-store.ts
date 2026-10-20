@@ -16,6 +16,17 @@ export async function getPortalText(teamSlug: string, key: PortalTextKey): Promi
   return row ? { body: row.body, updatedAt: new Date(row.updated_at).toISOString() } : null;
 }
 
+/** チームの文章をまとめて(key ごと)。 */
+export async function listPortalTexts(teamSlug: string): Promise<Partial<Record<PortalTextKey, PortalText>>> {
+  const rows = await query<{ key: PortalTextKey; body: string; updated_at: Date | string }>(
+    "SELECT key, body, updated_at FROM portal_texts WHERE team_slug = $1",
+    [teamSlug],
+  );
+  return Object.fromEntries(
+    rows.map((row) => [row.key, { body: row.body, updatedAt: new Date(row.updated_at).toISOString() }]),
+  );
+}
+
 export async function savePortalText(teamSlug: string, key: PortalTextKey, body: string, updatedBy: string) {
   await query(
     `INSERT INTO portal_texts (team_slug, key, body, updated_by) VALUES ($1, $2, $3, $4)

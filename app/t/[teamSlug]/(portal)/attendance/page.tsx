@@ -17,7 +17,7 @@ import {
   isPortalTeam,
   type Member,
 } from "@/lib/domain/portal";
-import { buildTeamAttendancePath } from "@/lib/domain/team";
+import { buildTeamAttendancePath, buildTeamManualPath } from "@/lib/domain/team";
 import { listReports } from "@/lib/server/portal-attendance-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
@@ -114,6 +114,9 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
       <header className="tp-hero">
         <span className="tp-eyebrow">遅刻・早退・欠席</span>
         <h1>出欠の連絡</h1>
+        <Link className="tp-more" href={`${buildTeamManualPath(teamSlug)}#attendance`}>
+          出欠・遅刻のルールを読む →
+        </Link>
       </header>
 
       <section className="tp-section">

@@ -45,7 +45,7 @@ export function PortalGoal({ teamSlug, body, canEdit }: PortalGoalProps) {
     return (
       <div className="tp-goal">
         <div className="tp-field">
-          <label htmlFor="portal-goal">チームの目標・方針(1行目が大きく出る)</label>
+          <label htmlFor="portal-goal">チームの目標(1行目が大きく出る)</label>
           <textarea
             id="portal-goal"
             rows={5}

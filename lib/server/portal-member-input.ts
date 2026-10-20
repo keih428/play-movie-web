@@ -69,6 +69,9 @@ export function parseMemberInput(
     if ("isLeader" in body) {
       patch.isLeader = Boolean(body.isLeader);
     }
+    if ("isExecutive" in body) {
+      patch.isExecutive = Boolean(body.isExecutive);
+    }
     if ("active" in body) {
       patch.active = Boolean(body.active);
     }

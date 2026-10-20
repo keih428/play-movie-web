@@ -91,6 +91,11 @@ export function buildTeamLoginPath(teamSlug: string): string {
   return `/t/${teamSlug}/login`;
 }
 
+// データベース/マニュアル(部のルール・役職の仕事・出欠のルールなど)。
+export function buildTeamManualPath(teamSlug: string): string {
+  return `/t/${teamSlug}/manual`;
+}
+
 // 部内ページのホーム(ポータル)。チームの目標と、各ページへの入口を並べる。
 export function buildTeamHomePath(teamSlug: string): string {
   return `/t/${teamSlug}/home`;

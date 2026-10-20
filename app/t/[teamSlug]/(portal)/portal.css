@@ -2756,3 +2756,32 @@ body:has(.tp[data-mode="tango"]) {
   display: grid;
   gap: 8px;
 }
+
+/* ---------- データベース/マニュアル ---------- */
+.tp-manual {
+  scroll-margin-top: calc(var(--tp-top-h) + 12px);
+}
+
+.tp-manual-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tp-manual-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tp-manual-index li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.tp-chips a.tp-chip {
+  color: var(--tp-accent);
+  font-weight: 700;
+}

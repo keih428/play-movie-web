@@ -4,10 +4,11 @@ import { PortalGoal } from "@/components/portal-goal";
 import { RichText } from "@/components/rich-text";
 import { DEFAULT_PRACTICE_LOCATION } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { canEditPortalTexts, isPortalTeam } from "@/lib/domain/portal";
+import { MANUAL_SECTIONS, canEditPortalTexts, isPortalTeam } from "@/lib/domain/portal";
 import {
   buildTeamAttendancePath,
   buildTeamHomePath,
+  buildTeamManualPath,
   buildTeamMembersPath,
   buildTeamNotesPath,
   buildTeamSchedulePath,
@@ -21,7 +22,7 @@ import { formatPeriod } from "@/lib/domain/training";
 import { getUnreadCounts } from "@/lib/server/portal-note-store";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
-import { getPortalText } from "@/lib/server/portal-text-store";
+import { listPortalTexts } from "@/lib/server/portal-text-store";
 import { getTodayInJapan, getTrainingPlan } from "@/lib/server/portal-training-store";
 
 type PageProps = {
@@ -35,16 +36,6 @@ export const dynamic = "force-dynamic";
 // 直近の予定を、今日から何日先まで探すか。
 const UPCOMING_DAYS = 21;
 const UPCOMING_LIMIT = 4;
-
-// データベース/マニュアルに入れるもの(部員の声、2026-10-20)。中身は幹部が書く。ページはこれから作る。
-const MANUAL_TOPICS = [
-  "筋トレの内容・推奨メニュー",
-  "部内マニュアル",
-  "部のルール",
-  "チームとして目指す方針",
-  "役職ごとの仕事内容・引き継ぎ",
-  "出欠・遅刻のルール",
-];
 
 function shiftDate(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00Z`);
@@ -65,13 +56,15 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
   const current = await requireMember(teamSlug, buildTeamHomePath(teamSlug));
   const today = getTodayInJapan();
 
-  const [goal, plan, schedule, unread] = await Promise.all([
-    getPortalText(teamSlug, "goal"),
+  const [texts, plan, schedule, unread] = await Promise.all([
+    listPortalTexts(teamSlug),
     getTrainingPlan(teamSlug),
     getPracticeSchedule(teamSlug, today, shiftDate(today, UPCOMING_DAYS)),
     getUnreadCounts(current.id),
   ]);
   const unreadNotes = Object.values(unread).reduce((total, count) => total + count, 0);
+  const goal = texts.goal;
+  const manualPath = buildTeamManualPath(teamSlug);
   const period = plan?.blocks.find((block) => block.s <= today && today <= block.e) ?? null;
   // カレンダーから読めたときだけ予定の名前が分かる。読めないときは練習日だけを並べる。
   const upcoming = [...schedule.dates].sort().slice(0, UPCOMING_LIMIT);
@@ -165,14 +158,14 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
 
       <section className="tp-section">
         <h2>データベース/マニュアル</h2>
-        <div className="tp-card">
-          <p className="tp-muted tp-small">準備中。幹部が書いて、ここから読めるようにします。</p>
-          <ul className="tp-plain-list">
-            {MANUAL_TOPICS.map((topic) => (
-              <li key={topic}>{topic}</li>
-            ))}
-          </ul>
-        </div>
+        <ul className="tp-linklist tp-manual-index">
+          {MANUAL_SECTIONS.map((section) => (
+            <li key={section.key}>
+              <Link href={`${manualPath}#${section.key}`}>{section.title}</Link>
+              {texts[section.key] ? null : <span className="tp-small tp-muted">まだ書かれていません</span>}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="tp-section">
