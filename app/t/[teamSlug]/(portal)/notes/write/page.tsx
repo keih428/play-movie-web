@@ -52,7 +52,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
         <h1>{formatRelativeNoteDate(date, today)}のノート</h1>
         <p className="tp-small tp-muted">
           {date.slice(0, 4)}年 {formatNoteDate(date)}
-          {existing ? " ・ 書いてあるノートを直しています" : ""}
+          {existing ? " ・ 書いてあるノートを編集しています" : ""}
         </p>
         <div className="tp-actions">
           <Link className="tp-button tp-ghost" href={`${basePath}/mine`}>

@@ -247,7 +247,7 @@ export function PortalMembersClient({
                     {canManage ? (
                       <td className="tp-num">
                         <button type="button" className="tp-mini" onClick={() => startEditing(member)}>
-                          直す
+                          編集
                         </button>
                       </td>
                     ) : null}
@@ -294,7 +294,7 @@ export function PortalMembersClient({
 
       {canManage && editingId ? (
         <section className="tp-section">
-          <h2>{editingId === "new" ? "部員・スタッフを足す" : `${draft.name} を直す`}</h2>
+          <h2>{editingId === "new" ? "部員・スタッフを足す" : `${draft.name} を編集`}</h2>
           <form className="tp-card" onSubmit={saveDraft}>
             <div className="tp-inputs">
               <div className="tp-field">
@@ -429,7 +429,7 @@ export function PortalMembersClient({
                 checked={draft.isExecutive}
                 onChange={(event) => setField("isExecutive", event.target.checked)}
               />
-              {EXECUTIVE_LABEL}(ホームのチームの目標と、データベース/マニュアルを書き直せる)
+              {EXECUTIVE_LABEL}(ホームのチームの目標と、データベース/マニュアルを編集できる)
             </label>
             <label className="tp-check">
               <input
@@ -481,7 +481,7 @@ export function PortalMembersClient({
                 名前が同じ人は上書きし、いない人は足します。表にいない人はそのまま残ります。段階・枠・Slack の ID
                 は変わりません。背番号は、表に「背番号」の列があるときだけ書き換えます。役割の列に「システム担当」と
                 書くとシステム担当、「トレーニング担当」と書くとトレーニング担当になります(兼ねるなら「トレーニング担当・システム担当」、
-                スタッフは「スタッフ」も並べる)。外すのは「直す」からです。
+                スタッフは「スタッフ」も並べる)。外すのは「編集」からです。
               </p>
               <div className="tp-field">
                 <label htmlFor="roster-markdown">名簿の表</label>

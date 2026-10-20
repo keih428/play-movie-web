@@ -60,7 +60,7 @@ export default async function TeamNotePage({ params }: PageProps) {
           </Link>
           {isAuthor ? (
             <Link className="tp-button tp-ghost" href={`${basePath}/write?date=${note.practiceDate}`}>
-              直す
+              編集
             </Link>
           ) : null}
           {isAuthor || canAdminister(current) ? (

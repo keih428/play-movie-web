@@ -2788,3 +2788,88 @@ body:has(.tp[data-mode="tango"]) {
   color: var(--tp-accent);
   font-weight: 700;
 }
+
+/* ---------- ノートの「…」メニュー(編集・削除をその場で) ---------- */
+.tp-notecard .tp-dayhead {
+  position: relative;
+}
+
+.tp-kebab {
+  position: relative;
+  margin-left: auto;
+}
+
+.tp-kebab-button {
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tp-muted);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tp-kebab-button:hover,
+.tp-kebab-button[aria-expanded="true"] {
+  border-color: var(--tp-line);
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+}
+
+.tp-kebab-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 120px;
+  padding: 4px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+}
+
+.tp-kebab-menu button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-kebab-menu button:hover {
+  background: var(--tp-accent-soft);
+}
+
+.tp-kebab-menu .tp-kebab-danger {
+  color: var(--tp-danger-fg);
+}
+
+.tp-note-edit,
+.tp-note-delete {
+  display: grid;
+  gap: 10px;
+}
+
+.tp-note-expand {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--tp-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}

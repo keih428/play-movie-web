@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest) {
   }
   if (!canEditPortalTexts(current)) {
     return NextResponse.json(
-      { error: "書き直せるのは、幹部・トレーニング担当・システム担当だけです。" },
+      { error: "編集できるのは、幹部・トレーニング担当・システム担当だけです。" },
       { status: 403 },
     );
   }

@@ -202,7 +202,7 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
           />
         </div>
         <p className="tp-small tp-muted">
-          {sessionOn(draft.date) ? "この日の記録を直します。" : "新しい記録です。"}
+          {sessionOn(draft.date) ? "この日の記録を編集します。" : "新しい記録です。"}
           {menuTitles[draft.date] ? ` メニュー:${menuTitles[draft.date]}` : ""}
         </p>
       </div>
@@ -419,7 +419,7 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
               <div className="tp-log-histhead">
                 <b>【{formatNoteDate(session.date)}】</b>
                 <button type="button" className="tp-log-edit" onClick={() => open(session.date)}>
-                  直す
+                  編集
                 </button>
               </div>
               <ul className="tp-log-lines">

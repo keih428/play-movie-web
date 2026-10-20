@@ -131,10 +131,10 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
           notes.map((note) => (
             <NoteCard
               key={note.id}
-              href={`${basePath}/${note.id}`}
               note={note}
               comments={comments.filter((comment) => comment.noteId === note.id)}
               isMine={note.memberId === current.id}
+              canDelete={canAdminister(current)}
               teamSlug={teamSlug}
               unread={unreadCounts[note.id]}
             />
