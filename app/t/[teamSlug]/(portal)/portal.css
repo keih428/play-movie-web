@@ -2085,23 +2085,214 @@ body:has(.tp[data-mode="tango"]) {
   line-height: 1.3;
 }
 
-.tp-cal-event > * {
+/* 予定名は2行まで折り返す(スマホでも読めるように。部員の声:「予定名が3文字程度しか見えない」)。全文は押すと開く。 */
+.tp-cal-event b {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .tp-cal-event span {
+  overflow: hidden;
   color: var(--tp-muted);
   font-family: var(--tp-num);
+  white-space: nowrap;
 }
 
-.tp-cal-event span:last-child {
+/* 予定のある日は、マス全体を押せるボタンにする。 */
+.tp-cal-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-cal td:has(.tp-cal-cell) {
+  padding: 0;
+}
+
+.tp-cal-cell {
+  padding: 4px;
+}
+
+.tp-cal td:has(.tp-cal-cell):hover {
+  background: var(--tp-accent-soft);
+}
+
+.tp-cal-view {
+  justify-self: start;
+}
+
+.tp-cal-view > a {
+  min-width: 56px;
+  text-align: center;
+}
+
+.tp-cal-desc {
+  grid-column: 1 / -1;
+  color: var(--tp-muted);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+/* ---------- 予定の詳細(日付を押すと下から開く) ---------- */
+.tp-sheet {
+  width: min(560px, 100%);
+  max-width: 100%;
+  max-height: 80vh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
   font-family: var(--tp-body);
 }
 
-.tp-cal-event .tp-cal-short {
-  display: none;
+@media (min-width: 601px) {
+  .tp-sheet {
+    margin: auto;
+    border-radius: 16px;
+  }
+}
+
+.tp-sheet::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.tp-sheet-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+.tp-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tp-sheet-head h3 {
+  margin: 0;
+  font-family: var(--tp-num);
+  font-size: 18px;
+}
+
+.tp-sheet-close {
+  padding: 6px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-event {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--tp-accent);
+  border-radius: 8px;
+  background: var(--tp-accent-soft);
+}
+
+.tp-event-title {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.tp-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--tp-muted);
+  font-size: 13px;
+}
+
+.tp-event-time {
+  font-family: var(--tp-num);
+}
+
+.tp-event-desc {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 週の表示 ---------- */
+.tp-week {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-week li {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+}
+
+.tp-week li.tp-cal-today {
+  border-color: var(--tp-accent);
+  box-shadow: inset 0 0 0 1px var(--tp-accent);
+}
+
+.tp-week li.tp-cal-past {
+  opacity: 0.55;
+}
+
+.tp-week-date {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  font-family: var(--tp-num);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tp-week li[data-weekday="0"] .tp-week-date {
+  color: var(--tp-danger-fg);
+}
+
+.tp-week li[data-weekday="6"] .tp-week-date {
+  color: var(--tp-t1);
+}
+
+.tp-week-today {
+  justify-self: start;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
+  font-family: var(--tp-body);
+  font-size: 11px;
+}
+
+.tp-week-events {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .tp-cal-list {
@@ -2161,7 +2352,7 @@ body:has(.tp[data-mode="tango"]) {
 /* スマホでは、マスの中は予定名と時間だけにする(場所までは下の一覧で見る)。 */
 @media (max-width: 600px) {
   .tp-cal td {
-    height: 72px;
+    height: 76px;
     padding: 2px;
   }
 
@@ -2171,12 +2362,12 @@ body:has(.tp[data-mode="tango"]) {
     font-size: 10px;
   }
 
-  .tp-cal-event .tp-cal-long {
-    display: none;
+  .tp-cal-cell {
+    padding: 2px;
   }
 
-  .tp-cal-event .tp-cal-short {
-    display: block;
+  .tp-week li {
+    grid-template-columns: 5.4em 1fr;
   }
 
   .tp-cal-list li {

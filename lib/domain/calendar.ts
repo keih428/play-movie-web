@@ -9,7 +9,32 @@ export type PracticeEvent = {
   end: string | null;
   // カレンダーの「場所」。書かれていなければ null(画面では「駒場」と出す)。
   location: string | null;
+  // カレンダーの「説明」(練習試合の相手など)。HTML は外して、ただの文にしてある。書かれていなければ null。
+  description: string | null;
 };
+
+// 予定の説明は、長すぎるものを切る(画面とページの大きさを抑えるため)。
+const MAX_DESCRIPTION_LENGTH = 1000;
+
+/** Google カレンダーの説明は HTML のことがある。改行は残して、タグを外し、文字の参照を戻す。 */
+export function toPlainDescription(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const text = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text ? text.slice(0, MAX_DESCRIPTION_LENGTH) : null;
+}
 
 // 場所が書かれていない練習は、駒場でやる。
 export const DEFAULT_PRACTICE_LOCATION = "駒場";
@@ -48,6 +73,7 @@ function shiftDate(isoDate: string, days: number): string {
 function expandOccurrence(
   title: string,
   location: string | null,
+  description: string | null,
   start: ICAL.Time,
   end: ICAL.Time | null,
 ): PracticeEvent[] {
@@ -57,9 +83,9 @@ function expandOccurrence(
     const last = end ? shiftDate(toDateOnly(end), -1) : first;
     const events: PracticeEvent[] = [];
     for (let date = first; date <= last && events.length < 60; date = shiftDate(date, 1)) {
-      events.push({ date, title, start: null, end: null, location });
+      events.push({ date, title, start: null, end: null, location, description });
     }
-    return events.length > 0 ? events : [{ date: first, title, start: null, end: null, location }];
+    return events.length > 0 ? events : [{ date: first, title, start: null, end: null, location, description }];
   }
 
   const startDate = start.toJSDate();
@@ -70,6 +96,7 @@ function expandOccurrence(
       start: timeFormatter.format(startDate),
       end: end ? timeFormatter.format(end.toJSDate()) : null,
       location,
+      description,
     },
   ];
 }
@@ -105,9 +132,10 @@ export function parseCalendarEvents(icsText: string, from: string, to: string): 
       continue;
     }
     const location = (event.location ?? "").trim() || null;
+    const description = toPlainDescription(event.description);
 
     if (!event.isRecurring()) {
-      events.push(...expandOccurrence(title, location, event.startDate, event.endDate));
+      events.push(...expandOccurrence(title, location, description, event.startDate, event.endDate));
       continue;
     }
 
@@ -126,7 +154,7 @@ export function parseCalendarEvents(icsText: string, from: string, to: string): 
       }
       const end = next.clone();
       end.addDuration(event.duration);
-      events.push(...expandOccurrence(title, location, next, end));
+      events.push(...expandOccurrence(title, location, description, next, end));
     }
   }
 
