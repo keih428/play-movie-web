@@ -39,7 +39,7 @@ export function EventDetail({ event, defaultLocation }: { event: PracticeEvent; 
 }
 
 /**
- * 月のカレンダー。予定のある日を押すと、その日の予定の詳細がその場で開く(部員の声、2026-10-20:
+ * 月のカレンダー。予定のある日を押すと、その日の予定の詳細が画面の中央に開く(部員の声、2026-10-20:
  * 「カレンダーを見る → 気になる予定を押す → すぐ詳細が分かる」)。スマホでも予定名が読めるように、マスの中は2行まで折り返す。
  */
 export function ScheduleCalendar({ weeks, month, today, eventsByDate, defaultLocation }: ScheduleCalendarProps) {
