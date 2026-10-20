@@ -1,5 +1,6 @@
 :root {
-  /* 通常の表示の色:鉄色の地 + コートの床の色。部内ページ(portal.css)の通常の表示と同じ。単語帳(鉄壁)の表示ではない。 */
+  /* 通常の表示の色:鉄色の地 + チームカラーの淡青(2026-10-20 から。それまではコートの床の色)。部内ページ(portal.css)と同じ。
+     文字やボタンに使う --accent は、白地でも読める濃さの青。淡青そのもの(--team-color)は、上のバーの帯など面に使う。 */
   --bg: #f1f3f6;
   --surface: #ffffff;
   --surface-soft: #f7f8fa;
@@ -8,11 +9,12 @@
   --border: #d6dce4;
   --text: #17202a;
   --muted: #5b6776;
-  --accent: #b3541e;
-  --accent-strong: #8f4217;
-  --accent-soft: #f6e6db;
+  --accent: #1d6fa5;
+  --accent-strong: #155a87;
+  --accent-soft: #e2f0f9;
   --on-accent: #ffffff;
-  --success: #b3541e;
+  --success: #1d6fa5;
+  --team-color: #8cc8e8;
   --shadow: none;
   --font-display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
   --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
@@ -27,11 +29,12 @@
     --border: #2a3542;
     --text: #e6ebf1;
     --muted: #9aa6b4;
-    --accent: #e38c4e;
-    --accent-strong: #f0a56f;
-    --accent-soft: #3a2618;
+    --accent: #7cc3ea;
+    --accent-strong: #a6d8f2;
+    --accent-soft: #11303f;
     --on-accent: #0f141a;
-    --success: #e38c4e;
+    --success: #7cc3ea;
+    --team-color: #3d86b0;
     color-scheme: dark;
   }
 }
@@ -2692,15 +2695,15 @@ h3 {
 }
 
 .site-nav-link[aria-current="page"] {
-  background: var(--text);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .button {
-  border: 1px solid var(--text);
+  border: 1px solid var(--accent);
   border-radius: 10px;
-  background: var(--text);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -2722,9 +2725,9 @@ h3 {
 }
 
 .tab-button-active {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .tag {
@@ -2821,4 +2824,147 @@ h3 {
 /* スコア推移:自チームはコートの床の色、相手は鉄色で見分ける。 */
 .timeline-away {
   stroke: var(--muted);
+}
+
+/* ---------- 部のチーム(utvb)の上のバー ----------
+ * 部内ページと試合のページで同じもの(components/site-header-nav.tsx)。メインの5つのページと、試合のページでは試合のメニュー。
+ * 高さ(--team-header-h)は、部内ページで上に固定するもの(週と曜日の切り替え)の位置にも使う(portal.css)。 */
+:root {
+  --team-header-h: 52px;
+}
+
+.team-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
+  border-top: 4px solid var(--team-color);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.team-header-inner,
+.team-subnav-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* 部内ページは中身の幅(760px)にそろえる。 */
+body:has(.tp) .team-header-inner {
+  width: min(792px, 100%);
+}
+
+.team-header-inner {
+  height: var(--team-header-h);
+}
+
+.team-brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.team-brand-logo {
+  width: auto;
+  height: 22px;
+}
+
+.team-nav {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.team-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.team-nav a {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.team-nav a:hover {
+  color: var(--text);
+}
+
+.team-nav a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.team-nav-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #c8372d;
+  color: #ffffff;
+  font-family: var(--font-num);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.team-subnav {
+  border-top: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.team-subnav-inner {
+  gap: 4px;
+  min-height: 40px;
+  overflow-x: auto;
+}
+
+.team-subnav a {
+  flex: none;
+  padding: 10px 8px 8px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.team-subnav a[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+@media (max-width: 420px) {
+  .team-header-inner {
+    gap: 6px;
+    padding: 0 10px;
+  }
+
+  .team-brand-logo {
+    height: 18px;
+  }
+
+  .team-nav a {
+    padding: 6px 7px;
+    font-size: 13px;
+  }
+}
+
+@media print {
+  .team-header {
+    display: none;
+  }
 }

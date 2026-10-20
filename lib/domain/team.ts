@@ -91,6 +91,11 @@ export function buildTeamLoginPath(teamSlug: string): string {
   return `/t/${teamSlug}/login`;
 }
 
+// 部内ページのホーム(ポータル)。チームの目標と、各ページへの入口を並べる。
+export function buildTeamHomePath(teamSlug: string): string {
+  return `/t/${teamSlug}/home`;
+}
+
 export function buildTeamAttendancePath(teamSlug: string): string {
   return `/t/${teamSlug}/attendance`;
 }

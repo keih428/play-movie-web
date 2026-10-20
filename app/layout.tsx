@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteHeaderNav } from "@/components/site-header-nav";
+import { getUnreadCounts } from "@/lib/server/portal-note-store";
 import { getSession } from "@/lib/server/portal-session";
 import "./globals.css";
 
@@ -25,6 +26,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getSession();
+  // 上のバーの「ノート」に、新着のコメントの数を出す。ログインしていなければ、データベースには触らない。
+  let unreadNotes = 0;
+  if (session) {
+    try {
+      unreadNotes = Object.values(await getUnreadCounts(session.memberId)).reduce((total, count) => total + count, 0);
+    } catch (error) {
+      console.error("[layout] unread notes", error);
+    }
+  }
 
   return (
     <html lang="ja" suppressHydrationWarning>
@@ -32,11 +42,10 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={FONT_STYLESHEET} precedence="default" />
-        <header className="site-header">
-          <SiteHeaderNav
-            portalUser={session ? { name: session.name, teamSlug: session.teamSlug } : null}
-          />
-        </header>
+        <SiteHeaderNav
+          portalUser={session ? { name: session.name, teamSlug: session.teamSlug } : null}
+          unreadNotes={unreadNotes}
+        />
         {children}
       </body>
     </html>
