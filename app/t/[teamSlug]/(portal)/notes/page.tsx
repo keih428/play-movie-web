@@ -62,10 +62,15 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
   // 一覧の中でコメントを開けるように、並べるノートのコメントをまとめて読む。
   const comments = await listComments(notes.map((note) => note.id));
 
-  // この1週間の練習日で、まだ書いていない日(新しい順)。
+  // まだ書いていない練習日は、今日の練習と、その前の直近1回の練習だけ(新しい順)。
+  // 欠席した日がずっと残り続けないように、それより前の日は出さない(けーいちの決定、2026-10-20)。
   const writtenDates = new Set(recentOwnNotes.map((note) => note.practiceDate));
+  const practiceDates = [...schedule.dates].sort();
+  const latestPast = practiceDates.filter((date) => date < today).pop();
   const missingDates = canWrite
-    ? [...schedule.dates].reverse().filter((date) => !writtenDates.has(date))
+    ? [practiceDates.includes(today) ? today : null, latestPast ?? null].filter(
+        (date): date is string => date !== null && !writtenDates.has(date),
+      )
     : [];
 
   return (
