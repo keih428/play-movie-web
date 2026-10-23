@@ -253,3 +253,69 @@ export function buildMyStats(input: {
   const order = input.position ? POSITION_ORDER[input.position] : DEFAULT_ORDER;
   return order.flatMap((key) => (sections[key] ? [sections[key]] : []));
 }
+
+// ---------- 推移とノート(改修計画の段階4、2026-10-24 から) ----------
+
+// 推移の表に出す、スキルごとのいちばん大事な数字。
+const MAIN_ITEM: Record<StatSectionKey, string> = {
+  attack: "決定率",
+  serve: "効果率",
+  reception: "A・Bパス率",
+  dig: "A・B(上がった)",
+  block: "シャット",
+  set: "A・B(よいトス)",
+};
+
+/** 「3(8.1%)」なら「8.1%」、「29%」はそのまま。 */
+function mainValue(section: StatSection): string {
+  const item = section.items.find((entry) => entry.label === MAIN_ITEM[section.key]);
+  if (!item) {
+    return "—";
+  }
+  const rate = /\(([^)]+)\)$/.exec(item.value);
+  return rate ? rate[1] : item.value;
+}
+
+export type MyTrend = {
+  columns: { key: StatSectionKey; title: string }[];
+  rows: { workspaceId: string; label: string; values: string[] }[];
+};
+
+/**
+ * 試合ごとの推移(新しい順)。列は、直近の試合を合わせた成績の並び(ポジション順)の先頭3つ。
+ */
+export function buildMyTrend(input: {
+  matches: (StatMatchInput & { workspaceId: string; label: string })[];
+  number: string;
+  position: MemberPosition | null;
+}): MyTrend {
+  const overall = buildMyStats({ matches: input.matches, number: input.number, position: input.position });
+  const columns = overall.slice(0, 3).map((section) => ({
+    key: section.key,
+    title: `${section.title} ${MAIN_ITEM[section.key].replace(/\(.*\)/, "")}`,
+  }));
+  const rows = input.matches.map((entry) => {
+    const sections = buildMyStats({ matches: [entry], number: input.number, position: input.position });
+    return {
+      workspaceId: entry.workspaceId,
+      label: entry.label,
+      values: columns.map((column) => {
+        const section = sections.find((candidate) => candidate.key === column.key);
+        return section ? mainValue(section) : "—";
+      }),
+    };
+  });
+  return { columns, rows };
+}
+
+/** 試合の振り返りのノートの下書き(ノートに何も書いていない日だけ、最初に入れる)。 */
+export function buildMatchNoteTemplate(input: { title: string; sections: StatSection[] }): string {
+  const lines = input.sections.slice(0, 4).map((section) => {
+    const items = section.items
+      .filter((item) => item.label !== "本数" && item.label !== "打数")
+      .slice(0, 2)
+      .map((item) => `${item.label} ${item.value}${item.team ? `(チーム ${item.team})` : ""}`);
+    return `・${section.title}(${section.attempts}本):${items.join("、")}`;
+  });
+  return [`【試合の振り返り】${input.title}`, ...lines, "", "よかったこと:", "", "次に直すこと:", ""].join("\n");
+}

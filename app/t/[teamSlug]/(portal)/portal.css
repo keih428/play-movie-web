@@ -3218,3 +3218,42 @@ button.tp-mystats-course {
   background: var(--tp-accent);
   color: var(--tp-on-accent);
 }
+
+/* マイプレー:推移の表とノートへの入口(段階4、2026-10-24) */
+.tp-mytrend-wrap {
+  overflow-x: auto;
+}
+
+.tp-mytrend {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tp-mytrend th,
+.tp-mytrend td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--tp-line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tp-mytrend thead th {
+  color: var(--tp-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.tp-mytrend th[scope="row"],
+.tp-mytrend thead th:first-child {
+  text-align: left;
+}
+
+.tp-mytrend td {
+  font-family: var(--tp-num);
+}
+
+.tp-myplays-note {
+  justify-self: start;
+}

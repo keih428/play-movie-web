@@ -28,6 +28,8 @@ type MyPlaysClientProps = {
   opponent: string;
   setScore: { own: number; opponent: number };
   stats: MyStats;
+  // この試合の振り返りのノートを書くページ(ノートを書けない人は null)。
+  noteHref: string | null;
 };
 
 const MODE_LABELS: Record<MyPlaysMode, string> = { skill: "スキルだけ", rally: "ラリー全体" };
@@ -48,6 +50,7 @@ export function MyPlaysClient({
   opponent,
   setScore,
   stats,
+  noteHref,
 }: MyPlaysClientProps) {
   const router = useRouter();
   const [mode, setMode] = useState<MyPlaysMode>("skill");
@@ -254,7 +257,13 @@ export function MyPlaysClient({
       />
       </div>
 
-      <MyStatsPanel stats={stats} focusKey={focus?.key ?? null} onFocus={focusOn} />
+      <MyStatsPanel stats={stats} basePath={basePath} focusKey={focus?.key ?? null} onFocus={focusOn} />
+
+      {noteHref ? (
+        <a className="tp-button tp-myplays-note" href={noteHref}>
+          この試合の振り返りをノートに書く
+        </a>
+      ) : null}
 
       <h2 className="tp-myplays-listhead">プレー一覧</h2>
 

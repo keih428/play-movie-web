@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { MyCourtChart } from "@/components/my-court-chart";
-import type { StatFilter, StatSection } from "@/lib/domain/my-stats";
+import Link from "next/link";
+import type { MyTrend, StatFilter, StatSection } from "@/lib/domain/my-stats";
 
 export type MyStats = {
   match: StatSection[];
   recent: StatSection[];
   recentCount: number;
+  trend: MyTrend;
 };
 
-type Scope = "match" | "recent";
+type Scope = "match" | "recent" | "trend";
 
 /**
  * 自分の成績(この試合 / 直近の試合)。隣にチーム全体の同じ数字を出す。
@@ -18,10 +20,12 @@ type Scope = "match" | "recent";
  */
 export function MyStatsPanel({
   stats,
+  basePath,
   focusKey,
   onFocus,
 }: {
   stats: MyStats;
+  basePath: string;
   focusKey: string | null;
   onFocus: (filter: StatFilter, label: string, key: string) => void;
 }) {
@@ -39,16 +43,54 @@ export function MyStatsPanel({
           <button type="button" aria-pressed={scope === "recent"} onClick={() => setScope("recent")}>
             直近{stats.recentCount}試合
           </button>
+          {stats.trend.rows.length > 1 ? (
+            <button type="button" aria-pressed={scope === "trend"} onClick={() => setScope("trend")}>
+              推移
+            </button>
+          ) : null}
         </span>
       </div>
-      {scope === "match" ? (
+      {scope === "trend" ? (
+        <>
+          <p className="tp-small tp-muted">試合ごとの、いちばん大事な数字(新しい順)。試合を押すと、その試合を開きます。</p>
+          <div className="tp-mytrend-wrap">
+            <table className="tp-mytrend">
+              <thead>
+                <tr>
+                  <th scope="col">試合</th>
+                  {stats.trend.columns.map((column) => (
+                    <th key={column.key} scope="col">
+                      {column.title}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {stats.trend.rows.map((row) => (
+                  <tr key={row.workspaceId}>
+                    <th scope="row">
+                      <Link href={`${basePath}?match=${encodeURIComponent(row.workspaceId)}`}>{row.label}</Link>
+                    </th>
+                    {row.values.map((value, index) => (
+                      <td key={index}>{value}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+      {scope === "trend" ? null : scope === "match" ? (
         <p className="tp-small tp-muted">数字を押すと、そのプレーだけを映像で見られます。右の小さな数字はチーム全体。</p>
       ) : (
         <p className="tp-small tp-muted">直近{stats.recentCount}試合の合計。右の小さな数字は、同じ試合のチーム全体。</p>
       )}
 
-      {sections.length === 0 ? <p className="tp-small tp-muted">数えられるプレーがありません。</p> : null}
-      {sections.map((section) => (
+      {scope !== "trend" && sections.length === 0 ? (
+        <p className="tp-small tp-muted">数えられるプレーがありません。</p>
+      ) : null}
+      {(scope === "trend" ? [] : sections).map((section) => (
         <div key={section.key} className="tp-mystats-section">
           <h3>{section.title}</h3>
           <div className="tp-mystats-grid">

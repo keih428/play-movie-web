@@ -2,10 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MyPlaysClient } from "@/components/my-plays-client";
 import { normalizeShirtNumber } from "@/lib/domain/my-plays";
-import { buildMyStats } from "@/lib/domain/my-stats";
+import { buildMyStats, buildMyTrend } from "@/lib/domain/my-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamMyPlaysPath, buildWorkspacePath } from "@/lib/domain/team";
+import { buildTeamMyPlaysPath, buildTeamNotesPath, buildWorkspacePath } from "@/lib/domain/team";
 import { listMemberMatches } from "@/lib/server/my-plays";
 import { requireMember } from "@/lib/server/portal-session";
 
@@ -18,6 +18,8 @@ export const dynamic = "force-dynamic";
 
 // 成績の「直近の試合」の数(総合分析の初期値と同じ)。
 const RECENT_MATCHES = 5;
+// 推移の表に出す試合の数。
+const TREND_MATCHES = 8;
 
 /**
  * 上のメニューの「試合」(マイプレー、2026-10-24 から)。開くと、直近の試合の自分のプレーがすぐ出る。
@@ -67,7 +69,19 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
     match: buildMyStats({ matches: [selected], number, position }),
     recent: buildMyStats({ matches: recent, number, position }),
     recentCount: recent.length,
+    trend: buildMyTrend({
+      matches: matches.slice(0, TREND_MATCHES).map((entry) => ({
+        ...entry,
+        label: `${entry.date ? formatNoteDate(entry.date.slice(0, 10)) : "日付なし"} vs ${entry.opponent}`,
+      })),
+      number,
+      position,
+    }),
   };
+  // 試合の日のノートを、自分の数字を入れた下書きで開く(その日のノートがまだなければ)。
+  const noteHref = selected.date
+    ? `${buildTeamNotesPath(teamSlug)}/write?date=${selected.date.slice(0, 10)}&match=${encodeURIComponent(selected.workspaceId)}`
+    : null;
   const options = matches.map((entry) => ({
     workspaceId: entry.workspaceId,
     label: `${entry.date ? formatNoteDate(entry.date.slice(0, 10)) : "日付なし"} vs ${entry.opponent}(${entry.setScore.own}-${entry.setScore.opponent})`,
@@ -89,6 +103,7 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
         opponent={selected.opponent}
         setScore={selected.setScore}
         stats={stats}
+        noteHref={current.position ? noteHref : null}
       />
       <p className="tp-small tp-muted">
         チーム全体の映像と分析は{" "}
