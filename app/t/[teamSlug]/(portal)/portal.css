@@ -3184,3 +3184,37 @@ button.tp-mystats-course {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* トレ録:記録するときのメニューの選び方(2026-10-24) */
+.tp-log-menu {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tp-log-menu select {
+  width: 100%;
+}
+
+.tp-log-menu-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tp-log-menu-days button {
+  padding: 6px 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tp-log-menu-days button[aria-pressed="true"] {
+  border-color: var(--tp-accent);
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
+}

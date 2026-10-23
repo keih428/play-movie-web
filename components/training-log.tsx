@@ -8,8 +8,10 @@ import {
   SESSION_LIMITS,
   addDays,
   buildDefaultExercises,
+  getPreviousSetsByExercise,
   inferLift,
   summarizeSets,
+  type LogMenuOption,
   type SessionExercise,
   type TrainingSessionRecord,
 } from "@/lib/domain/training";
@@ -19,13 +21,11 @@ type TrainingLogProps = {
   today: string;
   // 自分の記録(新しい順)。
   sessions: TrainingSessionRecord[];
-  // 日付ごとの、記録の欄の最初の形(その日のメニューの全部の種目に、先週の重さ・回数を入れたもの)。
-  // ない日(ずっと前の日)は、空から始める。
-  defaultsByDate: Record<string, SessionExercise[]>;
-  // 日付ごとの、その日のメニューの名前(「脚A しゃがむ動き」など)。
-  menuTitles: Record<string, string>;
-  // 日付ごとの、その日のメニューの種目名。メニューの種目は名前を直せず、重さと回数だけを入れる(けーいちの決定、2026-10-24)。
-  menuExercisesByDate: Record<string, string[]>;
+  // 選べるメニュー(期間・週・曜日)。記録の欄は、選んだメニューの全部の種目に、先週(なければ前回)の重さ・回数を入れて始める。
+  // メニューの種目は名前を直せず、重さと回数だけを入れる(けーいちの決定、2026-10-24)。
+  menuOptions: LogMenuOption[];
+  // 日付ごとの、初めに選ぶメニュー(火・木・土はその曜日、ほかの日は自主)。ない日は「メニューなし」。
+  menuKeyByDate: Record<string, string>;
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
@@ -34,6 +34,8 @@ type DraftSet = { kg: string; reps: string };
 type DraftExercise = { key: number; name: string; lift: SessionExercise["lift"]; sets: DraftSet[]; fixed: boolean };
 type Draft = {
   date: string;
+  // 選んでいるメニュー(null は「メニューなし」:先週の同じ曜日の記録から始める)。
+  menuKey: string | null;
   exercises: DraftExercise[];
   bodyWeight: string;
   memo: string;
@@ -67,14 +69,7 @@ function toDraftExercises(exercises: SessionExercise[], menuNames: string[] = []
  * トレーニング録(日付ごと)。「+ 筋トレを記録する」→ 日付を選ぶ → その日のメニューが入った欄を直す → 保存。
  * 保存した記録は、新しい日付から順に並ぶ。押すと直せる(部員の声、2026-10-20)。
  */
-export function TrainingLog({
-  teamSlug,
-  today,
-  sessions,
-  defaultsByDate,
-  menuTitles,
-  menuExercisesByDate,
-}: TrainingLogProps) {
+export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByDate }: TrainingLogProps) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,19 +80,50 @@ export function TrainingLog({
 
   const sessionOn = (date: string) => sessions.find((session) => session.date === date);
 
+  const optionOf = (key: string | null) => menuOptions.find((option) => option.key === key) ?? null;
+  const menuNames = (key: string | null) => optionOf(key)?.items.map((item) => item.name) ?? [];
+
+  /** 選んだメニューの欄の最初の形(先週・前回の重さと回数を入れる)。メニューなしなら、先週の同じ曜日の記録。 */
+  function exercisesFor(key: string | null, date: string): DraftExercise[] {
+    const option = optionOf(key);
+    const weekAgo = sessions.find((session) => session.date === addDays(date, -7));
+    const items = option?.items.filter((item) => !item.name.startsWith("個人の追加")) ?? null;
+    return toDraftExercises(
+      buildDefaultExercises(items ? { items } : null, getPreviousSetsByExercise(sessions, date), weekAgo),
+      menuNames(key),
+    );
+  }
+
   function draftFor(date: string): Draft {
     const existing = sessionOn(date);
+    const menuKey = menuKeyByDate[date] ?? null;
     if (existing) {
       return {
         date,
-        exercises: toDraftExercises(existing.exercises, menuExercisesByDate[date]),
+        menuKey,
+        exercises: toDraftExercises(existing.exercises, menuNames(menuKey)),
         bodyWeight: toText(existing.bodyWeightKg),
         memo: existing.memo,
         request: existing.request,
       };
     }
-    const defaults = defaultsByDate[date] ?? [];
-    return { date, exercises: toDraftExercises(defaults, menuExercisesByDate[date]), bodyWeight: "", memo: "", request: "" };
+    return { date, menuKey, exercises: exercisesFor(menuKey, date), bodyWeight: "", memo: "", request: "" };
+  }
+
+  /**
+   * メニューを切り替える。新しいメニューの種目で作り直すが、もう打った重さ・回数(同じ名前の種目)と、
+   * 自分で足した種目は残す。
+   */
+  function chooseMenu(key: string | null) {
+    update((current) => {
+      const next = exercisesFor(key, current.date).map((exercise) => {
+        const typed = current.exercises.find((entry) => entry.name === exercise.name);
+        return typed ? { ...exercise, sets: typed.sets } : exercise;
+      });
+      const names = new Set(next.map((exercise) => exercise.name));
+      const added = current.exercises.filter((exercise) => !exercise.fixed && !names.has(exercise.name));
+      return { ...current, menuKey: key, exercises: [...next, ...added] };
+    });
   }
 
   function open(date: string) {
@@ -205,9 +231,56 @@ export function TrainingLog({
           {sessionOn(draft.date)
             ? "この日の記録を編集します。"
             : "新しい記録です。重さと回数は、先週(なければ前回)の記録を入れてあります。違うところだけ直してください。"}
-          {menuTitles[draft.date] ? ` メニュー:${menuTitles[draft.date]}` : ""}
         </p>
       </div>
+
+      {menuOptions.length > 0 ? (
+        <div className="tp-log-menu">
+          <div className="tp-field">
+            <label htmlFor="log-menu-week">メニュー(何週目・何曜か)</label>
+            <select
+              id="log-menu-week"
+              value={optionOf(draft.menuKey)?.weekKey ?? ""}
+              onChange={(event) => {
+                const weekKey = event.target.value;
+                if (!weekKey) {
+                  chooseMenu(null);
+                  return;
+                }
+                // 週を変えたら、同じ曜日(なければその週の最初の日)を選ぶ。
+                const day = optionOf(draft.menuKey)?.day;
+                const inWeek = menuOptions.filter((option) => option.weekKey === weekKey);
+                chooseMenu((inWeek.find((option) => option.day === day) ?? inWeek[0]).key);
+              }}
+            >
+              <option value="">メニューなし(先週の同じ曜日の記録から)</option>
+              {menuOptions
+                .filter((option, index) => menuOptions.findIndex((entry) => entry.weekKey === option.weekKey) === index)
+                .map((option) => (
+                  <option key={option.weekKey} value={option.weekKey}>
+                    {option.weekLabel}
+                  </option>
+                ))}
+            </select>
+          </div>
+          {draft.menuKey ? (
+            <div className="tp-log-menu-days" role="group" aria-label="曜日">
+              {menuOptions
+                .filter((option) => option.weekKey === optionOf(draft.menuKey)?.weekKey)
+                .map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    aria-pressed={option.key === draft.menuKey}
+                    onClick={() => chooseMenu(option.key)}
+                  >
+                    {option.dayLabel}
+                  </button>
+                ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {draft.exercises.map((exercise, exerciseIndex) => (
         <div

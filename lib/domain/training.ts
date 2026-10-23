@@ -787,13 +787,13 @@ export function getPreviousSetsByExercise(
  * メニューのない日は、先週の同じ曜日の記録をそのまま入れる。
  */
 export function buildDefaultExercises(
-  day: ResolvedDay | null,
+  day: { items: LogMenuItem[] } | null,
   previous: Record<string, SessionSet[]>,
   weekAgo?: TrainingSessionRecord,
 ): SessionExercise[] {
   const copy = (sets: SessionSet[]) => sets.slice(0, SESSION_LIMITS.setsPerExercise).map((set) => ({ ...set }));
 
-  const toSets = (name: string, item: ResolvedItem | undefined): SessionSet[] => {
+  const toSets = (name: string, item: LogMenuItem | undefined): SessionSet[] => {
     if (previous[name]) {
       return copy(previous[name]);
     }
@@ -815,6 +815,63 @@ export function buildDefaultExercises(
     lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : inferLift(item.name),
     sets: toSets(item.name, item),
   }));
+}
+
+// ---------- 記録するときのメニューの選び方(2026-10-24 から) ----------
+// 部員の声(けーいち):「何週目の何曜(上半身の日・自主トレ)かを選べると、打ち込みが楽」。
+// 日付から決めたメニューを初めに選んでおき、ほかの週・曜日にも切り替えられる。
+
+/** 記録の欄を作るのに要る、メニューの種目の中身。 */
+export type LogMenuItem = Pick<ResolvedItem, "name" | "dose" | "kind" | "weighted" | "targetKg">;
+
+export type LogMenuOption = {
+  // "期間のキー/週のキー/曜日"(例:"2026-11-02/W1/tue")
+  key: string;
+  weekKey: string;
+  weekLabel: string;
+  day: TrainingDay;
+  dayLabel: string;
+  items: LogMenuItem[];
+};
+
+const LOG_DAY_LABELS: Record<TrainingDay, string> = { tue: "火", thu: "木", sat: "土", self: "自主" };
+
+/** 記録で選べるメニュー(全部の期間・週・曜日。種目のない日は除く)。 */
+export function buildLogMenuOptions(
+  programs: TrainingProgram[],
+  selection: MenuSelection,
+  estimated: Estimated1rm,
+): LogMenuOption[] {
+  return programs.flatMap((program) =>
+    program.menu.weeks.flatMap((week, weekIndex) =>
+      resolveWeek(program.menu, weekIndex, selection, estimated)
+        .days.filter((day) => day.items.length > 0)
+        .map((day) => ({
+          key: `${program.key}/${week.k}/${day.day}`,
+          weekKey: `${program.key}/${week.k}`,
+          weekLabel: `${formatMonthDay(week.s)}〜 ${week.k} ${week.name}`,
+          day: day.day,
+          dayLabel: `${LOG_DAY_LABELS[day.day]}・${day.title}`,
+          items: day.items.map(({ name, dose, kind, weighted, targetKg }) => ({ name, dose, kind, weighted, targetKg })),
+        })),
+    ),
+  );
+}
+
+/** その日付で初めに選ぶメニュー(火・木・土はその曜日、ほかの日は自主)。期間の外なら null。 */
+export function findLogMenuKey(programs: TrainingProgram[], options: LogMenuOption[], date: string): string | null {
+  for (const program of programs) {
+    const week = program.menu.weeks.find((entry) => date >= entry.s && date <= entry.e);
+    if (!week) {
+      continue;
+    }
+    const offset = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${week.s}T00:00:00Z`)) / 86400000);
+    const day: TrainingDay = offset === 1 ? "tue" : offset === 3 ? "thu" : offset === 5 ? "sat" : "self";
+    const weekKey = `${program.key}/${week.k}`;
+    const exact = options.find((option) => option.key === `${weekKey}/${day}`);
+    return (exact ?? options.find((option) => option.weekKey === weekKey && option.day === "self") ?? options.find((option) => option.weekKey === weekKey))?.key ?? null;
+  }
+  return null;
 }
 
 /** その日のメニュー(火・木・土はその曜日、ほかの日は自主の分)。メニューの期間の外なら null。 */
