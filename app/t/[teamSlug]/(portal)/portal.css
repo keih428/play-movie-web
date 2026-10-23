@@ -2902,3 +2902,113 @@ body:has(.tp[data-mode="tango"]) {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* ---------- マイプレー(上のメニューの「試合」、2026-10-24 から) ---------- */
+.tp-myplays {
+  display: grid;
+  gap: 12px;
+}
+
+.tp-myplays-head {
+  display: grid;
+  gap: 4px;
+}
+
+.tp-myplays-match select {
+  width: 100%;
+  font-size: 15px;
+}
+
+.tp-myplays-controls {
+  display: grid;
+  gap: 8px;
+}
+
+.tp-myplays-controls .tp-chip {
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--tp-fg);
+}
+
+.tp-myplays-controls .tp-chip[aria-pressed="true"] {
+  border-color: var(--tp-accent);
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
+}
+
+/* 映像は、スマホでも画面の幅いっぱいに。 */
+.tp-myplays .panel {
+  margin: 0;
+}
+
+.tp-myplays-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-myplays-list li {
+  display: grid;
+  grid-template-columns: 36px auto auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--tp-line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--tp-surface);
+  font-size: 14px;
+}
+
+/* ラリーを取ったら色付き、落としたら灰色の線(試合ビューアのプレイ一覧と同じ考え方)。 */
+.tp-myplays-list li[data-won="true"] {
+  border-left-color: var(--tp-accent);
+}
+
+.tp-myplays-list li[data-won="false"] {
+  border-left-color: var(--tp-muted);
+}
+
+.tp-myplays-list li[aria-current="true"] {
+  outline: 2px solid var(--tp-accent);
+}
+
+.tp-myplays-list button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-bg);
+  color: var(--tp-accent);
+  cursor: pointer;
+}
+
+.tp-myplays-set,
+.tp-myplays-score {
+  color: var(--tp-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tp-myplays-score {
+  font-family: var(--tp-num);
+  color: var(--tp-fg);
+}
+
+.tp-myplays-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.tp-myplays-skill b {
+  font-family: var(--tp-num);
+}
+
+.tp-myplays-skill[data-grade="A"] b {
+  color: var(--tp-accent);
+}

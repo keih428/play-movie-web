@@ -2884,11 +2884,16 @@ body:has(.tp) .team-header-inner {
 .team-nav {
   display: flex;
   flex: 1;
-  justify-content: flex-end;
+  /* 右寄せは、先頭の auto の余白でつける(justify-content: flex-end だと、はみ出したときに左の「ホーム」が切れて戻れない)。 */
+  justify-content: flex-start;
   gap: 2px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+.team-nav > :first-child {
+  margin-left: auto;
 }
 
 .team-nav::-webkit-scrollbar {
@@ -2970,8 +2975,13 @@ body:has(.tp) .team-header-inner {
     font-size: 16px;
   }
 
+  /* メニューが6つになったので(「試合」、2026-10-24)、スマホの幅に収まるよう詰める。 */
+  .team-nav {
+    gap: 0;
+  }
+
   .team-nav a {
-    padding: 6px 7px;
+    padding: 6px 5px;
     font-size: 13px;
   }
 }

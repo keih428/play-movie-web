@@ -113,6 +113,11 @@ export function buildTeamNotesPath(teamSlug: string): string {
   return `/t/${teamSlug}/notes`;
 }
 
+/** マイプレー(上のメニューの「試合」。自分のプレーの映像)。 */
+export function buildTeamMyPlaysPath(teamSlug: string): string {
+  return `/t/${teamSlug}/myplays`;
+}
+
 export function buildTeamTrainingPath(teamSlug: string): string {
   return `/t/${teamSlug}/training`;
 }
