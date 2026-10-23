@@ -1,0 +1,121 @@
+"use client";
+
+import { useState } from "react";
+import type { StatFilter, StatSection } from "@/lib/domain/my-stats";
+
+export type MyStats = {
+  match: StatSection[];
+  recent: StatSection[];
+  recentCount: number;
+};
+
+type Scope = "match" | "recent";
+
+/**
+ * 自分の成績(この試合 / 直近の試合)。隣にチーム全体の同じ数字を出す。
+ * 「この試合」の数字のうち、プレーを数えたものは押せて、そのプレーの映像に絞れる(onFocus)。
+ */
+export function MyStatsPanel({
+  stats,
+  focusKey,
+  onFocus,
+}: {
+  stats: MyStats;
+  focusKey: string | null;
+  onFocus: (filter: StatFilter, label: string, key: string) => void;
+}) {
+  const [scope, setScope] = useState<Scope>("match");
+  const sections = scope === "match" ? stats.match : stats.recent;
+
+  return (
+    <section className="tp-mystats" aria-label="自分の成績">
+      <div className="tp-mystats-head">
+        <h2>成績</h2>
+        <span className="tp-seg" role="group" aria-label="範囲">
+          <button type="button" aria-pressed={scope === "match"} onClick={() => setScope("match")}>
+            この試合
+          </button>
+          <button type="button" aria-pressed={scope === "recent"} onClick={() => setScope("recent")}>
+            直近{stats.recentCount}試合
+          </button>
+        </span>
+      </div>
+      {scope === "match" ? (
+        <p className="tp-small tp-muted">数字を押すと、そのプレーだけを映像で見られます。右の小さな数字はチーム全体。</p>
+      ) : (
+        <p className="tp-small tp-muted">直近{stats.recentCount}試合の合計。右の小さな数字は、同じ試合のチーム全体。</p>
+      )}
+
+      {sections.length === 0 ? <p className="tp-small tp-muted">数えられるプレーがありません。</p> : null}
+      {sections.map((section) => (
+        <div key={section.key} className="tp-mystats-section">
+          <h3>{section.title}</h3>
+          <div className="tp-mystats-grid">
+            {section.items.map((item) => {
+              const key = `${section.key}:${item.label}`;
+              const clickable = scope === "match" && item.filter;
+              const body = (
+                <>
+                  <span className="tp-mystats-label">{item.label}</span>
+                  <span className="tp-mystats-value">
+                    <b>{item.value}</b>
+                    {item.team ? <small>チーム {item.team}</small> : null}
+                  </span>
+                </>
+              );
+              return clickable ? (
+                <button
+                  key={key}
+                  type="button"
+                  className="tp-mystats-item"
+                  aria-pressed={focusKey === key}
+                  onClick={() => onFocus(item.filter!, `${section.title} ${item.label}`, key)}
+                >
+                  {body}
+                </button>
+              ) : (
+                <div key={key} className="tp-mystats-item">
+                  {body}
+                </div>
+              );
+            })}
+          </div>
+          {section.courses ? (
+            <div className="tp-mystats-courses">
+              <span className="tp-label">コース</span>
+              {section.courses.map((course) => {
+                const key = `${section.key}:course:${course.course}`;
+                const total = section.courses!.reduce((sum, entry) => sum + entry.attempts, 0);
+                const share = total ? Math.round((course.attempts / total) * 100) : 0;
+                const content = (
+                  <>
+                    <span>{course.label}</span>
+                    <span className="tp-mystats-bar" style={{ width: `${share}%` }} aria-hidden="true" />
+                    <small>
+                      {course.attempts}本(決定 {course.kills})
+                    </small>
+                  </>
+                );
+                return scope === "match" && course.attempts > 0 ? (
+                  <button
+                    key={key}
+                    type="button"
+                    className="tp-mystats-course"
+                    aria-pressed={focusKey === key}
+                    onClick={() => onFocus(course.filter, `アタック ${course.label}`, key)}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div key={key} className="tp-mystats-course">
+                    {content}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </section>
+  );
+}

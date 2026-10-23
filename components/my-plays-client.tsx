@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MyStatsPanel, type MyStats } from "@/components/my-stats-panel";
 import { VideoPlayer } from "@/components/video-player";
 import { getSkillLabel } from "@/lib/domain/display";
 import {
@@ -11,6 +12,7 @@ import {
   type MyClip,
   type MyPlaysMode,
 } from "@/lib/domain/my-plays";
+import { matchesStatFilter, type StatFilter } from "@/lib/domain/my-stats";
 import type { ParsedMatch, ParsedPlay, TeamSide, VideoSyncSettings } from "@/lib/domain/types";
 import { formatSeconds } from "@/lib/domain/video";
 
@@ -25,6 +27,7 @@ type MyPlaysClientProps = {
   number: string;
   opponent: string;
   setScore: { own: number; opponent: number };
+  stats: MyStats;
 };
 
 const MODE_LABELS: Record<MyPlaysMode, string> = { skill: "スキルだけ", rally: "ラリー全体" };
@@ -44,6 +47,7 @@ export function MyPlaysClient({
   number,
   opponent,
   setScore,
+  stats,
 }: MyPlaysClientProps) {
   const router = useRouter();
   const [mode, setMode] = useState<MyPlaysMode>("skill");
@@ -55,11 +59,23 @@ export function MyPlaysClient({
   const [activeIndex, setActiveIndex] = useState<number>();
   const [activeReady, setActiveReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  // 成績の数字を押したときの絞り込み(「アタック 決定率」など)。スキルのボタンとは、どちらか一方。
+  const [focus, setFocus] = useState<{ filter: StatFilter; label: string; key: string } | null>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
 
   const skillCounts = useMemo(() => countMySkills(match, side, number), [match, side, number]);
   const clips = useMemo(
-    () => buildMyClips({ match, settings, side, number, mode, skills: skill ? [skill] : undefined }),
-    [match, settings, side, number, mode, skill],
+    () =>
+      buildMyClips({
+        match,
+        settings,
+        side,
+        number,
+        mode,
+        skills: skill ? [skill] : undefined,
+        where: focus ? (play) => matchesStatFilter(play, focus.filter) : undefined,
+      }),
+    [match, settings, side, number, mode, skill, focus],
   );
   const clipsKey = clips.map((clip) => clip.key).join("|");
 
@@ -96,6 +112,27 @@ export function MyPlaysClient({
     setActiveIndex(undefined);
     setActiveReady(false);
   }, [clipsKey]);
+
+  // 成績の数字を押したときは、絞ったものを頭から続けて流す(上の止める処理のあとに動く)。
+  useEffect(() => {
+    if (!focus || clips.length === 0) {
+      return;
+    }
+    setActiveIndex(0);
+    setActiveReady(false);
+    setIsPlaying(true);
+    select(clips[0]);
+  }, [focus]); // eslint-disable-line react-hooks/exhaustive-deps -- 押したときだけ
+
+  function focusOn(filter: StatFilter, label: string, key: string) {
+    if (focus?.key === key) {
+      setFocus(null);
+      return;
+    }
+    setSkill(null);
+    setFocus({ filter, label, key });
+    videoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   useEffect(() => {
     if (!isPlaying || typeof activeIndex !== "number" || typeof playerSeconds !== "number") {
@@ -169,7 +206,15 @@ export function MyPlaysClient({
           ))}
         </span>
         <div className="tp-chips" role="group" aria-label="スキルで絞る">
-          <button type="button" className="tp-chip" aria-pressed={skill === null} onClick={() => setSkill(null)}>
+          <button
+            type="button"
+            className="tp-chip"
+            aria-pressed={skill === null && !focus}
+            onClick={() => {
+              setSkill(null);
+              setFocus(null);
+            }}
+          >
             すべて
           </button>
           {presentSkills.map((code) => (
@@ -178,7 +223,10 @@ export function MyPlaysClient({
               type="button"
               className="tp-chip"
               aria-pressed={skill === code}
-              onClick={() => setSkill(skill === code ? null : code)}
+              onClick={() => {
+                setFocus(null);
+                setSkill(skill === code ? null : code);
+              }}
             >
               {getSkillLabel(code)} {skillCounts[code]}
             </button>
@@ -186,6 +234,16 @@ export function MyPlaysClient({
         </div>
       </div>
 
+      {focus ? (
+        <p className="tp-myplays-focus">
+          絞り込み中:<b>{focus.label}</b>({clips.length}件)
+          <button type="button" className="tp-clear" onClick={() => setFocus(null)}>
+            解除
+          </button>
+        </p>
+      ) : null}
+
+      <div ref={videoRef} className="tp-myplays-video">
       <VideoPlayer
         match={match}
         settings={settings}
@@ -194,6 +252,11 @@ export function MyPlaysClient({
         headerAction={playButton}
         onPlayerTimeChange={onPlayerTimeChange}
       />
+      </div>
+
+      <MyStatsPanel stats={stats} focusKey={focus?.key ?? null} onFocus={focusOn} />
+
+      <h2 className="tp-myplays-listhead">プレー一覧</h2>
 
       {clips.length === 0 ? (
         <p className="tp-small tp-muted">

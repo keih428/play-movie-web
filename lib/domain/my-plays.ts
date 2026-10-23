@@ -101,6 +101,7 @@ export type MyClip = {
  * - skill:自分が触った瞬間の2秒前から5秒後まで(クリップと同じ)
  * - rally:自分が触ったラリーを、サーブの2秒前から最後のプレーの3秒後まで(プレイ一覧と同じ)
  * skills を渡すと、そのスキルだけに絞る(ラリーの見方では、そのスキルで触ったラリーだけ)。
+ * where を渡すと、さらにその条件に合うプレーだけ(成績の数字を押したとき。決まったアタックだけ、など)。
  * 時刻のないプレー、映像のないセットのプレーは出さない。
  */
 export function buildMyClips(input: {
@@ -110,10 +111,13 @@ export function buildMyClips(input: {
   number: string;
   mode: MyPlaysMode;
   skills?: string[];
+  where?: (play: ParsedPlay) => boolean;
 }): MyClip[] {
-  const { match, settings, side, number, mode, skills } = input;
+  const { match, settings, side, number, mode, skills, where } = input;
   const wanted = (play: ParsedPlay) =>
-    isMyPlay(play, side, number) && (!skills || skills.length === 0 || skills.includes(play.skill ?? ""));
+    isMyPlay(play, side, number) &&
+    (!skills || skills.length === 0 || skills.includes(play.skill ?? "")) &&
+    (!where || where(play));
   const seekOf = (play: ParsedPlay) => calculateSeekSeconds(play, settings, match);
   const describe = (play: ParsedPlay) => ({
     skill: play.skill ?? "",

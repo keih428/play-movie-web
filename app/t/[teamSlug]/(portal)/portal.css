@@ -3012,3 +3012,136 @@ body:has(.tp[data-mode="tango"]) {
 .tp-myplays-skill[data-grade="A"] b {
   color: var(--tp-accent);
 }
+
+/* マイプレーの成績(段階3、2026-10-24) */
+.tp-myplays-video {
+  scroll-margin-top: calc(var(--tp-top-h) + 8px);
+}
+
+.tp-myplays-focus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-accent);
+  font-size: 14px;
+}
+
+.tp-myplays-listhead {
+  margin: 4px 0 0;
+  font-size: 16px;
+}
+
+.tp-mystats {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-mystats-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tp-mystats-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.tp-mystats-section h3 {
+  margin: 4px 0 6px;
+  font-size: 14px;
+}
+
+.tp-mystats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.tp-mystats-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font: inherit;
+  text-align: left;
+}
+
+button.tp-mystats-item {
+  cursor: pointer;
+}
+
+button.tp-mystats-item:hover {
+  border-color: var(--tp-accent);
+}
+
+.tp-mystats-item[aria-pressed="true"],
+.tp-mystats-course[aria-pressed="true"] {
+  border-color: var(--tp-accent);
+  outline: 2px solid var(--tp-accent);
+}
+
+.tp-mystats-label {
+  color: var(--tp-muted);
+  font-size: 12px;
+}
+
+.tp-mystats-value {
+  display: grid;
+}
+
+.tp-mystats-value b {
+  font-family: var(--tp-num);
+  font-size: 17px;
+}
+
+.tp-mystats-value small {
+  color: var(--tp-muted);
+  font-size: 11px;
+}
+
+.tp-mystats-courses {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.tp-mystats-course {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+button.tp-mystats-course {
+  cursor: pointer;
+}
+
+.tp-mystats-bar {
+  height: 8px;
+  min-width: 2px;
+  border-radius: 4px;
+  background: var(--tp-accent);
+}
