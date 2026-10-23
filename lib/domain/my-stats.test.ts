@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getTeamPlays } from "@/lib/domain/analysis";
 import { normalizeShirtNumber } from "@/lib/domain/my-plays";
-import { buildMyStats, matchesStatFilter } from "@/lib/domain/my-stats";
+import { buildMatchNoteTemplate, buildMyStats, buildMyTrend, matchesStatFilter } from "@/lib/domain/my-stats";
 import { parseVsmText } from "@/lib/parsers/vsm";
 
 const match = parseVsmText(
@@ -62,5 +62,28 @@ describe("マイプレーの成績", () => {
     const one = buildMyStats({ matches, number: "14", position: "OH" })[0].attempts;
     const two = buildMyStats({ matches: [...matches, ...matches], number: "14", position: "OH" })[0].attempts;
     expect(two).toBe(one * 2);
+  });
+
+  it("試合ごとの推移:列はポジション順の先頭3つ、行は試合ごと", () => {
+    const trend = buildMyTrend({
+      matches: [
+        { match, side: "home", workspaceId: "a", label: "6/24 vs 東北学院" },
+        { match, side: "home", workspaceId: "b", label: "6/24(2)" },
+      ],
+      number: "14",
+      position: "OH",
+    });
+    expect(trend.columns.map((column) => column.key)).toEqual(["attack", "serve", "reception"]);
+    expect(trend.rows).toHaveLength(2);
+    const attack = buildMyStats({ matches, number: "14", position: "OH" })[0];
+    expect(trend.rows[0].values[0]).toBe(attack.items.find((item) => item.label === "決定率")!.value);
+    expect(trend.rows[0].values[2]).toMatch(/%$/);
+  });
+
+  it("ノートの下書きに、試合と自分の数字を入れる", () => {
+    const text = buildMatchNoteTemplate({ title: "6/24 vs 東北学院工学部(0-3)", sections: buildMyStats({ matches, number: "14", position: "OH" }) });
+    expect(text.split("\n")[0]).toBe("【試合の振り返り】6/24 vs 東北学院工学部(0-3)");
+    expect(text).toContain("・アタック(31本):決定率");
+    expect(text).toContain("次に直すこと:");
   });
 });
