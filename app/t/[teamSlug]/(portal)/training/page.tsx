@@ -342,6 +342,8 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   // 欄の最初の形は、その日のメニューの全部の種目に、先週(なければ前回)の重さ・回数を入れたもの(2026-10-23 から)。
   const defaultsByDate: Record<string, SessionExercise[]> = {};
   const menuTitles: Record<string, string> = {};
+  // その日のメニューの種目名(記録の欄では、名前を直せない固定の種目として出す。2026-10-24 から)。
+  const menuExercisesByDate: Record<string, string[]> = {};
   if (canRecord) {
     for (let offset = -DEFAULT_PAST_DAYS; offset <= 1; offset += 1) {
       const date = addDays(today, offset);
@@ -350,6 +352,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
       defaultsByDate[date] = buildDefaultExercises(day, getPreviousSetsByExercise(sessions, date), weekAgo);
       if (day) {
         menuTitles[date] = day.day === "self" && day.date !== date ? `${day.title}(自主)` : day.title;
+        menuExercisesByDate[date] = day.items.map((item) => item.name);
       }
     }
   }
@@ -445,6 +448,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           sessions={sessions}
           defaultsByDate={defaultsByDate}
           menuTitles={menuTitles}
+          menuExercisesByDate={menuExercisesByDate}
         />
       ) : null}
 
