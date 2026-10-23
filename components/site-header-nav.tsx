@@ -12,6 +12,7 @@ import {
   buildTeamLoginPath,
   buildTeamNotesPath,
   buildTeamRootPath,
+  buildTeamMyPlaysPath,
   buildTeamSchedulePath,
   buildTeamStaffSettingsPath,
   buildTeamTrainingPath,
@@ -31,7 +32,7 @@ type SiteHeaderNavProps = {
 };
 
 // 部内ページ(この下のパス)では、試合のメニューを出さない。
-const PORTAL_SECTIONS = ["home", "manual", "training", "notes", "attendance", "schedule", "members", "login"];
+const PORTAL_SECTIONS = ["home", "manual", "training", "notes", "attendance", "schedule", "myplays", "members", "login"];
 
 function getMatchLinks(teamSlug: string) {
   return [
@@ -45,7 +46,7 @@ function getMatchLinks(teamSlug: string) {
 
 /**
  * 部のチーム(utvb)のページの上のバー。部内ページでも試合のページでも同じものを出す(部員の声、2026-10-20:
- * 「ページによってメニューや UI が変わるのが混乱する」)。メインは ホーム・トレ録・ノート・出欠・予定 の5つで、
+ * 「ページによってメニューや UI が変わるのが混乱する」)。メインは ホーム・トレ録・ノート・出欠・予定・試合 の6つで、
  * それ以外のページ(年間・名簿・試合など)はホームから行く。試合のページでは、その下に試合のメニューを出す。
  */
 function TeamHeader({
@@ -70,6 +71,8 @@ function TeamHeader({
         { href: buildTeamNotesPath(teamSlug), label: "ノート", badge: unreadNotes },
         { href: buildTeamAttendancePath(teamSlug), label: "出欠" },
         { href: buildTeamSchedulePath(teamSlug), label: "予定" },
+        // 自分のプレーの映像(けーいちの決定、2026-10-24)。試合ビューアの「試合一覧」とは別。
+        { href: buildTeamMyPlaysPath(teamSlug), label: "試合" },
       ]
     : pathname === buildTeamLoginPath(teamSlug)
       ? []
