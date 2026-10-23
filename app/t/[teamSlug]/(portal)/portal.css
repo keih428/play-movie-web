@@ -3145,3 +3145,11 @@ button.tp-mystats-course {
   border-radius: 4px;
   background: var(--tp-accent);
 }
+
+/* トレ録:メニューの種目名(直せない。2026-10-24 から) */
+.tp-log-name-fixed {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 2px;
+  font-size: 15px;
+}

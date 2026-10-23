@@ -24,11 +24,14 @@ type TrainingLogProps = {
   defaultsByDate: Record<string, SessionExercise[]>;
   // 日付ごとの、その日のメニューの名前(「脚A しゃがむ動き」など)。
   menuTitles: Record<string, string>;
+  // 日付ごとの、その日のメニューの種目名。メニューの種目は名前を直せず、重さと回数だけを入れる(けーいちの決定、2026-10-24)。
+  menuExercisesByDate: Record<string, string[]>;
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
 type DraftSet = { kg: string; reps: string };
-type DraftExercise = { key: number; name: string; lift: SessionExercise["lift"]; sets: DraftSet[] };
+// fixed:メニューの種目(名前は直せない)。自分で足した種目は false。
+type DraftExercise = { key: number; name: string; lift: SessionExercise["lift"]; sets: DraftSet[]; fixed: boolean };
 type Draft = {
   date: string;
   exercises: DraftExercise[];
@@ -47,8 +50,9 @@ function toText(value: number | null): string {
   return value === null ? "" : String(value);
 }
 
-function toDraftExercises(exercises: SessionExercise[]): DraftExercise[] {
+function toDraftExercises(exercises: SessionExercise[], menuNames: string[] = []): DraftExercise[] {
   return exercises.map((exercise) => ({
+    fixed: menuNames.includes(exercise.name),
     key: nextKey++,
     name: exercise.name,
     lift: exercise.lift,
@@ -63,7 +67,14 @@ function toDraftExercises(exercises: SessionExercise[]): DraftExercise[] {
  * トレーニング録(日付ごと)。「+ 筋トレを記録する」→ 日付を選ぶ → その日のメニューが入った欄を直す → 保存。
  * 保存した記録は、新しい日付から順に並ぶ。押すと直せる(部員の声、2026-10-20)。
  */
-export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTitles }: TrainingLogProps) {
+export function TrainingLog({
+  teamSlug,
+  today,
+  sessions,
+  defaultsByDate,
+  menuTitles,
+  menuExercisesByDate,
+}: TrainingLogProps) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -79,14 +90,14 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
     if (existing) {
       return {
         date,
-        exercises: toDraftExercises(existing.exercises),
+        exercises: toDraftExercises(existing.exercises, menuExercisesByDate[date]),
         bodyWeight: toText(existing.bodyWeightKg),
         memo: existing.memo,
         request: existing.request,
       };
     }
     const defaults = defaultsByDate[date] ?? [];
-    return { date, exercises: toDraftExercises(defaults), bodyWeight: "", memo: "", request: "" };
+    return { date, exercises: toDraftExercises(defaults, menuExercisesByDate[date]), bodyWeight: "", memo: "", request: "" };
   }
 
   function open(date: string) {
@@ -206,22 +217,26 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
           className="tp-log-ex"
         >
           <div className="tp-log-exhead">
-            <input
-              className="tp-log-name"
-              aria-label="種目名"
-              placeholder="種目名"
-              maxLength={SESSION_LIMITS.nameLength}
-              value={exercise.name}
-              autoFocus={!exercise.name && exerciseIndex === draft.exercises.length - 1}
-              // 名前を変えたら、集計の印(スクワット・ベンチ・トラップバーDL)は名前から決め直す。
-              onChange={(event) =>
-                updateExercise(exercise.key, (current) => ({
-                  ...current,
-                  name: event.target.value,
-                  lift: inferLift(event.target.value),
-                }))
-              }
-            />
+            {exercise.fixed ? (
+              <b className="tp-log-name-fixed">{exercise.name}</b>
+            ) : (
+              <input
+                className="tp-log-name"
+                aria-label="種目名"
+                placeholder="種目名"
+                maxLength={SESSION_LIMITS.nameLength}
+                value={exercise.name}
+                autoFocus={!exercise.name && exerciseIndex === draft.exercises.length - 1}
+                // 名前を変えたら、集計の印(スクワット・ベンチ・トラップバーDL)は名前から決め直す。
+                onChange={(event) =>
+                  updateExercise(exercise.key, (current) => ({
+                    ...current,
+                    name: event.target.value,
+                    lift: inferLift(event.target.value),
+                  }))
+                }
+              />
+            )}
             <button
               type="button"
               className="tp-log-x"
@@ -313,7 +328,7 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
             ...current,
             exercises: [
               ...current.exercises,
-              { key: nextKey++, name: "", lift: null, sets: [{ kg: "", reps: "" }] },
+              { key: nextKey++, name: "", lift: null, sets: [{ kg: "", reps: "" }], fixed: false },
             ],
           }))
         }
