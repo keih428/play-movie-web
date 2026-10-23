@@ -20,6 +20,7 @@ import {
   FRESHMAN_GRADE,
   addDays,
   buildDefaultExercises,
+  getPreviousSetsByExercise,
   findDayForDate,
   findPlanBlock,
   findWeekIndex,
@@ -35,7 +36,6 @@ import {
 } from "@/lib/domain/training";
 import { requireMember } from "@/lib/server/portal-session";
 import {
-  getLatestKgByExercise,
   getLatestMeasurements,
   getTodayInJapan,
   getTrainingPlan,
@@ -59,7 +59,7 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
-// 記録の欄の最初の形を、今日から何日前の分まで作っておくか(それより前の日は、固定の3種目から始める)。
+// 記録の欄の最初の形を、今日から何日前の分まで作っておくか(それより前の日は、空の欄から始める)。
 const DEFAULT_PAST_DAYS = 60;
 
 function pick<T extends string>(choices: readonly T[], ...candidates: (string | null | undefined)[]): T {
@@ -339,15 +339,16 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   const { week } = resolved;
   // 日付ごとの記録(2026-10-20 から)。欄の最初の形は、その日のメニューの種目と回数・セット数。
   const sessions = canRecord ? await listMemberSessions(current.id) : [];
-  const previousKg = getLatestKgByExercise(sessions);
+  // 欄の最初の形は、その日のメニューの全部の種目に、先週(なければ前回)の重さ・回数を入れたもの(2026-10-23 から)。
   const defaultsByDate: Record<string, SessionExercise[]> = {};
   const menuTitles: Record<string, string> = {};
   if (canRecord) {
     for (let offset = -DEFAULT_PAST_DAYS; offset <= 1; offset += 1) {
       const date = addDays(today, offset);
       const day = findDayForDate(programs, date, selection, estimated);
+      const weekAgo = sessions.find((session) => session.date === addDays(date, -7));
+      defaultsByDate[date] = buildDefaultExercises(day, getPreviousSetsByExercise(sessions, date), weekAgo);
       if (day) {
-        defaultsByDate[date] = buildDefaultExercises(day, previousKg);
         menuTitles[date] = day.day === "self" && day.date !== date ? `${day.title}(自主)` : day.title;
       }
     }
@@ -444,7 +445,6 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           sessions={sessions}
           defaultsByDate={defaultsByDate}
           menuTitles={menuTitles}
-          previousKg={previousKg}
         />
       ) : null}
 

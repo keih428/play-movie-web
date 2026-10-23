@@ -5,10 +5,10 @@ import { FormEvent, useState } from "react";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import {
-  FIXED_SESSION_LIFTS,
   SESSION_LIMITS,
   addDays,
   buildDefaultExercises,
+  inferLift,
   summarizeSets,
   type SessionExercise,
   type TrainingSessionRecord,
@@ -19,12 +19,11 @@ type TrainingLogProps = {
   today: string;
   // 自分の記録(新しい順)。
   sessions: TrainingSessionRecord[];
-  // 日付ごとの、記録の欄の最初の形(その日のメニューから)。ない日は、固定の3種目だけで始める。
+  // 日付ごとの、記録の欄の最初の形(その日のメニューの全部の種目に、先週の重さ・回数を入れたもの)。
+  // ない日(ずっと前の日)は、空から始める。
   defaultsByDate: Record<string, SessionExercise[]>;
   // 日付ごとの、その日のメニューの名前(「脚A しゃがむ動き」など)。
   menuTitles: Record<string, string>;
-  // 種目ごとの前回の重さ(メニューにない日の欄に入れる)。
-  previousKg: Record<string, number>;
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
@@ -49,13 +48,7 @@ function toText(value: number | null): string {
 }
 
 function toDraftExercises(exercises: SessionExercise[]): DraftExercise[] {
-  // 固定の3種目は、いつも一番上に置く(その日にやっていなければ空のまま)。
-  const fixed = FIXED_SESSION_LIFTS.map(({ lift, name }) => {
-    const found = exercises.find((exercise) => exercise.lift === lift);
-    return found ?? { name, lift, sets: [{ kg: null, reps: null }] };
-  });
-  const others = exercises.filter((exercise) => !fixed.includes(exercise));
-  return [...fixed, ...others].map((exercise) => ({
+  return exercises.map((exercise) => ({
     key: nextKey++,
     name: exercise.name,
     lift: exercise.lift,
@@ -66,15 +59,11 @@ function toDraftExercises(exercises: SessionExercise[]): DraftExercise[] {
   }));
 }
 
-function isFixed(exercise: DraftExercise): boolean {
-  return FIXED_SESSION_LIFTS.some((fixed) => fixed.lift === exercise.lift && fixed.name === exercise.name);
-}
-
 /**
  * トレーニング録(日付ごと)。「+ 筋トレを記録する」→ 日付を選ぶ → その日のメニューが入った欄を直す → 保存。
  * 保存した記録は、新しい日付から順に並ぶ。押すと直せる(部員の声、2026-10-20)。
  */
-export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTitles, previousKg }: TrainingLogProps) {
+export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTitles }: TrainingLogProps) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -96,7 +85,7 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
         request: existing.request,
       };
     }
-    const defaults = defaultsByDate[date] ?? buildDefaultExercises(null, previousKg);
+    const defaults = defaultsByDate[date] ?? [];
     return { date, exercises: toDraftExercises(defaults), bodyWeight: "", memo: "", request: "" };
   }
 
@@ -202,7 +191,9 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
           />
         </div>
         <p className="tp-small tp-muted">
-          {sessionOn(draft.date) ? "この日の記録を編集します。" : "新しい記録です。"}
+          {sessionOn(draft.date)
+            ? "この日の記録を編集します。"
+            : "新しい記録です。重さと回数は、先週(なければ前回)の記録を入れてあります。違うところだけ直してください。"}
           {menuTitles[draft.date] ? ` メニュー:${menuTitles[draft.date]}` : ""}
         </p>
       </div>
@@ -212,37 +203,38 @@ export function TrainingLog({ teamSlug, today, sessions, defaultsByDate, menuTit
           key={exercise.key}
           role="group"
           aria-label={exercise.name || "種目"}
-          className={`tp-log-ex${isFixed(exercise) ? " tp-log-fixed" : ""}`}
+          className="tp-log-ex"
         >
           <div className="tp-log-exhead">
-            {isFixed(exercise) ? (
-              <b>{exercise.name}</b>
-            ) : (
-              <input
-                className="tp-log-name"
-                aria-label="種目名"
-                placeholder="種目名"
-                maxLength={SESSION_LIMITS.nameLength}
-                value={exercise.name}
-                autoFocus={!exercise.name && exerciseIndex === draft.exercises.length - 1}
-                onChange={(event) => updateExercise(exercise.key, (current) => ({ ...current, name: event.target.value }))}
-              />
-            )}
-            {isFixed(exercise) ? null : (
-              <button
-                type="button"
-                className="tp-log-x"
-                aria-label={`${exercise.name || "この種目"}を消す`}
-                onClick={() =>
-                  update((current) => ({
-                    ...current,
-                    exercises: current.exercises.filter((entry) => entry.key !== exercise.key),
-                  }))
-                }
-              >
-                種目を消す
-              </button>
-            )}
+            <input
+              className="tp-log-name"
+              aria-label="種目名"
+              placeholder="種目名"
+              maxLength={SESSION_LIMITS.nameLength}
+              value={exercise.name}
+              autoFocus={!exercise.name && exerciseIndex === draft.exercises.length - 1}
+              // 名前を変えたら、集計の印(スクワット・ベンチ・トラップバーDL)は名前から決め直す。
+              onChange={(event) =>
+                updateExercise(exercise.key, (current) => ({
+                  ...current,
+                  name: event.target.value,
+                  lift: inferLift(event.target.value),
+                }))
+              }
+            />
+            <button
+              type="button"
+              className="tp-log-x"
+              aria-label={`${exercise.name || "この種目"}を消す`}
+              onClick={() =>
+                update((current) => ({
+                  ...current,
+                  exercises: current.exercises.filter((entry) => entry.key !== exercise.key),
+                }))
+              }
+            >
+              種目を消す
+            </button>
           </div>
           <ol className="tp-log-sets">
             {exercise.sets.map((set, setIndex) => (

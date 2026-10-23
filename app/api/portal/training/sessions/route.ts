@@ -9,6 +9,7 @@ import {
   type LiftKind,
   type SessionExercise,
   type SessionSet,
+  inferLift,
 } from "@/lib/domain/training";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
@@ -53,7 +54,7 @@ function readExercises(raw: unknown): SessionExercise[] | string {
   const exercises: SessionExercise[] = [];
   for (const entry of raw as Record<string, unknown>[]) {
     const name = typeof entry?.name === "string" ? entry.name.trim().slice(0, SESSION_LIMITS.nameLength) : "";
-    const lift = LIFTS.includes(entry?.lift as LiftKind) ? (entry.lift as LiftKind) : null;
+    const lift = LIFTS.includes(entry?.lift as LiftKind) ? (entry.lift as LiftKind) : inferLift(name);
     const rawSets = Array.isArray(entry?.sets) ? (entry.sets as Record<string, unknown>[]) : [];
     if (rawSets.length > SESSION_LIMITS.setsPerExercise) {
       return `「${name}」のセットが多すぎます。`;

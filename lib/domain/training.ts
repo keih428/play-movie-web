@@ -720,12 +720,21 @@ export type TrainingSessionRecord = {
   updatedAt: string;
 };
 
-// 一番上に固定で置く種目(けーいちの決定、2026-10-20:デッドリフトは今のメニューと同じトラップバーDL)。体重は別の欄。
-export const FIXED_SESSION_LIFTS: { lift: LiftKind; name: string }[] = [
-  { lift: "sq", name: "スクワット" },
-  { lift: "bp", name: "ベンチプレス" },
-  { lift: "dl", name: "トラップバーDL" },
-];
+// みんなの記録で集計する3種目の名前。メニューから入った種目には印(lift)が付いているが、
+// 自分で足した種目は名前で見分ける(固定の3種目の欄は 2026-10-23 にやめた。けーいちの決定)。
+const LIFT_NAMES: Record<string, LiftKind> = {
+  スクワット: "sq",
+  バックスクワット: "sq",
+  ベンチプレス: "bp",
+  トラップバーDL: "dl",
+  トラップバーデッドリフト: "dl",
+  デッドリフト: "dl",
+};
+
+/** 種目名から、集計の印を決める(名前がちょうど同じときだけ。ブルガリアンスクワットなどは付けない)。 */
+export function inferLift(name: string): LiftKind | null {
+  return LIFT_NAMES[name.replace(/\s+/g, "")] ?? null;
+}
 
 export const SESSION_LIMITS = {
   exercises: 40,
@@ -747,40 +756,65 @@ export function parseDose(dose: string): { reps: number | null; sets: number | n
 }
 
 /**
- * 記録の欄の最初の形。その日のメニューの、重さを記録する種目を、メニューの回数・セット数で並べる。
- * 一番上はいつも スクワット・ベンチプレス・トラップバーDL(その日にやらなければ、空のまま保存すれば残らない)。
- * 重さは、メニューの目安か、その種目の前回の重さを入れておく。
+ * 種目ごとの「前の記録」のセット(重さ・回数)。date より前で、先週の同じ曜日(7日前)の記録を優先し、
+ * そこになければ、その種目のいちばん新しい記録(けーいちの決定、2026-10-23:先週の分を入れておく)。
+ * sessions は新しい順。
+ */
+export function getPreviousSetsByExercise(
+  sessions: TrainingSessionRecord[],
+  date: string,
+): Record<string, SessionSet[]> {
+  const previous: Record<string, SessionSet[]> = {};
+  const weekAgo = addDays(date, -7);
+  const ordered = [
+    ...sessions.filter((session) => session.date === weekAgo),
+    ...sessions.filter((session) => session.date < date && session.date !== weekAgo),
+  ];
+  for (const session of ordered) {
+    for (const exercise of session.exercises) {
+      if (previous[exercise.name] === undefined && exercise.sets.length > 0) {
+        previous[exercise.name] = exercise.sets.map((set) => ({ ...set }));
+      }
+    }
+  }
+  return previous;
+}
+
+/**
+ * 記録の欄の最初の形。その日のメニューの全部の種目(固定の種目は置かない)。
+ * 重さと回数は、前の記録(getPreviousSetsByExercise)があればセットごとにそのまま入れ、
+ * なければメニューの回数・セット数と、重さの目安で入れる。やらなかった種目は、空のままか消して保存すれば残らない。
+ * メニューのない日は、先週の同じ曜日の記録をそのまま入れる。
  */
 export function buildDefaultExercises(
   day: ResolvedDay | null,
-  previousKg: Record<string, number>,
+  previous: Record<string, SessionSet[]>,
+  weekAgo?: TrainingSessionRecord,
 ): SessionExercise[] {
-  const fromMenu = (day?.items ?? []).filter((item) => item.weighted);
-  const used = new Set<ResolvedItem>();
+  const copy = (sets: SessionSet[]) => sets.slice(0, SESSION_LIMITS.setsPerExercise).map((set) => ({ ...set }));
 
-  const toSets = (item: ResolvedItem | undefined, previous: number | undefined): SessionSet[] => {
-    const { reps, sets } = item ? parseDose(item.dose) : { reps: null, sets: null };
-    const kg = item?.targetKg ?? previous ?? null;
+  const toSets = (name: string, item: ResolvedItem | undefined): SessionSet[] => {
+    if (previous[name]) {
+      return copy(previous[name]);
+    }
+    if (!item) {
+      return [{ kg: null, reps: null }];
+    }
+    const { reps, sets } = parseDose(item.dose);
+    const kg = item.weighted ? item.targetKg : null;
     return Array.from({ length: Math.min(sets ?? 1, SESSION_LIMITS.setsPerExercise) }, () => ({ kg, reps }));
   };
 
-  const fixed = FIXED_SESSION_LIFTS.map(({ lift, name }) => {
-    const item = fromMenu.find((entry) => entry.kind === lift && !used.has(entry));
-    if (item) {
-      used.add(item);
-    }
-    return { name, lift, sets: item ? toSets(item, previousKg[name]) : [{ kg: null, reps: null }] };
-  });
+  if (!day) {
+    return (weekAgo?.exercises ?? []).map((exercise) => ({ ...exercise, sets: copy(exercise.sets) }));
+  }
 
-  const others = fromMenu
-    .filter((item) => !used.has(item))
-    .map((item) => ({
-      name: item.name,
-      lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : null,
-      sets: toSets(item, previousKg[item.name]),
-    }));
-
-  return [...fixed, ...others];
+  // 「個人の追加」は種目ではなく、面談で決めた種目を足す場所なので、欄には出さない(自分で「+ 種目を足す」から足す)。
+  return day.items.filter((item) => !item.name.startsWith("個人の追加")).map((item) => ({
+    name: item.name,
+    lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : inferLift(item.name),
+    sets: toSets(item.name, item),
+  }));
 }
 
 /** その日のメニュー(火・木・土はその曜日、ほかの日は自主の分)。メニューの期間の外なら null。 */
