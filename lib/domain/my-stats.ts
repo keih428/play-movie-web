@@ -9,6 +9,7 @@ import {
   getServeEffectRate,
   getTeamPlays,
 } from "@/lib/domain/analysis";
+import { getCourseLine, type CourseLine } from "@/lib/domain/court";
 import { normalizeShirtNumber } from "@/lib/domain/my-plays";
 import type { MemberPosition } from "@/lib/domain/portal";
 import type { ParsedMatch, ParsedPlay, TeamSide } from "@/lib/domain/types";
@@ -43,6 +44,8 @@ export type StatSection = {
   attempts: number;
   items: StatItem[];
   courses?: { course: AttackCourse; label: string; attempts: number; kills: number; filter: StatFilter }[];
+  // コートの図に描く軌道(アタック・サーブだけ。ゾーンのないプレーは描かない)。
+  lines?: CourseLine[];
 };
 
 export type StatMatchInput = { match: ParsedMatch; side: TeamSide };
@@ -237,6 +240,15 @@ export function buildMyStats(input: {
   simple("dig", "ディグ", "D", "A・B(上がった)", ["#", "+"]);
   simple("block", "ブロック", "B", "シャット", ["#"]);
   simple("set", "トス", "E", "A・B(よいトス)", ["#", "+"]);
+
+  const linesOf = (skill: string) =>
+    mine.filter((play) => play.skill === skill).flatMap((play) => getCourseLine(play) ?? []);
+  if (sections.attack) {
+    sections.attack.lines = linesOf("A");
+  }
+  if (sections.serve) {
+    sections.serve.lines = linesOf("S");
+  }
 
   const order = input.position ? POSITION_ORDER[input.position] : DEFAULT_ORDER;
   return order.flatMap((key) => (sections[key] ? [sections[key]] : []));

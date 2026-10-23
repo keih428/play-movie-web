@@ -16,6 +16,39 @@ export const SKILL_CLIP_AFTER_SECONDS = 5;
 const RALLY_SERVE_PREROLL_SECONDS = 2;
 const RALLY_TAIL_SECONDS = 3;
 const VSM_TIME_SCALE = 10;
+// サーブを打ってから、相手が触るまでの時間のめやす(秒)。
+const SERVE_FLIGHT_SECONDS = 1.2;
+const SERVE_DELAY_MAX_SECONDS = 4;
+
+/**
+ * その試合のサーブの記録が、実際に打った瞬間より何秒早いか(2026-10-24、けーいちの指摘:「サーブだけ早い」)。
+ * スカウトによって、サーブを構えた・トスを上げた時に入力していて、春季リーグのデータでは「サーブ → 次のプレー」が
+ * 3〜4秒(本当は1秒あまり)。サーブの次のプレーまでの時間の真ん中の値から、ボールが飛ぶ時間を引いて求める。
+ * スキルだけの見方のサーブは、この分だけ後ろにずらして切り取る。
+ */
+export function estimateServeDelaySeconds(match: ParsedMatch): number {
+  const gaps: number[] = [];
+  for (const set of match.sets) {
+    for (const event of set.events) {
+      const index = event.plays.findIndex((play) => play.skill === "S" && typeof play.time === "number");
+      const serve = event.plays[index];
+      const next = event.plays.slice(index + 1).find((play) => typeof play.time === "number");
+      if (index < 0 || !serve || !next) {
+        continue;
+      }
+      const gap = (next.time! - serve.time!) / VSM_TIME_SCALE;
+      if (gap > 0 && gap < 10) {
+        gaps.push(gap);
+      }
+    }
+  }
+  if (gaps.length < 5) {
+    return 0;
+  }
+  const median = [...gaps].sort((left, right) => left - right)[Math.floor(gaps.length / 2)];
+  const delay = Math.round((median - SERVE_FLIGHT_SECONDS) * 10) / 10;
+  return Math.min(SERVE_DELAY_MAX_SECONDS, Math.max(0, delay));
+}
 
 export type MyPlaysMode = "skill" | "rally";
 
@@ -119,6 +152,7 @@ export function buildMyClips(input: {
     (!skills || skills.length === 0 || skills.includes(play.skill ?? "")) &&
     (!where || where(play));
   const seekOf = (play: ParsedPlay) => calculateSeekSeconds(play, settings, match);
+  const serveDelay = mode === "skill" ? estimateServeDelaySeconds(match) : 0;
   const describe = (play: ParsedPlay) => ({
     skill: play.skill ?? "",
     skillLabel: getSkillLabel(play.skill),
@@ -140,7 +174,8 @@ export function buildMyClips(input: {
           if (!wanted(play)) {
             return;
           }
-          const startPlay = shiftTime(play, set.setIndex, SKILL_CLIP_BEFORE_SECONDS);
+          const before = SKILL_CLIP_BEFORE_SECONDS - (play.skill === "S" ? serveDelay : 0);
+          const startPlay = shiftTime(play, set.setIndex, before);
           const seekSeconds = seekOf(startPlay);
           if (typeof seekSeconds !== "number" || typeof play.time !== "number") {
             return;

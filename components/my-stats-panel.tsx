@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MyCourtChart } from "@/components/my-court-chart";
 import type { StatFilter, StatSection } from "@/lib/domain/my-stats";
 
 export type MyStats = {
@@ -113,6 +114,12 @@ export function MyStatsPanel({
                 );
               })}
             </div>
+          ) : null}
+          {section.lines ? (
+            <details className="tp-mycourt-wrap" open={section.key === "attack"}>
+              <summary>コートの図({section.lines.length}本)</summary>
+              <MyCourtChart lines={section.lines} label={section.title} />
+            </details>
           ) : null}
         </div>
       ))}
