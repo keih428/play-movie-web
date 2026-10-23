@@ -1699,7 +1699,8 @@ function getAttackStartPoint(play: ParsedPlay): Point {
       };
 }
 
-function getAttackCourseType(play: ParsedPlay): keyof Omit<AttackCourseRow, "player"> | undefined {
+/** アタックのコース(フェイント・ストレート・クロス)。マイプレーの「コース」からも使う。 */
+export function getAttackCourseType(play: ParsedPlay): keyof Omit<AttackCourseRow, "player"> | undefined {
   const start = getAttackStartPoint(play);
   const end = getAttackEndPoint(play);
   if (!end) {

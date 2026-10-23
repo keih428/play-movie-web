@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MyPlaysClient } from "@/components/my-plays-client";
 import { normalizeShirtNumber } from "@/lib/domain/my-plays";
+import { buildMyStats } from "@/lib/domain/my-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMyPlaysPath, buildWorkspacePath } from "@/lib/domain/team";
@@ -14,6 +15,9 @@ type PageProps = {
 };
 
 export const dynamic = "force-dynamic";
+
+// 成績の「直近の試合」の数(総合分析の初期値と同じ)。
+const RECENT_MATCHES = 5;
 
 /**
  * 上のメニューの「試合」(マイプレー、2026-10-24 から)。開くと、直近の試合の自分のプレーがすぐ出る。
@@ -56,6 +60,14 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
 
   const { match: requested } = await searchParams;
   const selected = matches.find((entry) => entry.workspaceId === requested) ?? matches[0];
+  // 成績:この試合と、直近の試合(新しい順に RECENT_MATCHES 試合)。並びはポジションで変える。
+  const position = current.position ?? null;
+  const recent = matches.slice(0, RECENT_MATCHES);
+  const stats = {
+    match: buildMyStats({ matches: [selected], number, position }),
+    recent: buildMyStats({ matches: recent, number, position }),
+    recentCount: recent.length,
+  };
   const options = matches.map((entry) => ({
     workspaceId: entry.workspaceId,
     label: `${entry.date ? formatNoteDate(entry.date.slice(0, 10)) : "日付なし"} vs ${entry.opponent}(${entry.setScore.own}-${entry.setScore.opponent})`,
@@ -76,6 +88,7 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
         number={number}
         opponent={selected.opponent}
         setScore={selected.setScore}
+        stats={stats}
       />
       <p className="tp-small tp-muted">
         チーム全体の映像と分析は{" "}
