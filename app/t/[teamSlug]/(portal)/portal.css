@@ -2536,11 +2536,6 @@ body:has(.tp[data-mode="tango"]) {
   background: var(--tp-surface);
 }
 
-/* 固定の3種目(スクワット・ベンチ・トラップバーDL)は、チームの色の線で目立たせる。 */
-.tp-log-fixed {
-  border-left: 4px solid var(--tp-accent);
-}
-
 .tp-log-exhead {
   display: flex;
   align-items: center;
