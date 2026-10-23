@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
+import { estimateServeDelaySeconds } from "@/lib/domain/my-plays";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
 
@@ -246,6 +247,9 @@ export function ClipBuilder({
     };
   }, [match, teamFilter]);
 
+  // サーブの記録が打った瞬間より早い試合(春季リーグなど)では、サーブのクリップをその分遅らせる(マイプレーと同じ、2026-10-24)。
+  const serveDelay = useMemo(() => (match ? estimateServeDelaySeconds(match) : 0), [match]);
+
   const clips = useMemo<ClipCandidate[]>(() => {
     if (!match) {
       return [];
@@ -255,9 +259,13 @@ export function ClipBuilder({
       set.events.flatMap((event) => {
         return event.plays.flatMap((play, playIndex) => {
           const teamLabel = getTeamLabel(play.team, match);
+          // クリップの基準の時刻(サーブだけ、記録のずれを直す)。
+          const anchorTime =
+            play.skill === "S" && typeof play.time === "number" ? play.time + Math.round(serveDelay * 10) : play.time;
           const seekSeconds = calculateSeekSeconds(
             {
               ...play,
+              time: anchorTime,
               setIndex: set.setIndex,
             },
             settings,
@@ -304,11 +312,11 @@ export function ClipBuilder({
           const clipEndSeconds = seekSeconds + clipAfterSeconds;
           const durationSeconds = Math.max(1, clipEndSeconds - clipStartSeconds);
           const clipPlay =
-            typeof play.time === "number"
+            typeof anchorTime === "number"
               ? {
                   ...play,
                   setIndex: set.setIndex,
-                  time: Math.max(0, play.time - clipBeforeSeconds * 10),
+                  time: Math.max(0, anchorTime - clipBeforeSeconds * 10),
                 }
               : {
                   ...play,
@@ -336,6 +344,7 @@ export function ClipBuilder({
     clipAfterSeconds,
     clipBeforeSeconds,
     match,
+    serveDelay,
     attackTypeFilter,
     blockZoneFilter,
     playerFilter,
