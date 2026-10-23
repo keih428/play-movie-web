@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getEffectGrade, getSkillLabel, getTeamLabel } from "@/lib/domain/display";
 import { formatRotationLabel, getRotationLabel } from "@/lib/domain/rotation";
+import { estimateServeDelaySeconds } from "@/lib/domain/my-plays";
 import { calculateSeekSeconds, formatSeconds } from "@/lib/domain/video";
 import type { ParsedMatch, ParsedPlay, VideoSyncSettings } from "@/lib/domain/types";
 
@@ -89,6 +90,9 @@ export function PlayList({
 
   const timingMatch = sourceMatch ?? match;
   const effectiveSetIndex = selectedSetIndex;
+  // サーブの記録が打った瞬間より早い試合では、1本ずつの再生(▶)のサーブをその分遅らせる(2026-10-24)。
+  // ラリーの頭(サーブの2秒前)は、そのまま。
+  const serveDelay = useMemo(() => (timingMatch ? estimateServeDelaySeconds(timingMatch) : 0), [timingMatch]);
 
   const rallyItems = useMemo(
     () =>
@@ -121,18 +125,24 @@ export function PlayList({
                 ? calculateSeekSeconds(rallyStartPlay, settings, timingMatch)
                 : undefined;
 
-              const plays = event.plays.map((play, index) => ({
-                key: `${set.id}-${event.id}-${play.id}-${index}`,
-                play,
-                seekSeconds: calculateSeekSeconds(
-                  {
-                    ...play,
-                    setIndex: set.setIndex,
-                  },
-                  settings,
-                  timingMatch,
-                ),
-              }));
+              const plays = event.plays.map((original, index) => {
+                const play =
+                  original.skill === "S" && typeof original.time === "number" && serveDelay > 0
+                    ? { ...original, time: original.time + Math.round(serveDelay * 10) }
+                    : original;
+                return {
+                  key: `${set.id}-${event.id}-${play.id}-${index}`,
+                  play,
+                  seekSeconds: calculateSeekSeconds(
+                    {
+                      ...play,
+                      setIndex: set.setIndex,
+                    },
+                    settings,
+                    timingMatch,
+                  ),
+                };
+              });
               const timedPlays = plays
                 .filter((item): item is typeof item & { seekSeconds: number } =>
                   typeof item.seekSeconds === "number",
@@ -173,7 +183,7 @@ export function PlayList({
               ];
             }),
       ) ?? [],
-    [effectiveSetIndex, match, minPlayCount, rallyResultFilter, settings, timingMatch],
+    [effectiveSetIndex, match, minPlayCount, rallyResultFilter, serveDelay, settings, timingMatch],
   );
 
   const rallyItemsKey = rallyItems.map((rally) => rally.key).join("|");
