@@ -3153,3 +3153,34 @@ button.tp-mystats-course {
   padding: 6px 2px;
   font-size: 15px;
 }
+
+/* マイプレー:コートの図 */
+.tp-mycourt-wrap {
+  margin-top: 8px;
+}
+
+.tp-mycourt-wrap summary {
+  cursor: pointer;
+  color: var(--tp-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tp-mycourt {
+  margin: 6px auto 0;
+  max-width: 300px;
+}
+
+.tp-mycourt svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tp-mycourt-legend {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
