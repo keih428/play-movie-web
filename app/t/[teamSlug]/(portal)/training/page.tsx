@@ -34,6 +34,7 @@ import {
   findLogMenuKey,
 } from "@/lib/domain/training";
 import { requireMember } from "@/lib/server/portal-session";
+import { listMustItems } from "@/lib/server/portal-training-must-store";
 import {
   getLatestMeasurements,
   getTodayInJapan,
@@ -373,6 +374,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
     isSelected: entry.key === program.key,
   }));
   const block = findPlanBlock(plan, week.s);
+  const mustItems = await listMustItems(teamSlug);
 
   return (
     <>
@@ -448,6 +450,9 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
       <TrainingSession
         key={`${program.key}-${week.k}-${selection.tier}-${selection.slot}-${selection.position}-${JSON.stringify(estimated)}`}
+        teamSlug={teamSlug}
+        mustItems={mustItems}
+        canMarkMust={canManage}
         days={resolved.days}
         initialDay={initialDay.day}
         periodLinks={periodLinks}

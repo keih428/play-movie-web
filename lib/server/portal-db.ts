@@ -345,6 +345,19 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE members ADD COLUMN passphrase_version integer NOT NULL DEFAULT 0
     `,
   },
+  {
+    id: "017_training_must_items",
+    // 「これだけは欠かさないでほしい種目」の星(2026-10-25 から)。種目の名前ごとに付ける(週・曜日・期間をまたいで同じ)。
+    sql: `
+      CREATE TABLE training_must_items (
+        team_slug text NOT NULL,
+        name text NOT NULL,
+        marked_by text REFERENCES members (id),
+        marked_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_slug, name)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
