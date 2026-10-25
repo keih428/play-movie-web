@@ -24,6 +24,8 @@ type MemberRow = {
   is_training_lead: boolean;
   is_system_admin: boolean;
   is_executive: boolean;
+  passphrase_hash: string | null;
+  passphrase_version: number;
   title: string | null;
   tier: string | null;
   slot: string | null;
@@ -73,6 +75,8 @@ function toMember(row: MemberRow): Member {
     isTrainingLead: row.is_training_lead,
     isSystemAdmin: row.is_system_admin,
     isExecutive: row.is_executive,
+    hasPassphrase: Boolean(row.passphrase_hash),
+    passphraseVersion: row.passphrase_version,
     title: row.title,
     tier: row.tier,
     slot: row.slot,
@@ -215,6 +219,30 @@ export async function updateMember(
      WHERE id = $1 AND team_slug = $2
      RETURNING *`,
     [memberId, teamSlug, ...keys.map((key) => patch[key])],
+  );
+  return rows[0] ? toMember(rows[0]) : null;
+}
+
+/** 自分の合言葉の記録(ハッシュ)。決めていなければ null。ログインの確かめにだけ使う。 */
+export async function getMemberPassphraseHash(memberId: string): Promise<string | null> {
+  const rows = await query<{ passphrase_hash: string | null }>(
+    "SELECT passphrase_hash FROM members WHERE id = $1",
+    [memberId],
+  );
+  return rows[0]?.passphrase_hash ?? null;
+}
+
+/** 自分の合言葉を決める(null なら消す)。番号が1つ増えるので、その人の前のログインはすべて無効になる。 */
+export async function setMemberPassphraseHash(
+  teamSlug: string,
+  memberId: string,
+  hash: string | null,
+): Promise<Member | null> {
+  const rows = await query<MemberRow>(
+    `UPDATE members SET passphrase_hash = $3, passphrase_version = passphrase_version + 1, updated_at = now()
+     WHERE id = $1 AND team_slug = $2
+     RETURNING *`,
+    [memberId, teamSlug, hash],
   );
   return rows[0] ? toMember(rows[0]) : null;
 }

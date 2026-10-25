@@ -17,7 +17,12 @@ import {
   sortMembers,
   type Member,
 } from "@/lib/domain/portal";
-import { buildTeamApiPath, buildTeamLoginLogPath, buildTeamRootPath } from "@/lib/domain/team";
+import {
+  buildTeamAccountPath,
+  buildTeamApiPath,
+  buildTeamLoginLogPath,
+  buildTeamRootPath,
+} from "@/lib/domain/team";
 
 type PortalMembersClientProps = {
   canManage: boolean;
@@ -121,6 +126,7 @@ export function PortalMembersClient({
   const [busy, setBusy] = useState(false);
 
   const current = members.find((member) => member.id === currentMemberId);
+  const editingTarget = editingId && editingId !== "new" ? members.find((member) => member.id === editingId) : undefined;
   const players = members.filter((member) => member.position);
   const staff = members.filter((member) => !member.position);
 
@@ -181,6 +187,20 @@ export function PortalMembersClient({
       setMembers(result.members);
       setRosterMarkdown("");
       setMessage(`取り込みました(追加 ${result.added}人、上書き ${result.updated}人)。`);
+    });
+  }
+
+  // 忘れた人の自分の合言葉を消す(システム担当だけ)。消すと、その人はログインし直しになる。
+  function clearPassphrase(memberId: string) {
+    void run(async () => {
+      const result = await sendJson<{ member: Member }>(
+        buildTeamApiPath(`/api/portal/members/${memberId}/passphrase`, teamSlug),
+        "DELETE",
+      );
+      setMembers((previous) =>
+        sortMembers(previous.map((member) => (member.id === result.member.id ? result.member : member))),
+      );
+      setMessage(`${result.member.displayName} の自分の合言葉を消しました。次は名前を選ぶだけで入れます。`);
     });
   }
 
@@ -279,6 +299,9 @@ export function PortalMembersClient({
               ログインの記録
             </Link>
           ) : null}
+          <Link className="tp-button tp-ghost" href={buildTeamAccountPath(teamSlug)}>
+            自分の合言葉
+          </Link>
           <button type="button" className="tp-button tp-ghost" onClick={logout} disabled={busy}>
             ログアウト
           </button>
@@ -439,6 +462,24 @@ export function PortalMembersClient({
               />
               名簿に載せる(外すと、その人はログインできなくなる)
             </label>
+            {editingTarget ? (
+              <p className="tp-small tp-muted">
+                自分の合言葉:{editingTarget.hasPassphrase ? "決めてある" : "まだ決めていない"}
+                {editingTarget.hasPassphrase ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="tp-mini"
+                      disabled={busy}
+                      onClick={() => clearPassphrase(editingTarget.id)}
+                    >
+                      忘れたので消す
+                    </button>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
             <div className="tp-actions">
               <button className="tp-button" type="submit" disabled={busy}>
                 {busy ? "保存中…" : "保存"}

@@ -17,6 +17,9 @@ export type PortalSession = {
   name: string;
   role: MemberRole;
   generation: string;
+  // 自分の合言葉の番号(2026-10-25 から)。決め直す・消すと名簿の番号が増え、前のクッキーは使えなくなる。
+  // それより前のクッキーには無いので、0 とみなす。
+  passphraseVersion?: number;
 };
 
 export type RequestInfo = {
@@ -76,6 +79,7 @@ export function createSessionValue(member: Member): string {
     name: member.displayName,
     role: member.role,
     generation: getGeneration(),
+    passphraseVersion: member.passphraseVersion,
   };
   const body = Buffer.from(JSON.stringify(session)).toString("base64url");
   return `${body}.${sign(body, getSecrets().secret)}`;
@@ -145,6 +149,10 @@ export async function getCurrentMember(teamSlug: string): Promise<Member | null>
 
   const member = await getMember(session.memberId);
   if (!member || !member.active || member.teamSlug !== teamSlug) {
+    return null;
+  }
+  // 自分の合言葉を決め直した・消した後は、それより前のログインを無効にする(ほかの端末も含めて)。
+  if ((session.passphraseVersion ?? 0) !== member.passphraseVersion) {
     return null;
   }
 

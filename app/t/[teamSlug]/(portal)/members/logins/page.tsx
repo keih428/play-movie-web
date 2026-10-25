@@ -20,6 +20,7 @@ export const dynamic = "force-dynamic";
 const RESULT_LABELS: Record<LoginResult, string> = {
   ok: "ログイン",
   bad_passphrase: "合言葉の間違い",
+  bad_member_passphrase: "自分の合言葉の間違い",
   unknown_member: "名簿にない名前",
   locked: "制限中のアクセス",
 };

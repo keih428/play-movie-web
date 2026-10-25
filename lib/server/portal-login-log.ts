@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { query } from "@/lib/server/portal-db";
 import { MEMBER_DISPLAY_NAME_SQL } from "@/lib/server/portal-member-store";
 
-export type LoginResult = "ok" | "bad_passphrase" | "unknown_member" | "locked";
+// bad_member_passphrase:部の合言葉は合っていたが、自分の合言葉が違った(2026-10-25 から)。
+export type LoginResult = "ok" | "bad_passphrase" | "bad_member_passphrase" | "unknown_member" | "locked";
 
 export type LoginLogEntry = {
   id: string;
@@ -61,7 +62,7 @@ export async function recordLogin(input: {
 export async function countRecentFailures(teamSlug: string, ip: string | null): Promise<number> {
   const rows = await query<{ count: number }>(
     `SELECT count(*)::int AS count FROM login_logs
-     WHERE team_slug = $1 AND result = 'bad_passphrase'
+     WHERE team_slug = $1 AND result IN ('bad_passphrase', 'bad_member_passphrase')
        AND ip IS NOT DISTINCT FROM $2
        AND at > now() - make_interval(mins => $3)`,
     [teamSlug, ip, LOCK_WINDOW_MINUTES],

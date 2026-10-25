@@ -23,7 +23,7 @@ export default async function TeamMembersPage({ params }: PageProps) {
   const canManage = canManageSite(current);
   // 幹部の印は「直す」の中でだけ見せる(けーいちの決定、2026-10-20)。直せない人には、印そのものを渡さない。
   const members = (await listMembers(teamSlug, { includeInactive: canManage })).map((member) =>
-    canManage ? member : { ...member, isExecutive: false },
+    canManage ? member : { ...member, isExecutive: false, hasPassphrase: false },
   );
 
   return (

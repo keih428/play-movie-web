@@ -336,6 +336,15 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX comment_duties_target ON comment_duties (team_slug, week_start, target_id)
     `,
   },
+  {
+    id: "016_member_passphrase",
+    // 1人ずつの合言葉(2026-10-25 から)。部の合言葉に加えて、決めた人はログインで自分の合言葉も聞かれる。
+    // passphrase_version は、決め直す・消すたびに1つ増やす。クッキーの番号と違えば、その人の前のログインは無効。
+    sql: `
+      ALTER TABLE members ADD COLUMN passphrase_hash text;
+      ALTER TABLE members ADD COLUMN passphrase_version integer NOT NULL DEFAULT 0
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
