@@ -984,7 +984,7 @@ iframe {
   white-space: nowrap;
 }
 
-.video-player-header .clip-player-action {
+.video-player-header .button.clip-player-action {
   flex: 0 0 auto;
   width: max-content;
   min-width: 0;
@@ -2004,7 +2004,8 @@ iframe {
     font-size: clamp(0.95rem, 4.5vw, 1.1rem);
   }
 
-  .video-player-header .clip-player-action {
+  /* 停止(.button.secondary)が、下の「ボタンを横いっぱいに」に負けないよう .button を足して強くする。 */
+  .video-player-header .button.clip-player-action {
     flex-basis: auto;
     width: max-content;
     min-width: 0;
