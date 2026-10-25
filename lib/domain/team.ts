@@ -130,6 +130,11 @@ export function buildTeamTrainingRecordsPath(teamSlug: string): string {
   return `/t/${teamSlug}/training/team`;
 }
 
+/** 自分の合言葉を決める・決め直すページ(2026-10-25 から)。 */
+export function buildTeamAccountPath(teamSlug: string): string {
+  return `/t/${teamSlug}/account`;
+}
+
 export function buildTeamMembersPath(teamSlug: string): string {
   return `/t/${teamSlug}/members`;
 }

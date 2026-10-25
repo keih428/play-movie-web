@@ -49,6 +49,10 @@ export type Member = {
   isSystemAdmin: boolean;
   // 幹部(主将・副将・主務など)。ホームの目標と、データベース/マニュアルを書き直せる(2026-10-20 から)。
   isExecutive: boolean;
+  // 自分の合言葉を決めているか(2026-10-25 から)。合言葉そのものは画面に渡さない。
+  hasPassphrase: boolean;
+  // 自分の合言葉を決め直した回数。ログインのクッキーに入れて、決め直したら前のログインを無効にする。
+  passphraseVersion: number;
   title: string | null;
   tier: string | null;
   slot: string | null;
@@ -71,7 +75,23 @@ export type MemberInput = {
   title: string | null;
 };
 
-export type LoginChoice = Pick<Member, "id" | "displayName" | "grade" | "position" | "title">;
+export type LoginChoice = Pick<Member, "id" | "displayName" | "grade" | "position" | "title" | "hasPassphrase">;
+
+// 自分の合言葉の長さ(部の合言葉とは別に、本人が決める)。
+export const MEMBER_PASSPHRASE_MIN_LENGTH = 4;
+export const MEMBER_PASSPHRASE_MAX_LENGTH = 64;
+
+/** 自分の合言葉として使えるか。だめならその理由。 */
+export function validateMemberPassphrase(value: string): string | null {
+  const length = [...value.normalize("NFKC").trim()].length;
+  if (length < MEMBER_PASSPHRASE_MIN_LENGTH) {
+    return `合言葉は${MEMBER_PASSPHRASE_MIN_LENGTH}文字以上にしてください。`;
+  }
+  if (length > MEMBER_PASSPHRASE_MAX_LENGTH) {
+    return `合言葉は${MEMBER_PASSPHRASE_MAX_LENGTH}文字までにしてください。`;
+  }
+  return null;
+}
 
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   member: "部員",

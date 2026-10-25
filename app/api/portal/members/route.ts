@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const canManage = canManageSite(current);
   // 幹部の印は、名簿を直せる人(システム担当)にだけ渡す(けーいちの決定、2026-10-20)。
   const members = (await listMembers(teamSlug, { includeInactive: canManage })).map((member) =>
-    canManage ? member : { ...member, isExecutive: false },
+    canManage ? member : { ...member, isExecutive: false, hasPassphrase: false },
   );
   return NextResponse.json({ members });
 }

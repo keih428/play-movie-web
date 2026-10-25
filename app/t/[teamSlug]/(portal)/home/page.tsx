@@ -6,6 +6,7 @@ import { DEFAULT_PRACTICE_LOCATION } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { MANUAL_SECTIONS, canEditPortalTexts, isPortalTeam } from "@/lib/domain/portal";
 import {
+  buildTeamAccountPath,
   buildTeamAttendancePath,
   buildTeamHomePath,
   buildTeamManualPath,
@@ -102,6 +103,16 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
         <h1>ホーム</h1>
         <p className="tp-muted">{current.displayName} さん、おつかれさまです。</p>
       </header>
+
+      {current.hasPassphrase ? null : (
+        // もうログインしている人は、ログイン直後の「決めよう」を通らないので、ここで知らせる(2026-10-25 から)。
+        <p className="tp-message">
+          自分の合言葉を決めると、ほかの人があなたの名前で入れなくなります。{" "}
+          <Link href={`${buildTeamAccountPath(teamSlug)}?setup=1&next=${encodeURIComponent(buildTeamHomePath(teamSlug))}`}>
+            決める
+          </Link>
+        </p>
+      )}
 
       <section className="tp-section">
         <PortalGoal teamSlug={teamSlug} body={goal?.body ?? null} canEdit={canEditPortalTexts(current)} />

@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import type { LoginChoice } from "@/lib/domain/portal";
-import { buildTeamApiPath } from "@/lib/domain/team";
+import { buildTeamAccountPath, buildTeamApiPath } from "@/lib/domain/team";
 
 type PortalLoginClientProps = {
   redirectTo: string;
@@ -38,6 +38,9 @@ function groupByGrade(members: LoginChoice[]) {
 export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLoginClientProps) {
   const [passphrase, setPassphrase] = useState("");
   const [members, setMembers] = useState<LoginChoice[] | null>(null);
+  // 自分の合言葉を決めている人を選んだとき、その人の合言葉を聞く。
+  const [chosen, setChosen] = useState<LoginChoice | null>(null);
+  const [memberPassphrase, setMemberPassphrase] = useState("");
   const [rosterMarkdown, setRosterMarkdown] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,11 +68,36 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
     });
   }
 
-  function chooseMember(memberId: string) {
+  function login(memberId: string, ownPassphrase?: string) {
     void run(async () => {
-      await postJson(buildTeamApiPath("/api/portal/login", teamSlug), { passphrase, memberId });
-      window.location.assign(redirectTo);
+      const result = await postJson<{ needsPassphraseSetup?: boolean }>(
+        buildTeamApiPath("/api/portal/login", teamSlug),
+        { passphrase, memberId, memberPassphrase: ownPassphrase },
+      );
+      // まだ自分の合言葉を決めていない人は、決めるページへ(「あとで」で元のページに戻れる)。
+      window.location.assign(
+        result.needsPassphraseSetup
+          ? `${buildTeamAccountPath(teamSlug)}?setup=1&next=${encodeURIComponent(redirectTo)}`
+          : redirectTo,
+      );
     });
+  }
+
+  function chooseMember(member: LoginChoice) {
+    if (member.hasPassphrase) {
+      setError("");
+      setMemberPassphrase("");
+      setChosen(member);
+      return;
+    }
+    login(member.id);
+  }
+
+  function submitMemberPassphrase(event: FormEvent) {
+    event.preventDefault();
+    if (chosen) {
+      login(chosen.id, memberPassphrase);
+    }
   }
 
   function importRoster(event: FormEvent) {
@@ -93,7 +121,9 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
             ? "トレーニングの記録や名簿は、部員とスタッフだけが見られます。"
             : members.length === 0
               ? "名簿がまだ空です。"
-              : "自分の名前を選んでください。ログアウトするまで、この端末で使い続けられます。"}
+              : chosen
+                ? `${chosen.displayName} さんが決めた、自分の合言葉を入れてください。`
+                : "自分の名前を選んでください。ログアウトするまで、この端末で使い続けられます。"}
         </p>
       </header>
 
@@ -132,6 +162,38 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
             {busy ? "取り込み中…" : "名簿を取り込む"}
           </button>
         </form>
+      ) : chosen ? (
+        <form className="tp-card" onSubmit={submitMemberPassphrase}>
+          <div className="tp-field">
+            <label htmlFor="portal-member-passphrase">自分の合言葉</label>
+            <input
+              id="portal-member-passphrase"
+              type="password"
+              autoComplete="current-password"
+              value={memberPassphrase}
+              onChange={(event) => setMemberPassphrase(event.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+          <div className="tp-actions">
+            <button className="tp-button" type="submit" disabled={busy || !memberPassphrase}>
+              {busy ? "確認中…" : "ログイン"}
+            </button>
+            <button
+              className="tp-button tp-ghost"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setChosen(null);
+                setError("");
+              }}
+            >
+              名前を選び直す
+            </button>
+          </div>
+          <p className="tp-small tp-muted">忘れたときは、システム担当に消してもらうと、また名前を選ぶだけで入れます。</p>
+        </form>
       ) : (
         groupByGrade(members).map(([label, group]) => (
           <section key={label} className="tp-section">
@@ -142,7 +204,7 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
                   key={member.id}
                   type="button"
                   disabled={busy}
-                  onClick={() => chooseMember(member.id)}
+                  onClick={() => chooseMember(member)}
                 >
                   <b>{member.displayName}</b>
                   <small>{member.position ?? member.title ?? ""}</small>
