@@ -3331,3 +3331,12 @@ button.tp-mystats-course {
 .tp-team-message b {
   color: var(--tp-ok);
 }
+
+/* ノート:部員を選ぶ、まだ書いていない日(2026-10-26) */
+.tp-member-pick {
+  margin: 4px 0 8px;
+}
+
+.tp-note-unwritten {
+  border-style: dashed;
+}

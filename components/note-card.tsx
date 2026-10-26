@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
@@ -13,7 +14,7 @@ import {
   type Note,
   type NoteComment,
 } from "@/lib/domain/notes";
-import { buildTeamApiPath } from "@/lib/domain/team";
+import { buildTeamApiPath, buildTeamNotesPath } from "@/lib/domain/team";
 
 type NoteCardProps = {
   note: Note;
@@ -150,7 +151,10 @@ export function NoteCard({
     <article className="tp-card tp-notecard">
       <div className="tp-dayhead">
         <span className="tp-when">{formatNoteDate(note.practiceDate)}</span>
-        <span className="tp-what">{note.memberName}</span>
+        {/* 名前を押すと、その人のノート(書いていない日にもコメントできる)へ */}
+        <Link className="tp-what" href={`${buildTeamNotesPath(teamSlug)}/member?id=${note.memberId}`}>
+          {note.memberName}
+        </Link>
         <span className="tp-time">{note.position ?? ""}</span>
         {isDutyTarget ? <span className="tp-duty-badge">当番</span> : null}
         {hasMenu && mode === "view" ? (
@@ -243,7 +247,7 @@ export function NoteCard({
       ) : (
         <>
           <p ref={bodyRef} className={`tp-note-body${expanded ? "" : " tp-note-clamp"}`}>
-            {note.body}
+            {note.body || <span className="tp-muted">(まだ書いていません。コメントだけ付いています)</span>}
           </p>
           {isLong ? (
             <button type="button" className="tp-note-expand" onClick={() => setExpanded(!expanded)}>

@@ -130,8 +130,22 @@ export async function saveNote(input: {
   return {
     note: note!,
     requestChanged: Boolean(input.request) && input.request !== (existing?.request ?? ""),
-    created: !existing,
+    // コメントだけ付いていた空のノートに、初めて書いたときも「新しく書いた」とする(コメント当番に知らせるため)。
+    created: !existing || !existing.body.trim(),
   };
+}
+
+/**
+ * その人・その日のノートを返す。なければ本文が空のノートを作る(書いていない日にコメントを付けるため、2026-10-26 から)。
+ */
+export async function ensureNote(member: Member, practiceDate: string): Promise<Note> {
+  await query(
+    `INSERT INTO notes (id, team_slug, member_id, practice_date, position, group_key, body, request)
+     VALUES ($1, $2, $3, $4, $5, $6, '', '')
+     ON CONFLICT (member_id, practice_date) DO NOTHING`,
+    [randomUUID(), member.teamSlug, member.id, practiceDate, member.position, getMemberGroup(member.position)],
+  );
+  return (await getNoteByDate(member.id, practiceDate))!;
 }
 
 /** ノートと、それに付いたコメントを消す。 */

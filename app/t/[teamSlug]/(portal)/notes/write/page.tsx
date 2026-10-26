@@ -79,7 +79,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
 
   const existing = await getNoteByDate(current.id, date);
   const matchDraft =
-    !existing && matchId
+    !existing?.body.trim() && matchId
       ? await buildMatchDraft(matchId, teamSlug, normalizeShirtNumber(current.number), current.position)
       : "";
 
@@ -92,7 +92,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
         <h1>{formatRelativeNoteDate(date, today)}のノート</h1>
         <p className="tp-small tp-muted">
           {date.slice(0, 4)}年 {formatNoteDate(date)}
-          {existing ? " ・ 書いてあるノートを編集しています" : ""}
+          {existing?.body.trim() ? " ・ 書いてあるノートを編集しています" : ""}
         </p>
         <div className="tp-actions">
           <Link className="tp-button tp-ghost" href={`${basePath}/mine`}>
@@ -102,7 +102,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
       </header>
       <NoteEditor
         date={date}
-        initialBody={existing?.body ?? matchDraft}
+        initialBody={existing?.body.trim() ? existing.body : matchDraft}
         initialRequest={existing?.request ?? ""}
         initialTeamMessage={existing?.teamMessage ?? ""}
         teamSlug={teamSlug}

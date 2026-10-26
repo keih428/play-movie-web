@@ -64,6 +64,14 @@ export const NOTE_FEED_LABELS: Record<NoteFeed, string> = {
   team: "チームへ",
 };
 
+/**
+ * ノートを書いたか。書いていない日にコメントが付くと、本文が空のノートができる(2026-10-26 から)。
+ * そのノートは「まだ書いていない」として扱い、本人があとで書くと、コメントはそのまま残る。
+ */
+export function isNoteWritten(note: Pick<Note, "body"> | null | undefined): boolean {
+  return Boolean(note?.body.trim());
+}
+
 export const NOTE_BODY_MAX = 5000;
 export const NOTE_REQUEST_MAX = 1000;
 export const NOTE_TEAM_MESSAGE_MAX = 2000;

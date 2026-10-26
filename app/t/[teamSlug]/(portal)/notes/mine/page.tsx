@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { describePracticeEvents } from "@/lib/domain/calendar";
-import { addDaysToDate, formatNoteDate, getLastNoteDate } from "@/lib/domain/notes";
+import { addDaysToDate, formatNoteDate, getLastNoteDate, isNoteWritten } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
@@ -84,7 +84,7 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
                   {formatNoteDate(date)}
                   {date === lastDate ? <small> 明日</small> : date === today ? <small> 今日</small> : null}
                 </span>
-                {note ? (
+                {isNoteWritten(note) && note ? (
                   <Link className="tp-slot-body" href={`${basePath}/${note.id}`}>
                     <span className="tp-note-clamp tp-note-clamp-2">{note.body}</span>
                     <span className="tp-small tp-muted">
@@ -98,6 +98,12 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
                       ? `${describePracticeEvents(schedule.eventsByDate[date])}:`
                       : ""}
                     まだ書いていない → 書く
+                    {note && note.commentCount > 0 ? (
+                      <span className="tp-small tp-muted">
+                        {" "}(コメント {note.commentCount}件
+                        {unread > 0 ? <span className="tp-unread">新着 {unread}</span> : null})
+                      </span>
+                    ) : null}
                   </Link>
                 )}
               </li>
