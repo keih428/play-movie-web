@@ -170,3 +170,30 @@ export function getCourseLine(play: ParsedPlay): CourseLine | undefined {
   const error = play.effect === "=" || play.effect === "/";
   return { start, end, result: kill ? "kill" : error ? "error" : "other" };
 }
+
+/** 相手のコートの、そのゾーンの四角(落ちた場所のヒートマップに使う。getEndZonePoint と同じ置き方)。 */
+export function getEndZoneRect(zone: number): { x: number; y: number; width: number; height: number } | undefined {
+  const grid = ZONE_GRID[zone];
+  if (!grid) {
+    return undefined;
+  }
+  const width = (COURT_RIGHT - COURT_LEFT) / 3;
+  const height = HALF_COURT_HEIGHT / 3;
+  return { x: COURT_LEFT + width * grid.column, y: NET_Y - height * (grid.row + 1), width, height };
+}
+
+export const END_ZONES = [4, 3, 2, 7, 8, 9, 5, 6, 1];
+
+export type ZoneCount = { zone: number; count: number; kills: number };
+
+/** 落ちた場所(ゾーン)ごとの本数と、決まった数。ゾーンのないプレーは数えない。 */
+export function countEndZones(plays: ParsedPlay[]): ZoneCount[] {
+  return END_ZONES.map((zone) => {
+    const inZone = plays.filter((play) => play.endZone === zone);
+    return {
+      zone,
+      count: inZone.length,
+      kills: inZone.filter((play) => play.effect === "#" || (play.skill === "S" && play.effect === "+")).length,
+    };
+  });
+}

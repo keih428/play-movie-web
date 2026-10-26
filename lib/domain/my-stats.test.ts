@@ -86,4 +86,11 @@ describe("マイプレーの成績", () => {
     expect(text).toContain("・アタック(31本):決定率");
     expect(text).toContain("次に直すこと:");
   });
+
+  it("落ちた場所のゾーンの本数(ヒートマップ)は、ゾーンのあるアタックの数とそろう", () => {
+    const attack = buildMyStats({ matches, number: "14", position: "OH" }).find((section) => section.key === "attack")!;
+    const withZone = myPlays("14").filter((play) => play.skill === "A" && typeof play.endZone === "number");
+    expect(attack.zones!.reduce((sum, zone) => sum + zone.count, 0)).toBe(withZone.length);
+    expect(attack.zones!.map((zone) => zone.zone)).toEqual([4, 3, 2, 7, 8, 9, 5, 6, 1]);
+  });
 });

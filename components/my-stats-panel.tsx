@@ -162,7 +162,7 @@ export function MyStatsPanel({
           {section.lines ? (
             <details className="tp-mycourt-wrap" open={section.key === "attack"}>
               <summary>コートの図({section.lines.length}本)</summary>
-              <MyCourtChart lines={section.lines} label={section.title} />
+              <MyCourtChart lines={section.lines} zones={section.zones} label={section.title} />
             </details>
           ) : null}
         </div>
