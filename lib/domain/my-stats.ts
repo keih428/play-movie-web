@@ -9,7 +9,7 @@ import {
   getServeEffectRate,
   getTeamPlays,
 } from "@/lib/domain/analysis";
-import { getCourseLine, type CourseLine } from "@/lib/domain/court";
+import { countEndZones, getCourseLine, type CourseLine, type ZoneCount } from "@/lib/domain/court";
 import { normalizeShirtNumber } from "@/lib/domain/my-plays";
 import type { MemberPosition } from "@/lib/domain/portal";
 import type { ParsedMatch, ParsedPlay, TeamSide } from "@/lib/domain/types";
@@ -46,6 +46,8 @@ export type StatSection = {
   courses?: { course: AttackCourse; label: string; attempts: number; kills: number; filter: StatFilter }[];
   // コートの図に描く軌道(アタック・サーブだけ。ゾーンのないプレーは描かない)。
   lines?: CourseLine[];
+  // 落ちた場所(相手のコートのゾーン)ごとの本数。ヒートマップに使う(2026-10-26 から)。
+  zones?: ZoneCount[];
 };
 
 export type StatMatchInput = { match: ParsedMatch; side: TeamSide };
@@ -243,11 +245,14 @@ export function buildMyStats(input: {
 
   const linesOf = (skill: string) =>
     mine.filter((play) => play.skill === skill).flatMap((play) => getCourseLine(play) ?? []);
+  const zonesOf = (skill: string) => countEndZones(mine.filter((play) => play.skill === skill));
   if (sections.attack) {
     sections.attack.lines = linesOf("A");
+    sections.attack.zones = zonesOf("A");
   }
   if (sections.serve) {
     sections.serve.lines = linesOf("S");
+    sections.serve.zones = zonesOf("S");
   }
 
   const order = input.position ? POSITION_ORDER[input.position] : DEFAULT_ORDER;

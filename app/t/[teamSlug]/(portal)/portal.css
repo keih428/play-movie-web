@@ -3340,3 +3340,28 @@ button.tp-mystats-course {
 .tp-note-unwritten {
   border-style: dashed;
 }
+
+/* マイプレー:落ちた場所のヒートマップ(2026-10-26) */
+.tp-mycourt-switch {
+  display: flex;
+  width: max-content;
+  margin: 0 auto 6px;
+}
+
+.tp-heat-count {
+  fill: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 4px;
+}
+
+.tp-heat-sub {
+  fill: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 3px;
+}
