@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   NOTE_BODY_MAX,
   NOTE_REQUEST_MAX,
+  NOTE_TEAM_MESSAGE_MAX,
   formatNoteDate,
   getLastNoteDate,
   isIsoDate,
@@ -30,7 +31,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "ノートを書けるのはプレイヤーだけです。" }, { status: 403 });
   }
 
-  const payload = (await request.json()) as { date?: unknown; body?: unknown; request?: unknown };
+  const payload = (await request.json()) as {
+    date?: unknown;
+    body?: unknown;
+    request?: unknown;
+    teamMessage?: unknown;
+  };
   if (!isIsoDate(payload.date) || payload.date > getLastNoteDate(getTodayInJapan())) {
     return NextResponse.json({ error: "日付が正しくありません(書けるのは明日の分までです)。" }, { status: 400 });
   }
@@ -44,6 +50,7 @@ export async function POST(request: NextRequest) {
     practiceDate: payload.date,
     body,
     request: readText(payload.request, NOTE_REQUEST_MAX),
+    teamMessage: readText(payload.teamMessage, NOTE_TEAM_MESSAGE_MAX),
   });
 
   // 「リーダーへ」が書かれたら、書いた人のまとまりのリーダーに知らせる(OP は OH のリーダー)。

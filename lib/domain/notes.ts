@@ -9,6 +9,8 @@ export type Note = {
   group: MemberGroup | null;
   body: string;
   request: string;
+  // チーム全体への振り返り(2026-10-26 から)。全員に見える。なければ空。
+  teamMessage: string;
   updatedAt: string;
   commentCount: number;
 };
@@ -49,7 +51,8 @@ export type PracticeDayOverride = {
   kind: "off" | "extra";
 };
 
-export const NOTE_FEEDS = [...MEMBER_GROUPS, "all"] as const;
+// team:「チームへ」を書いたノートだけ(全員分)。
+export const NOTE_FEEDS = [...MEMBER_GROUPS, "all", "team"] as const;
 export type NoteFeed = (typeof NOTE_FEEDS)[number];
 
 export const NOTE_FEED_LABELS: Record<NoteFeed, string> = {
@@ -58,10 +61,13 @@ export const NOTE_FEED_LABELS: Record<NoteFeed, string> = {
   S: "S",
   Li: "Li",
   all: "全員",
+  team: "チームへ",
 };
 
 export const NOTE_BODY_MAX = 5000;
 export const NOTE_REQUEST_MAX = 1000;
+export const NOTE_TEAM_MESSAGE_MAX = 2000;
+export const NOTE_TEAM_MESSAGE_LABEL = "チームへ";
 export const NOTE_COMMENT_MAX = 2000;
 
 // 練習は 日・火・木・土(0 = 日曜)。

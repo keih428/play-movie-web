@@ -104,6 +104,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
         date={date}
         initialBody={existing?.body ?? matchDraft}
         initialRequest={existing?.request ?? ""}
+        initialTeamMessage={existing?.teamMessage ?? ""}
         teamSlug={teamSlug}
       />
     </>

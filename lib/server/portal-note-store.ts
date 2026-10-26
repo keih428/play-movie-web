@@ -18,13 +18,14 @@ type NoteRow = {
   group_key: string | null;
   body: string;
   request: string;
+  team_message: string;
   updated_at: Date;
   comment_count: number;
 };
 
 const NOTE_SELECT = `
   SELECT n.id, n.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, n.practice_date, n.position, n.group_key,
-         n.body, n.request, n.updated_at,
+         n.body, n.request, n.team_message, n.updated_at,
          (SELECT count(*) FROM note_comments c WHERE c.note_id = n.id)::int AS comment_count
   FROM notes n JOIN members m ON m.id = n.member_id`;
 
@@ -38,6 +39,7 @@ function toNote(row: NoteRow): Note {
     group: row.group_key as MemberGroup | null,
     body: row.body,
     request: row.request,
+    teamMessage: row.team_message,
     updatedAt: row.updated_at.toISOString(),
     commentCount: row.comment_count,
   };
@@ -62,7 +64,15 @@ export async function getNoteByDate(memberId: string, practiceDate: string): Pro
 /** 新しい練習日から順に。まとまり・部員・月(YYYY-MM)で絞れる。 */
 export async function listNotes(
   teamSlug: string,
-  filter: { group?: MemberGroup; memberId?: string; month?: string; from?: string; limit?: number } = {},
+  filter: {
+    group?: MemberGroup;
+    memberId?: string;
+    month?: string;
+    from?: string;
+    limit?: number;
+    // 「チームへ」を書いたノートだけ
+    teamOnly?: boolean;
+  } = {},
 ): Promise<Note[]> {
   const rows = await query<NoteRow>(
     `${NOTE_SELECT}
@@ -71,6 +81,7 @@ export async function listNotes(
        AND ($3::text IS NULL OR n.member_id = $3)
        AND ($4::text IS NULL OR n.practice_date LIKE $4 || '-%')
        AND ($5::text IS NULL OR n.practice_date >= $5)
+       AND (NOT $7::boolean OR n.team_message <> '')
      ORDER BY n.practice_date DESC, n.updated_at DESC
      LIMIT $6`,
     [
@@ -80,6 +91,7 @@ export async function listNotes(
       filter.month ?? null,
       filter.from ?? null,
       filter.limit ?? 500,
+      filter.teamOnly ?? false,
     ],
   );
   return rows.map(toNote);
@@ -94,13 +106,14 @@ export async function saveNote(input: {
   practiceDate: string;
   body: string;
   request: string;
+  teamMessage: string;
 }): Promise<{ note: Note; requestChanged: boolean; created: boolean }> {
   const existing = await getNoteByDate(input.member.id, input.practiceDate);
   await query(
-    `INSERT INTO notes (id, team_slug, member_id, practice_date, position, group_key, body, request)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO notes (id, team_slug, member_id, practice_date, position, group_key, body, request, team_message)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (member_id, practice_date) DO UPDATE SET
-       body = EXCLUDED.body, request = EXCLUDED.request, updated_at = now()`,
+       body = EXCLUDED.body, request = EXCLUDED.request, team_message = EXCLUDED.team_message, updated_at = now()`,
     [
       randomUUID(),
       input.member.teamSlug,
@@ -110,6 +123,7 @@ export async function saveNote(input: {
       getMemberGroup(input.member.position),
       input.body,
       input.request,
+      input.teamMessage,
     ],
   );
   const note = await getNoteByDate(input.member.id, input.practiceDate);

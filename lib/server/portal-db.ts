@@ -378,6 +378,11 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX personal_menu_items_member ON personal_menu_items (team_slug, member_id, created_at)
     `,
   },
+  {
+    id: "019_note_team_message",
+    // ノートの「チームへ」の欄(2026-10-26 から)。チーム全体への振り返り。ノートのページの「チームへ」に全員分まとめて出す。
+    sql: `ALTER TABLE notes ADD COLUMN team_message text NOT NULL DEFAULT ''`,
+  },
 ];
 
 function getDatabaseUrl() {

@@ -4,7 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
 import { NoteComments } from "@/components/note-comments";
-import { NOTE_BODY_MAX, NOTE_REQUEST_MAX, formatNoteDate, type Note, type NoteComment } from "@/lib/domain/notes";
+import {
+  NOTE_BODY_MAX,
+  NOTE_REQUEST_MAX,
+  NOTE_TEAM_MESSAGE_LABEL,
+  NOTE_TEAM_MESSAGE_MAX,
+  formatNoteDate,
+  type Note,
+  type NoteComment,
+} from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
 type NoteCardProps = {
@@ -46,6 +54,7 @@ export function NoteCard({
   const [mode, setMode] = useState<"view" | "edit" | "delete" | "deleted">("view");
   const [body, setBody] = useState(note.body);
   const [request, setRequest] = useState(note.request);
+  const [teamMessage, setTeamMessage] = useState(note.teamMessage);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
@@ -99,13 +108,13 @@ export function NoteCard({
       const response = await fetch(buildTeamApiPath("/api/portal/notes", teamSlug), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ date: note.practiceDate, body, request }),
+        body: JSON.stringify({ date: note.practiceDate, body, request, teamMessage }),
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) {
         throw new Error(payload.error ?? "保存できませんでした。もう一度試してください。");
       }
-      setNote({ ...note, body: body.trim(), request: request.trim() });
+      setNote({ ...note, body: body.trim(), request: request.trim(), teamMessage: teamMessage.trim() });
       setMode("view");
       router.refresh();
     } catch (caught) {
@@ -165,6 +174,7 @@ export function NoteCard({
                     onClick={() => {
                       setBody(note.body);
                       setRequest(note.request);
+                      setTeamMessage(note.teamMessage);
                       setMode("edit");
                       setMenuOpen(false);
                     }}
@@ -211,6 +221,16 @@ export function NoteCard({
               onChange={(event) => setRequest(event.target.value)}
             />
           </div>
+          <div className="tp-field">
+            <label htmlFor={`note-team-${note.id}`}>チームへ(チーム全体への振り返り。なければ空のまま)</label>
+            <textarea
+              id={`note-team-${note.id}`}
+              rows={2}
+              maxLength={NOTE_TEAM_MESSAGE_MAX}
+              value={teamMessage}
+              onChange={(event) => setTeamMessage(event.target.value)}
+            />
+          </div>
           <div className="tp-actions">
             <button type="button" className="tp-button" disabled={busy || !body.trim()} onClick={save}>
               {busy ? "保存中…" : "保存"}
@@ -234,6 +254,12 @@ export function NoteCard({
             <p className="tp-request">
               <b>リーダーへ</b>
               {note.request}
+            </p>
+          ) : null}
+          {note.teamMessage ? (
+            <p className="tp-request tp-team-message">
+              <b>{NOTE_TEAM_MESSAGE_LABEL}</b>
+              {note.teamMessage}
             </p>
           ) : null}
         </>
