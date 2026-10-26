@@ -5,6 +5,7 @@ import { TrainingMeasurementForm } from "@/components/training-measurement-form"
 import { TrainingGlossary as Glossary } from "@/components/training-glossary";
 import { TrainingLog } from "@/components/training-log";
 import { TrainingMenuUpload } from "@/components/training-menu-upload";
+import { TrainingPersonalItems } from "@/components/training-personal-items";
 import { TrainingSession, type PeriodLink, type WeekLink } from "@/components/training-session";
 import {
   MEMBER_POSITIONS,
@@ -33,6 +34,9 @@ import {
   buildLogMenuOptions,
   findLogMenuKey,
 } from "@/lib/domain/training";
+import { applyPersonalItems, applyPersonalLogItems } from "@/lib/domain/personal-items";
+import { listMembers } from "@/lib/server/portal-member-store";
+import { listPersonalItems } from "@/lib/server/portal-personal-items-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { listMustItems } from "@/lib/server/portal-training-must-store";
 import {
@@ -341,7 +345,12 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   const sessions = canRecord ? await listMemberSessions(current.id) : [];
   // 記録の欄は、選んだメニュー(初めは日付から決まる週・曜日)の全部の種目に、先週(なければ前回)の重さ・回数を入れたもの。
   // メニューは、ほかの週・曜日(上半身の日・自主)にも切り替えられる(2026-10-24 から)。
-  const menuOptions = canRecord ? buildLogMenuOptions(programs, selection, estimated) : [];
+  // 個人の追加メニュー(2026-10-26 から):トレーニング担当がその人に足した種目を、メニューとトレ録の欄に入れる。
+  const personalItems = canRecord ? await listPersonalItems(teamSlug, current.id) : [];
+  const days = resolved.days.map((day) => applyPersonalItems(day, personalItems));
+  const menuOptions = canRecord
+    ? buildLogMenuOptions(programs, selection, estimated).map((option) => applyPersonalLogItems(option, personalItems))
+    : [];
   const menuKeyByDate: Record<string, string> = {};
   if (canRecord) {
     for (let offset = -DEFAULT_PAST_DAYS; offset <= 1; offset += 1) {
@@ -354,10 +363,10 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   }
 
   // 今週なら、今日の曜日を開く。
-  const recordableDays = resolved.days.filter((day) => day.items.length > 0);
+  const recordableDays = days.filter((day) => day.items.length > 0);
   const initialDay =
     (weekIndex === currentWeekIndex ? recordableDays.find((day) => day.date === today) : undefined) ??
-    resolved.days[0];
+    days[0];
 
   const weekLinks: WeekLink[] = menu.weeks.map((entry, index) => ({
     key: entry.k,
@@ -453,7 +462,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         teamSlug={teamSlug}
         mustItems={mustItems}
         canMarkMust={canManage}
-        days={resolved.days}
+        days={days}
         initialDay={initialDay.day}
         periodLinks={periodLinks}
         weekLinks={weekLinks}
@@ -539,6 +548,17 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           トレーニング担当:{menu.s["担当者"]} ・ {menu.s["フッター"]}
         </p>
         <p className="tp-tango-only">{menu.s["単語帳の断り書き"]}</p>
+        {canManage ? (
+          <details>
+            <summary>個人の追加メニュー(トレーニング担当だけ)</summary>
+            <TrainingPersonalItems
+              teamSlug={teamSlug}
+              members={(await listMembers(teamSlug))
+                .filter((member) => member.position)
+                .map(({ id, displayName }) => ({ id, displayName }))}
+            />
+          </details>
+        ) : null}
         {canManage ? (
           <details>
             <summary>メニュー・年間の方針を入れる(トレーニング担当だけ)</summary>

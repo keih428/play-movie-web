@@ -358,6 +358,26 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "018_personal_menu_items",
+    // 個人の追加メニュー(2026-10-26 から)。面談で決めた種目を、トレーニング担当がその人だけに足す。
+    // days は曜日のキー(tue・thu・sat・self)をカンマでつないだもの。
+    sql: `
+      CREATE TABLE personal_menu_items (
+        id text PRIMARY KEY,
+        team_slug text NOT NULL,
+        member_id text NOT NULL REFERENCES members (id),
+        name text NOT NULL,
+        dose text NOT NULL DEFAULT '',
+        tip text NOT NULL DEFAULT '',
+        days text NOT NULL,
+        weighted boolean NOT NULL DEFAULT false,
+        created_by text REFERENCES members (id),
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX personal_menu_items_member ON personal_menu_items (team_slug, member_id, created_at)
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
