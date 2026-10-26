@@ -431,6 +431,30 @@ body:has(.tp) {
   color: var(--tp-accent);
 }
 
+/* 「これだけは欠かさない」の星(2026-10-25 から)。メイン種目の太字とは別の印にする。 */
+.tp-must {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--tp-warn-bg);
+  color: var(--tp-warn-fg);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tp-must-toggle {
+  border: 0;
+  cursor: pointer;
+}
+
+.tp-must-off {
+  background: transparent;
+  color: var(--tp-muted);
+  font-size: 14px;
+}
+
 /* 重さの欄:− と ＋ で 2.5kg ずつ。親指で押せる大きさ。 */
 .tp-weight {
   display: flex;
