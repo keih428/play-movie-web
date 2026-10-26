@@ -83,6 +83,10 @@ function DayPanel({ day, numberOffset, mustItems, onToggleMust, busyName }: DayP
 
   // 星:部員には付いた種目だけ「★ 欠かさない」、トレーニング担当には全部の種目に押せる ☆ / ★。
   const must = (item: ResolvedItem) => {
+    // 個人の追加の種目は、その人だけのものなので星は付けない。
+    if (item.personal) {
+      return null;
+    }
     const marked = mustItems.has(item.name);
     if (onToggleMust) {
       return (
@@ -123,6 +127,7 @@ function DayPanel({ day, numberOffset, mustItems, onToggleMust, busyName }: DayP
                   <span className="tp-n tp-std-only">
                     {item.name}
                     {must(item)}
+                    {item.personal ? <span className="tp-swap">個人の追加</span> : null}
                     {item.swapped ? <span className="tp-swap">C枠の置き換え</span> : null}
                     {video(item)}
                   </span>

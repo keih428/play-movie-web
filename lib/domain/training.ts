@@ -149,6 +149,8 @@ export type ResolvedItem = {
   videoUrl: string | null;
   // 単語帳の表示の見出し([英語, 発音])。なければ日本語の名前を見出しにする。
   english: [string, string] | null;
+  // トレーニング担当がその人だけに足した種目(個人の追加メニュー、2026-10-26 から)。
+  personal?: boolean;
 };
 
 export type ResolvedDay = {
