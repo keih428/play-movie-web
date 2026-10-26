@@ -918,6 +918,46 @@ body:has(.tp) {
   vertical-align: middle;
 }
 
+/* 名簿のまとめて編集(2026-10-26 から)。表は横に動かせて、名前の列は左に残す。 */
+.tp-bulk th,
+.tp-bulk td {
+  white-space: nowrap;
+}
+
+.tp-bulk-input {
+  width: auto;
+  min-width: 0;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.tp-bulk-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--tp-surface);
+}
+
+.tp-bulk-flag {
+  text-align: center;
+}
+
+.tp-bulk-changed td {
+  background: var(--tp-warn-bg);
+}
+
+.tp-bulk-error td {
+  background: var(--tp-danger-bg);
+}
+
+.tp-bulk-reason {
+  display: block;
+  max-width: 16em;
+  color: var(--tp-danger-fg);
+  white-space: normal;
+}
+
 .tp-roster .tp-roster-number {
   width: 3.5em;
   font-weight: 700;

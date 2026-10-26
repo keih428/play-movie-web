@@ -139,6 +139,11 @@ export function buildTeamMembersPath(teamSlug: string): string {
   return `/t/${teamSlug}/members`;
 }
 
+/** 名簿のまとめて編集(システム担当だけ、2026-10-26 から)。 */
+export function buildTeamMembersBulkEditPath(teamSlug: string): string {
+  return `/t/${teamSlug}/members/edit`;
+}
+
 export function buildTeamLoginLogPath(teamSlug: string): string {
   return `/t/${teamSlug}/members/logins`;
 }

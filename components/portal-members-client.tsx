@@ -17,10 +17,12 @@ import {
   sortMembers,
   type Member,
 } from "@/lib/domain/portal";
+import { EMPTY_DRAFT, toDraft, type MemberDraft } from "@/lib/domain/member-draft";
 import {
   buildTeamAccountPath,
   buildTeamApiPath,
   buildTeamLoginLogPath,
+  buildTeamMembersBulkEditPath,
   buildTeamRootPath,
 } from "@/lib/domain/team";
 
@@ -31,59 +33,6 @@ type PortalMembersClientProps = {
   initialMembers: Member[];
   teamSlug: string;
 };
-
-type MemberDraft = {
-  name: string;
-  number: string;
-  grade: string;
-  position: string;
-  isLeader: boolean;
-  role: string;
-  isTrainingLead: boolean;
-  isSystemAdmin: boolean;
-  isExecutive: boolean;
-  title: string;
-  tier: string;
-  slot: string;
-  slackId: string;
-  active: boolean;
-};
-
-const EMPTY_DRAFT: MemberDraft = {
-  name: "",
-  number: "",
-  grade: "",
-  position: "",
-  isLeader: false,
-  role: "member",
-  isTrainingLead: false,
-  isSystemAdmin: false,
-  isExecutive: false,
-  title: "",
-  tier: "",
-  slot: "",
-  slackId: "",
-  active: true,
-};
-
-function toDraft(member: Member): MemberDraft {
-  return {
-    name: member.name,
-    number: member.number ?? "",
-    grade: member.grade === null ? "" : String(member.grade),
-    position: member.position ?? "",
-    isLeader: member.isLeader,
-    role: member.role,
-    isTrainingLead: member.isTrainingLead,
-    isSystemAdmin: member.isSystemAdmin,
-    isExecutive: member.isExecutive,
-    title: member.title ?? "",
-    tier: member.tier ?? "",
-    slot: member.slot ?? "",
-    slackId: member.slackId ?? "",
-    active: member.active,
-  };
-}
 
 async function sendJson<T>(url: string, method: string, body?: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -297,6 +246,11 @@ export function PortalMembersClient({
           {canViewLoginLog ? (
             <Link className="tp-button tp-ghost" href={buildTeamLoginLogPath(teamSlug)}>
               ログインの記録
+            </Link>
+          ) : null}
+          {canManage ? (
+            <Link className="tp-button tp-ghost" href={buildTeamMembersBulkEditPath(teamSlug)}>
+              まとめて編集
             </Link>
           ) : null}
           <Link className="tp-button tp-ghost" href={buildTeamAccountPath(teamSlug)}>
