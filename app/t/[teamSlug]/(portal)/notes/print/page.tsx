@@ -128,6 +128,12 @@ export default async function TeamNotesPrintPage({ params, searchParams }: PageP
                         {note.request}
                       </p>
                     ) : null}
+                    {note.teamMessage ? (
+                      <p className="tp-request tp-team-message">
+                        <b>チームへ</b>
+                        {note.teamMessage}
+                      </p>
+                    ) : null}
                     {(commentsByNote.get(note.id) ?? []).map((comment) => (
                       <p key={comment.id} className="tp-print-comment">
                         <b>{comment.memberName}</b>

@@ -1,19 +1,21 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { NOTE_BODY_MAX, NOTE_REQUEST_MAX } from "@/lib/domain/notes";
+import { NOTE_BODY_MAX, NOTE_REQUEST_MAX, NOTE_TEAM_MESSAGE_MAX } from "@/lib/domain/notes";
 import { buildTeamApiPath, buildTeamNotesPath } from "@/lib/domain/team";
 
 type NoteEditorProps = {
   date: string;
   initialBody: string;
   initialRequest: string;
+  initialTeamMessage: string;
   teamSlug: string;
 };
 
-export function NoteEditor({ date, initialBody, initialRequest, teamSlug }: NoteEditorProps) {
+export function NoteEditor({ date, initialBody, initialRequest, initialTeamMessage, teamSlug }: NoteEditorProps) {
   const [body, setBody] = useState(initialBody);
   const [request, setRequest] = useState(initialRequest);
+  const [teamMessage, setTeamMessage] = useState(initialTeamMessage);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +27,7 @@ export function NoteEditor({ date, initialBody, initialRequest, teamSlug }: Note
       const response = await fetch(buildTeamApiPath("/api/portal/notes", teamSlug), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ date, body, request }),
+        body: JSON.stringify({ date, body, request, teamMessage }),
       });
       const payload = (await response.json()) as { error?: string; note?: { id: string } };
       if (!response.ok || !payload.note) {
@@ -61,6 +63,17 @@ export function NoteEditor({ date, initialBody, initialRequest, teamSlug }: Note
             value={request}
             onChange={(event) => setRequest(event.target.value)}
           />
+        </div>
+        <div className="tp-field">
+          <label htmlFor="note-team">チームへ(チーム全体への振り返り。なければ空のまま)</label>
+          <textarea
+            id="note-team"
+            rows={3}
+            maxLength={NOTE_TEAM_MESSAGE_MAX}
+            value={teamMessage}
+            onChange={(event) => setTeamMessage(event.target.value)}
+          />
+          <small className="tp-small tp-muted">ノートのページの「チームへ」に、全員分まとめて出ます。</small>
         </div>
         {error ? (
           <p className="tp-error" role="alert">

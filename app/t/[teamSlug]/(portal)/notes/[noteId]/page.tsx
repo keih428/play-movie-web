@@ -81,6 +81,12 @@ export default async function TeamNotePage({ params }: PageProps) {
             {note.request}
           </p>
         ) : null}
+        {note.teamMessage ? (
+          <p className="tp-request tp-team-message">
+            <b>チームへ</b>
+            {note.teamMessage}
+          </p>
+        ) : null}
       </article>
 
       <NoteComments initialComments={comments} noteId={note.id} teamSlug={teamSlug} />

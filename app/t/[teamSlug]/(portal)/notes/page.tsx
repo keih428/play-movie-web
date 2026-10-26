@@ -55,7 +55,11 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
   const feed = NOTE_FEEDS.includes(requestedFeed as NoteFeed) ? (requestedFeed as NoteFeed) : ownFeed;
 
   const [notes, overrides, schedule, unreadCounts, recentOwnNotes] = await Promise.all([
-    listNotes(teamSlug, { group: feed === "all" ? undefined : feed, limit: FEED_LIMIT }),
+    listNotes(teamSlug, {
+      group: feed === "all" || feed === "team" ? undefined : feed,
+      teamOnly: feed === "team",
+      limit: FEED_LIMIT,
+    }),
     listPracticeDayOverrides(teamSlug),
     getPracticeSchedule(teamSlug, addDaysToDate(today, -7), today),
     getUnreadCounts(current.id),
@@ -170,8 +174,15 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
       </div>
 
       <section className="tp-section">
+        {feed === "team" ? (
+          <p className="tp-small tp-muted">
+            ノートの「チームへ」の欄に書かれた、チーム全体への振り返り(全員分、新しい順)。
+          </p>
+        ) : null}
         {notes.length === 0 ? (
-          <p className="tp-small tp-muted">まだノートがありません。</p>
+          <p className="tp-small tp-muted">
+            {feed === "team" ? "まだ「チームへ」は書かれていません。" : "まだノートがありません。"}
+          </p>
         ) : (
           notes.map((note) => (
             <NoteCard

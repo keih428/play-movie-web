@@ -3321,3 +3321,13 @@ button.tp-mystats-course {
 .tp-myplays-note {
   justify-self: start;
 }
+
+/* ノートの「チームへ」(チーム全体への振り返り、2026-10-26)。「リーダーへ」と見分けがつくよう、緑の線 */
+.tp-team-message {
+  border-left-color: var(--tp-ok);
+  background: var(--tp-surface);
+}
+
+.tp-team-message b {
+  color: var(--tp-ok);
+}
