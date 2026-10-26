@@ -74,7 +74,9 @@ export default async function TeamNotePage({ params }: PageProps) {
       </header>
 
       <article className="tp-card tp-notecard">
-        <p className="tp-note-body">{note.body}</p>
+        <p className="tp-note-body">
+          {note.body || <span className="tp-muted">(まだ書いていません。コメントだけ付いています)</span>}
+        </p>
         {note.request ? (
           <p className="tp-request">
             <b>リーダーへ</b>

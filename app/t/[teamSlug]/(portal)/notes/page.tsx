@@ -8,6 +8,7 @@ import {
   NOTE_FEED_LABELS,
   addDaysToDate,
   formatNoteDate,
+  isNoteWritten,
   type NoteFeed,
 } from "@/lib/domain/notes";
 import { canAdminister, canExportNotes, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
@@ -83,7 +84,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
 
   // まだ書いていない練習日は、今日の練習と、その前の直近1回の練習だけ(新しい順)。
   // 欠席した日がずっと残り続けないように、それより前の日は出さない(けーいちの決定、2026-10-20)。
-  const writtenDates = new Set(recentOwnNotes.map((note) => note.practiceDate));
+  const writtenDates = new Set(recentOwnNotes.filter(isNoteWritten).map((note) => note.practiceDate));
   const practiceDates = [...schedule.dates].sort();
   const latestPast = practiceDates.filter((date) => date < today).pop();
   const missingDates = canWrite
@@ -172,6 +173,31 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
           ))}
         </nav>
       </div>
+
+      {/* 部員を選んで、その人のノートを練習日ごとに見る(まだ書いていない日にもコメントできる。2026-10-26 から) */}
+      <form className="tp-inputs tp-member-pick" method="get" action={`${basePath}/member`}>
+        <div className="tp-field">
+          <label htmlFor="note-member">部員のノートを見る</label>
+          <select id="note-member" name="id" defaultValue="">
+            <option value="" disabled>
+              部員を選ぶ
+            </option>
+            {members
+              .filter((member) => member.position && member.id !== current.id)
+              .map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.displayName}({member.position})
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="tp-field">
+          <span>&nbsp;</span>
+          <button className="tp-button tp-ghost" type="submit">
+            開く
+          </button>
+        </div>
+      </form>
 
       <section className="tp-section">
         {feed === "team" ? (

@@ -7,7 +7,9 @@ import { buildTeamApiPath } from "@/lib/domain/team";
 
 type NoteCommentsProps = {
   initialComments: NoteComment[];
-  noteId: string;
+  // ノートがまだない(書いていない日)ときは null にして day を渡す。最初のコメントでノートができる(2026-10-26 から)。
+  noteId: string | null;
+  day?: { memberId: string; date: string };
   teamSlug: string;
   // 一覧の中で開くとき:見出しを出さず、詰めて出す。コメントが増えたら親に知らせる。
   compact?: boolean;
@@ -24,7 +26,15 @@ function formatDateTime(value: string) {
   });
 }
 
-export function NoteComments({ initialComments, noteId, teamSlug, compact = false, onChange }: NoteCommentsProps) {
+export function NoteComments({
+  initialComments,
+  noteId: initialNoteId,
+  day,
+  teamSlug,
+  compact = false,
+  onChange,
+}: NoteCommentsProps) {
+  const [noteId, setNoteId] = useState(initialNoteId);
   const [comments, setComments] = useState(initialComments);
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
@@ -36,16 +46,21 @@ export function NoteComments({ initialComments, noteId, teamSlug, compact = fals
     setError("");
     try {
       const response = await fetch(
-        buildTeamApiPath(`/api/portal/notes/${noteId}/comments`, teamSlug),
+        noteId
+          ? buildTeamApiPath(`/api/portal/notes/${noteId}/comments`, teamSlug)
+          : buildTeamApiPath("/api/portal/notes/day-comments", teamSlug),
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ body }),
+          body: JSON.stringify(noteId ? { body } : { body, memberId: day?.memberId, date: day?.date }),
         },
       );
-      const payload = (await response.json()) as { error?: string; comments?: NoteComment[] };
+      const payload = (await response.json()) as { error?: string; comments?: NoteComment[]; noteId?: string };
       if (!response.ok || !payload.comments) {
         throw new Error(payload.error ?? "送れませんでした。もう一度試してください。");
+      }
+      if (payload.noteId) {
+        setNoteId(payload.noteId);
       }
       setComments(payload.comments);
       onChange?.(payload.comments);
