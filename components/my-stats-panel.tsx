@@ -20,12 +20,14 @@ type Scope = "match" | "recent" | "trend";
  */
 export function MyStatsPanel({
   stats,
-  basePath,
+  linkBase,
+  isSelf,
   focusKey,
   onFocus,
 }: {
   stats: MyStats;
-  basePath: string;
+  linkBase: string;
+  isSelf: boolean;
   focusKey: string | null;
   onFocus: (filter: StatFilter, label: string, key: string) => void;
 }) {
@@ -35,7 +37,7 @@ export function MyStatsPanel({
   return (
     <section className="tp-mystats" aria-label="自分の成績">
       <div className="tp-mystats-head">
-        <h2>成績</h2>
+        <h2>{isSelf ? "成績" : "この人の成績"}</h2>
         <span className="tp-seg" role="group" aria-label="範囲">
           <button type="button" aria-pressed={scope === "match"} onClick={() => setScope("match")}>
             この試合
@@ -69,7 +71,7 @@ export function MyStatsPanel({
                 {stats.trend.rows.map((row) => (
                   <tr key={row.workspaceId}>
                     <th scope="row">
-                      <Link href={`${basePath}?match=${encodeURIComponent(row.workspaceId)}`}>{row.label}</Link>
+                      <Link href={`${linkBase}match=${encodeURIComponent(row.workspaceId)}`}>{row.label}</Link>
                     </th>
                     {row.values.map((value, index) => (
                       <td key={index}>{value}</td>

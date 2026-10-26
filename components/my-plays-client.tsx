@@ -30,6 +30,9 @@ type MyPlaysClientProps = {
   stats: MyStats;
   // この試合の振り返りのノートを書くページ(ノートを書けない人は null)。
   noteHref: string | null;
+  // 試合を選ぶリンクの頭(「/t/utvb/myplays?」か、ほかの部員を見ているときは「…?member=ID&」)。
+  linkBase: string;
+  isSelf: boolean;
 };
 
 const MODE_LABELS: Record<MyPlaysMode, string> = { skill: "スキルだけ", rally: "ラリー全体" };
@@ -51,6 +54,8 @@ export function MyPlaysClient({
   setScore,
   stats,
   noteHref,
+  linkBase,
+  isSelf,
 }: MyPlaysClientProps) {
   const router = useRouter();
   const [mode, setMode] = useState<MyPlaysMode>("skill");
@@ -186,7 +191,7 @@ export function MyPlaysClient({
           <span className="tp-label">{isLatest ? "直近の試合" : "試合"}</span>
           <select
             value={selectedId}
-            onChange={(event) => router.push(`${basePath}?match=${encodeURIComponent(event.target.value)}`)}
+            onChange={(event) => router.push(`${linkBase}match=${encodeURIComponent(event.target.value)}`)}
           >
             {options.map((option) => (
               <option key={option.workspaceId} value={option.workspaceId}>
@@ -257,7 +262,7 @@ export function MyPlaysClient({
       />
       </div>
 
-      <MyStatsPanel stats={stats} basePath={basePath} focusKey={focus?.key ?? null} onFocus={focusOn} />
+      <MyStatsPanel stats={stats} linkBase={linkBase} isSelf={isSelf} focusKey={focus?.key ?? null} onFocus={focusOn} />
 
       {noteHref ? (
         <a className="tp-button tp-myplays-note" href={noteHref}>
