@@ -47,9 +47,10 @@ async function sendJson<T>(url: string, method: string, body?: unknown): Promise
   return payload;
 }
 
-function describeMember(member: Member) {
+function describeMember(member: Member, isPlayerTable: boolean) {
   const parts = [
-    member.role === "member" ? null : MEMBER_ROLE_LABELS[member.role],
+    // スタッフの表では「スタッフ」は言うまでもないので、役職(肩書)などだけを出す(けーいちの指摘、2026-10-26)。
+    member.role === "member" || !isPlayerTable ? null : MEMBER_ROLE_LABELS[member.role],
     member.isTrainingLead ? TRAINING_LEAD_LABEL : null,
     member.isSystemAdmin ? SYSTEM_ADMIN_LABEL : null,
     // 幹部かどうかは、名簿の一覧には出さない(「直す」の中だけで見える。けーいちの決定、2026-10-20)。
@@ -205,7 +206,7 @@ export function PortalMembersClient({
                       </td>
                     ) : null}
                     <td>
-                      {describeMember(member) || (member.tier || member.slot ? "" : "—")}
+                      {describeMember(member, isPlayerTable) || (member.tier || member.slot ? "" : "—")}
                       {member.tier || member.slot ? (
                         <span className="tp-sub">
                           {member.tier ? <span className={`tp-tier ${member.tier}`}>{member.tier}</span> : null}{" "}
