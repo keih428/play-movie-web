@@ -50,7 +50,8 @@ export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRec
   const [skill, setSkill] = useState<DrillSkill>(() =>
     initialCounts.some((entry) => entry.skill === "serve") || !initialCounts.length ? "serve" : "dig",
   );
-  const [position, setPosition] = useState<MemberPosition | "all">("all");
+  // 表示するポジション(いくつでも選べる。空なら全ポジション。2026-10-31 から)。
+  const [positions, setPositions] = useState<MemberPosition[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(initialCounts.map((entry) => [keyOf(entry.memberId, entry.skill, entry.grade), entry.count])),
   );
@@ -183,13 +184,14 @@ export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRec
     savePicked(next.length === players.length ? null : next);
   }
   function chooseGroup(group: TrainingGroup | "all") {
+    // ポジションの絞り込みはそのまま残す(AB の OH・OP だけ、のように組み合わせられる)。
     savePicked(group === "all" ? null : groupIds(group));
-    setPosition("all");
   }
   const slotLabel = (player: CounterPlayer) => player.slot ?? "枠なし";
   const shown = players.filter(
     (player) =>
-      (position === "all" || player.position === position) && isIn(player.id),
+      (positions.length === 0 || (player.position !== null && positions.includes(player.position))) &&
+      isIn(player.id),
   );
   const lastTap = history[history.length - 1];
   const lastName = lastTap ? players.find((player) => player.id === lastTap.memberId)?.displayName : null;
@@ -223,9 +225,22 @@ export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRec
             ) : null}
           </div>
         </div>
-        <div className="tp-counter-positions tp-counter-positions-sub" role="group" aria-label="表示するポジション">
+        <div className="tp-counter-positions tp-counter-positions-sub" role="group" aria-label="表示するポジション(いくつでも選べる)">
           {(["all", ...MEMBER_POSITIONS] as const).map((entry) => (
-            <button key={entry} type="button" aria-pressed={entry === position} onClick={() => setPosition(entry)}>
+            <button
+              key={entry}
+              type="button"
+              aria-pressed={entry === "all" ? positions.length === 0 : positions.includes(entry)}
+              onClick={() =>
+                setPositions((previous) =>
+                  entry === "all"
+                    ? []
+                    : previous.includes(entry)
+                      ? previous.filter((value) => value !== entry)
+                      : [...previous, entry],
+                )
+              }
+            >
               {entry === "all" ? "全ポジション" : entry}
             </button>
           ))}
