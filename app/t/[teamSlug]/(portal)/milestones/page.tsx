@@ -62,12 +62,18 @@ export default async function TeamMilestonesPage({ params, searchParams }: PageP
               <li key={milestone.month}>
                 <span className="tp-when">{formatMilestoneMonth(milestone.month, thisMonth)}</span>
                 <span className="tp-milestone-body">{milestone.body}</span>
-                {milestone.month === thisMonth ? <span className="tp-duty-badge">今月</span> : null}
+                {milestone.month === thisMonth ? (
+                  <span className="tp-duty-badge">今月</span>
+                ) : milestone.month > thisMonth ? (
+                  <span className="tp-duty-badge">来月</span>
+                ) : null}
               </li>
             ))}
           </ol>
         )}
-        <p className="tp-small tp-muted">今月のものは、その月のうちは書き直せます。過去の月は、そのまま記録として残ります。</p>
+        <p className="tp-small tp-muted">
+          今月のものは、その月のうちは書き直せます(月末の最終週からは、来月のものも先に決められます)。過去の月は、そのまま記録として残ります。
+        </p>
       </section>
     </>
   );

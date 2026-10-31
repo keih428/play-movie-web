@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { MilestoneCard } from "@/components/milestone-card";
 import { NoteCard } from "@/components/note-card";
 import { getDutyWeekStart } from "@/lib/domain/comment-duty";
-import { formatMilestoneMonth, milestoneKey, monthOf } from "@/lib/domain/milestones";
+import { formatMilestoneMonth, getUpcomingMilestoneMonth, milestoneKey, monthOf } from "@/lib/domain/milestones";
 import { PracticeDayForm } from "@/components/practice-day-form";
 import {
   NOTE_FEEDS,
@@ -73,10 +73,12 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
   // 一覧の中でコメントを開けるように、並べるノートのコメントをまとめて読む。
   // 名前の横に出すマイルストーンも、ノートの月ごとにまとめて読む。
   const month = monthOf(today);
-  const [comments, milestones, myMilestone] = await Promise.all([
+  const upcomingMonth = canWrite ? getUpcomingMilestoneMonth(today) : null;
+  const [comments, milestones, myMilestone, nextMilestone] = await Promise.all([
     listComments(notes.map((note) => note.id)),
     mapTeamMilestones(teamSlug, notes.map((note) => monthOf(note.practiceDate))),
     getMilestone(current.id, month),
+    upcomingMonth ? getMilestone(current.id, upcomingMonth) : null,
   ]);
 
   // コメント当番(けーいちの決定、2026-10-21):今週、自分が受け持つ人と、その人の今週のノート。
@@ -123,15 +125,26 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
       </header>
 
       {canWrite ? (
-        <section className="tp-section">
+        <section className="tp-section tp-milestones">
           <MilestoneCard
             teamSlug={teamSlug}
             month={month}
             monthLabel={formatMilestoneMonth(month)}
+            startOpen={!upcomingMonth}
             body={myMilestone?.body ?? null}
             canEdit
             historyHref={buildTeamMilestonesPath(teamSlug)}
           />
+          {upcomingMonth ? (
+            <MilestoneCard
+              teamSlug={teamSlug}
+              upcoming
+              month={upcomingMonth}
+              monthLabel={formatMilestoneMonth(upcomingMonth, month)}
+              body={nextMilestone?.body ?? null}
+              canEdit
+            />
+          ) : null}
         </section>
       ) : null}
 

@@ -21,6 +21,10 @@ type MilestoneCardProps = {
   historyHref?: string;
   // ほかの人のものを出すときの名前(「〇〇さんの」)。
   ownerName?: string;
+  // 来月のもの(月末の最終週だけ出す。2026-10-31 から)。
+  upcoming?: boolean;
+  // まだ決めていないとき、はじめから入力欄を開くか(月末の最終週は、今月の欄は開かない)。
+  startOpen?: boolean;
 };
 
 /**
@@ -36,9 +40,12 @@ export function MilestoneCard({
   canEdit,
   historyHref,
   ownerName,
+  upcoming = false,
+  startOpen = true,
 }: MilestoneCardProps) {
   const router = useRouter();
-  const [editing, setEditing] = useState(canEdit && !body);
+  // 今月のものがまだなら、はじめから入力欄を開く。来月のものは「先に決める」を押してから。
+  const [editing, setEditing] = useState(canEdit && !body && !upcoming && startOpen);
   const [draft, setDraft] = useState(body ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -66,20 +73,26 @@ export function MilestoneCard({
   }
 
   const isTeam = scope === "team";
-  const title = isTeam
-    ? `チームの${monthLabel}のマイルストーン`
-    : `${ownerName ? `${ownerName}さんの` : "自分の"}${monthLabel}のマイルストーン`;
-  const fieldId = `milestone-body-${scope}`;
-  const prompt = isTeam
+  const title =
+    (isTeam
+      ? `チームの${monthLabel}のマイルストーン`
+      : `${ownerName ? `${ownerName}さんの` : "自分の"}${monthLabel}のマイルストーン`) + (upcoming ? "(来月)" : "");
+  const fieldId = `milestone-body-${scope}-${month}`;
+  const prompt = upcoming
+    ? "月末の1週間は、来月のマイルストーンを先に決められます。来月の1日から、ホームとノートに出ます。"
+    : isTeam
     ? "月の初めに、チームとして今月どこまで行くかを1つ決めてください(幹部だけが決められます)。全員のホームに出ます。"
     : "月の初めに、今月どこまで行きたいかを1つ決めよう。ホームとノートの上、ノートの名前の横に出ます。";
+  const cardClass = ["tp-milestone", isTeam ? "tp-milestone-team" : "", upcoming ? "tp-milestone-upcoming" : ""]
+    .filter(Boolean)
+    .join(" ");
   const placeholder = isTeam
     ? "例:サーブで崩す率を 40% に/全員がスクワット体重の1.25倍"
     : "例:サーブレシーブの返球率を 60% にする/スクワット 100kg を挙げる";
 
   if (editing) {
     return (
-      <div className={isTeam ? "tp-milestone tp-milestone-team" : "tp-milestone"}>
+      <div className={cardClass}>
         <label className="tp-eyebrow" htmlFor={fieldId}>
           {title}
         </label>
@@ -128,10 +141,12 @@ export function MilestoneCard({
   }
 
   return (
-    <div className={isTeam ? "tp-milestone tp-milestone-team" : "tp-milestone"}>
+    <div className={cardClass}>
       <span className="tp-eyebrow">{title}</span>
       {body ? (
         <p className="tp-milestone-body">{body}</p>
+      ) : upcoming ? (
+        <p className="tp-small tp-muted">{canEdit ? prompt : "まだ決まっていません(幹部が決めます)。"}</p>
       ) : (
         <p className="tp-small tp-muted">{isTeam ? "まだ決まっていません(幹部が決めます)。" : "まだ決めていません。"}</p>
       )}
@@ -139,7 +154,7 @@ export function MilestoneCard({
         <div className="tp-actions">
           {canEdit ? (
             <button type="button" className="tp-button tp-ghost" onClick={() => setEditing(true)}>
-              書き直す
+              {body ? "書き直す" : upcoming ? "先に決める" : "決める"}
             </button>
           ) : null}
           {historyHref ? (

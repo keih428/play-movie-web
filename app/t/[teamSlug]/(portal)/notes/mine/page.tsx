@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { MilestoneCard } from "@/components/milestone-card";
 import { describePracticeEvents } from "@/lib/domain/calendar";
-import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
+import { formatMilestoneMonth, getUpcomingMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { addDaysToDate, formatNoteDate, getLastNoteDate, isNoteWritten } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
@@ -48,11 +48,13 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
     : WEEKS_STEP;
   const from = addDaysToDate(today, -7 * weeks);
   const month = monthOf(today);
-  const [notes, schedule, unreadCounts, myMilestone] = await Promise.all([
+  const upcomingMonth = getUpcomingMilestoneMonth(today);
+  const [notes, schedule, unreadCounts, myMilestone, nextMilestone] = await Promise.all([
     listNotes(teamSlug, { memberId: current.id, from }),
     getPracticeSchedule(teamSlug, from, lastDate),
     getUnreadCounts(current.id),
     getMilestone(current.id, month),
+    upcomingMonth ? getMilestone(current.id, upcomingMonth) : null,
   ]);
   const noteByDate = new Map(notes.map((note) => [note.practiceDate, note]));
 
@@ -78,15 +80,26 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
         </div>
       </header>
 
-      <section className="tp-section">
+      <section className="tp-section tp-milestones">
         <MilestoneCard
           teamSlug={teamSlug}
           month={month}
           monthLabel={formatMilestoneMonth(month)}
+          startOpen={!upcomingMonth}
           body={myMilestone?.body ?? null}
           canEdit
           historyHref={buildTeamMilestonesPath(teamSlug)}
         />
+        {upcomingMonth ? (
+          <MilestoneCard
+            teamSlug={teamSlug}
+            upcoming
+            month={upcomingMonth}
+            monthLabel={formatMilestoneMonth(upcomingMonth, month)}
+            body={nextMilestone?.body ?? null}
+            canEdit
+          />
+        ) : null}
       </section>
 
       <section className="tp-section">

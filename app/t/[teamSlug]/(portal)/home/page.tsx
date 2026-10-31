@@ -4,7 +4,7 @@ import { MilestoneCard } from "@/components/milestone-card";
 import { PortalGoal } from "@/components/portal-goal";
 import { RichText } from "@/components/rich-text";
 import { DEFAULT_PRACTICE_LOCATION } from "@/lib/domain/calendar";
-import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
+import { formatMilestoneMonth, getUpcomingMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { MANUAL_SECTIONS, canEditPortalTexts, canSetTeamMilestone, isPortalTeam } from "@/lib/domain/portal";
 import {
@@ -63,8 +63,11 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
   const current = await requireMember(teamSlug, buildTeamHomePath(teamSlug));
   const today = getTodayInJapan();
   const month = monthOf(today);
+  // 月末の最終週は、来月のマイルストーンも先に決められる。
+  const upcomingMonth = getUpcomingMilestoneMonth(today);
 
-  const [texts, plan, schedule, unread, duties, members, teamMilestone, myMilestone] = await Promise.all([
+  const [texts, plan, schedule, unread, duties, members, teamMilestone, myMilestone, nextTeam, nextMine] =
+    await Promise.all([
     listPortalTexts(teamSlug),
     getTrainingPlan(teamSlug),
     getPracticeSchedule(teamSlug, today, shiftDate(today, UPCOMING_DAYS)),
@@ -73,6 +76,8 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
     listMembers(teamSlug),
     getTeamMilestone(teamSlug, month),
     getMilestone(current.id, month),
+    upcomingMonth ? getTeamMilestone(teamSlug, upcomingMonth) : null,
+    upcomingMonth ? getMilestone(current.id, upcomingMonth) : null,
   ]);
   // コメント当番:今週、自分が受け持つ人(プレイヤーだけ)。
   const dutyTarget = members.find(
@@ -132,6 +137,7 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
           scope="team"
           month={month}
           monthLabel={formatMilestoneMonth(month)}
+          startOpen={!upcomingMonth}
           body={teamMilestone?.body ?? null}
           canEdit={canSetTeamMilestone(current)}
           historyHref={buildTeamMilestonesPath(teamSlug, "team")}
@@ -140,10 +146,34 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
           teamSlug={teamSlug}
           month={month}
           monthLabel={formatMilestoneMonth(month)}
+          startOpen={!upcomingMonth}
           body={myMilestone?.body ?? null}
           canEdit
           historyHref={buildTeamMilestonesPath(teamSlug)}
         />
+        {upcomingMonth ? (
+          <>
+            {canSetTeamMilestone(current) || nextTeam ? (
+              <MilestoneCard
+                teamSlug={teamSlug}
+                scope="team"
+                upcoming
+                month={upcomingMonth}
+                monthLabel={formatMilestoneMonth(upcomingMonth, month)}
+                body={nextTeam?.body ?? null}
+                canEdit={canSetTeamMilestone(current)}
+              />
+            ) : null}
+            <MilestoneCard
+              teamSlug={teamSlug}
+              upcoming
+              month={upcomingMonth}
+              monthLabel={formatMilestoneMonth(upcomingMonth, month)}
+              body={nextMine?.body ?? null}
+              canEdit
+            />
+          </>
+        ) : null}
       </section>
 
       {dutyTarget ? (
