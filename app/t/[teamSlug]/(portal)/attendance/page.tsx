@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AttendanceForm } from "@/components/attendance-form";
 import {
   ATTENDANCE_KIND_LABELS,
+  ATTENDANCE_TALLY_START,
   EMPTY_TALLY,
   describeAttendanceTime,
   getLastAttendanceDate,
@@ -274,8 +275,10 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
           </Link>
         </nav>
         <p className="tp-small tp-muted">
-          {tallySpan === "month" ? `${Number(today.slice(5, 7))}月1日から今日まで` : "今日まで"}
-          に出された連絡を数えています。「遅刻・早退」の連絡は、遅刻と早退の両方に1回ずつ数えます。
+          {today < ATTENDANCE_TALLY_START
+            ? `集計は ${formatNoteDate(ATTENDANCE_TALLY_START)} から始めます(それより前の連絡は数えません)。`
+            : `${formatNoteDate(getTallyStart(today, tallySpan))}から今日までに出された連絡を数えています。`}
+          「遅刻・早退」の連絡は、遅刻と早退の両方に1回ずつ数えます。
         </p>
         {tallyTables.map((table) => (
           <div key={table.title} className="tp-card tp-scroll tp-tally-card">

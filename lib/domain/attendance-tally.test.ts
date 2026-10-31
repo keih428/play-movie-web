@@ -14,8 +14,9 @@ describe("遅刻・早退・欠席の集計", () => {
     expect(tallies.get("c")).toBeUndefined();
   });
 
-  it("今月は1日から、全部はずっと前から数える", () => {
-    expect(getTallyStart("2026-10-31", "month")).toBe("2026-10-01");
-    expect(getTallyStart("2026-10-31", "all")).toBe("2000-01-01");
+  it("今月は1日から、全部は集計を始めた 11/1 から数える(11/1 より前は数えない)", () => {
+    expect(getTallyStart("2026-12-15", "month")).toBe("2026-12-01");
+    expect(getTallyStart("2026-12-15", "all")).toBe("2026-11-01");
+    expect(getTallyStart("2026-10-31", "month")).toBe("2026-11-01");
   });
 });
