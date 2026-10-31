@@ -11,6 +11,8 @@ export type PracticeEvent = {
   location: string | null;
   // カレンダーの「説明」(練習試合の相手など)。HTML は外して、ただの文にしてある。書かれていなければ null。
   description: string | null;
+  // 「オフ」の予定(練習のない日の印)。予定表にだけ別の色で出し、出欠とノートの対象にはしない。
+  off?: boolean;
 };
 
 // 予定の説明は、長すぎるものを切る(画面とページの大きさを抑えるため)。
@@ -50,7 +52,7 @@ const timeFormatter = new Intl.DateTimeFormat("ja-JP", {
   hourCycle: "h23",
 });
 
-/** 「オフ」で始まる予定は、練習のない日の印なので、出欠とノートの対象にしない。 */
+/** 「オフ」で始まる予定は、練習のない日の印なので、出欠とノートの対象にしない(予定表には別の色で出す)。 */
 export function isOffEvent(title: string): boolean {
   return title.trim().startsWith("オフ");
 }
@@ -103,9 +105,14 @@ function expandOccurrence(
 
 /**
  * iCal の文から、from〜to(日本時間の日付)の予定を取り出す。くり返しの予定は1回ずつに開き、
- * 取り消された回・その回だけ変えた予定にも合わせる。「オフ」の予定は含めない。
+ * 取り消された回・その回だけ変えた予定にも合わせる。「オフ」の予定は、includeOff のときだけ off の印を付けて含める。
  */
-export function parseCalendarEvents(icsText: string, from: string, to: string): PracticeEvent[] {
+export function parseCalendarEvents(
+  icsText: string,
+  from: string,
+  to: string,
+  options: { includeOff?: boolean } = {},
+): PracticeEvent[] {
   const root = new ICAL.Component(ICAL.parse(icsText));
   for (const timezone of root.getAllSubcomponents("vtimezone")) {
     ICAL.TimezoneService.register(timezone);
@@ -128,14 +135,17 @@ export function parseCalendarEvents(icsText: string, from: string, to: string): 
   for (const component of components) {
     const event = new ICAL.Event(component);
     const title = (event.summary ?? "").trim() || "(名前のない予定)";
-    if (isOffEvent(title)) {
+    const off = isOffEvent(title);
+    if (off && !options.includeOff) {
       continue;
     }
     const location = (event.location ?? "").trim() || null;
     const description = toPlainDescription(event.description);
 
+    const mark = (occurrences: PracticeEvent[]) => (off ? occurrences.map((item) => ({ ...item, off: true })) : occurrences);
+
     if (!event.isRecurring()) {
-      events.push(...expandOccurrence(title, location, description, event.startDate, event.endDate));
+      events.push(...mark(expandOccurrence(title, location, description, event.startDate, event.endDate)));
       continue;
     }
 
@@ -154,7 +164,7 @@ export function parseCalendarEvents(icsText: string, from: string, to: string): 
       }
       const end = next.clone();
       end.addDuration(event.duration);
-      events.push(...expandOccurrence(title, location, description, next, end));
+      events.push(...mark(expandOccurrence(title, location, description, next, end)));
     }
   }
 
