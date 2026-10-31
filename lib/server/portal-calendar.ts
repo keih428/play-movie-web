@@ -8,6 +8,8 @@ export type PracticeSchedule = {
   // 練習などの予定がある日(古い順)。
   dates: string[];
   eventsByDate: Record<string, PracticeEvent[]>;
+  // 「オフ」の予定(off の印つき)。予定表にだけ別の色で出す。dates・eventsByDate には入れない(出欠とノートの対象外)。
+  offEventsByDate: Record<string, PracticeEvent[]>;
   // カレンダーを読めなかったときの理由(トレーニング担当に見せる)。
   error?: string;
 };
@@ -41,12 +43,13 @@ export async function getPracticeSchedule(
 
   if (url) {
     try {
-      const events = parseCalendarEvents(await fetchCalendarText(url), from, to);
+      const events = parseCalendarEvents(await fetchCalendarText(url), from, to, { includeOff: true });
       const eventsByDate: Record<string, PracticeEvent[]> = {};
+      const offEventsByDate: Record<string, PracticeEvent[]> = {};
       for (const event of events) {
-        (eventsByDate[event.date] ??= []).push(event);
+        ((event.off ? offEventsByDate : eventsByDate)[event.date] ??= []).push(event);
       }
-      return { source: "calendar", dates: Object.keys(eventsByDate).sort(), eventsByDate };
+      return { source: "calendar", dates: Object.keys(eventsByDate).sort(), eventsByDate, offEventsByDate };
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "カレンダーを読めませんでした。";
       console.error("[portal-calendar] failed", error);
@@ -58,6 +61,7 @@ export async function getPracticeSchedule(
     source: "weekdays",
     dates: listPracticeDates(from, to, overrides).reverse(),
     eventsByDate: {},
+    offEventsByDate: {},
     error,
   };
 }

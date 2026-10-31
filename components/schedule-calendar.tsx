@@ -27,7 +27,7 @@ export function describeEventTime(event: PracticeEvent): string {
 /** 予定1つの詳細(予定名・時間・場所・説明)。詳細のパネルと週の表示で使う。 */
 export function EventDetail({ event, defaultLocation }: { event: PracticeEvent; defaultLocation: string }) {
   return (
-    <div className="tp-event">
+    <div className={event.off ? "tp-event tp-event-off" : "tp-event"}>
       <b className="tp-event-title">{event.title}</b>
       <span className="tp-event-meta">
         <span className="tp-event-time">{describeEventTime(event)}</span>
@@ -80,7 +80,7 @@ export function ScheduleCalendar({ weeks, month, today, eventsByDate, defaultLoc
                   <>
                     <span className="tp-cal-day">{Number(date.slice(8))}</span>
                     {events.map((event, index) => (
-                      <span key={index} className="tp-cal-event">
+                      <span key={index} className={event.off ? "tp-cal-event tp-cal-event-off" : "tp-cal-event"}>
                         <b>{event.title}</b>
                         <span>{event.start ?? "終日"}</span>
                       </span>

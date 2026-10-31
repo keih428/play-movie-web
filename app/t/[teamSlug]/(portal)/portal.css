@@ -21,6 +21,9 @@ body:has(.tp) {
   --tp-warn-fg: #6a4a00;
   --tp-danger-bg: #fbe4e1;
   --tp-danger-fg: #8b2f26;
+  /* 「オフ」の予定(練習のない日)の色 */
+  --tp-off: #8a94a3;
+  --tp-off-soft: #eceef2;
   background: var(--tp-bg);
 }
 
@@ -43,6 +46,8 @@ body:has(.tp) {
     --tp-warn-fg: #f2d78a;
     --tp-danger-bg: #40201d;
     --tp-danger-fg: #f3b1aa;
+    --tp-off: #7d8896;
+    --tp-off-soft: #232b35;
     color-scheme: dark;
   }
 }
@@ -2275,6 +2280,19 @@ body:has(.tp[data-mode="tango"]) {
   border-left: 4px solid var(--tp-accent);
   border-radius: 8px;
   background: var(--tp-accent-soft);
+}
+
+.tp-event.tp-event-off,
+.tp-cal-event.tp-cal-event-off {
+  border-left-color: var(--tp-off);
+  background: var(--tp-off-soft);
+  color: var(--tp-muted);
+}
+
+.tp-cal-list li.tp-cal-off {
+  border-left: 4px solid var(--tp-off);
+  background: var(--tp-off-soft);
+  color: var(--tp-muted);
 }
 
 .tp-event-title {
