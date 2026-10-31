@@ -3620,144 +3620,292 @@ button.tp-mystats-course {
   color: var(--tp-muted);
 }
 
-/* 数える画面:上に固定するバー(スキル・ポジション・戻す) */
-.tp-counter-bar {
+/* 数える画面(スマホで片手で数える。2026-10-31 に作り直し)。1人1行で、名前の列 + 評価6つのボタン */
+.tp-hero-compact {
+  gap: 2px;
+  padding: 8px 0 4px;
+}
+
+.tp-hero-compact h1 {
+  font-size: 22px;
+}
+
+.tp-counter {
+  --counter-columns: 4.4em minmax(0, 1fr);
+}
+
+/* 下の固定した操作に、最後の行が隠れないように */
+.tp-counter-recording {
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+.tp-counter-top {
   position: sticky;
   top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
   z-index: 5;
   display: grid;
-  gap: 8px;
-  margin: 0 -16px 12px;
-  padding: 10px 16px;
+  gap: 6px;
+  margin: 0 -16px 6px;
+  padding: 8px 16px 6px;
   border-bottom: 1px solid var(--tp-line);
   background: var(--tp-bg);
 }
 
-.tp-counter-bar .tp-seg {
-  justify-self: start;
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.tp-counter-tools {
+.tp-counter-filters {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.tp-counter-tools .tp-button {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 13px;
+.tp-counter-filters .tp-seg {
+  flex: none;
 }
 
-.tp-counter-minus {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.tp-counter-filters .tp-seg > * {
+  padding: 8px 12px;
+}
+
+/* ポジションと「人を選ぶ」:横にすべらせる小さなボタン */
+.tp-counter-positions {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tp-counter-positions::-webkit-scrollbar {
+  display: none;
+}
+
+.tp-counter-positions button {
+  flex: none;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
   font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
 }
 
-.tp-counter-last {
-  flex-basis: 100%;
+.tp-counter-positions [aria-pressed="true"] {
+  border-color: var(--tp-fg);
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+}
+
+.tp-counter-row {
+  display: grid;
+  grid-template-columns: var(--counter-columns);
+  align-items: center;
+  gap: 6px;
+}
+
+.tp-counter-cells {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.tp-counter-legend-cell {
+  display: grid;
+  justify-items: center;
+  border-top: 3px solid var(--grade);
+  padding-top: 2px;
+  line-height: 1.15;
+}
+
+.tp-counter-legend-cell b {
+  color: var(--grade);
+  font-family: var(--tp-num);
+  font-size: 15px;
+}
+
+.tp-counter-legend-cell small {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 2.3em;
+  color: var(--tp-muted);
+  font-size: 9.5px;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .tp-counter-list {
   display: grid;
-  gap: 10px;
 }
 
-.tp-counter-player {
+.tp-counter-list .tp-counter-row {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--tp-line);
+}
+
+.tp-counter-name {
   display: grid;
-  gap: 8px;
+  min-width: 0;
+  line-height: 1.2;
 }
 
-.tp-counter-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+.tp-counter-name b {
+  overflow: hidden;
+  font-size: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.tp-counter-total {
-  margin-left: auto;
+.tp-counter-name small {
   color: var(--tp-muted);
   font-family: var(--tp-num);
-  font-size: 13px;
-}
-
-.tp-counter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-@media (min-width: 720px) {
-  .tp-counter-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .tp-counter-cell {
   --grade: var(--tp-muted);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "symbol count"
-    "label label";
-  align-items: center;
-  gap: 0 6px;
-  min-height: 64px;
-  padding: 6px 10px;
+  height: 50px;
+  padding: 0;
   border: 1px solid var(--tp-line);
-  border-left: 4px solid var(--grade);
-  border-radius: 10px;
+  border-top: 3px solid var(--grade);
+  border-radius: 8px;
   background: var(--tp-surface);
   color: var(--tp-fg);
-  font: inherit;
-  text-align: left;
+  font-family: var(--tp-num);
+  font-size: 20px;
+  font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s, transform 0.08s;
 }
 
 .tp-counter-cell:active:not(:disabled) {
-  background: var(--tp-off-soft);
+  transform: scale(0.94);
 }
 
 .tp-counter-cell:disabled {
   cursor: default;
 }
 
-.tp-counter-grid-minus .tp-counter-cell {
-  border-style: dashed;
-  border-left-style: solid;
+.tp-counter-zero {
+  color: var(--tp-line);
+  font-weight: 500;
 }
 
-.tp-counter-symbol {
-  grid-area: symbol;
-  color: var(--grade);
-  font-family: var(--tp-num);
-  font-size: 20px;
+.tp-counter-flash {
+  background: var(--tp-accent-soft);
+  color: var(--tp-fg);
+}
+
+/* 「人を選ぶ」:どこまでスクロールしていても見えるよう、画面の下から出すシートにする */
+.tp-counter-picker {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  max-height: 78vh;
+  overflow-y: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.tp-counter-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.tp-counter-picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5em, 1fr));
+  gap: 4px 10px;
+}
+
+.tp-counter-picker-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
   font-weight: 700;
 }
 
-.tp-counter-count {
-  grid-area: count;
-  justify-self: end;
-  font-family: var(--tp-num);
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.tp-counter-label {
-  grid-area: label;
-  overflow: hidden;
+.tp-counter-picker-list small {
   color: var(--tp-muted);
   font-size: 11px;
+}
+
+/* 親指の届く下に固定する操作(戻す・最後に押したもの・−1) */
+.tp-counter-dock {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+  border-top: 1px solid var(--tp-line);
+  background: var(--tp-surface);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.tp-counter-undo,
+.tp-counter-minus {
+  min-width: 56px;
+  height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tp-counter-undo:disabled {
+  color: var(--tp-line);
+  cursor: default;
+}
+
+.tp-counter-minus[aria-pressed="true"] {
+  border-color: var(--tp-danger-fg);
+  background: var(--tp-danger-bg);
+  color: var(--tp-danger-fg);
+}
+
+.tp-counter-last {
+  overflow: hidden;
+  color: var(--tp-muted);
+  font-size: 13px;
+  text-align: center;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* −1 が入っている間は、ボタンの枠を点線にして気づけるようにする */
+.tp-counter:has(.tp-counter-minus[aria-pressed="true"]) .tp-counter-cell:not(:disabled) {
+  border-style: dashed;
+  border-top-style: solid;
 }
 
 .tp-grade-best {
