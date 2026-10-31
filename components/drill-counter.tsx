@@ -245,18 +245,23 @@ export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRec
             </button>
           ))}
         </div>
-        {/* 評価の見出し。下の行のボタンと同じ並び・幅にする。 */}
-        <div className="tp-counter-row tp-counter-legend" aria-hidden="true">
-          <span className="tp-counter-name" />
-          <span className="tp-counter-cells">
-            {DRILL_GRADES.map((grade) => (
-              <span key={grade} className={`tp-counter-legend-cell tp-grade-${GRADE_CLASS[grade]}`}>
-                <b>{grade}</b>
-                <small>{DRILL_GRADE_LABELS[skill][grade]}</small>
-              </span>
-            ))}
-          </span>
-        </div>
+      </div>
+
+      {/*
+        評価の見出し。下の行のボタンと同じ並び・幅にする。スクロールすると、これだけが画面のいちばん上に残る
+        (上のバーとスキル・人の切り替えは流れて消える。画面をいっぱいに使うため。2026-10-31 から)。
+        左には、いま数えているスキルを出す。
+      */}
+      <div className="tp-counter-row tp-counter-legend" aria-hidden="true">
+        <span className="tp-counter-name tp-counter-legend-skill">{DRILL_SKILL_LABELS[skill]}</span>
+        <span className="tp-counter-cells">
+          {DRILL_GRADES.map((grade) => (
+            <span key={grade} className={`tp-counter-legend-cell tp-grade-${GRADE_CLASS[grade]}`}>
+              <b>{grade}</b>
+              <small>{DRILL_GRADE_LABELS[skill][grade]}</small>
+            </span>
+          ))}
+        </span>
       </div>
 
       {picking ? (
