@@ -3575,3 +3575,211 @@ button.tp-mystats-course {
 .tp-tally-card + .tp-tally-card {
   margin-top: 10px;
 }
+
+/* ---------- マネージャーの集計(サーブ・ディグ、2026-10-31 から) ---------- */
+.tp-chip-button {
+  padding: 4px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tp-drill-list {
+  display: grid;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-drill-list a {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 2px;
+  border-top: 1px solid var(--tp-line);
+  color: var(--tp-fg);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tp-drill-list a:hover {
+  color: var(--tp-accent);
+}
+
+.tp-stat-table th:not(:first-child),
+.tp-stat-table td.tp-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tp-stat-empty td {
+  color: var(--tp-muted);
+}
+
+/* 数える画面:上に固定するバー(スキル・ポジション・戻す) */
+.tp-counter-bar {
+  position: sticky;
+  top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  margin: 0 -16px 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--tp-line);
+  background: var(--tp-bg);
+}
+
+.tp-counter-bar .tp-seg {
+  justify-self: start;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tp-counter-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.tp-counter-tools .tp-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.tp-counter-minus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tp-counter-last {
+  flex-basis: 100%;
+}
+
+.tp-counter-list {
+  display: grid;
+  gap: 10px;
+}
+
+.tp-counter-player {
+  display: grid;
+  gap: 8px;
+}
+
+.tp-counter-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tp-counter-total {
+  margin-left: auto;
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 13px;
+}
+
+.tp-counter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (min-width: 720px) {
+  .tp-counter-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.tp-counter-cell {
+  --grade: var(--tp-muted);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "symbol count"
+    "label label";
+  align-items: center;
+  gap: 0 6px;
+  min-height: 64px;
+  padding: 6px 10px;
+  border: 1px solid var(--tp-line);
+  border-left: 4px solid var(--grade);
+  border-radius: 10px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.tp-counter-cell:active:not(:disabled) {
+  background: var(--tp-off-soft);
+}
+
+.tp-counter-cell:disabled {
+  cursor: default;
+}
+
+.tp-counter-grid-minus .tp-counter-cell {
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+.tp-counter-symbol {
+  grid-area: symbol;
+  color: var(--grade);
+  font-family: var(--tp-num);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.tp-counter-count {
+  grid-area: count;
+  justify-self: end;
+  font-family: var(--tp-num);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.tp-counter-label {
+  grid-area: label;
+  overflow: hidden;
+  color: var(--tp-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tp-grade-best {
+  --grade: var(--tp-ok);
+}
+
+.tp-grade-good {
+  --grade: var(--tp-t1);
+}
+
+.tp-grade-ok {
+  --grade: var(--tp-t0);
+}
+
+.tp-grade-poor {
+  --grade: var(--tp-t2);
+}
+
+.tp-grade-over {
+  --grade: var(--tp-warn-fg);
+}
+
+.tp-grade-error {
+  --grade: var(--tp-danger-fg);
+}

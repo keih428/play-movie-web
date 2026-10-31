@@ -101,6 +101,11 @@ export function buildTeamHomePath(teamSlug: string): string {
   return `/t/${teamSlug}/home`;
 }
 
+/** マネージャーの集計(メニューごとのサーブ・ディグ、2026-10-31 から)。drillId があればそのメニュー。 */
+export function buildTeamStatsPath(teamSlug: string, drillId?: string): string {
+  return `/t/${teamSlug}/stats${drillId ? `/${drillId}` : ""}`;
+}
+
 export function buildTeamAttendancePath(teamSlug: string): string {
   return `/t/${teamSlug}/attendance`;
 }
