@@ -3829,22 +3829,64 @@ button.tp-mystats-course {
   background: rgba(0, 0, 0, 0.35);
 }
 
+.tp-counter-positions-sub button {
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tp-counter-edit {
+  border-style: dashed !important;
+}
+
+.tp-counter-edit[aria-pressed="true"] {
+  border-style: solid !important;
+}
+
+.tp-counter-picker-head {
+  display: grid;
+  gap: 8px;
+}
+
+.tp-counter-picker-section {
+  display: grid;
+  gap: 6px;
+}
+
 .tp-counter-picker-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(7.5em, 1fr));
-  gap: 4px 10px;
-}
-
-.tp-counter-picker-list label {
-  display: flex;
-  align-items: center;
+  grid-template-columns: repeat(auto-fill, minmax(6.6em, 1fr));
   gap: 6px;
-  min-height: 36px;
-  font-weight: 700;
 }
 
-.tp-counter-picker-list small {
+/* 1人ずつのボタン。出ている人は塗り、ほかの人は点線の枠 */
+.tp-counter-pick {
+  display: grid;
+  justify-items: start;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 1px dashed var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tp-counter-pick[aria-pressed="true"] {
+  border: 1px solid var(--tp-accent);
+  background: var(--tp-accent-soft);
+}
+
+.tp-counter-pick b {
+  font-size: 15px;
+}
+
+.tp-counter-pick small {
   color: var(--tp-muted);
+  font-family: var(--tp-num);
   font-size: 11px;
 }
 

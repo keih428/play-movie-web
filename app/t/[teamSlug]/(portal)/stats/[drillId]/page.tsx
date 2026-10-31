@@ -33,7 +33,7 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
   const [members, counts] = await Promise.all([listMembers(teamSlug), listDrillCounts(drill.id)]);
   const players = members
     .filter((member) => member.position)
-    .map(({ id, displayName, position }) => ({ id, displayName, position }));
+    .map(({ id, displayName, position, slot }) => ({ id, displayName, position, slot }));
 
   return (
     <>
