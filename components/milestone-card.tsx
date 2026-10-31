@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { MoreMenu } from "@/components/more-menu";
 import { MILESTONE_MAX, type MilestoneScope } from "@/lib/domain/milestones";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
@@ -140,8 +141,17 @@ export function MilestoneCard({
     );
   }
 
+  // 「決める」「書き直す」は、右上の「⋯」の中に入れる(大きなボタンで見栄えが悪いため。けーいちの指摘、2026-10-31)。
   return (
     <div className={cardClass}>
+      {canEdit ? (
+        <MoreMenu
+          label={`${title}の操作`}
+          items={[
+            { label: body ? "書き直す" : upcoming ? "先に決める" : "決める", onSelect: () => setEditing(true) },
+          ]}
+        />
+      ) : null}
       <span className="tp-eyebrow">{title}</span>
       {body ? (
         <p className="tp-milestone-body">{body}</p>
@@ -150,18 +160,11 @@ export function MilestoneCard({
       ) : (
         <p className="tp-small tp-muted">{isTeam ? "まだ決まっていません(主将が設定します)。" : "まだ決めていません。"}</p>
       )}
-      {canEdit || historyHref ? (
+      {historyHref ? (
         <div className="tp-actions">
-          {canEdit ? (
-            <button type="button" className="tp-button tp-ghost" onClick={() => setEditing(true)}>
-              {body ? "書き直す" : upcoming ? "先に決める" : "決める"}
-            </button>
-          ) : null}
-          {historyHref ? (
-            <Link className="tp-link tp-small" href={historyHref}>
-              これまでのマイルストーン
-            </Link>
-          ) : null}
+          <Link className="tp-link tp-small" href={historyHref}>
+            これまでのマイルストーン
+          </Link>
         </div>
       ) : null}
     </div>

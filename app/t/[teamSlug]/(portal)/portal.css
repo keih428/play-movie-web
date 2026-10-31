@@ -3411,6 +3411,7 @@ button.tp-mystats-course {
 }
 
 .tp-milestone {
+  position: relative;
   display: grid;
   gap: 8px;
   padding: 14px 16px;
@@ -3442,6 +3443,67 @@ button.tp-mystats-course {
 
 .tp-milestone .tp-actions {
   align-items: center;
+}
+
+/* 右上の「⋯」と、押すと開くメニュー(2026-10-31 から)。見出しが「⋯」に重ならないよう、見出しの右を空ける */
+.tp-milestone:has(> .tp-more) > .tp-eyebrow {
+  padding-right: 40px;
+}
+
+.tp-more {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+}
+
+.tp-more-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tp-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tp-more-button:hover,
+.tp-more-button[aria-expanded="true"] {
+  background: var(--tp-off-soft);
+  color: var(--tp-fg);
+}
+
+.tp-more-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.tp-more-menu button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-more-menu button:hover {
+  background: var(--tp-off-soft);
 }
 
 /* ノートの名前の横:そのノートの月のマイルストーン。長いものは2行まで */
