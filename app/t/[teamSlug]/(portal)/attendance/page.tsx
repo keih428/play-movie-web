@@ -3,9 +3,13 @@ import { notFound } from "next/navigation";
 import { AttendanceForm } from "@/components/attendance-form";
 import {
   ATTENDANCE_KIND_LABELS,
+  EMPTY_TALLY,
   describeAttendanceTime,
   getLastAttendanceDate,
+  getTallyStart,
+  tallyAttendance,
   type AttendanceReport,
+  type AttendanceTallySpan,
 } from "@/lib/domain/attendance";
 import { describePracticeEvents } from "@/lib/domain/calendar";
 import { formatNoteDate, isIsoDate } from "@/lib/domain/notes";
@@ -31,6 +35,7 @@ type PageProps = {
   searchParams: Promise<{
     date?: string;
     by?: string;
+    span?: string;
   }>;
 };
 
@@ -48,10 +53,15 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
   const today = getTodayInJapan();
   const until = getLastAttendanceDate(today);
 
-  const [schedule, members, reports] = await Promise.all([
+  const { date: requestedDate, by, span } = await searchParams;
+  // 下の「遅刻・欠席の回数」の期間。今月(1日から今日まで)か、これまで全部。
+  const tallySpan: AttendanceTallySpan = span === "all" ? "all" : "month";
+
+  const [schedule, members, reports, pastReports] = await Promise.all([
     getPracticeSchedule(teamSlug, today, until),
     listMembers(teamSlug),
     listReports(teamSlug, { from: today, to: until }),
+    listReports(teamSlug, { from: getTallyStart(today, tallySpan), to: today }),
   ]);
   // これからの予定がある日(古い順)。予定のない日に出された連絡があれば、その日も並べる。
   const practiceDates = [
@@ -70,11 +80,10 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
     }
   }
 
-  const { date: requestedDate, by } = await searchParams;
   // 練習ごとの出欠を、ポジション別に並べるか、枠(A・B・C)別に並べるか。
   const groupBy: "position" | "slot" = by === "slot" ? "slot" : "position";
-  const hrefFor = (date: string, view: "position" | "slot" = groupBy) =>
-    `${basePath}?date=${date}${view === "slot" ? "&by=slot" : ""}`;
+  const hrefFor = (date: string, view: "position" | "slot" = groupBy, nextSpan: AttendanceTallySpan = tallySpan) =>
+    `${basePath}?date=${date}${view === "slot" ? "&by=slot" : ""}${nextSpan === "all" ? "&span=all" : ""}`;
   const selectedDate =
     isIsoDate(requestedDate) && requestedDate >= today && requestedDate <= until
       ? requestedDate
@@ -103,6 +112,14 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
         }))),
     { label: "スタッフ", members: members.filter((member) => !member.position) },
   ].filter((group) => group.members.length > 0);
+
+  // 遅刻・欠席の回数(プレイヤーとスタッフの両方。2026-10-31 から)。今日までに出された連絡を数える。
+  const tallies = tallyAttendance(pastReports);
+  const tallyTables = [
+    { title: "プレイヤー", members: players },
+    { title: "スタッフ", members: members.filter((member) => !member.position) },
+  ].filter((table) => table.members.length > 0);
+  const count = (value: number) => (value > 0 ? value : "—");
 
   const describe = (report: AttendanceReport | undefined) =>
     report
@@ -236,6 +253,64 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
             </article>
           );
         })}
+      </section>
+
+      <section className="tp-section" id="tally">
+        <h2>遅刻・欠席の回数</h2>
+        <nav className="tp-seg tp-days" aria-label="集計の期間">
+          <Link
+            href={`${hrefFor(selectedDate, groupBy, "month")}#tally`}
+            aria-current={tallySpan === "month" ? "true" : undefined}
+            scroll={false}
+          >
+            今月
+          </Link>
+          <Link
+            href={`${hrefFor(selectedDate, groupBy, "all")}#tally`}
+            aria-current={tallySpan === "all" ? "true" : undefined}
+            scroll={false}
+          >
+            これまで全部
+          </Link>
+        </nav>
+        <p className="tp-small tp-muted">
+          {tallySpan === "month" ? `${Number(today.slice(5, 7))}月1日から今日まで` : "今日まで"}
+          に出された連絡を数えています。「遅刻・早退」の連絡は、遅刻と早退の両方に1回ずつ数えます。
+        </p>
+        {tallyTables.map((table) => (
+          <div key={table.title} className="tp-card tp-scroll tp-tally-card">
+            <table className="tp-roster tp-tally">
+              <thead>
+                <tr>
+                  <th>{table.title}</th>
+                  <th>欠席</th>
+                  <th>遅刻</th>
+                  <th>早退</th>
+                </tr>
+              </thead>
+              <tbody>
+                {table.members.map((member) => {
+                  const tally = tallies.get(member.id) ?? EMPTY_TALLY;
+                  return (
+                    <tr key={member.id}>
+                      <td>
+                        {member.displayName}
+                        {member.position ? (
+                          <span className="tp-sub">{member.position}</span>
+                        ) : member.title ? (
+                          <span className="tp-sub">{member.title}</span>
+                        ) : null}
+                      </td>
+                      <td className="tp-num">{count(tally.absent)}</td>
+                      <td className="tp-num">{count(tally.late)}</td>
+                      <td className="tp-num">{count(tally.early)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
       </section>
     </>
   );
