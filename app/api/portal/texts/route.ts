@@ -3,6 +3,7 @@ import {
   PORTAL_TEXT_KEYS,
   PORTAL_TEXT_MAX_LENGTH,
   canEditPortalTexts,
+  canEditTeamGoal,
   isPortalTeam,
   type PortalTextKey,
 } from "@/lib/domain/portal";
@@ -16,18 +17,23 @@ export async function PUT(request: NextRequest) {
   if (!current) {
     return NextResponse.json({ error: "ログインしてください。" }, { status: 401 });
   }
-  if (!canEditPortalTexts(current)) {
-    return NextResponse.json(
-      { error: "編集できるのは、幹部・トレーニング担当・システム担当だけです。" },
-      { status: 403 },
-    );
-  }
-
   const payload = (await request.json().catch(() => null)) as { key?: unknown; body?: unknown } | null;
   const key = payload?.key;
   const body = typeof payload?.body === "string" ? payload.body.trim() : null;
   if (typeof key !== "string" || !PORTAL_TEXT_KEYS.includes(key as PortalTextKey) || body === null) {
     return NextResponse.json({ error: "内容が読み取れませんでした。" }, { status: 400 });
+  }
+  // チームの目標は幹部だけ。データベース/マニュアルは、幹部・トレーニング担当・システム担当。
+  if (key === "goal" ? !canEditTeamGoal(current) : !canEditPortalTexts(current)) {
+    return NextResponse.json(
+      {
+        error:
+          key === "goal"
+            ? "チームの目標を書けるのは、幹部だけです。"
+            : "編集できるのは、幹部・トレーニング担当・システム担当だけです。",
+      },
+      { status: 403 },
+    );
   }
   if (body.length > PORTAL_TEXT_MAX_LENGTH) {
     return NextResponse.json({ error: `${PORTAL_TEXT_MAX_LENGTH}文字までにしてください。` }, { status: 400 });

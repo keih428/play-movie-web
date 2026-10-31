@@ -212,13 +212,19 @@ export const MANUAL_SECTIONS: { key: Exclude<PortalTextKey, "goal">; title: stri
 ];
 
 /**
- * ホームの目標と、データベース/マニュアルを書き直せる人:幹部と、トレーニング担当・システム担当
+ * データベース/マニュアルを書き直せる人:幹部と、トレーニング担当・システム担当
  * (けーいちの決定、2026-10-20:「幹部が書いて、サイトで直せる」)。幹部の印は名簿で付ける。
+ * ホームのチームの目標は、幹部だけ(canEditTeamGoal)。
  */
 export function canEditPortalTexts(
   member: Pick<Member, "isTrainingLead" | "isSystemAdmin" | "isExecutive">,
 ): boolean {
   return member.isExecutive || member.isTrainingLead || member.isSystemAdmin;
+}
+
+/** ホームのチームの目標を書けるのは、幹部だけ(けーいちの決定、2026-10-31:「トレーニング担当とシステム担当は目標を書き込める必要ない」)。 */
+export function canEditTeamGoal(member: Pick<Member, "isExecutive">): boolean {
+  return member.isExecutive;
 }
 
 /** チームの月間マイルストーンを決めるのは、幹部だけ(けーいちの決定、2026-10-31)。 */
