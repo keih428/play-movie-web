@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { RichText } from "@/components/rich-text";
-import { PORTAL_TEXT_MAX_LENGTH, type PortalTextKey } from "@/lib/domain/portal";
+import { MarkdownEditor } from "@/components/markdown-editor";
+import { MarkdownText } from "@/components/markdown-text";
+import type { PortalTextKey } from "@/lib/domain/portal";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
 type PortalTextSectionProps = {
@@ -23,7 +24,7 @@ function formatDate(value: string) {
 
 /**
  * データベース/マニュアルの見出し1つ。書き直せる人(幹部・トレーニング担当・システム担当)には「書き直す」を出す。
- * 文は改行をそのまま出し、**太字** だけを太字にする。
+ * 文は Markdown で書く(2026-11-01 から。改行はそのまま出る)。
  */
 export function PortalTextSection({
   teamSlug,
@@ -76,17 +77,8 @@ export function PortalTextSection({
 
       {editing ? (
         <div className="tp-card">
-          <div className="tp-field">
-            <label htmlFor={`text-${textKey}`}>{hint}</label>
-            <textarea
-              id={`text-${textKey}`}
-              rows={12}
-              maxLength={PORTAL_TEXT_MAX_LENGTH}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <p className="tp-small tp-muted">改行はそのまま出ます。**ここ** のように囲むと太字。部の全員が読めます。</p>
-          </div>
+          <MarkdownEditor id={`text-${textKey}`} label={hint} value={draft} onChange={setDraft} rows={12} />
+          <p className="tp-small tp-muted">部の全員が読めます。</p>
           <div className="tp-actions">
             <button type="button" className="tp-button" disabled={saving} onClick={save}>
               {saving ? "保存しています…" : "保存する"}
@@ -112,9 +104,7 @@ export function PortalTextSection({
         </div>
       ) : body ? (
         <div className="tp-card">
-          <p className="tp-manual-body">
-            <RichText text={body} />
-          </p>
+          <MarkdownText text={body} />
           {updatedAt ? <p className="tp-small tp-muted">{formatDate(updatedAt)} 更新</p> : null}
         </div>
       ) : (

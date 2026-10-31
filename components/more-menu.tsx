@@ -43,10 +43,10 @@ export function MoreMenu({ label, items }: MoreMenuProps) {
   }, [open]);
 
   return (
-    <div className="tp-more" ref={rootRef}>
+    <div className="tp-cardmenu" ref={rootRef}>
       <button
         type="button"
-        className="tp-more-button"
+        className="tp-cardmenu-button"
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -55,7 +55,7 @@ export function MoreMenu({ label, items }: MoreMenuProps) {
         ⋯
       </button>
       {open ? (
-        <div className="tp-more-menu" role="menu">
+        <div className="tp-cardmenu-menu" role="menu">
           {items.map((item) =>
             "href" in item ? (
               <Link key={item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)}>
