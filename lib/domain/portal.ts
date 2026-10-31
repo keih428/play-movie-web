@@ -221,6 +221,11 @@ export function canEditPortalTexts(
   return member.isExecutive || member.isTrainingLead || member.isSystemAdmin;
 }
 
+/** チームの月間マイルストーンを決めるのは、幹部だけ(けーいちの決定、2026-10-31)。 */
+export function canSetTeamMilestone(member: Pick<Member, "isExecutive">): boolean {
+  return member.isExecutive;
+}
+
 /** 名簿を変える・Slack の知らせを試すのは、システム担当だけ。 */
 export function canManageSite(member: Pick<Member, "isSystemAdmin">): boolean {
   return member.isSystemAdmin;

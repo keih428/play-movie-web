@@ -125,6 +125,11 @@ export function buildTeamMyPlaysPath(teamSlug: string): string {
   return `/t/${teamSlug}/myplays`;
 }
 
+/** 月間マイルストーンの記録(月ごと)。who は部員の id か "team"。なければ自分。 */
+export function buildTeamMilestonesPath(teamSlug: string, who?: string): string {
+  return `/t/${teamSlug}/milestones${who ? `?who=${encodeURIComponent(who)}` : ""}`;
+}
+
 export function buildTeamTrainingPath(teamSlug: string): string {
   return `/t/${teamSlug}/training`;
 }

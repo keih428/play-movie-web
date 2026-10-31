@@ -3,11 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import { NoteCard } from "@/components/note-card";
 import { NoteComments } from "@/components/note-comments";
 import { describePracticeEvents } from "@/lib/domain/calendar";
+import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { addDaysToDate, formatNoteDate, getLastNoteDate, isNoteWritten } from "@/lib/domain/notes";
 import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamNotesPath } from "@/lib/domain/team";
+import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { getMember } from "@/lib/server/portal-member-store";
+import { listMemberMilestones } from "@/lib/server/portal-milestone-store";
 import { listComments, listNotes } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
@@ -48,10 +50,15 @@ export default async function TeamMemberNotesPage({ params, searchParams }: Page
   const parsedWeeks = Number.parseInt(requestedWeeks ?? "", 10);
   const weeks = Number.isFinite(parsedWeeks) ? Math.min(WEEKS_MAX, Math.max(WEEKS_STEP, parsedWeeks)) : WEEKS_STEP;
   const from = addDaysToDate(today, -7 * weeks);
-  const [notes, schedule] = await Promise.all([
+  const month = monthOf(today);
+  const [notes, schedule, targetMilestones] = await Promise.all([
     listNotes(teamSlug, { memberId: target.id, from }),
     getPracticeSchedule(teamSlug, from, today),
+    listMemberMilestones(target.id),
   ]);
+  // ノートの月ごとのマイルストーン(名前の横に出す)。
+  const milestoneByMonth = new Map(targetMilestones.map((milestone) => [milestone.month, milestone.body]));
+  const currentMilestone = milestoneByMonth.get(month) ?? null;
   const comments = await listComments(notes.map((note) => note.id));
   const noteByDate = new Map(notes.map((note) => [note.practiceDate, note]));
   // 練習日の枠に、練習日ではない日に書いたノートも混ぜて、新しい順に並べる(明日の分は、書いてあるときだけ)。
@@ -66,6 +73,13 @@ export default async function TeamMemberNotesPage({ params, searchParams }: Page
           {target.displayName} ・ {target.position}
         </span>
         <h1>{target.displayName}のノート</h1>
+        <p className="tp-milestone-inline">
+          <b>{formatMilestoneMonth(month)}のマイルストーン</b>
+          {currentMilestone ?? <span className="tp-muted">まだ決めていません</span>}{" "}
+          <Link className="tp-link tp-small" href={buildTeamMilestonesPath(teamSlug, target.id)}>
+            これまで
+          </Link>
+        </p>
         <p className="tp-small tp-muted">まだ書いていない日にも、コメントを付けられます(本人に知らせます)。</p>
         <div className="tp-actions">
           <Link className="tp-button tp-ghost" href={basePath}>
@@ -88,6 +102,7 @@ export default async function TeamMemberNotesPage({ params, searchParams }: Page
                 isMine={false}
                 canDelete={canAdminister(current)}
                 teamSlug={teamSlug}
+                milestone={milestoneByMonth.get(monthOf(date)) ?? null}
               />
             );
           }
@@ -96,6 +111,12 @@ export default async function TeamMemberNotesPage({ params, searchParams }: Page
               <div className="tp-dayhead">
                 <span className="tp-when">{formatNoteDate(date)}</span>
                 <span className="tp-what">{target.displayName}</span>
+                {milestoneByMonth.get(monthOf(date)) ? (
+                  <span className="tp-milestone-chip">
+                    <b>目標</b>
+                    {milestoneByMonth.get(monthOf(date))}
+                  </span>
+                ) : null}
               </div>
               <p className="tp-small tp-muted">
                 {schedule.eventsByDate[date] ? `${describePracticeEvents(schedule.eventsByDate[date])}:` : ""}

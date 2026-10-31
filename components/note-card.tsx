@@ -27,6 +27,8 @@ type NoteCardProps = {
   isDutyTarget?: boolean;
   teamSlug: string;
   unread?: number;
+  // 書いた人の、そのノートの月のマイルストーン(名前の横に出す。2026-10-31 から)。
+  milestone?: string | null;
 };
 
 // 一覧で並べるアイコンの数(それより多い人は「+2」のようにまとめる)。
@@ -44,6 +46,7 @@ export function NoteCard({
   isDutyTarget = false,
   teamSlug,
   unread = 0,
+  milestone = null,
 }: NoteCardProps) {
   const router = useRouter();
   const [note, setNote] = useState(initialNote);
@@ -156,6 +159,12 @@ export function NoteCard({
           {note.memberName}
         </Link>
         <span className="tp-time">{note.position ?? ""}</span>
+        {milestone ? (
+          <span className="tp-milestone-chip" title={`${note.memberName}さんの今月のマイルストーン:${milestone}`}>
+            <b>目標</b>
+            {milestone}
+          </span>
+        ) : null}
         {isDutyTarget ? <span className="tp-duty-badge">当番</span> : null}
         {hasMenu && mode === "view" ? (
           <div className="tp-kebab" ref={menuRef}>
