@@ -3640,15 +3640,30 @@ button.tp-mystats-course {
 }
 
 .tp-counter-top {
-  position: sticky;
-  top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px));
-  z-index: 5;
   display: grid;
   gap: 6px;
-  margin: 0 -16px 6px;
-  padding: 8px 16px 6px;
+  padding: 4px 0 6px;
+}
+
+/* 数える画面では、上のバー(UTVB・ホーム…)も固定しない。スクロールしたら評価の見出しだけが一番上に残る */
+body:has(.tp-counter) .team-header {
+  position: static;
+}
+
+.tp-counter-legend {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -16px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 16px 6px;
   border-bottom: 1px solid var(--tp-line);
   background: var(--tp-bg);
+}
+
+.tp-counter-legend-skill {
+  color: var(--tp-fg);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .tp-counter-filters {
