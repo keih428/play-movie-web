@@ -146,9 +146,9 @@ export function MilestoneCard({
       {body ? (
         <p className="tp-milestone-body">{body}</p>
       ) : upcoming ? (
-        <p className="tp-small tp-muted">{canEdit ? prompt : "まだ決まっていません(幹部が決めます)。"}</p>
+        <p className="tp-small tp-muted">{canEdit ? prompt : "まだ決まっていません(主将が設定します)。"}</p>
       ) : (
-        <p className="tp-small tp-muted">{isTeam ? "まだ決まっていません(幹部が決めます)。" : "まだ決めていません。"}</p>
+        <p className="tp-small tp-muted">{isTeam ? "まだ決まっていません(主将が設定します)。" : "まだ決めていません。"}</p>
       )}
       {canEdit || historyHref ? (
         <div className="tp-actions">
