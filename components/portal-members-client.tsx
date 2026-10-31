@@ -394,7 +394,7 @@ export function PortalMembersClient({
                 checked={draft.isTrainingLead}
                 onChange={(event) => setField("isTrainingLead", event.target.checked)}
               />
-              {TRAINING_LEAD_LABEL}(メニューを入れる・練習日を変える・ノートを消す。「トレーニング担当へ」の知らせが届く)
+              {TRAINING_LEAD_LABEL}(メニューを入れる・☆ を付ける・個人の追加メニュー。「トレーニング担当へ」の知らせが届く)
             </label>
             <label className="tp-check">
               <input
@@ -402,7 +402,7 @@ export function PortalMembersClient({
                 checked={draft.isSystemAdmin}
                 onChange={(event) => setField("isSystemAdmin", event.target.checked)}
               />
-              {SYSTEM_ADMIN_LABEL}(名簿を変える・ログインの記録を見る・Slack の知らせを試す。役割と兼ねられる)
+              {SYSTEM_ADMIN_LABEL}(名簿・ログインの記録・Slack の知らせを試す・練習日の例外・ノートを消す・マニュアル・集計。役割と兼ねられる)
             </label>
             <label className="tp-check">
               <input
