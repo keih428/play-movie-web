@@ -3557,3 +3557,14 @@ button.tp-mystats-course {
 .tp-milestone-log .tp-milestone-body {
   font-size: 15px;
 }
+
+/* 出欠のページの下:遅刻・欠席の回数(2026-10-31 から)。数の列は右寄せで、幅をそろえる */
+.tp-tally th:not(:first-child),
+.tp-tally td.tp-num {
+  width: 4.5em;
+  text-align: right;
+}
+
+.tp-tally-card + .tp-tally-card {
+  margin-top: 10px;
+}

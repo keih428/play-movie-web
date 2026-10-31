@@ -84,3 +84,42 @@ export function formatAttendanceMessage(
     `理由:${report.reason || "(書かれていません)"}`,
   ].join("\n");
 }
+
+/** 一人の遅刻・早退・欠席の回数。「遅刻・早退」の連絡は、遅刻と早退の両方に1回ずつ数える。 */
+export type AttendanceTally = {
+  absent: number;
+  late: number;
+  early: number;
+};
+
+export const EMPTY_TALLY: AttendanceTally = { absent: 0, late: 0, early: 0 };
+
+/** 連絡を、部員ごとの回数にまとめる(出欠のページの下の集計、2026-10-31 から)。 */
+export function tallyAttendance(
+  reports: Pick<AttendanceReport, "memberId" | "kind">[],
+): Map<string, AttendanceTally> {
+  const tallies = new Map<string, AttendanceTally>();
+  for (const report of reports) {
+    const tally = tallies.get(report.memberId) ?? { ...EMPTY_TALLY };
+    if (report.kind === "absent") {
+      tally.absent += 1;
+    }
+    if (needsArriveTime(report.kind)) {
+      tally.late += 1;
+    }
+    if (needsLeaveTime(report.kind)) {
+      tally.early += 1;
+    }
+    tallies.set(report.memberId, tally);
+  }
+  return tallies;
+}
+
+// 集計の期間:今月(1日から今日まで)か、これまで全部(今日まで)。
+export const ATTENDANCE_TALLY_SPANS = ["month", "all"] as const;
+export type AttendanceTallySpan = (typeof ATTENDANCE_TALLY_SPANS)[number];
+
+/** 集計の期間の始まりの日。全部のときは、記録の始まりより前の日。 */
+export function getTallyStart(today: string, span: AttendanceTallySpan): string {
+  return span === "all" ? "2000-01-01" : `${today.slice(0, 7)}-01`;
+}
