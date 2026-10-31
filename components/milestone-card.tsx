@@ -144,11 +144,15 @@ export function MilestoneCard({
   // 「決める」「書き直す」は、右上の「⋯」の中に入れる(大きなボタンで見栄えが悪いため。けーいちの指摘、2026-10-31)。
   return (
     <div className={cardClass}>
-      {canEdit ? (
+      {canEdit || historyHref ? (
         <MoreMenu
           label={`${title}の操作`}
           items={[
-            { label: body ? "書き直す" : upcoming ? "先に決める" : "決める", onSelect: () => setEditing(true) },
+            ...(canEdit
+              ? [{ label: body ? "書き直す" : upcoming ? "先に決める" : "決める", onSelect: () => setEditing(true) }]
+              : []),
+            // これまでのマイルストーン(月ごとの記録)も「⋯」の中から開く(けーいちの指摘、2026-10-31)。
+            ...(historyHref ? [{ label: "これまでのマイルストーン", href: historyHref }] : []),
           ]}
         />
       ) : null}
@@ -160,13 +164,6 @@ export function MilestoneCard({
       ) : (
         <p className="tp-small tp-muted">{isTeam ? "まだ決まっていません(主将が設定します)。" : "まだ決めていません。"}</p>
       )}
-      {historyHref ? (
-        <div className="tp-actions">
-          <Link className="tp-link tp-small" href={historyHref}>
-            これまでのマイルストーン
-          </Link>
-        </div>
-      ) : null}
     </div>
   );
 }
