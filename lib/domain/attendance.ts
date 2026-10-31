@@ -119,7 +119,11 @@ export function tallyAttendance(
 export const ATTENDANCE_TALLY_SPANS = ["month", "all"] as const;
 export type AttendanceTallySpan = (typeof ATTENDANCE_TALLY_SPANS)[number];
 
-/** 集計の期間の始まりの日。全部のときは、記録の始まりより前の日。 */
+// 集計を始める日。これより前の連絡(テストで送ったものが多い)は数えない(けーいちの決定、2026-10-31:「集計は11/1開始」)。
+export const ATTENDANCE_TALLY_START = "2026-11-01";
+
+/** 集計の期間の始まりの日。今月なら1日から、全部なら集計を始めた日から(どちらも ATTENDANCE_TALLY_START より前にはしない)。 */
 export function getTallyStart(today: string, span: AttendanceTallySpan): string {
-  return span === "all" ? "2000-01-01" : `${today.slice(0, 7)}-01`;
+  const start = span === "all" ? ATTENDANCE_TALLY_START : `${today.slice(0, 7)}-01`;
+  return start < ATTENDANCE_TALLY_START ? ATTENDANCE_TALLY_START : start;
 }
