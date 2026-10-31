@@ -72,7 +72,7 @@ export default async function TeamMilestonesPage({ params, searchParams }: PageP
           </ol>
         )}
         <p className="tp-small tp-muted">
-          今月のものは、その月のうちは書き直せます(月末の最終週からは、来月のものも先に決められます)。過去の月は、そのまま記録として残ります。
+          今月のものは、その月のうちは編集できます(月末の最終週からは、来月のものも先に決められます)。過去の月は、そのまま記録として残ります。
         </p>
       </section>
     </>

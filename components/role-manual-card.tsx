@@ -60,7 +60,7 @@ export function RoleManualCard({ teamSlug, textKey, title, body, updatedAt }: Ro
       {editing ? null : (
         <MoreMenu
           label={`${title}のマニュアルの操作`}
-          items={[{ label: body ? "編集する" : "書く", onSelect: () => setEditing(true) }]}
+          items={[{ label: body ? "編集" : "書く", onSelect: () => setEditing(true) }]}
         />
       )}
       <button

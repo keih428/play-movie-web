@@ -110,7 +110,7 @@ export function MilestoneCard({
         </div>
         <div className="tp-actions">
           <button type="button" className="tp-button" disabled={saving || !draft.trim()} onClick={save}>
-            {saving ? "保存しています…" : body ? "書き直す" : "決める"}
+            {saving ? "保存しています…" : body ? "保存する" : "決める"}
           </button>
           {body ? (
             <button
@@ -149,7 +149,7 @@ export function MilestoneCard({
           label={`${title}の操作`}
           items={[
             ...(canEdit
-              ? [{ label: body ? "書き直す" : upcoming ? "先に決める" : "決める", onSelect: () => setEditing(true) }]
+              ? [{ label: body ? "編集" : upcoming ? "先に決める" : "決める", onSelect: () => setEditing(true) }]
               : []),
             // これまでのマイルストーン(月ごとの記録)も「⋯」の中から開く(けーいちの指摘、2026-10-31)。
             ...(historyHref ? [{ label: "これまでのマイルストーン", href: historyHref }] : []),

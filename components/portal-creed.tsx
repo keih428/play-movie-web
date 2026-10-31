@@ -111,7 +111,7 @@ export function PortalCreed({ teamSlug, slogan, philosophy, canEdit }: PortalCre
   return (
     <div className="tp-creed">
       {canEdit ? (
-        <MoreMenu label="スローガンと理念の操作" items={[{ label: "書き直す", onSelect: () => setEditing(true) }]} />
+        <MoreMenu label="スローガンと理念の操作" items={[{ label: "編集", onSelect: () => setEditing(true) }]} />
       ) : null}
       <span className="tp-creed-label">年間スローガン</span>
       <p className="tp-creed-slogan">{slogan}</p>

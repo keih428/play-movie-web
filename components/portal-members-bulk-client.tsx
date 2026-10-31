@@ -151,7 +151,7 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
           <span className="tp-eyebrow">ポジションのリーダー</span>
           <h1>枠をまとめて編集</h1>
           <p className="tp-small tp-muted">
-            自分のポジションの部員の枠(A・B・C)を直せます。直したい所を全部直してから、「保存」を1回押します。色の付いた行が、まだ保存していない行です。
+            自分のポジションの部員の枠(A・B・C)を編集できます。編集したい所を全部編集してから、「保存」を1回押します。色の付いた行が、まだ保存していない行です。
           </p>
           {saveBar}
         </header>
