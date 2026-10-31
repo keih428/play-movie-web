@@ -1,11 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-type MoreMenuItem = {
-  label: string;
-  onSelect: () => void;
-};
+// 押すと何かをする項目か、別のページへ行く項目(href)。
+type MoreMenuItem = { label: string; onSelect: () => void } | { label: string; href: string };
 
 type MoreMenuProps = {
   // 読み上げ用の名前(例:「自分の11月のマイルストーンの操作」)。
@@ -57,19 +56,25 @@ export function MoreMenu({ label, items }: MoreMenuProps) {
       </button>
       {open ? (
         <div className="tp-more-menu" role="menu">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {items.map((item) =>
+            "href" in item ? (
+              <Link key={item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)}>
+                {item.label}
+              </Link>
+            ) : (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  item.onSelect();
+                }}
+              >
+                {item.label}
+              </button>
+            ),
+          )}
         </div>
       ) : null}
     </div>
