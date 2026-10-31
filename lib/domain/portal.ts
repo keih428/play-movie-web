@@ -43,7 +43,7 @@ export type Member = {
   position: MemberPosition | null;
   isLeader: boolean;
   role: MemberRole;
-  // トレーニング担当(メニュー・練習日の例外・ノートの削除を扱う)。
+  // トレーニング担当(メニュー・☆・個人の追加メニュー・「トレーニング担当へ」を扱う。2026-11-01 にこれだけにした)。
   isTrainingLead: boolean;
   // システム担当(名簿・ログインの記録・Slack のテストを扱う)。トレーニング担当と兼ねられる。
   isSystemAdmin: boolean;
@@ -173,20 +173,36 @@ export function getMemberGroup(position: MemberPosition | null): MemberGroup | n
 export const SYSTEM_ADMIN_LABEL = "システム担当";
 export const EXECUTIVE_LABEL = "幹部";
 
-/** メニュー・練習日の例外を変えたり、ほかの人のノートを消したりできるのは、トレーニング担当だけ。 */
+/**
+ * トレーニング担当の権限:メニュー・年間の方針を入れる、☆ を付ける、個人の追加メニュー、「トレーニング担当へ」の知らせと返信
+ * (けーいちの決定、2026-11-01:トレーニング担当はこれだけ。ほかは外した)。
+ */
 export function canAdminister(member: Pick<Member, "isTrainingLead">): boolean {
   return member.isTrainingLead;
+}
+
+/**
+ * ほかの人のノートを消す・今週のコメント当番の組み合わせを見る:システム担当
+ * (2026-11-01 にトレーニング担当から移した)。
+ */
+export function canModerateNotes(member: Pick<Member, "isSystemAdmin">): boolean {
+  return member.isSystemAdmin;
+}
+
+/** 練習日の例外(オフの日・いつもと違う練習日)を決める:システム担当(2026-11-01 にトレーニング担当から移した)。 */
+export function canEditPracticeDays(member: Pick<Member, "isSystemAdmin">): boolean {
+  return member.isSystemAdmin;
 }
 
 // 名簿の肩書がこれの人(トレーナー)は、ノートのまとめを出せる。
 const TRAINER_TITLE = "トレーナー";
 
 /**
- * バレーノートの月ごとのまとめ(PDF)を出せる人:トレーニング担当、トレーナー、ポジションのリーダー。
+ * バレーノートの月ごとのまとめ(PDF)を出せる人:トレーナー、ポジションのリーダー(2026-11-01 にトレーニング担当を外した)。
  * 副担当・ほかのスタッフ・ふつうの部員は出せない。
  */
-export function canExportNotes(member: Pick<Member, "isTrainingLead" | "isLeader" | "title">): boolean {
-  return canAdminister(member) || member.isLeader || member.title === TRAINER_TITLE;
+export function canExportNotes(member: Pick<Member, "isLeader" | "title">): boolean {
+  return member.isLeader || member.title === TRAINER_TITLE;
 }
 
 // 部内ページの文章の種類。goal はホームに大きく出すチームの目標。ほかはデータベース/マニュアルの見出しごとの文章。
@@ -246,14 +262,12 @@ export const MANUAL_SECTIONS: { key: Exclude<PortalSectionKey, "goal">; title: s
 ];
 
 /**
- * データベース/マニュアルを書き直せる人:幹部と、トレーニング担当・システム担当
+ * データベース/マニュアルを書き直せる人:幹部とシステム担当(2026-11-01 にトレーニング担当を外した)
  * (けーいちの決定、2026-10-20:「幹部が書いて、サイトで直せる」)。幹部の印は名簿で付ける。
  * ホームのチームの目標は、幹部だけ(canEditTeamGoal)。
  */
-export function canEditPortalTexts(
-  member: Pick<Member, "isTrainingLead" | "isSystemAdmin" | "isExecutive">,
-): boolean {
-  return member.isExecutive || member.isTrainingLead || member.isSystemAdmin;
+export function canEditPortalTexts(member: Pick<Member, "isSystemAdmin" | "isExecutive">): boolean {
+  return member.isExecutive || member.isSystemAdmin;
 }
 
 /** ホームのチームの目標を書けるのは、幹部だけ(けーいちの決定、2026-10-31:「トレーニング担当とシステム担当は目標を書き込める必要ない」)。 */

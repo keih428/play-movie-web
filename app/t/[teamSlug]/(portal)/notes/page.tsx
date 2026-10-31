@@ -13,7 +13,7 @@ import {
   isNoteWritten,
   type NoteFeed,
 } from "@/lib/domain/notes";
-import { canAdminister, canExportNotes, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
+import { canExportNotes, canModerateNotes, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import {
   getUnreadCounts,
@@ -251,7 +251,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
               note={note}
               comments={comments.filter((comment) => comment.noteId === note.id)}
               isMine={note.memberId === current.id}
-              canDelete={canAdminister(current)}
+              canDelete={canModerateNotes(current)}
               isDutyTarget={note.memberId === myDuty?.targetId}
               teamSlug={teamSlug}
               unread={unreadCounts[note.id]}
@@ -264,11 +264,11 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
         ) : null}
       </section>
 
-      {canAdminister(current) ? (
+      {canModerateNotes(current) ? (
         <footer className="tp-footer">
           {duties.length > 0 ? (
             <details>
-              <summary>今週のコメント当番の組み合わせ(トレーニング担当だけ)</summary>
+              <summary>今週のコメント当番の組み合わせ(システム担当だけ)</summary>
               <ul className="tp-duty-list">
                 {duties.map((pair) => (
                   <li key={pair.commenterId}>
@@ -282,7 +282,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
             <p>練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日)。</p>
           ) : (
             <details>
-              <summary>練習日を変える(トレーニング担当だけ)</summary>
+              <summary>練習日を変える(システム担当だけ)</summary>
               <PracticeDayForm overrides={overrides} teamSlug={teamSlug} />
             </details>
           )}

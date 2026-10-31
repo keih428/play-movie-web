@@ -5,7 +5,7 @@ import { NoteComments } from "@/components/note-comments";
 import { describePracticeEvents } from "@/lib/domain/calendar";
 import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { addDaysToDate, formatNoteDate, getLastNoteDate, isNoteWritten } from "@/lib/domain/notes";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canModerateNotes, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { getMember } from "@/lib/server/portal-member-store";
@@ -100,7 +100,7 @@ export default async function TeamMemberNotesPage({ params, searchParams }: Page
                 note={note}
                 comments={noteComments}
                 isMine={false}
-                canDelete={canAdminister(current)}
+                canDelete={canModerateNotes(current)}
                 teamSlug={teamSlug}
                 milestone={milestoneByMonth.get(monthOf(date)) ?? null}
               />
