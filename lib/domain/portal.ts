@@ -191,14 +191,47 @@ export function canExportNotes(member: Pick<Member, "isTrainingLead" | "isLeader
 
 // 部内ページの文章の種類。goal はホームに大きく出すチームの目標。ほかはデータベース/マニュアルの見出しごとの文章。
 export const PORTAL_TEXT_KEYS = ["goal", "policy", "rules", "attendance", "roles", "manual", "training"] as const;
-export type PortalTextKey = (typeof PORTAL_TEXT_KEYS)[number];
+type PortalSectionKey = (typeof PORTAL_TEXT_KEYS)[number];
+
+/**
+ * 役職ごとのマニュアル(2026-11-01 から)。1つの役職に1つの文章で、部員なら**だれでも**書き直せる
+ * (けーいちの決定:「編集可能な人は、全員です」)。保存するときの key は `role-<id>`。
+ */
+export const ROLE_MANUALS = [
+  { id: "training", title: "トレーニング担当" },
+  { id: "system", title: "システム担当" },
+  { id: "gym", title: "体育館係" },
+  { id: "liaison", title: "渉外" },
+  { id: "standing", title: "常務" },
+  { id: "general", title: "総務" },
+  { id: "pr", title: "広報" },
+  { id: "federation", title: "学連" },
+  { id: "accounting", title: "会計" },
+  { id: "order", title: "注文" },
+  { id: "secretary", title: "主務" },
+  { id: "video", title: "動画" },
+  { id: "cheer", title: "エール" },
+] as const;
+export type RoleManualKey = `role-${(typeof ROLE_MANUALS)[number]["id"]}`;
+
+export const roleManualKey = (id: (typeof ROLE_MANUALS)[number]["id"]): RoleManualKey => `role-${id}`;
+
+export function isRoleManualKey(value: unknown): value is RoleManualKey {
+  return typeof value === "string" && ROLE_MANUALS.some((role) => `role-${role.id}` === value);
+}
+
+export type PortalTextKey = PortalSectionKey | RoleManualKey;
+
+export function isPortalTextKey(value: unknown): value is PortalTextKey {
+  return PORTAL_TEXT_KEYS.includes(value as PortalSectionKey) || isRoleManualKey(value);
+}
 export const PORTAL_TEXT_MAX_LENGTH = 10000;
 
 /**
  * データベース/マニュアルの見出し(部員の声、2026-10-20)。中身は幹部が書く。
  * hint は、まだ書かれていないときに出す「何を書くか」の目安。
  */
-export const MANUAL_SECTIONS: { key: Exclude<PortalTextKey, "goal">; title: string; hint: string }[] = [
+export const MANUAL_SECTIONS: { key: Exclude<PortalSectionKey, "goal">; title: string; hint: string }[] = [
   { key: "policy", title: "チームとして目指す方針", hint: "1年の目標、大事にすること、目指すチームの姿" },
   { key: "rules", title: "部のルール", hint: "練習・試合・部室・連絡などの決まり" },
   {
@@ -207,7 +240,8 @@ export const MANUAL_SECTIONS: { key: Exclude<PortalTextKey, "goal">; title: stri
     hint: "いつまでに入力するか、変えるときどうするか、遅刻・早退・欠席するときの決まりと注意",
   },
   { key: "roles", title: "役職ごとの仕事内容・引き継ぎ", hint: "役職ごとの仕事、時期ごとにやること、引き継ぐこと" },
-  { key: "manual", title: "部内マニュアル", hint: "練習の準備・片付け、遠征、会計など、やり方の手順" },
+  // 2026-11-01 に「部内マニュアル」から名前を変えた(key はそのまま)。
+  { key: "manual", title: "マネマニュアル", hint: "練習の準備・片付け、遠征、会計など、やり方の手順" },
   { key: "training", title: "筋トレの内容・推奨メニュー", hint: "筋トレの考え方、推奨メニュー、自分でメニューを組むときの目安" },
 ];
 

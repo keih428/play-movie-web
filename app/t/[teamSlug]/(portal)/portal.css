@@ -3445,19 +3445,19 @@ button.tp-mystats-course {
   align-items: center;
 }
 
-/* 右上の「⋯」と、押すと開くメニュー(2026-10-31 から)。見出しが「⋯」に重ならないよう、見出しの右を空ける */
-.tp-milestone:has(> .tp-more) > .tp-eyebrow {
+/* 右上の「⋯」と、押すと開くメニュー(2026-10-31 から。2026-11-01 に .tp-more から名前を変えた:リンクの .tp-more・ノートの .tp-kebab とかぶっていた)。見出しが「⋯」に重ならないよう、見出しの右を空ける */
+.tp-milestone:has(> .tp-cardmenu) > .tp-eyebrow {
   padding-right: 40px;
 }
 
-.tp-more {
+.tp-cardmenu {
   position: absolute;
   top: 6px;
   right: 6px;
   z-index: 2;
 }
 
-.tp-more-button {
+.tp-cardmenu-button {
   display: grid;
   place-items: center;
   width: 36px;
@@ -3471,13 +3471,13 @@ button.tp-mystats-course {
   cursor: pointer;
 }
 
-.tp-more-button:hover,
-.tp-more-button[aria-expanded="true"] {
+.tp-cardmenu-button:hover,
+.tp-cardmenu-button[aria-expanded="true"] {
   background: var(--tp-off-soft);
   color: var(--tp-fg);
 }
 
-.tp-more-menu {
+.tp-cardmenu-menu {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -3490,8 +3490,8 @@ button.tp-mystats-course {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
-.tp-more-menu button,
-.tp-more-menu a {
+.tp-cardmenu-menu button,
+.tp-cardmenu-menu a {
   padding: 10px 12px;
   border: 0;
   border-radius: 8px;
@@ -3503,13 +3503,13 @@ button.tp-mystats-course {
   cursor: pointer;
 }
 
-.tp-more-menu a {
+.tp-cardmenu-menu a {
   text-decoration: none;
   white-space: nowrap;
 }
 
-.tp-more-menu button:hover,
-.tp-more-menu a:hover {
+.tp-cardmenu-menu button:hover,
+.tp-cardmenu-menu a:hover {
   background: var(--tp-off-soft);
 }
 
@@ -3987,4 +3987,192 @@ body:has(.tp-counter) .team-header {
 
 .tp-grade-error {
   --grade: var(--tp-danger-fg);
+}
+
+/* ---------- Markdown で書くマニュアル(2026-11-01 から) ---------- */
+.tp-md {
+  display: grid;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.tp-md > * {
+  margin: 0;
+}
+
+.tp-md h1,
+.tp-md h2,
+.tp-md h3,
+.tp-md h4 {
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.tp-md h1 {
+  font-size: 20px;
+}
+
+.tp-md h2 {
+  font-size: 18px;
+}
+
+.tp-md h3 {
+  font-size: 16px;
+}
+
+.tp-md h4 {
+  font-size: 15px;
+}
+
+.tp-md ul,
+.tp-md ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.tp-md li > ul,
+.tp-md li > ol {
+  margin-top: 2px;
+}
+
+.tp-md li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.3em;
+}
+
+.tp-md a {
+  color: var(--tp-accent);
+  text-decoration: underline;
+}
+
+.tp-md blockquote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 4px solid var(--tp-warn-fg);
+  border-radius: 4px;
+  background: var(--tp-warn-bg);
+  color: var(--tp-warn-fg);
+}
+
+.tp-md code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--tp-off-soft);
+  font-family: var(--tp-num);
+  font-size: 0.9em;
+}
+
+.tp-md pre {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--tp-off-soft);
+}
+
+.tp-md pre code {
+  padding: 0;
+  background: none;
+}
+
+.tp-md table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tp-md hr {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-md-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.tp-md-preview {
+  min-height: 8em;
+  padding: 10px 12px;
+  border: 1px dashed var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-surface);
+}
+
+.tp-md-help summary {
+  color: var(--tp-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tp-md-help pre {
+  overflow-x: auto;
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--tp-off-soft);
+  font-family: var(--tp-num);
+  font-size: 12px;
+  white-space: pre;
+}
+
+/* 役職ごとのマニュアル:1役職1枚。見出しを押すと開く。右上に「⋯」 */
+.tp-role-manuals {
+  display: grid;
+  gap: 8px;
+}
+
+.tp-role-manual {
+  position: relative;
+  display: grid;
+  padding: 0;
+}
+
+.tp-role-manual-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 48px 12px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--tp-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-role-manual-head::before {
+  content: "▸";
+  color: var(--tp-muted);
+}
+
+.tp-role-manual-head[aria-expanded="true"]::before {
+  content: "▾";
+}
+
+.tp-role-manual-head:disabled {
+  cursor: default;
+}
+
+.tp-role-manual-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 14px;
+}
+
+/* 入力欄のスタイル(.tp-field input)が、プレビューの中のチェックボックスにかからないように */
+.tp-md input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+  margin: 0 6px 0 0;
+  padding: 0;
+  vertical-align: middle;
 }

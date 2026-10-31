@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PortalTextSection } from "@/components/portal-text-section";
-import { MANUAL_SECTIONS, canEditPortalTexts, isPortalTeam } from "@/lib/domain/portal";
+import { RoleManualCard } from "@/components/role-manual-card";
+import { MANUAL_SECTIONS, ROLE_MANUALS, canEditPortalTexts, isPortalTeam, roleManualKey } from "@/lib/domain/portal";
 import {
   buildTeamManualPath,
   buildTeamTrainingPath,
@@ -47,7 +48,7 @@ export default async function TeamManualPage({ params }: PageProps) {
         </nav>
         {canEdit ? (
           <p className="tp-small tp-muted">
-            幹部・トレーニング担当・システム担当は、見出しの「書く」「編集」から編集できます。
+            幹部・トレーニング担当・システム担当は、見出しの「書く」「編集」から編集できます。役職ごとのマニュアルは、部員ならだれでも書けます。
           </p>
         ) : null}
       </header>
@@ -63,6 +64,25 @@ export default async function TeamManualPage({ params }: PageProps) {
           updatedAt={texts[section.key]?.updatedAt ?? null}
           canEdit={canEdit}
         >
+          {section.key === "roles" ? (
+            // 役職ごとのマニュアル(2026-11-01 から)。押すと開く。部員のだれでも「⋯」から書ける。
+            <div className="tp-role-manuals">
+              <p className="tp-small tp-muted">役職を押すと開きます。部員ならだれでも、右上の「⋯」から書いたり直したりできます(Markdown で書けます)。</p>
+              {ROLE_MANUALS.map((role) => {
+                const key = roleManualKey(role.id);
+                return (
+                  <RoleManualCard
+                    key={key}
+                    teamSlug={teamSlug}
+                    textKey={key}
+                    title={role.title}
+                    body={texts[key]?.body ?? null}
+                    updatedAt={texts[key]?.updatedAt ?? null}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
           {section.key === "training" ? (
             <ul className="tp-linklist">
               <li>
