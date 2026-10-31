@@ -420,7 +420,7 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
         />
       </div>
       <div className="tp-field">
-        <label htmlFor="log-memo">気になること</label>
+        <label htmlFor="log-memo">コメント</label>
         <textarea
           id="log-memo"
           rows={2}
