@@ -237,6 +237,26 @@ export function canManageSite(member: Pick<Member, "isSystemAdmin">): boolean {
   return member.isSystemAdmin;
 }
 
+/**
+ * 名簿の「枠」を直せる人(けーいちの決定、2026-10-31:「ポジションリーダーも枠を編集できるように」)。
+ * システム担当は全員の枠を、ポジションのリーダーは自分のまとまりの部員の枠だけを直せる(OH のリーダーは OP も)。
+ */
+export function canEditMemberSlot(
+  current: Pick<Member, "isSystemAdmin" | "isLeader" | "position">,
+  target: Pick<Member, "position">,
+): boolean {
+  if (canManageSite(current)) {
+    return true;
+  }
+  const group = getMemberGroup(current.position);
+  return current.isLeader && group !== null && getMemberGroup(target.position) === group;
+}
+
+/** 名簿のまとめて編集を開ける人:システム担当(全部の項目)と、ポジションのリーダー(枠だけ)。 */
+export function canOpenMembersBulkEdit(member: Pick<Member, "isSystemAdmin" | "isLeader" | "position">): boolean {
+  return canManageSite(member) || (member.isLeader && getMemberGroup(member.position) !== null);
+}
+
 /** ログインの記録を見られるのも、システム担当だけ。 */
 export function canViewLoginLog(member: Pick<Member, "isSystemAdmin">): boolean {
   return member.isSystemAdmin;
