@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MilestoneCard } from "@/components/milestone-card";
+import { PortalCreed } from "@/components/portal-creed";
 import { PortalGoal } from "@/components/portal-goal";
 import { RichText } from "@/components/rich-text";
 import { DEFAULT_PRACTICE_LOCATION } from "@/lib/domain/calendar";
 import { formatMilestoneMonth, getUpcomingMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { MANUAL_SECTIONS, canEditTeamGoal, canSetTeamMilestone, isPortalTeam } from "@/lib/domain/portal";
+import {
+  DEFAULT_PHILOSOPHY,
+  DEFAULT_SLOGAN,
+  MANUAL_SECTIONS,
+  canEditTeamGoal,
+  canSetTeamMilestone,
+  isPortalTeam,
+} from "@/lib/domain/portal";
 import {
   buildTeamAccountPath,
   buildTeamAttendancePath,
@@ -127,6 +135,16 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
           </Link>
         </p>
       )}
+
+      {/* 部の年間スローガンと理念(2026-11-01 から)。書き直されていなければ、けーいちが決めたものを出す。 */}
+      <section className="tp-section">
+        <PortalCreed
+          teamSlug={teamSlug}
+          slogan={texts.slogan?.body || DEFAULT_SLOGAN}
+          philosophy={texts.philosophy?.body || DEFAULT_PHILOSOPHY}
+          canEdit={canEditTeamGoal(current)}
+        />
+      </section>
 
       <section className="tp-section">
         <PortalGoal teamSlug={teamSlug} body={goal?.body ?? null} canEdit={canEditTeamGoal(current)} />

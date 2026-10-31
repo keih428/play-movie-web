@@ -206,7 +206,26 @@ export function canExportNotes(member: Pick<Member, "isLeader" | "title">): bool
 }
 
 // 部内ページの文章の種類。goal はホームに大きく出すチームの目標。ほかはデータベース/マニュアルの見出しごとの文章。
-export const PORTAL_TEXT_KEYS = ["goal", "policy", "rules", "attendance", "roles", "manual", "training"] as const;
+export const PORTAL_TEXT_KEYS = [
+  "goal",
+  "policy",
+  "rules",
+  "attendance",
+  "roles",
+  "manual",
+  "training",
+  // 部の年間スローガンと理念(ホームのいちばん上、2026-11-01 から)。書き直せるのは幹部。
+  "slogan",
+  "philosophy",
+] as const;
+
+// まだ書き直されていないときに出す、年間スローガンと理念(けーいちが決めたもの、2026-11-01)。理念は1行に1つ。
+export const DEFAULT_SLOGAN = "妥協しない";
+export const DEFAULT_PHILOSOPHY = [
+  "サイドアウト、サーブ、ブロック、フィジカルを武器に",
+  "競争意識を持つ",
+  "勝つための思考を続ける",
+].join("\n");
 type PortalSectionKey = (typeof PORTAL_TEXT_KEYS)[number];
 
 /**

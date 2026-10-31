@@ -25,13 +25,15 @@ export async function PUT(request: NextRequest) {
   }
   // チームの目標は幹部だけ。役職ごとのマニュアルは部員のだれでも(2026-11-01 から)。
   // ほかのデータベース/マニュアルは、幹部・システム担当。
-  const allowed = key === "goal" ? canEditTeamGoal(current) : isRoleManualKey(key) || canEditPortalTexts(current);
+  // 年間スローガンと理念も、チームの目標と同じく幹部だけ(2026-11-01 から)。
+  const executiveOnly = key === "goal" || key === "slogan" || key === "philosophy";
+  const allowed = executiveOnly ? canEditTeamGoal(current) : isRoleManualKey(key) || canEditPortalTexts(current);
   if (!allowed) {
     return NextResponse.json(
       {
         error:
-          key === "goal"
-            ? "チームの目標を書けるのは、幹部だけです。"
+          executiveOnly
+            ? "チームの目標・スローガン・理念を書けるのは、幹部だけです。"
             : "編集できるのは、幹部・システム担当だけです。",
       },
       { status: 403 },

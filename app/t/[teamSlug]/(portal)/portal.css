@@ -4176,3 +4176,62 @@ body:has(.tp-counter) .team-header {
   padding: 0;
   vertical-align: middle;
 }
+
+/* ---------- ホームの年間スローガンと理念(2026-11-01 から) ---------- */
+.tp-creed {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 18px 18px 16px;
+  border-radius: 12px;
+  background: var(--tp-fg);
+  color: var(--tp-bg);
+}
+
+.tp-creed-editing {
+  gap: 10px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  border: 1px solid var(--tp-line);
+}
+
+.tp-creed .tp-cardmenu-button {
+  color: var(--tp-bg);
+  opacity: 0.7;
+}
+
+.tp-creed .tp-cardmenu-button:hover,
+.tp-creed .tp-cardmenu-button[aria-expanded="true"] {
+  color: var(--tp-fg);
+  opacity: 1;
+}
+
+.tp-creed-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+}
+
+.tp-creed-slogan {
+  margin: 0 0 10px;
+  font-family: var(--tp-display);
+  font-size: clamp(32px, 10vw, 48px);
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+}
+
+.tp-creed-principles {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.tp-creed-principles li::marker {
+  font-family: var(--tp-num);
+  opacity: 0.7;
+}
