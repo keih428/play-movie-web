@@ -426,6 +426,32 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "022_drill_stats",
+    // マネージャーの集計(2026-10-31 から)。練習のメニュー(drill_stat_drills)ごとに、部員・スキル(serve/dig)・
+    // 評価(DataVolley の # + ! - / =)ごとの本数を持つ。メニューを消すと本数も消える。practice_date は 'YYYY-MM-DD'。
+    sql: `
+      CREATE TABLE drill_stat_drills (
+        id text PRIMARY KEY,
+        team_slug text NOT NULL,
+        practice_date text NOT NULL,
+        name text NOT NULL,
+        created_by text REFERENCES members (id),
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX drill_stat_drills_team_date ON drill_stat_drills (team_slug, practice_date DESC, created_at DESC);
+
+      CREATE TABLE drill_stat_counts (
+        drill_id text NOT NULL REFERENCES drill_stat_drills (id) ON DELETE CASCADE,
+        member_id text NOT NULL REFERENCES members (id),
+        skill text NOT NULL,
+        grade text NOT NULL,
+        count integer NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (drill_id, member_id, skill, grade)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

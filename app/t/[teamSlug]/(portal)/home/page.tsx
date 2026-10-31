@@ -13,6 +13,7 @@ import {
   buildTeamHomePath,
   buildTeamManualPath,
   buildTeamMembersPath,
+  buildTeamStatsPath,
   buildTeamMilestonesPath,
   buildTeamNotesPath,
   buildTeamSchedulePath,
@@ -103,6 +104,7 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
   const otherLinks = [
     { href: buildTeamTrainingPlanPath(teamSlug), label: "年間のトレーニング方針" },
     { href: buildTeamTrainingRecordsPath(teamSlug), label: "みんなのトレーニング記録" },
+    { href: buildTeamStatsPath(teamSlug), label: "練習の集計(サーブ・ディグ)" },
     { href: buildTeamMembersPath(teamSlug), label: "名簿" },
     { href: buildTeamWorkspacesPath(teamSlug), label: "試合の映像と分析" },
     { href: buildTeamVideosPath(teamSlug), label: "動画ライブラリ" },
