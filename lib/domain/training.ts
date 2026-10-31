@@ -323,10 +323,8 @@ function resolveLift(
     };
   }
   if (week.mode === "intro2") {
-    const isTestDay =
-      (day === "tue" && lift === "sq") ||
-      (day === "thu" && lift === "dl") ||
-      (day === "sat" && lift === "bp");
+    // 火・木はその日のメイン(スクワットか DL)、土はベンチを測る。どの曜日に置くかはメニューで決める。
+    const isTestDay = day === "sat" ? lift === "bp" : lift !== "bp";
     return isTestDay
       ? { dose: "3RMの測定", tip: "フォームが合格した人。「測定」のやり方で", targetKg: null }
       : { dose: "軽い重さ", tip: "フォームの確認と練習", targetKg: null };
