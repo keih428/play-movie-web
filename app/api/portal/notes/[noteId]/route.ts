@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canModerateNotes, isPortalTeam } from "@/lib/domain/portal";
 import { deleteNote, getNote } from "@/lib/server/portal-note-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 
@@ -9,7 +9,7 @@ type RouteContext = {
   }>;
 };
 
-// ノートを消す(付いているコメントも一緒に消える)。消せるのは、書いた本人とトレーニング担当。
+// ノートを消す(付いているコメントも一緒に消える)。消せるのは、書いた本人とシステム担当(2026-11-01 から)。
 export async function DELETE(request: NextRequest, context: RouteContext) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
@@ -22,7 +22,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!note) {
     return NextResponse.json({ error: "ノートが見つかりません。" }, { status: 404 });
   }
-  if (note.memberId !== current.id && !canAdminister(current)) {
+  if (note.memberId !== current.id && !canModerateNotes(current)) {
     return NextResponse.json({ error: "このノートを消す権限がありません。" }, { status: 403 });
   }
 

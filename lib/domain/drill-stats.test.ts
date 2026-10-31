@@ -10,8 +10,8 @@ import {
 } from "@/lib/domain/drill-stats";
 
 describe("マネージャーの集計", () => {
-  it("集計を付けられるのは、マネージャー・アナリストと、システム担当・トレーニング担当", () => {
-    const base = { title: null, isSystemAdmin: false, isTrainingLead: false };
+  it("集計を付けられるのは、マネージャー・アナリストと、システム担当(トレーニング担当は付けられない)", () => {
+    const base = { title: null, isSystemAdmin: false };
     expect(canRecordDrillStats({ ...base, title: "マネージャー" })).toBe(true);
     expect(canRecordDrillStats({ ...base, title: "主務・マネージャー" })).toBe(true);
     expect(canRecordDrillStats({ ...base, title: "アナリスト" })).toBe(true);

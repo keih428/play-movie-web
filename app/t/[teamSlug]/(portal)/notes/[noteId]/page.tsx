@@ -5,7 +5,7 @@ import { NoteDeleteButton } from "@/components/note-delete-button";
 import { RefreshOnMount } from "@/components/refresh-on-mount";
 import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canModerateNotes, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { getMilestone } from "@/lib/server/portal-milestone-store";
 import { getNote, getUnreadCounts, listComments, markNoteSeen } from "@/lib/server/portal-note-store";
@@ -78,7 +78,7 @@ export default async function TeamNotePage({ params }: PageProps) {
               編集
             </Link>
           ) : null}
-          {isAuthor || canAdminister(current) ? (
+          {isAuthor || canModerateNotes(current) ? (
             <NoteDeleteButton
               noteId={note.id}
               redirectTo={isAuthor ? `${basePath}/mine` : basePath}

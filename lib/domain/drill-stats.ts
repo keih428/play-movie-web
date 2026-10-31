@@ -79,13 +79,12 @@ export function normalizeDrillName(value: unknown): string | null {
 // 肩書がこれを含む人は、集計を付けられる。
 const RECORDER_TITLES = ["マネージャー", "アナリスト"];
 
-/** 集計を付けられる人:マネージャー・アナリスト(肩書)と、システム担当・トレーニング担当。見るのは全員。 */
+/** 集計を付けられる人:マネージャー・アナリスト(肩書)と、システム担当。見るのは全員(2026-11-01 にトレーニング担当を外した)。 */
 export function canRecordDrillStats(
-  member: Pick<Member, "title" | "isSystemAdmin" | "isTrainingLead">,
+  member: Pick<Member, "title" | "isSystemAdmin">,
 ): boolean {
   return (
     member.isSystemAdmin ||
-    member.isTrainingLead ||
     RECORDER_TITLES.some((title) => member.title?.includes(title) ?? false)
   );
 }

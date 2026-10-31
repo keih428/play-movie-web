@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isIsoDate } from "@/lib/domain/notes";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import { canEditPracticeDays, isPortalTeam } from "@/lib/domain/portal";
 import { setPracticeDayOverride } from "@/lib/server/portal-note-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 
-// 練習日の例外(オフにする日・いつもの曜日以外の練習日)。変えられるのはトレーニング担当だけ。
+// 練習日の例外(オフにする日・いつもの曜日以外の練習日)。変えられるのはシステム担当だけ(2026-11-01 から)。
 export async function POST(request: NextRequest) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
-  if (!current || !canAdminister(current)) {
+  if (!current || !canEditPracticeDays(current)) {
     return NextResponse.json({ error: "練習日を変える権限がありません。" }, { status: 403 });
   }
 

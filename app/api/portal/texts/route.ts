@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "内容が読み取れませんでした。" }, { status: 400 });
   }
   // チームの目標は幹部だけ。役職ごとのマニュアルは部員のだれでも(2026-11-01 から)。
-  // ほかのデータベース/マニュアルは、幹部・トレーニング担当・システム担当。
+  // ほかのデータベース/マニュアルは、幹部・システム担当。
   const allowed = key === "goal" ? canEditTeamGoal(current) : isRoleManualKey(key) || canEditPortalTexts(current);
   if (!allowed) {
     return NextResponse.json(
@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest) {
         error:
           key === "goal"
             ? "チームの目標を書けるのは、幹部だけです。"
-            : "編集できるのは、幹部・トレーニング担当・システム担当だけです。",
+            : "編集できるのは、幹部・システム担当だけです。",
       },
       { status: 403 },
     );

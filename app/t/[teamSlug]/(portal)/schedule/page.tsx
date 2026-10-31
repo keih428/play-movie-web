@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ScheduleShareLinkPanel } from "@/components/schedule-share-link-panel";
 import { ScheduleView, type ScheduleQuery } from "@/components/schedule-view";
-import { canAdminister, canManageSite, isPortalTeam } from "@/lib/domain/portal";
+import { canManageSite, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamScheduleSharePath, buildTeamSchedulePath } from "@/lib/domain/team";
 import { requireMember } from "@/lib/server/portal-session";
 import { getShareLinkToken } from "@/lib/server/portal-share-link-store";
@@ -33,7 +33,7 @@ export default async function TeamSchedulePage({ params, searchParams }: PagePro
       teamSlug={teamSlug}
       basePath={basePath}
       query={await searchParams}
-      showSource={canAdminister(current) || canManageSite(current)}
+      showSource={canManageSite(current)}
       footer={
         canShare ? (
           <ScheduleShareLinkPanel

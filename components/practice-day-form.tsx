@@ -12,7 +12,7 @@ type PracticeDayFormProps = {
 
 const KIND_LABELS = { off: "練習なし", extra: "練習あり" };
 
-/** トレーニング担当用。オフの日と、いつもの曜日(日・火・木・土)以外の練習日を決める。 */
+/** システム担当用(2026-11-01 から)。オフの日と、いつもの曜日(日・火・木・土)以外の練習日を決める。 */
 export function PracticeDayForm({ overrides, teamSlug }: PracticeDayFormProps) {
   const router = useRouter();
   const [date, setDate] = useState("");

@@ -9,7 +9,7 @@ type NoteDeleteButtonProps = {
   teamSlug: string;
 };
 
-/** 書いた本人とトレーニング担当に出す。消すと、付いているコメントも消える。 */
+/** 書いた本人とシステム担当に出す。消すと、付いているコメントも消える。 */
 export function NoteDeleteButton({ noteId, redirectTo, teamSlug }: NoteDeleteButtonProps) {
   const [busy, setBusy] = useState(false);
 

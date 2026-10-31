@@ -79,7 +79,7 @@ export default async function TeamNotesPrintPage({ params, searchParams }: PageP
   return (
     <>
       <header className="tp-hero tp-no-print">
-        <span className="tp-eyebrow">トレーニング担当・トレーナー・リーダー用</span>
+        <span className="tp-eyebrow">トレーナー・リーダー用</span>
         <h1>月ごとのまとめ</h1>
         <nav className="tp-weeks" aria-label="月">
           {[-2, -1, 0, 1].map((delta) => {

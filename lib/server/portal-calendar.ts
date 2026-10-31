@@ -10,7 +10,7 @@ export type PracticeSchedule = {
   eventsByDate: Record<string, PracticeEvent[]>;
   // 「オフ」の予定(off の印つき)。予定表にだけ別の色で出す。dates・eventsByDate には入れない(出欠とノートの対象外)。
   offEventsByDate: Record<string, PracticeEvent[]>;
-  // カレンダーを読めなかったときの理由(トレーニング担当に見せる)。
+  // カレンダーを読めなかったときの理由(システム担当に見せる)。
   error?: string;
 };
 

@@ -21,7 +21,7 @@ type NoteCardProps = {
   comments: NoteComment[];
   // 書いた本人は、編集と削除ができる。
   isMine: boolean;
-  // トレーニング担当は、ほかの人のノートも削除できる。
+  // システム担当は、ほかの人のノートも削除できる(2026-11-01 にトレーニング担当から移した)。
   canDelete: boolean;
   // 今週、自分がコメント当番で受け持っている人のノート。
   isDutyTarget?: boolean;
