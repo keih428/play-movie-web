@@ -28,6 +28,8 @@ import {
 
 type PortalMembersClientProps = {
   canManage: boolean;
+  // まとめて編集を開けるか(システム担当と、ポジションのリーダー。リーダーは枠だけ直せる)。
+  canBulkEdit: boolean;
   canViewLoginLog: boolean;
   currentMemberId: string;
   initialMembers: Member[];
@@ -61,6 +63,7 @@ function describeMember(member: Member, isPlayerTable: boolean) {
 
 export function PortalMembersClient({
   canManage,
+  canBulkEdit,
   canViewLoginLog,
   currentMemberId,
   initialMembers,
@@ -249,9 +252,9 @@ export function PortalMembersClient({
               ログインの記録
             </Link>
           ) : null}
-          {canManage ? (
+          {canBulkEdit ? (
             <Link className="tp-button tp-ghost" href={buildTeamMembersBulkEditPath(teamSlug)}>
-              まとめて編集
+              {canManage ? "まとめて編集" : "枠をまとめて編集"}
             </Link>
           ) : null}
           <Link className="tp-button tp-ghost" href={buildTeamAccountPath(teamSlug)}>

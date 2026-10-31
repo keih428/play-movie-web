@@ -20,6 +20,8 @@ import { buildTeamApiPath, buildTeamMembersPath } from "@/lib/domain/team";
 type PortalMembersBulkClientProps = {
   teamSlug: string;
   initialMembers: Member[];
+  // ポジションのリーダー用:自分のまとまりの部員の「枠」だけを直せる(2026-10-31 から)。
+  slotOnly?: boolean;
 };
 
 type TextKey = "number" | "name" | "grade" | "title" | "slackId";
@@ -35,11 +37,11 @@ const FLAG_COLUMNS: { key: FlagKey; label: string }[] = [
 ];
 
 /**
- * 名簿のまとめて編集(システム担当だけ、2026-10-26 から)。
+ * 名簿のまとめて編集(システム担当、2026-10-26 から。ポジションのリーダーは枠だけ、2026-10-31 から)。
  * 全員を1つの表に並べ、変えた行に色を付ける。「保存」で、変えた人の変えた項目だけを1人ずつ送る
  * (1人ずつの「編集」と同じ API なので、確かめ方も同じ。失敗した人は行に理由を出して、残りは保存する)。
  */
-export function PortalMembersBulkClient({ teamSlug, initialMembers }: PortalMembersBulkClientProps) {
+export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = false }: PortalMembersBulkClientProps) {
   const [members, setMembers] = useState(initialMembers);
   const [drafts, setDrafts] = useState<Record<string, MemberDraft>>(() =>
     Object.fromEntries(initialMembers.map((member) => [member.id, toDraft(member)])),
@@ -141,6 +143,56 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers }: PortalMemb
       </Link>
     </div>
   );
+
+  if (slotOnly) {
+    return (
+      <>
+        <header className="tp-hero">
+          <span className="tp-eyebrow">ポジションのリーダー</span>
+          <h1>枠をまとめて編集</h1>
+          <p className="tp-small tp-muted">
+            自分のポジションの部員の枠(A・B・C)を直せます。直したい所を全部直してから、「保存」を1回押します。色の付いた行が、まだ保存していない行です。
+          </p>
+          {saveBar}
+        </header>
+
+        {message ? <p className="tp-message">{message}</p> : null}
+
+        <div className="tp-card tp-scroll">
+          <table className="tp-roster tp-bulk">
+            <thead>
+              <tr>
+                <th className="tp-bulk-sticky">名前</th>
+                <th>学年</th>
+                <th>ポジション</th>
+                <th>枠</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortMembers(members).map((member) => {
+                const changed = changes.some((entry) => entry.member.id === member.id);
+                const rowError = rowErrors[member.id];
+                const classes = [changed ? "tp-bulk-changed" : "", rowError ? "tp-bulk-error" : ""].filter(Boolean);
+                return (
+                  <tr key={member.id} className={classes.join(" ") || undefined}>
+                    <td className="tp-bulk-sticky">
+                      {member.displayName}
+                      {rowError ? <span className="tp-sub tp-bulk-reason">{rowError}</span> : null}
+                    </td>
+                    <td>{member.grade ?? "—"}</td>
+                    <td>{member.position ?? "—"}</td>
+                    <td>{choice(member, "slot", MEMBER_SLOTS, "—")}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="tp-gap">{saveBar}</div>
+      </>
+    );
+  }
 
   return (
     <>

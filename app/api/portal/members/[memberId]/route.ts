@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canManageSite, isPortalTeam } from "@/lib/domain/portal";
+import { canEditMemberSlot, canManageSite, isPortalTeam } from "@/lib/domain/portal";
 import { parseMemberInput } from "@/lib/server/portal-member-input";
-import { listSystemAdmins, updateMember } from "@/lib/server/portal-member-store";
+import { getMember, listSystemAdmins, updateMember } from "@/lib/server/portal-member-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 
 type RouteContext = {
@@ -13,7 +13,7 @@ type RouteContext = {
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
-  if (!current || !canManageSite(current)) {
+  if (!current) {
     return NextResponse.json({ error: "名簿を変える権限がありません。" }, { status: 403 });
   }
 
@@ -23,6 +23,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const { memberId } = await context.params;
+
+  // システム担当でない人(ポジションのリーダー)は、自分のまとまりの部員の「枠」だけを直せる(2026-10-31 から)。
+  if (!canManageSite(current)) {
+    const onlySlot = Object.keys(input.patch).every((key) => key === "slot");
+    const target = onlySlot ? await getMember(memberId) : null;
+    if (!target || target.teamSlug !== teamSlug || !canEditMemberSlot(current, target)) {
+      return NextResponse.json({ error: "名簿を変える権限がありません。" }, { status: 403 });
+    }
+  }
 
   // 名簿を変えられる人がいなくならないよう、最後のシステム担当は外せない。
   const removesAdministrator = input.patch.isSystemAdmin === false || input.patch.active === false;

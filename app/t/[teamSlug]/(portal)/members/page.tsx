@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PortalMembersClient } from "@/components/portal-members-client";
-import { canManageSite, canViewLoginLog, isPortalTeam } from "@/lib/domain/portal";
+import { canManageSite, canOpenMembersBulkEdit, canViewLoginLog, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMembersPath } from "@/lib/domain/team";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
@@ -29,6 +29,7 @@ export default async function TeamMembersPage({ params }: PageProps) {
   return (
     <PortalMembersClient
       canManage={canManage}
+      canBulkEdit={canOpenMembersBulkEdit(current)}
       canViewLoginLog={canViewLoginLog(current)}
       currentMemberId={current.id}
       initialMembers={members}
