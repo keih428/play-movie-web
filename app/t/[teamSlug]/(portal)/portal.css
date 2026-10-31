@@ -3425,6 +3425,13 @@ button.tp-mystats-course {
   background: var(--tp-accent-soft);
 }
 
+/* 来月のもの(月末の最終週だけ出す) */
+.tp-milestone-upcoming {
+  border-style: dashed;
+  border-left-style: solid;
+  background: var(--tp-surface);
+}
+
 .tp-milestone-body {
   font-size: 17px;
   font-weight: 700;
