@@ -37,7 +37,7 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
 
   return (
     <>
-      <header className="tp-hero">
+      <header className="tp-hero tp-hero-compact">
         <span className="tp-eyebrow">{formatNoteDate(drill.practiceDate)} の集計</span>
         <h1>{drill.name}</h1>
         <Link className="tp-link tp-small" href={buildTeamStatsPath(teamSlug)}>

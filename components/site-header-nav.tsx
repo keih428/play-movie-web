@@ -33,7 +33,20 @@ type SiteHeaderNavProps = {
 };
 
 // 部内ページ(この下のパス)では、試合のメニューを出さない。
-const PORTAL_SECTIONS = ["home", "manual", "training", "notes", "attendance", "schedule", "myplays", "members", "login"];
+const PORTAL_SECTIONS = [
+  "home",
+  "manual",
+  "training",
+  "notes",
+  "attendance",
+  "schedule",
+  "myplays",
+  "members",
+  "login",
+  "milestones",
+  "stats",
+  "account",
+];
 
 function getMatchLinks(teamSlug: string) {
   return [
