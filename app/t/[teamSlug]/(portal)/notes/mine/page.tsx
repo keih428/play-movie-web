@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { MilestoneCard } from "@/components/milestone-card";
 import { describePracticeEvents } from "@/lib/domain/calendar";
+import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { addDaysToDate, formatNoteDate, getLastNoteDate, isNoteWritten } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamNotesPath } from "@/lib/domain/team";
+import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
+import { getMilestone } from "@/lib/server/portal-milestone-store";
 import { getUnreadCounts, listNotes } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
@@ -44,10 +47,12 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
     ? Math.min(WEEKS_MAX, Math.max(WEEKS_STEP, requestedWeeks))
     : WEEKS_STEP;
   const from = addDaysToDate(today, -7 * weeks);
-  const [notes, schedule, unreadCounts] = await Promise.all([
+  const month = monthOf(today);
+  const [notes, schedule, unreadCounts, myMilestone] = await Promise.all([
     listNotes(teamSlug, { memberId: current.id, from }),
     getPracticeSchedule(teamSlug, from, lastDate),
     getUnreadCounts(current.id),
+    getMilestone(current.id, month),
   ]);
   const noteByDate = new Map(notes.map((note) => [note.practiceDate, note]));
 
@@ -72,6 +77,17 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
           </Link>
         </div>
       </header>
+
+      <section className="tp-section">
+        <MilestoneCard
+          teamSlug={teamSlug}
+          month={month}
+          monthLabel={formatMilestoneMonth(month)}
+          body={myMilestone?.body ?? null}
+          canEdit
+          historyHref={buildTeamMilestonesPath(teamSlug)}
+        />
+      </section>
 
       <section className="tp-section">
         <ol className="tp-slots">

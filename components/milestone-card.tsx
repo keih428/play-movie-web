@@ -1,0 +1,154 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { MILESTONE_MAX, type MilestoneScope } from "@/lib/domain/milestones";
+import { buildTeamApiPath } from "@/lib/domain/team";
+
+type MilestoneCardProps = {
+  teamSlug: string;
+  // member = 個人(自分)、team = チーム(幹部が決める)。
+  scope?: MilestoneScope;
+  // 'YYYY-MM' と、表示用の「11月」。
+  month: string;
+  monthLabel: string;
+  body: string | null;
+  // 自分のものなら決める・書き直すができる。
+  // 決める・書き直すができるか(個人は本人、チームは幹部)。
+  canEdit: boolean;
+  // これまでのマイルストーン(月ごとの記録)へのリンク。
+  historyHref?: string;
+  // ほかの人のものを出すときの名前(「〇〇さんの」)。
+  ownerName?: string;
+};
+
+/**
+ * 個人の月間マイルストーン(2026-10-31 から)。ホームとノートの上に出す。
+ * 今月のものがまだなければ、「月の初めに決めよう」と入力欄を出す。過去の月は記録として残り、書き換えない。
+ */
+export function MilestoneCard({
+  teamSlug,
+  scope = "member",
+  month,
+  monthLabel,
+  body,
+  canEdit,
+  historyHref,
+  ownerName,
+}: MilestoneCardProps) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(canEdit && !body);
+  const [draft, setDraft] = useState(body ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(buildTeamApiPath("/api/portal/milestones", teamSlug), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope, month, body: draft }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "保存できませんでした。");
+      }
+      setEditing(false);
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "保存できませんでした。");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isTeam = scope === "team";
+  const title = isTeam
+    ? `チームの${monthLabel}のマイルストーン`
+    : `${ownerName ? `${ownerName}さんの` : "自分の"}${monthLabel}のマイルストーン`;
+  const fieldId = `milestone-body-${scope}`;
+  const prompt = isTeam
+    ? "月の初めに、チームとして今月どこまで行くかを1つ決めてください(幹部だけが決められます)。全員のホームに出ます。"
+    : "月の初めに、今月どこまで行きたいかを1つ決めよう。ホームとノートの上、ノートの名前の横に出ます。";
+  const placeholder = isTeam
+    ? "例:サーブで崩す率を 40% に/全員がスクワット体重の1.25倍"
+    : "例:サーブレシーブの返球率を 60% にする/スクワット 100kg を挙げる";
+
+  if (editing) {
+    return (
+      <div className={isTeam ? "tp-milestone tp-milestone-team" : "tp-milestone"}>
+        <label className="tp-eyebrow" htmlFor={fieldId}>
+          {title}
+        </label>
+        {body ? null : <p className="tp-small">{prompt}</p>}
+        <div className="tp-field">
+          <textarea
+            id={fieldId}
+            rows={2}
+            maxLength={MILESTONE_MAX}
+            placeholder={placeholder}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        </div>
+        <div className="tp-actions">
+          <button type="button" className="tp-button" disabled={saving || !draft.trim()} onClick={save}>
+            {saving ? "保存しています…" : body ? "書き直す" : "決める"}
+          </button>
+          {body ? (
+            <button
+              type="button"
+              className="tp-button tp-ghost"
+              disabled={saving}
+              onClick={() => {
+                setDraft(body);
+                setEditing(false);
+                setError("");
+              }}
+            >
+              やめる
+            </button>
+          ) : null}
+          {historyHref ? (
+            <Link className="tp-link tp-small" href={historyHref}>
+              これまでのマイルストーン
+            </Link>
+          ) : null}
+        </div>
+        {error ? (
+          <p className="tp-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className={isTeam ? "tp-milestone tp-milestone-team" : "tp-milestone"}>
+      <span className="tp-eyebrow">{title}</span>
+      {body ? (
+        <p className="tp-milestone-body">{body}</p>
+      ) : (
+        <p className="tp-small tp-muted">{isTeam ? "まだ決まっていません(幹部が決めます)。" : "まだ決めていません。"}</p>
+      )}
+      {canEdit || historyHref ? (
+        <div className="tp-actions">
+          {canEdit ? (
+            <button type="button" className="tp-button tp-ghost" onClick={() => setEditing(true)}>
+              書き直す
+            </button>
+          ) : null}
+          {historyHref ? (
+            <Link className="tp-link tp-small" href={historyHref}>
+              これまでのマイルストーン
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}

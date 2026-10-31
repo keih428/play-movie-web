@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MilestoneCard } from "@/components/milestone-card";
 import { NoteCard } from "@/components/note-card";
 import { getDutyWeekStart } from "@/lib/domain/comment-duty";
+import { formatMilestoneMonth, milestoneKey, monthOf } from "@/lib/domain/milestones";
 import { PracticeDayForm } from "@/components/practice-day-form";
 import {
   NOTE_FEEDS,
@@ -12,7 +14,7 @@ import {
   type NoteFeed,
 } from "@/lib/domain/notes";
 import { canAdminister, canExportNotes, getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamNotesPath } from "@/lib/domain/team";
+import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import {
   getUnreadCounts,
   listComments,
@@ -22,6 +24,7 @@ import {
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { getWeekDuties } from "@/lib/server/portal-comment-duty-store";
 import { listMembers } from "@/lib/server/portal-member-store";
+import { getMilestone, mapTeamMilestones } from "@/lib/server/portal-milestone-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
 
@@ -68,7 +71,13 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
   ]);
   const unreadTotal = Object.values(unreadCounts).reduce((total, count) => total + count, 0);
   // 一覧の中でコメントを開けるように、並べるノートのコメントをまとめて読む。
-  const comments = await listComments(notes.map((note) => note.id));
+  // 名前の横に出すマイルストーンも、ノートの月ごとにまとめて読む。
+  const month = monthOf(today);
+  const [comments, milestones, myMilestone] = await Promise.all([
+    listComments(notes.map((note) => note.id)),
+    mapTeamMilestones(teamSlug, notes.map((note) => monthOf(note.practiceDate))),
+    getMilestone(current.id, month),
+  ]);
 
   // コメント当番(けーいちの決定、2026-10-21):今週、自分が受け持つ人と、その人の今週のノート。
   const weekStart = getDutyWeekStart(today);
@@ -112,6 +121,19 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
           ) : null}
         </div>
       </header>
+
+      {canWrite ? (
+        <section className="tp-section">
+          <MilestoneCard
+            teamSlug={teamSlug}
+            month={month}
+            monthLabel={formatMilestoneMonth(month)}
+            body={myMilestone?.body ?? null}
+            canEdit
+            historyHref={buildTeamMilestonesPath(teamSlug)}
+          />
+        </section>
+      ) : null}
 
       {missingDates.length > 0 ? (
         <section className="tp-section">
@@ -220,6 +242,7 @@ export default async function TeamNotesPage({ params, searchParams }: PageProps)
               isDutyTarget={note.memberId === myDuty?.targetId}
               teamSlug={teamSlug}
               unread={unreadCounts[note.id]}
+              milestone={milestones[milestoneKey(note.memberId, monthOf(note.practiceDate))] ?? null}
             />
           ))
         )}

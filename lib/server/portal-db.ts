@@ -398,6 +398,34 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "021_monthly_milestones",
+    // 月間マイルストーン(2026-10-31 から)。個人(monthly_milestones)は1人・1か月に1つ、チーム(team_monthly_milestones)は
+    // 1か月に1つで幹部が決める。どちらもその月のうちは書き直せ、過去の月は記録として残す。
+    // month は 'YYYY-MM'(日本時間)。
+    sql: `
+      CREATE TABLE monthly_milestones (
+        team_slug text NOT NULL,
+        member_id text NOT NULL REFERENCES members (id),
+        month text NOT NULL,
+        body text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (member_id, month)
+      );
+      CREATE INDEX monthly_milestones_team_month ON monthly_milestones (team_slug, month);
+
+      CREATE TABLE team_monthly_milestones (
+        team_slug text NOT NULL,
+        month text NOT NULL,
+        body text NOT NULL,
+        updated_by text REFERENCES members (id),
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_slug, month)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

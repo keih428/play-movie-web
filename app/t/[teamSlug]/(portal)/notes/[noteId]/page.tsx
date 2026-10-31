@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { NoteComments } from "@/components/note-comments";
 import { NoteDeleteButton } from "@/components/note-delete-button";
 import { RefreshOnMount } from "@/components/refresh-on-mount";
+import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamNotesPath } from "@/lib/domain/team";
+import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
+import { getMilestone } from "@/lib/server/portal-milestone-store";
 import { getNote, getUnreadCounts, listComments, markNoteSeen } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
 
@@ -33,7 +35,11 @@ export default async function TeamNotePage({ params }: PageProps) {
   }
 
   const isAuthor = note.memberId === current.id;
-  const comments = await listComments([note.id]);
+  const noteMonth = monthOf(note.practiceDate);
+  const [comments, milestone] = await Promise.all([
+    listComments([note.id]),
+    getMilestone(note.memberId, noteMonth),
+  ]);
   // 未読のコメントがあれば読んだことにし、開いたあとで上のメニューの新着の数を消す。
   const hadUnread = isAuthor && ((await getUnreadCounts(current.id))[note.id] ?? 0) > 0;
   if (isAuthor) {
@@ -51,6 +57,15 @@ export default async function TeamNotePage({ params }: PageProps) {
         <div className="tp-chips">
           {note.position ? <span className="tp-chip">{note.position}</span> : null}
         </div>
+        {milestone ? (
+          <p className="tp-milestone-inline">
+            <b>{formatMilestoneMonth(noteMonth)}のマイルストーン</b>
+            {milestone.body}{" "}
+            <Link className="tp-link tp-small" href={buildTeamMilestonesPath(teamSlug, isAuthor ? undefined : note.memberId)}>
+              これまで
+            </Link>
+          </p>
+        ) : null}
         <div className="tp-actions">
           <Link
             className="tp-button tp-ghost"

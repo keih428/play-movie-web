@@ -3403,3 +3403,88 @@ button.tp-mystats-course {
   stroke: rgba(0, 0, 0, 0.45);
   stroke-width: 3px;
 }
+
+/* ---------- 月間マイルストーン(2026-10-31 から) ---------- */
+.tp-milestones {
+  display: grid;
+  gap: 10px;
+}
+
+.tp-milestone {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--tp-line);
+  border-left: 6px solid var(--tp-ok);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-milestone-team {
+  border-left-color: var(--tp-accent);
+  background: var(--tp-accent-soft);
+}
+
+.tp-milestone-body {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tp-milestone .tp-actions {
+  align-items: center;
+}
+
+/* ノートの名前の横:そのノートの月のマイルストーン。長いものは2行まで */
+.tp-milestone-chip {
+  display: -webkit-box;
+  max-width: 100%;
+  padding: 2px 8px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--tp-accent-soft);
+  color: var(--tp-fg);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tp-milestone-chip b,
+.tp-milestone-inline b {
+  margin-right: 6px;
+  color: var(--tp-accent);
+  font-size: 11px;
+}
+
+.tp-milestone-inline {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.tp-milestone-log {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-milestone-log li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+}
+
+.tp-milestone-log .tp-milestone-body {
+  font-size: 15px;
+}

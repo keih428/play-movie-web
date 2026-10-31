@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MilestoneCard } from "@/components/milestone-card";
 import { PortalGoal } from "@/components/portal-goal";
 import { RichText } from "@/components/rich-text";
 import { DEFAULT_PRACTICE_LOCATION } from "@/lib/domain/calendar";
+import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { MANUAL_SECTIONS, canEditPortalTexts, isPortalTeam } from "@/lib/domain/portal";
+import { MANUAL_SECTIONS, canEditPortalTexts, canSetTeamMilestone, isPortalTeam } from "@/lib/domain/portal";
 import {
   buildTeamAccountPath,
   buildTeamAttendancePath,
   buildTeamHomePath,
   buildTeamManualPath,
   buildTeamMembersPath,
+  buildTeamMilestonesPath,
   buildTeamNotesPath,
   buildTeamSchedulePath,
   buildTeamTrainingPath,
@@ -22,6 +25,7 @@ import {
 import { formatPeriod } from "@/lib/domain/training";
 import { getWeekDuties } from "@/lib/server/portal-comment-duty-store";
 import { listMembers } from "@/lib/server/portal-member-store";
+import { getMilestone, getTeamMilestone } from "@/lib/server/portal-milestone-store";
 import { getUnreadCounts } from "@/lib/server/portal-note-store";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
@@ -58,14 +62,17 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
 
   const current = await requireMember(teamSlug, buildTeamHomePath(teamSlug));
   const today = getTodayInJapan();
+  const month = monthOf(today);
 
-  const [texts, plan, schedule, unread, duties, members] = await Promise.all([
+  const [texts, plan, schedule, unread, duties, members, teamMilestone, myMilestone] = await Promise.all([
     listPortalTexts(teamSlug),
     getTrainingPlan(teamSlug),
     getPracticeSchedule(teamSlug, today, shiftDate(today, UPCOMING_DAYS)),
     getUnreadCounts(current.id),
     current.position ? getWeekDuties(teamSlug, today) : Promise.resolve([]),
     listMembers(teamSlug),
+    getTeamMilestone(teamSlug, month),
+    getMilestone(current.id, month),
   ]);
   // コメント当番:今週、自分が受け持つ人(プレイヤーだけ)。
   const dutyTarget = members.find(
@@ -116,6 +123,27 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
 
       <section className="tp-section">
         <PortalGoal teamSlug={teamSlug} body={goal?.body ?? null} canEdit={canEditPortalTexts(current)} />
+      </section>
+
+      {/* 月間マイルストーン(2026-10-31 から)。チームは幹部が、個人は各自が、月の初めに決める。 */}
+      <section className="tp-section tp-milestones">
+        <MilestoneCard
+          teamSlug={teamSlug}
+          scope="team"
+          month={month}
+          monthLabel={formatMilestoneMonth(month)}
+          body={teamMilestone?.body ?? null}
+          canEdit={canSetTeamMilestone(current)}
+          historyHref={buildTeamMilestonesPath(teamSlug, "team")}
+        />
+        <MilestoneCard
+          teamSlug={teamSlug}
+          month={month}
+          monthLabel={formatMilestoneMonth(month)}
+          body={myMilestone?.body ?? null}
+          canEdit
+          historyHref={buildTeamMilestonesPath(teamSlug)}
+        />
       </section>
 
       {dutyTarget ? (
