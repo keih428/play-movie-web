@@ -6,7 +6,7 @@ import { RichText } from "@/components/rich-text";
 import { DEFAULT_PRACTICE_LOCATION } from "@/lib/domain/calendar";
 import { formatMilestoneMonth, getUpcomingMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { MANUAL_SECTIONS, canEditPortalTexts, canSetTeamMilestone, isPortalTeam } from "@/lib/domain/portal";
+import { MANUAL_SECTIONS, canEditTeamGoal, canSetTeamMilestone, isPortalTeam } from "@/lib/domain/portal";
 import {
   buildTeamAccountPath,
   buildTeamAttendancePath,
@@ -127,7 +127,7 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
       )}
 
       <section className="tp-section">
-        <PortalGoal teamSlug={teamSlug} body={goal?.body ?? null} canEdit={canEditPortalTexts(current)} />
+        <PortalGoal teamSlug={teamSlug} body={goal?.body ?? null} canEdit={canEditTeamGoal(current)} />
       </section>
 
       {/* 月間マイルストーン(2026-10-31 から)。チームは幹部が、個人は各自が、月の初めに決める。 */}
