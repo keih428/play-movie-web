@@ -383,6 +383,21 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // ノートの「チームへ」の欄(2026-10-26 から)。チーム全体への振り返り。ノートのページの「チームへ」に全員分まとめて出す。
     sql: `ALTER TABLE notes ADD COLUMN team_message text NOT NULL DEFAULT ''`,
   },
+  {
+    id: "020_share_links",
+    // ログインしない人(監督など)に見せる共有リンク(2026-10-31 から)。種類(今は schedule だけ)ごとに1つ。
+    // 作り直すと token が変わり、古いリンクは開けなくなる。止めると行を消す。
+    sql: `
+      CREATE TABLE share_links (
+        team_slug text NOT NULL,
+        kind text NOT NULL,
+        token text NOT NULL UNIQUE,
+        created_by text REFERENCES members (id),
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (team_slug, kind)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

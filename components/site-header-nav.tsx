@@ -18,6 +18,7 @@ import {
   buildTeamTrainingPath,
   buildTeamVideosPath,
   buildTeamWorkspacesPath,
+  TEAM_SHARE_SECTION,
 } from "@/lib/domain/team";
 
 function getTeamSlugFromParams(params: ReturnType<typeof useParams>): string | undefined {
@@ -129,6 +130,10 @@ export function SiteHeaderNav({ portalUser, unreadNotes }: SiteHeaderNavProps) {
   const teamSlug = getTeamSlugFromParams(params);
 
   if (teamSlug && isPortalTeam(teamSlug)) {
+    // 監督向けの共有リンクのページでは、上のバーを出さない(ログインや試合のページへの入口を見せない)。
+    if (pathname.startsWith(`${buildTeamRootPath(teamSlug)}/${TEAM_SHARE_SECTION}/`)) {
+      return null;
+    }
     const loggedIn = portalUser?.teamSlug === teamSlug;
     return <TeamHeader teamSlug={teamSlug} loggedIn={loggedIn} unreadNotes={loggedIn ? unreadNotes : 0} />;
   }
