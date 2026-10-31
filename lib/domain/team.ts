@@ -109,6 +109,13 @@ export function buildTeamSchedulePath(teamSlug: string): string {
   return `/t/${teamSlug}/schedule`;
 }
 
+// 監督など、ログインしない人に予定表だけを見せる共有リンク(2026-10-31 から)。token は推測できない長い文字列。
+export const TEAM_SHARE_SECTION = "s";
+
+export function buildTeamScheduleSharePath(teamSlug: string, token: string): string {
+  return `/t/${teamSlug}/${TEAM_SHARE_SECTION}/${token}`;
+}
+
 export function buildTeamNotesPath(teamSlug: string): string {
   return `/t/${teamSlug}/notes`;
 }
