@@ -3529,8 +3529,12 @@ button.tp-mystats-course {
   background: var(--tp-off-soft);
 }
 
-/* ノートの名前の横:そのノートの月のマイルストーン。長いものは2行まで */
+/* ノートの名前の横:そのノートの月のマイルストーン。長いものは2行まで。
+   見出しの行の最後(「⋯」より後ろ)に置き、1行を使う。名前の行に入れると、長いときに「⋯」が下の行へ押し出されて
+   札と本文の間が大きく空いていた(2026-11-03 から) */
 .tp-milestone-chip {
+  order: 10;
+  flex-basis: 100%;
   display: -webkit-box;
   max-width: 100%;
   padding: 2px 8px;
@@ -4254,11 +4258,16 @@ body:has(.tp-counter) .team-header {
 }
 
 /* ---------- 改行の位置(2026-11-03 から) ---------- */
-/* JaText:文節の中では改行しない(切れ目は <wbr>)。収まらない文節だけは途中で折る。
+/* JaText:文節を1つずつ箱(.tp-phrase-part)に入れ、箱の中では改行しない。収まらない文節だけは途中で折る。
    (.tp-ja は単語帳の表示の別の設定なので、名前を分けている) */
 .tp-phrase {
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+.tp-phrase-part {
+  display: inline-block;
+  max-width: 100%;
 }
 
 /* 1かたまりで読ませたい短い言葉(「さらに前を見る」「(遅刻 19:00 から)」など) */
