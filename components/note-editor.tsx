@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { NOTE_BODY_MAX, NOTE_REQUEST_MAX, NOTE_TEAM_MESSAGE_MAX } from "@/lib/domain/notes";
 import { buildTeamApiPath, buildTeamNotesPath } from "@/lib/domain/team";
+import { JaText } from "@/components/ja-text";
 
 type NoteEditorProps = {
   date: string;
@@ -82,7 +83,9 @@ export function NoteEditor({ date, initialBody, initialRequest, initialTeamMessa
         ) : null}
       </div>
       <div className="tp-savebar">
-        <p>書いたことは部の全員に見えます。あとから編集できます。</p>
+        <p>
+          <JaText>書いたことは部の全員に見えます。あとから編集できます。</JaText>
+        </p>
         <button className="tp-button" type="submit" disabled={busy || !body.trim()}>
           {busy ? "保存中…" : "保存"}
         </button>

@@ -267,6 +267,12 @@ body:has(.tp) {
   width: 100%;
 }
 
+/* 切り替えのボタンの文字(「サイド」「チームへ」)は1行に。6つ並ぶと幅がぎりぎりなので、左右の余白を詰める(2026-11-03 から) */
+.tp-days > * {
+  padding-inline: 2px;
+  white-space: nowrap;
+}
+
 .tp-days button {
   display: grid;
   justify-items: center;
@@ -657,6 +663,16 @@ body:has(.tp) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
+}
+
+/* 2列に並んだとき、長いボタン(「この日のノートを書く」)が列からはみ出して画面が横に揺れないように(2026-11-03 から) */
+.tp-inputs > * {
+  min-width: 0;
+}
+
+.tp-inputs .tp-button {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .tp-rm {
@@ -2164,7 +2180,7 @@ body:has(.tp[data-mode="tango"]) {
   overflow-wrap: anywhere;
 }
 
-.tp-cal-event span {
+.tp-cal-event > span {
   overflow: hidden;
   color: var(--tp-muted);
   font-family: var(--tp-num);
@@ -2528,7 +2544,7 @@ body:has(.tp[data-mode="tango"]) {
   font-weight: 900;
 }
 
-.tp-tile span {
+.tp-tile > span {
   color: var(--tp-muted);
   font-size: 13px;
   line-height: 1.5;
@@ -3744,14 +3760,15 @@ body:has(.tp-counter) .team-header {
 .tp-counter-legend-cell small {
   display: -webkit-box;
   overflow: hidden;
-  min-height: 2.3em;
+  /* 「直接/返ってきた」「返された/(B)」が文節で3行まで入るように(2026-11-03 から。前は2行で切れていた) */
+  min-height: 3.45em;
   color: var(--tp-muted);
   font-size: 9.5px;
   line-height: 1.15;
   text-align: center;
   word-break: break-all;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .tp-counter-list {
@@ -4234,4 +4251,17 @@ body:has(.tp-counter) .team-header {
 .tp-creed-principles li::marker {
   font-family: var(--tp-num);
   opacity: 0.7;
+}
+
+/* ---------- 改行の位置(2026-11-03 から) ---------- */
+/* JaText:文節の中では改行しない(切れ目は <wbr>)。収まらない文節だけは途中で折る。
+   (.tp-ja は単語帳の表示の別の設定なので、名前を分けている) */
+.tp-phrase {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* 1かたまりで読ませたい短い言葉(「さらに前を見る」「(遅刻 19:00 から)」など) */
+.tp-nowrap {
+  white-space: nowrap;
 }

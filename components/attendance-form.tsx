@@ -233,8 +233,12 @@ export function AttendanceForm({
 
       {existing ? (
         <p className="tp-small tp-muted">
-          この日は、もう連絡を出してあります({ATTENDANCE_KIND_LABELS[existing.kind]}
-          {describeAttendanceTime(existing) ? ` ${describeAttendanceTime(existing)}` : ""})。出し直すと訂正になります。
+          この日は、もう連絡を出してあります
+          <span className="tp-nowrap">
+            ({ATTENDANCE_KIND_LABELS[existing.kind]}
+            {describeAttendanceTime(existing) ? ` ${describeAttendanceTime(existing)}` : ""})
+          </span>
+          。出し直すと訂正になります。
         </p>
       ) : null}
       {message ? <p className="tp-message">{message}</p> : null}

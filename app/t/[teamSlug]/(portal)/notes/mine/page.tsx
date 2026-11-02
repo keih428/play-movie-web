@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { JaText } from "@/components/ja-text";
 import { MilestoneCard } from "@/components/milestone-card";
 import { describePracticeEvents } from "@/lib/domain/calendar";
 import { formatMilestoneMonth, getUpcomingMilestoneMonth, monthOf } from "@/lib/domain/milestones";
@@ -126,7 +127,7 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
                     {schedule.eventsByDate[date]
                       ? `${describePracticeEvents(schedule.eventsByDate[date])}:`
                       : ""}
-                    まだ書いていない → 書く
+                    <span className="tp-nowrap">まだ書いていない</span> <span className="tp-nowrap">→ 書く</span>
                     {note && note.commentCount > 0 ? (
                       <span className="tp-small tp-muted">
                         {" "}(コメント {note.commentCount}件
@@ -145,7 +146,7 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
             <>
               {" "}
               <Link className="tp-link" href={`${basePath}/mine?weeks=${weeks + WEEKS_STEP}`} scroll={false}>
-                さらに前を見る
+                <span className="tp-nowrap">さらに前を見る</span>
               </Link>
             </>
           ) : null}
@@ -165,7 +166,7 @@ export default async function TeamMyNotesPage({ params, searchParams }: PageProp
           <div className="tp-field">
             <span>&nbsp;</span>
             <button className="tp-button tp-ghost" type="submit">
-              この日のノートを書く
+              <JaText>この日のノートを書く</JaText>
             </button>
           </div>
         </form>

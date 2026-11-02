@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MoreMenu } from "@/components/more-menu";
 import { buildTeamApiPath } from "@/lib/domain/team";
+import { JaText } from "@/components/ja-text";
 
 type PortalCreedProps = {
   teamSlug: string;
@@ -114,11 +115,15 @@ export function PortalCreed({ teamSlug, slogan, philosophy, canEdit }: PortalCre
         <MoreMenu label="スローガンと理念の操作" items={[{ label: "編集", onSelect: () => setEditing(true) }]} />
       ) : null}
       <span className="tp-creed-label">年間スローガン</span>
-      <p className="tp-creed-slogan">{slogan}</p>
+      <p className="tp-creed-slogan">
+        <JaText>{slogan}</JaText>
+      </p>
       <span className="tp-creed-label">理念</span>
       <ol className="tp-creed-principles">
         {principles.map((principle) => (
-          <li key={principle}>{principle}</li>
+          <li key={principle}>
+            <JaText>{principle}</JaText>
+          </li>
         ))}
       </ol>
     </div>

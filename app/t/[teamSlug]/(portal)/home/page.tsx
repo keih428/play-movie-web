@@ -40,6 +40,7 @@ import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { requireMember } from "@/lib/server/portal-session";
 import { listPortalTexts } from "@/lib/server/portal-text-store";
 import { getTodayInJapan, getTrainingPlan } from "@/lib/server/portal-training-store";
+import { JaText } from "@/components/ja-text";
 
 type PageProps = {
   params: Promise<{
@@ -213,7 +214,9 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
           {mainLinks.map((link) => (
             <Link key={link.href} className="tp-tile" href={link.href}>
               <strong>{link.label}</strong>
-              <span>{link.text}</span>
+              <span>
+                <JaText>{link.text}</JaText>
+              </span>
             </Link>
           ))}
         </div>

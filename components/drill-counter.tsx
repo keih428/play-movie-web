@@ -13,6 +13,12 @@ import {
 } from "@/lib/domain/drill-stats";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import { buildTeamApiPath, buildTeamStatsPath } from "@/lib/domain/team";
+import { JaText } from "@/components/ja-text";
+
+// 列の見出しは幅がとても狭いので、改行の位置を決めておく(2026-11-03 から。「返ってき/た」と切れていたため)。
+const COUNTER_LABEL_PHRASES: Record<string, string[]> = {
+  直接返ってきた: ["直接", "返って", "きた"],
+};
 
 type CounterPlayer = {
   id: string;
@@ -258,7 +264,11 @@ export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRec
           {DRILL_GRADES.map((grade) => (
             <span key={grade} className={`tp-counter-legend-cell tp-grade-${GRADE_CLASS[grade]}`}>
               <b>{grade}</b>
-              <small>{DRILL_GRADE_LABELS[skill][grade]}</small>
+              <small>
+                <JaText phrases={COUNTER_LABEL_PHRASES[DRILL_GRADE_LABELS[skill][grade]]}>
+                  {DRILL_GRADE_LABELS[skill][grade]}
+                </JaText>
+              </small>
             </span>
           ))}
         </span>

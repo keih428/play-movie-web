@@ -154,7 +154,7 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
                 return (
                   <tr key={player.id} className={total === 0 ? "tp-stat-empty" : undefined}>
                     <td>
-                      {player.displayName}
+                      <span className="tp-nowrap">{player.displayName}</span>
                       <span className="tp-sub">{player.position}</span>
                     </td>
                     {DRILL_GRADES.map((grade) => (

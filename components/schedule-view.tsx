@@ -5,6 +5,7 @@ import { DEFAULT_PRACTICE_LOCATION, type PracticeEvent } from "@/lib/domain/cale
 import { formatNoteDate } from "@/lib/domain/notes";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
+import { JaText } from "@/components/ja-text";
 
 export type ScheduleQuery = {
   month?: string;
@@ -291,9 +292,16 @@ export async function ScheduleView({ teamSlug, basePath, query, showSource, eyeb
                 >
                   <span className="tp-cal-date">
                     {formatNoteDate(date)}
-                    {date === today ? " 今日" : ""}
+                    {date === today ? (
+                      <>
+                        {" "}
+                        <span className="tp-nowrap">今日</span>
+                      </>
+                    ) : null}
                   </span>
-                  <b>{event.title}</b>
+                  <b>
+                    <JaText>{event.title}</JaText>
+                  </b>
                   <span className="tp-cal-time">{describeTime(event)}</span>
                   <span className="tp-cal-place">{event.location ?? DEFAULT_PRACTICE_LOCATION}</span>
                   {event.description ? <span className="tp-cal-desc">{event.description}</span> : null}
