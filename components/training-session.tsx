@@ -11,6 +11,7 @@ import {
   type ResolvedItem,
   type TrainingDay,
 } from "@/lib/domain/training";
+import { JaText } from "@/components/ja-text";
 
 export type WeekLink = {
   key: string;
@@ -125,7 +126,7 @@ function DayPanel({ day, numberOffset, mustItems, onToggleMust, busyName }: DayP
                 <li key={item.name} className={item.main ? "tp-main" : undefined}>
                   <span className="tp-i tp-std-only">{index + 1}</span>
                   <span className="tp-n tp-std-only">
-                    {item.name}
+                    <JaText>{item.name}</JaText>
                     {must(item)}
                     {item.personal ? <span className="tp-swap">個人の追加</span> : null}
                     {item.swapped ? <span className="tp-swap">C枠の置き換え</span> : null}

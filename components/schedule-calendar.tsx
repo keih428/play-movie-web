@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
+import { JaText } from "@/components/ja-text";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -28,7 +29,9 @@ export function describeEventTime(event: PracticeEvent): string {
 export function EventDetail({ event, defaultLocation }: { event: PracticeEvent; defaultLocation: string }) {
   return (
     <div className={event.off ? "tp-event tp-event-off" : "tp-event"}>
-      <b className="tp-event-title">{event.title}</b>
+      <b className="tp-event-title">
+        <JaText>{event.title}</JaText>
+      </b>
       <span className="tp-event-meta">
         <span className="tp-event-time">{describeEventTime(event)}</span>
         <span>{event.location ?? defaultLocation}</span>
@@ -81,7 +84,9 @@ export function ScheduleCalendar({ weeks, month, today, eventsByDate, defaultLoc
                     <span className="tp-cal-day">{Number(date.slice(8))}</span>
                     {events.map((event, index) => (
                       <span key={index} className={event.off ? "tp-cal-event tp-cal-event-off" : "tp-cal-event"}>
-                        <b>{event.title}</b>
+                        <b>
+                          <JaText fine>{event.title}</JaText>
+                        </b>
                         <span>{event.start ?? "終日"}</span>
                       </span>
                     ))}

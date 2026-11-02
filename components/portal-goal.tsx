@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PORTAL_TEXT_MAX_LENGTH } from "@/lib/domain/portal";
 import { buildTeamApiPath } from "@/lib/domain/team";
+import { JaText } from "@/components/ja-text";
 
 type PortalGoalProps = {
   teamSlug: string;
@@ -89,7 +90,9 @@ export function PortalGoal({ teamSlug, body, canEdit }: PortalGoalProps) {
       <span className="tp-eyebrow">チームの目標</span>
       {body ? (
         <>
-          <p className="tp-goal-headline">{headline}</p>
+          <p className="tp-goal-headline">
+            <JaText>{headline}</JaText>
+          </p>
           {details ? <p className="tp-goal-details">{details}</p> : null}
         </>
       ) : (

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { MoreMenu } from "@/components/more-menu";
 import { MILESTONE_MAX, type MilestoneScope } from "@/lib/domain/milestones";
 import { buildTeamApiPath } from "@/lib/domain/team";
+import { JaText } from "@/components/ja-text";
 
 type MilestoneCardProps = {
   teamSlug: string;
@@ -158,7 +159,9 @@ export function MilestoneCard({
       ) : null}
       <span className="tp-eyebrow">{title}</span>
       {body ? (
-        <p className="tp-milestone-body">{body}</p>
+        <p className="tp-milestone-body">
+          <JaText>{body}</JaText>
+        </p>
       ) : upcoming ? (
         <p className="tp-small tp-muted">{canEdit ? prompt : "まだ決まっていません(主将が設定します)。"}</p>
       ) : (

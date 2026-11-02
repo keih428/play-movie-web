@@ -138,7 +138,7 @@ export default async function TeamMemberNotesPage({ params, searchParams }: Page
             <>
               {" "}
               <Link className="tp-link" href={`${basePath}/member?id=${target.id}&weeks=${weeks + WEEKS_STEP}`} scroll={false}>
-                さらに前を見る
+                <span className="tp-nowrap">さらに前を見る</span>
               </Link>
             </>
           ) : null}

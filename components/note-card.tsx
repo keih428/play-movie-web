@@ -15,6 +15,7 @@ import {
   type NoteComment,
 } from "@/lib/domain/notes";
 import { buildTeamApiPath, buildTeamNotesPath } from "@/lib/domain/team";
+import { JaText } from "@/components/ja-text";
 
 type NoteCardProps = {
   note: Note;
@@ -162,7 +163,7 @@ export function NoteCard({
         {milestone ? (
           <span className="tp-milestone-chip" title={`${note.memberName}さんの今月のマイルストーン:${milestone}`}>
             <b>目標</b>
-            {milestone}
+            <JaText>{milestone}</JaText>
           </span>
         ) : null}
         {isDutyTarget ? <span className="tp-duty-badge">当番</span> : null}
