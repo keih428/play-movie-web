@@ -270,6 +270,9 @@ export async function ScheduleView({ teamSlug, basePath, query, showSource, eyeb
           <li className="tp-cal-event tp-kind-match">試合</li>
           <li className="tp-cal-event tp-cal-event-off">オフ</li>
         </ul>
+        <p className="tp-small tp-muted">
+          色は予定の名前で決まります。練習試合は「練習試合」で始まる名前、試合は「試合」で始まる名前か、「大会」「リーグ」「インカレ」「選手権」「〇〇戦」が入る名前(頭に「AB」などが付いていてもよい)。
+        </p>
         <ScheduleCalendar
           weeks={weeks}
           month={month}

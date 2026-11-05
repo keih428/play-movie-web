@@ -61,5 +61,20 @@ describe("getEventKind(予定表の色分け)", () => {
     // 英字のあとが練習なら練習のまま
     expect(getEventKind({ title: "AB練習" })).toBe("practice");
     expect(getEventKind({ title: "C練習(試合形式)" })).toBe("practice");
+    // 「大会」「リーグ」「〇〇戦」も試合
+    expect(getEventKind({ title: "国公立大会(1年生)" })).toBe("match");
+    expect(getEventKind({ title: "春季リーグ 第1戦" })).toBe("match");
+    expect(getEventKind({ title: "秋季リーグ" })).toBe("match");
+    expect(getEventKind({ title: "一橋戦" })).toBe("match");
+    expect(getEventKind({ title: "九大・東北大戦(合宿)" })).toBe("match");
+    expect(getEventKind({ title: "AB 七大戦" })).toBe("match");
+    expect(getEventKind({ title: "東日本インカレ" })).toBe("match");
+    expect(getEventKind({ title: "全日本選手権" })).toBe("match");
+    // 練習試合が先、練習で始まるものは練習のまま、「作戦」「戦術」は反応しない
+    expect(getEventKind({ title: "練習試合(一橋戦)" })).toBe("practice-match");
+    expect(getEventKind({ title: "練習(大会前の調整)" })).toBe("practice");
+    expect(getEventKind({ title: "作戦会議" })).toBe("practice");
+    expect(getEventKind({ title: "戦術ミーティング" })).toBe("practice");
+    expect(getEventKind({ title: "ミーティング(作戦)" })).toBe("practice");
   });
 });

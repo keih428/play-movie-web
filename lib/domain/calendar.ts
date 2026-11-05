@@ -58,14 +58,23 @@ export function isOffEvent(title: string): boolean {
 }
 
 /**
- * 予定の種類(予定表の色分け。けーいちの決定、2026-11-05)。名前の最初が「練習試合」なら練習試合、「試合」なら試合、
- * 「オフ」ならオフ、それ以外は練習として扱う。最初に枠の英字(「AB」「BC」「C」など)が付いていてもよい
- * (「AB練習試合」「BC試合」「C練習試合」。けーいちの依頼、2026-11-05)。「練習(試合形式)」のように途中にあるだけなら練習。
+ * 予定の種類(予定表の色分け。けーいちの決定、2026-11-05)。
+ * - オフ:名前の最初が「オフ」
+ * - 練習試合:名前の最初が「練習試合」
+ * - 練習:名前の最初が「練習」(「練習(大会前の調整)」のように、あとに「大会」などがあっても練習)
+ * - 試合:名前の最初が「試合」、または名前に「大会」「リーグ」「インカレ」「選手権」が入る、または「〇〇戦」で終わる言葉がある
+ *   (「国公立大会」「春季リーグ」「東日本インカレ」「一橋戦」「七大戦」「リーグ第1戦」。けーいちの依頼、2026-11-05)
+ * - それ以外は練習
+ * どれも、名前の頭に枠の英字(「AB」「BC」「C」など)が付いていてもよい(「AB練習試合」「BC試合」)。
  */
 // 名前の頭に付く枠の英字(半角・全角)と、その後の空白・中黒。
 const GROUP_PREFIX = "^[A-Za-zＡ-Ｚａ-ｚ]*[\\s・]*";
 const PRACTICE_MATCH = new RegExp(`${GROUP_PREFIX}練習試合`);
-const MATCH = new RegExp(`${GROUP_PREFIX}試合`);
+const PRACTICE = new RegExp(`${GROUP_PREFIX}練習`);
+const MATCH_START = new RegExp(`${GROUP_PREFIX}試合`);
+const MATCH_WORDS = /大会|リーグ|インカレ|選手権/;
+// 「〇〇戦」:「戦」で言葉が終わるもの(後ろが終わり・空白・かっこ・区切り・数字)。「作戦」は除く。
+const MATCH_SEN = /(?<!作)戦(?=$|[\s()（）・/／、,第\d０-９])/;
 
 export type EventKind = "practice" | "practice-match" | "match" | "off";
 
@@ -73,7 +82,8 @@ export function getEventKind(event: Pick<PracticeEvent, "title" | "off">): Event
   const title = event.title.trim();
   if (event.off || isOffEvent(title)) return "off";
   if (PRACTICE_MATCH.test(title)) return "practice-match";
-  if (MATCH.test(title)) return "match";
+  if (PRACTICE.test(title)) return "practice";
+  if (MATCH_START.test(title) || MATCH_WORDS.test(title) || MATCH_SEN.test(title)) return "match";
   return "practice";
 }
 
