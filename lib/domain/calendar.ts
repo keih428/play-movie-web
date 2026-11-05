@@ -57,6 +57,26 @@ export function isOffEvent(title: string): boolean {
   return title.trim().startsWith("オフ");
 }
 
+/**
+ * 予定の種類(予定表の色分け。けーいちの決定、2026-11-05)。名前の最初が「練習試合」なら練習試合、「試合」なら試合、
+ * 「オフ」ならオフ、それ以外は練習として扱う。
+ */
+export type EventKind = "practice" | "practice-match" | "match" | "off";
+
+export function getEventKind(event: Pick<PracticeEvent, "title" | "off">): EventKind {
+  const title = event.title.trim();
+  if (event.off || isOffEvent(title)) return "off";
+  if (title.startsWith("練習試合")) return "practice-match";
+  if (title.startsWith("試合")) return "match";
+  return "practice";
+}
+
+/** 色分けの class(練習はこれまでの色のまま)。 */
+export function eventKindClass(event: Pick<PracticeEvent, "title" | "off">): string {
+  const kind = getEventKind(event);
+  return kind === "practice" ? "" : `tp-kind-${kind}`;
+}
+
 function pad(value: number): string {
   return String(value).padStart(2, "0");
 }

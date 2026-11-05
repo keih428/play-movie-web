@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TrainingRequestReplies } from "@/components/training-request-replies";
 import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
-import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
+import { buildTeamMemberTrainingPath, buildTeamTrainingPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import { formatNoteDate } from "@/lib/domain/notes";
 import {
   TRAINING_REQUEST_LABEL,
@@ -161,7 +161,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
         <h2>メイン種目の重さ</h2>
         <p className="tp-small tp-muted">
           SQ = スクワット、DL = トラップバーデッドリフト。上がこの週にやった一番重いセット(kg)、下の小さい数字は推定1RM。体重比
-          = スクワットの推定1RM ÷ 体重。
+          = スクワットの推定1RM ÷ 体重。名前を押すと、その人のトレ録(日ごとの記録)を見られます。
         </p>
         <div className="tp-card tp-scroll">
           <table className="tp-team">
@@ -184,10 +184,18 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
                 return (
                   <tr key={member.id}>
                     <td>
-                      <span className="tp-name">
+                      {/* 名前を押すと、その人のトレ録(読むだけ)。自分はいつものトレ録へ(2026-11-05 から) */}
+                      <Link
+                        className="tp-name tp-link"
+                        href={
+                          member.id === current.id
+                            ? buildTeamTrainingPath(teamSlug)
+                            : buildTeamMemberTrainingPath(teamSlug, member.id)
+                        }
+                      >
                         {member.displayName}
                         {member.id === current.id ? "(自分)" : ""}
-                      </span>
+                      </Link>
                       <span className="tp-sub">
                         {member.tier ? <span className={`tp-tier ${member.tier}`}>{member.tier}</span> : null}{" "}
                         {recordedIds.has(member.id) ? "" : "未記録"}

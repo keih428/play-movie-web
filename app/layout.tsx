@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SiteHeaderNav } from "@/components/site-header-nav";
 import { getUnreadCounts } from "@/lib/server/portal-note-store";
 import { getSession } from "@/lib/server/portal-session";
@@ -46,6 +47,7 @@ export default async function RootLayout({
           portalUser={session ? { name: session.name, teamSlug: session.teamSlug } : null}
           unreadNotes={unreadNotes}
         />
+        <PullToRefresh />
         {children}
       </body>
     </html>

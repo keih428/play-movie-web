@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { EventDetail, ScheduleCalendar } from "@/components/schedule-calendar";
-import { DEFAULT_PRACTICE_LOCATION, type PracticeEvent } from "@/lib/domain/calendar";
+import { DEFAULT_PRACTICE_LOCATION, eventKindClass, type PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
@@ -263,6 +263,13 @@ export async function ScheduleView({ teamSlug, basePath, query, showSource, eyeb
         ) : null}
 
         <p className="tp-small tp-muted">予定のある日を押すと、詳しい内容が開きます。</p>
+        {/* 色の意味(2026-11-05 から)。予定の名前の最初が「練習試合」「試合」「オフ」かで色が変わる */}
+        <ul className="tp-cal-legend" aria-label="色の意味">
+          <li className="tp-cal-event">練習</li>
+          <li className="tp-cal-event tp-kind-practice-match">練習試合</li>
+          <li className="tp-cal-event tp-kind-match">試合</li>
+          <li className="tp-cal-event tp-cal-event-off">オフ</li>
+        </ul>
         <ScheduleCalendar
           weeks={weeks}
           month={month}
@@ -286,6 +293,7 @@ export async function ScheduleView({ teamSlug, basePath, query, showSource, eyeb
                     date < today ? "tp-cal-past" : "",
                     date === today ? "tp-cal-today" : "",
                     event.off ? "tp-cal-off" : "",
+                    eventKindClass(event),
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined}
