@@ -59,16 +59,18 @@ function readExercises(raw: unknown): SessionExercise[] | string {
     if (rawSets.length > SESSION_LIMITS.setsPerExercise) {
       return `「${name}」のセットが多すぎます。`;
     }
+    // 秒数の種目(プランクなど)は、回数の欄に秒数が入る。
+    const timed = entry?.unit === "sec";
     const sets: SessionSet[] = [];
     for (const set of rawSets) {
       const kg = readNumber(set?.kg, SESSION_LIMITS.maxKg);
-      const reps = readNumber(set?.reps, SESSION_LIMITS.maxReps);
+      const reps = readNumber(set?.reps, timed ? SESSION_LIMITS.maxSeconds : SESSION_LIMITS.maxReps);
       if (kg === undefined || reps === undefined) {
-        return `「${name || "名前のない種目"}」の重さか回数が正しくありません。`;
+        return `「${name || "名前のない種目"}」の重さか${timed ? "秒数" : "回数"}が正しくありません。`;
       }
       sets.push({ kg, reps: reps === null ? null : Math.round(reps) });
     }
-    exercises.push({ name, lift, sets });
+    exercises.push({ name, lift, ...(timed ? { unit: "sec" as const } : {}), sets });
   }
   return compactExercises(exercises);
 }
