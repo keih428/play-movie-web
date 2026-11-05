@@ -41,6 +41,7 @@ import { requireMember } from "@/lib/server/portal-session";
 import { listPortalTexts } from "@/lib/server/portal-text-store";
 import { getTodayInJapan, getTrainingPlan } from "@/lib/server/portal-training-store";
 import { JaText } from "@/components/ja-text";
+import { MANUAL_DEFAULTS } from "@/lib/domain/manual-defaults";
 
 type PageProps = {
   params: Promise<{
@@ -273,7 +274,9 @@ export default async function TeamPortalHomePage({ params }: PageProps) {
           {MANUAL_SECTIONS.map((section) => (
             <li key={section.key}>
               <Link href={`${manualPath}#${section.key}`}>{section.title}</Link>
-              {texts[section.key] ? null : <span className="tp-small tp-muted">まだ書かれていません</span>}
+              {texts[section.key] || MANUAL_DEFAULTS[section.key] ? null : (
+                <span className="tp-small tp-muted">まだ書かれていません</span>
+              )}
             </li>
           ))}
         </ul>
