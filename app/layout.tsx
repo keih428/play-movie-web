@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
 };
 
-// 配布版(鉄壁トレーニング)と同じ文字。日本語の書体はビルドに取り込むと数百ファイルになるので、
+// 配布版(トレーニング計画)と同じ文字。日本語の書体はビルドに取り込むと数百ファイルになるので、
 // Google Fonts から、表示に要る分だけをブラウザに読ませる。
 const FONT_STYLESHEET =
   "https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&family=Shippori+Mincho+B1:wght@600;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap";
