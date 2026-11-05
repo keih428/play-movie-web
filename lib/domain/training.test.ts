@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildDefaultExercises,
   compactExercises,
+  exerciseUnit,
+  inferUnit,
+  parseDose,
   findLogMenuKey,
   resolveWeek,
   summarizeSets,
@@ -69,14 +72,14 @@ describe("導入②の3RMの測定", () => {
 describe("上半身は日曜(2026-11-05 から)", () => {
   const menu = menuWith([], []);
   menu.s["日の枠A"] = "9:00〜10:30";
-  menu.s["日の枠B"] = "11:30〜13:00";
+  menu.s["日の枠B"] = "11:10〜13:00";
   const dayOf = (slot: "AB" | "C", fresh = false) =>
     resolveWeek(menu, 0, { tier: "T1", slot, position: "OH", fresh }, {}).days.find((entry) => entry.day === "sat");
 
   it("日付は週の始まり(月)の6日後、時間は日の枠", () => {
     expect(dayOf("AB")?.date).toBe("2026-11-15");
     expect(dayOf("AB")?.time).toBe("9:00〜10:30");
-    expect(dayOf("C")?.time).toBe("11:30〜13:00");
+    expect(dayOf("C")?.time).toBe("11:10〜13:00");
   });
 
   it("日の枠がない古いメニューは、土の枠の時間を出す", () => {
@@ -142,5 +145,41 @@ describe("重さの欄の出し方(2026-11-05 から)", () => {
       { プランク: [{ kg: 70, reps: 1 }] },
     );
     expect(start[0].sets).toEqual([{ kg: null, reps: 1 }]);
+  });
+});
+
+describe("秒数の種目(2026-11-05 から)", () => {
+  it("メニューの「◯秒 × ◯」で秒、なければ名前で決める", () => {
+    expect(inferUnit("プランク", "45秒 × 3")).toBe("sec");
+    expect(inferUnit("ポゴ(足首だけで弾む)", "20秒 × 4")).toBe("sec");
+    expect(inferUnit("ポゴ(足首だけでその場で低く跳ねる)", "10回 × 3")).toBe("reps");
+    expect(inferUnit("サイドプランク")).toBe("sec");
+    expect(inferUnit("ベンチプレス")).toBe("reps");
+    expect(exerciseUnit({ name: "プランク" })).toBe("sec");
+    expect(exerciseUnit({ name: "プランク", unit: "reps" })).toBe("reps");
+  });
+
+  it("秒数とセット数を読む", () => {
+    expect(parseDose("45秒 × 3")).toEqual({ reps: 45, sets: 3 });
+    expect(parseDose("各30〜40秒 × 2")).toEqual({ reps: 30, sets: 2 });
+  });
+
+  it("記録の欄は秒数で始まり、まとめは「秒」", () => {
+    const start = buildDefaultExercises(
+      { items: [{ name: "プランク", dose: "45秒 × 3", kind: "", weighted: false, targetKg: null }] },
+      {},
+    );
+    expect(start[0]).toEqual({
+      name: "プランク",
+      lift: null,
+      unit: "sec",
+      sets: [
+        { kg: null, reps: 45 },
+        { kg: null, reps: 45 },
+        { kg: null, reps: 45 },
+      ],
+    });
+    expect(summarizeSets(start[0].sets, "bw", "sec")).toBe("自重 × 45秒 × 3set");
+    expect(compactExercises(start)[0].unit).toBe("sec");
   });
 });

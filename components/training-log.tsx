@@ -11,6 +11,9 @@ import {
   getPreviousSetsByExercise,
   inferLift,
   summarizeSets,
+  exerciseUnit,
+  inferUnit,
+  type RepUnit,
   weightModeOf,
   type LogMenuOption,
   type SessionExercise,
@@ -36,6 +39,10 @@ type DraftExercise = {
   key: number;
   name: string;
   lift: SessionExercise["lift"];
+  // 回数の欄に入れるのが回数か秒数か(プランクなどは秒)。
+  unit: RepUnit;
+  // 自分で足した種目で、回/秒を手で切り替えたら true(名前を変えても決め直さない)。
+  unitChosen?: boolean;
   sets: DraftSet[];
   fixed: boolean;
 };
@@ -68,6 +75,7 @@ function toDraftExercises(
     key: nextKey++,
     name: exercise.name,
     lift: exercise.lift,
+    unit: exerciseUnit(exercise),
     sets: (exercise.sets.length
       ? exercise.sets
       : [{ kg: null, reps: null }]
@@ -209,6 +217,7 @@ export function TrainingLog({
             exercises: draft.exercises.map((exercise) => ({
               name: exercise.name,
               lift: exercise.lift,
+              ...(exercise.unit === "sec" ? { unit: "sec" } : {}),
               // 自重の種目は重さを送らない(欄に「自重」と出すだけ)。
               sets: exercise.sets.map((set) => ({
                 kg:
@@ -388,9 +397,27 @@ export function TrainingLog({
                     ...current,
                     name: event.target.value,
                     lift: inferLift(event.target.value),
+                    unit: current.unitChosen ? current.unit : inferUnit(event.target.value),
                   }))
                 }
               />
+            )}
+            {exercise.fixed ? null : (
+              // 自分で足した種目は、回数で記録するか秒数で記録するかを選べる。
+              <button
+                type="button"
+                className="tp-log-unit"
+                aria-pressed={exercise.unit === "sec"}
+                onClick={() =>
+                  updateExercise(exercise.key, (current) => ({
+                    ...current,
+                    unit: current.unit === "sec" ? "reps" : "sec",
+                    unitChosen: true,
+                  }))
+                }
+              >
+                {exercise.unit === "sec" ? "秒で記録" : "回で記録"}
+              </button>
             )}
             <button
               type="button"
@@ -455,7 +482,7 @@ export function TrainingLog({
                 )}
                 <input
                   inputMode="numeric"
-                  aria-label={`${exercise.name} ${setIndex + 1}セット目の回数`}
+                  aria-label={`${exercise.name} ${setIndex + 1}セット目の${exercise.unit === "sec" ? "秒数" : "回数"}`}
                   placeholder="—"
                   value={set.reps}
                   onChange={(event) =>
@@ -469,7 +496,7 @@ export function TrainingLog({
                     }))
                   }
                 />
-                <span className="tp-unit">回</span>
+                <span className="tp-unit">{exercise.unit === "sec" ? "秒" : "回"}</span>
                 <button
                   type="button"
                   className="tp-log-x"
@@ -527,6 +554,7 @@ export function TrainingLog({
                 key: nextKey++,
                 name: "",
                 lift: null,
+                unit: "reps",
                 sets: [{ kg: "", reps: "" }],
                 fixed: false,
               },
@@ -677,7 +705,11 @@ export function TrainingLog({
                 {session.exercises.map((exercise, index) => (
                   <li key={index}>
                     {exercise.name}:
-                    {summarizeSets(exercise.sets, weightModeOf(exercise.name))}
+                    {summarizeSets(
+                      exercise.sets,
+                      weightModeOf(exercise.name),
+                      exerciseUnit(exercise),
+                    )}
                   </li>
                 ))}
                 {session.bodyWeightKg !== null ? (

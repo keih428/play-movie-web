@@ -2703,6 +2703,24 @@ body:has(.tp[data-mode="tango"]) {
   text-align: right;
 }
 
+/* 自分で足した種目の「回で記録 / 秒で記録」の切り替え(2026-11-05 から)。 */
+.tp-log-unit {
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-bg);
+  color: var(--tp-muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tp-log-unit[aria-pressed="true"] {
+  color: var(--tp-fg);
+  border-color: var(--tp-fg);
+}
+
 /* 自重の種目(2026-11-05 から):重さの欄の代わりに「自重 ×」。欄と単位の2マス分を使う。 */
 .tp-log-bwlabel {
   grid-column: span 2;

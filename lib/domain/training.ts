@@ -725,8 +725,33 @@ export type SessionExercise = {
   name: string;
   // スクワット・トラップバーDL・ベンチなら、その印(みんなの記録の集計に使う)。ほかは null。
   lift: LiftKind | null;
+  // "sec" は、回数の欄に秒数を入れる種目(プランクなど。2026-11-05 から)。ない記録は名前から決める(exerciseUnit)。
+  unit?: RepUnit;
   sets: SessionSet[];
 };
+
+// ---------- 回数か秒数か(2026-11-05 から) ----------
+// けーいちの決定:プランクなど秒数で行う種目は、メニューで秒を指定し、記録では秒を打つ。
+export type RepUnit = "reps" | "sec";
+
+const TIMED_PATTERN = /プランク|ホールド|キープ|ウォールシット|空気椅子/;
+
+/** 回数か秒数か。メニューの「45秒 × 3」「10回 × 3」があればそれで、なければ種目名で決める。 */
+export function inferUnit(name: string, dose?: string): RepUnit {
+  const text = (dose ?? "").replace(/\*\*/g, "");
+  if (/\d\s*秒/.test(text)) {
+    return "sec";
+  }
+  if (/\d\s*回/.test(text)) {
+    return "reps";
+  }
+  return TIMED_PATTERN.test(name) ? "sec" : "reps";
+}
+
+/** 記録の種目の単位。単位を持たない古い記録は、名前から決める。 */
+export function exerciseUnit(exercise: Pick<SessionExercise, "name" | "unit">): RepUnit {
+  return exercise.unit ?? inferUnit(exercise.name);
+}
 
 export type TrainingSessionRecord = {
   date: string;
@@ -758,13 +783,18 @@ export const SESSION_LIMITS = {
   setsPerExercise: 20,
   maxKg: 500,
   maxReps: 200,
+  // 秒数の種目(プランクなど)の1セットの上限。
+  maxSeconds: 600,
   nameLength: 60,
 };
 
-/** 「5回 × 3」「3〜5回 × 3」から、回数とセット数を読む。読めなければ null。 */
+/**
+ * 「5回 × 3」「3〜5回 × 3」から、回数とセット数を読む。読めなければ null。
+ * 「45秒 × 3」「各30〜40秒 × 2」なら、秒数を reps に入れて返す(単位は inferUnit で決める)。
+ */
 export function parseDose(dose: string): { reps: number | null; sets: number | null } {
   const text = dose.replace(/\*\*/g, "");
-  const full = text.match(/(\d+)(?:\s*[〜~-]\s*\d+)?\s*回\s*[×xX]\s*(\d+)/);
+  const full = text.match(/(\d+)(?:\s*[〜~-]\s*\d+)?\s*(?:回|秒)\s*[×xX]\s*(\d+)/);
   if (full) {
     return { reps: Number(full[1]), sets: Number(full[2]) };
   }
@@ -828,11 +858,15 @@ export function buildDefaultExercises(
   }
 
   // 「個人の追加」は種目ではなく、面談で決めた種目を足す場所なので、欄には出さない(自分で「+ 種目を足す」から足す)。
-  return day.items.filter((item) => !item.name.startsWith("個人の追加")).map((item) => ({
-    name: item.name,
-    lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : inferLift(item.name),
-    sets: toSets(item.name, item),
-  }));
+  return day.items.filter((item) => !item.name.startsWith("個人の追加")).map((item) => {
+    const unit = inferUnit(item.name, item.dose);
+    return {
+      name: item.name,
+      lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : inferLift(item.name),
+      ...(unit === "sec" ? { unit } : {}),
+      sets: toSets(item.name, item),
+    };
+  });
 }
 
 // ---------- 記録するときのメニューの選び方(2026-10-24 から) ----------
@@ -947,9 +981,10 @@ function describeKg(kg: number | null, mode: WeightMode): string {
  * 「100kg × 5回 × 3set」。セットごとに違えば「100kg × 5回、90kg × 8回」。
  * 自重の種目は「自重 × 10回 × 3set」、懸垂・ディップスは「自重+10kg × 8回」。
  */
-export function summarizeSets(sets: SessionSet[], mode: WeightMode = "kg"): string {
+export function summarizeSets(sets: SessionSet[], mode: WeightMode = "kg", unit: RepUnit = "reps"): string {
+  const label = unit === "sec" ? "秒" : "回";
   const describe = (set: SessionSet) =>
-    [describeKg(set.kg, mode), set.reps !== null ? `${set.reps}回` : ""].filter(Boolean).join(" × ") || "—";
+    [describeKg(set.kg, mode), set.reps !== null ? `${set.reps}${label}` : ""].filter(Boolean).join(" × ") || "—";
   const groups: { text: string; count: number }[] = [];
   for (const set of sets) {
     const text = describe(set);
