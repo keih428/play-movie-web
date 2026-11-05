@@ -950,6 +950,14 @@ body:has(.tp) {
   vertical-align: middle;
 }
 
+/* 名簿に下の名前が入って表が広くなったので、スマホの幅ではマスの左右の余白を詰める(2026-11-06 から) */
+@media (max-width: 440px) {
+  .tp-roster:not(.tp-bulk) th,
+  .tp-roster:not(.tp-bulk) td {
+    padding-inline: 3px;
+  }
+}
+
 /* 名簿のまとめて編集(2026-10-26 から)。表は横に動かせて、名前の列は左に残す。 */
 .tp-bulk th,
 .tp-bulk td {
@@ -1005,6 +1013,30 @@ body:has(.tp) {
 
 .tp-nowrap {
   font-weight: 400;
+}
+
+/* 名簿の「苗字 名前」:苗字と名前の間でだけ折り返す(2026-11-06 から) */
+.tp-roster .tp-name-full {
+  white-space: normal;
+}
+
+.tp-roster .tp-name-full > span {
+  white-space: nowrap;
+}
+
+/* 役割の欄:縮みすぎて1文字ずつ縦に並ばないように。字を少し小さくし、「トレーニング/担当」のように単語の区切りで折る */
+.tp-roster .tp-roster-role {
+  font-size: 13px;
+}
+
+.tp-roster .tp-role-line {
+  display: block;
+}
+
+/* 役割の言葉(「トレーニング」「担当」)は箱の中で折らない。これで欄の幅が、いちばん長い言葉より細くならない */
+.tp-roster .tp-roster-role .tp-phrase-part {
+  max-width: none;
+  white-space: nowrap;
 }
 
 .tp-sub {

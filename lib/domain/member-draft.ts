@@ -5,6 +5,7 @@ import type { Member } from "@/lib/domain/portal";
 
 export type MemberDraft = {
   name: string;
+  givenName: string;
   number: string;
   grade: string;
   position: string;
@@ -22,6 +23,7 @@ export type MemberDraft = {
 
 export const EMPTY_DRAFT: MemberDraft = {
   name: "",
+  givenName: "",
   number: "",
   grade: "",
   position: "",
@@ -40,6 +42,7 @@ export const EMPTY_DRAFT: MemberDraft = {
 export function toDraft(member: Member): MemberDraft {
   return {
     name: member.name,
+    givenName: member.givenName ?? "",
     number: member.number ?? "",
     grade: member.grade === null ? "" : String(member.grade),
     position: member.position ?? "",

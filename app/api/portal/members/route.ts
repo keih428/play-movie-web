@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
   try {
     const member = await createMember(teamSlug, {
       name: input.patch.name,
+      givenName: input.patch.givenName ?? null,
       number: input.patch.number ?? null,
       grade: input.patch.grade ?? null,
       position: input.patch.position ?? null,

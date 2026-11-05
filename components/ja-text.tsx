@@ -32,11 +32,26 @@ function attachOpeningBrackets(parts: string[]): string[] {
   return result;
 }
 
+// 区切りの記号と閉じかっこだけの言葉は、前の言葉にくっつける(「システム担当/・」で「・」が次の行の頭に来ないように)。
+const TRAILING_ONLY = /^[・、。,.)）」』】〕〉》!?！？]+$/;
+
+function attachTrailingPunctuation(parts: string[]): string[] {
+  const result: string[] = [];
+  for (const part of parts) {
+    if (result.length > 0 && TRAILING_ONLY.test(part)) {
+      result[result.length - 1] += part;
+    } else {
+      result.push(part);
+    }
+  }
+  return result;
+}
+
 export function JaText({ children, fine = false, phrases }: JaTextProps) {
   const parts =
     phrases && phrases.join("") === children
       ? phrases
-      : attachOpeningBrackets((fine ? wordParser : phraseParser).parse(children));
+      : attachTrailingPunctuation(attachOpeningBrackets((fine ? wordParser : phraseParser).parse(children)));
   return (
     <span className="tp-phrase">
       {parts.map((part, index) => (

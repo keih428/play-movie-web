@@ -16,6 +16,7 @@ type MemberRow = {
   id: string;
   team_slug: string;
   name: string;
+  given_name: string | null;
   number: string | null;
   grade: number | null;
   position: string | null;
@@ -46,6 +47,7 @@ export type MemberPatch = Partial<
 
 const PATCH_COLUMNS: Record<keyof MemberPatch, string> = {
   name: "name",
+  givenName: "given_name",
   number: "number",
   grade: "grade",
   position: "position",
@@ -66,6 +68,7 @@ function toMember(row: MemberRow): Member {
     id: row.id,
     teamSlug: row.team_slug,
     name: row.name,
+    givenName: row.given_name ?? null,
     number: row.number,
     displayName: formatMemberName(row.name, row.number),
     grade: row.grade,
@@ -139,10 +142,11 @@ export async function upsertMembers(
         added += 1;
       }
       await run(
-        `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order, number, is_system_admin, is_training_lead)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12, $13)
+        `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, sort_order, number, is_system_admin, is_training_lead, given_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12, $13, $14)
          ON CONFLICT (team_slug, name) DO UPDATE SET
            number = CASE WHEN $11 THEN EXCLUDED.number ELSE members.number END,
+           given_name = CASE WHEN $15 THEN EXCLUDED.given_name ELSE members.given_name END,
            is_system_admin = members.is_system_admin OR EXCLUDED.is_system_admin,
            is_training_lead = members.is_training_lead OR EXCLUDED.is_training_lead,
            grade = EXCLUDED.grade,
@@ -170,6 +174,9 @@ export async function upsertMembers(
           input.isSystemAdmin ?? false,
           // トレーニング担当も同じく、表で付けられるが、外すのは「直す」から。
           input.isTrainingLead ?? false,
+          input.givenName ?? null,
+          // 表に下の名前の列があるときだけ、下の名前を書き換える。
+          input.givenName !== undefined,
         ],
       );
     }
@@ -180,8 +187,8 @@ export async function upsertMembers(
 
 export async function createMember(teamSlug: string, input: MemberInput): Promise<Member> {
   const rows = await query<MemberRow>(
-    `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, number, is_system_admin, is_training_lead, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+    `INSERT INTO members (id, team_slug, name, grade, position, is_leader, role, title, number, is_system_admin, is_training_lead, given_name, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
        (SELECT coalesce(max(sort_order), -1) + 1 FROM members WHERE team_slug = $2))
      RETURNING *`,
     [
@@ -196,6 +203,7 @@ export async function createMember(teamSlug: string, input: MemberInput): Promis
       input.number ?? null,
       input.isSystemAdmin ?? false,
       input.isTrainingLead ?? false,
+      input.givenName ?? null,
     ],
   );
   return toMember(rows[0]);

@@ -12,6 +12,7 @@ import {
   MEMBER_TIERS,
   SYSTEM_ADMIN_LABEL,
   TRAINING_LEAD_LABEL,
+  formatMemberFullName,
   sortMembers,
   type Member,
 } from "@/lib/domain/portal";
@@ -24,7 +25,7 @@ type PortalMembersBulkClientProps = {
   slotOnly?: boolean;
 };
 
-type TextKey = "number" | "name" | "grade" | "title" | "slackId";
+type TextKey = "number" | "name" | "givenName" | "grade" | "title" | "slackId";
 type ChoiceKey = "position" | "role" | "tier" | "slot";
 type FlagKey = "isLeader" | "isTrainingLead" | "isSystemAdmin" | "isExecutive" | "active";
 
@@ -176,7 +177,8 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
                 return (
                   <tr key={member.id} className={classes.join(" ") || undefined}>
                     <td className="tp-bulk-sticky">
-                      {member.displayName}
+                      {member.number ?? ""}
+                      {formatMemberFullName(member)}
                       {rowError ? <span className="tp-sub tp-bulk-reason">{rowError}</span> : null}
                     </td>
                     <td>{member.grade ?? "—"}</td>
@@ -211,7 +213,8 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
         <table className="tp-roster tp-bulk">
           <thead>
             <tr>
-              <th className="tp-bulk-sticky">名前</th>
+              <th className="tp-bulk-sticky">苗字</th>
+              <th>名前</th>
               <th>背番号</th>
               <th>学年</th>
               <th>ポジション</th>
@@ -239,9 +242,10 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
               return (
                 <tr key={member.id} className={classes.join(" ") || undefined}>
                   <td className="tp-bulk-sticky">
-                    {text(member, "name", 8)}
+                    {text(member, "name", 6)}
                     {rowError ? <span className="tp-sub tp-bulk-reason">{rowError}</span> : null}
                   </td>
+                  <td>{text(member, "givenName", 6)}</td>
                   <td>{text(member, "number", 3)}</td>
                   <td>{text(member, "grade", 2, "numeric")}</td>
                   <td>{choice(member, "position", MEMBER_POSITIONS, "なし")}</td>
@@ -274,7 +278,8 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
 
 const TEXT_LABELS: Record<TextKey, string> = {
   number: "背番号",
-  name: "名前",
+  name: "苗字",
+  givenName: "名前",
   grade: "学年",
   title: "肩書",
   slackId: "Slack の ID",
