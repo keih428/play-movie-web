@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOffEvent, parseCalendarEvents } from "./calendar";
+import { getEventKind, isOffEvent, parseCalendarEvents } from "./calendar";
 
 const ICS = [
   "BEGIN:VCALENDAR",
@@ -39,5 +39,18 @@ describe("parseCalendarEvents", () => {
       ["2026-11-03", "通常練習", false],
       ["2026-11-04", "オフ(テスト期間)", true],
     ]);
+  });
+});
+
+describe("getEventKind(予定表の色分け)", () => {
+  it("名前の最初で、練習試合・試合・オフ・練習を分ける", () => {
+    expect(getEventKind({ title: "練習試合 vs ○○大" })).toBe("practice-match");
+    expect(getEventKind({ title: "試合(春季リーグ)" })).toBe("match");
+    expect(getEventKind({ title: " 試合" })).toBe("match");
+    expect(getEventKind({ title: "オフ" })).toBe("off");
+    expect(getEventKind({ title: "練習" })).toBe("practice");
+    // 名前の途中に「試合」があっても、最初でなければ練習
+    expect(getEventKind({ title: "練習(試合形式)" })).toBe("practice");
+    expect(getEventKind({ title: "練習", off: true })).toBe("off");
   });
 });

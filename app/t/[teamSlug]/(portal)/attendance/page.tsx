@@ -138,6 +138,10 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
 
       <section className="tp-section">
         <h2>連絡する</h2>
+        {/* けーいちの依頼(2026-11-05):サイトで連絡する前に、主将に直接伝えてもらう */}
+        <p className="tp-message">
+          <b>先に主将に連絡を済ませましょう。</b>そのうえで、ここから連絡を出してください。
+        </p>
         <AttendanceForm
           // 連絡を出したあとに、欄を新しい状態で作り直す。
           key={`${selectedDate}-${reports.filter((report) => report.memberId === current.id).length}`}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { PracticeEvent } from "@/lib/domain/calendar";
+import { eventKindClass, type PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { JaText } from "@/components/ja-text";
 
@@ -28,7 +28,7 @@ export function describeEventTime(event: PracticeEvent): string {
 /** 予定1つの詳細(予定名・時間・場所・説明)。詳細のパネルと週の表示で使う。 */
 export function EventDetail({ event, defaultLocation }: { event: PracticeEvent; defaultLocation: string }) {
   return (
-    <div className={event.off ? "tp-event tp-event-off" : "tp-event"}>
+    <div className={["tp-event", event.off ? "tp-event-off" : "", eventKindClass(event)].filter(Boolean).join(" ")}>
       <b className="tp-event-title">
         <JaText>{event.title}</JaText>
       </b>
@@ -83,7 +83,12 @@ export function ScheduleCalendar({ weeks, month, today, eventsByDate, defaultLoc
                   <>
                     <span className="tp-cal-day">{Number(date.slice(8))}</span>
                     {events.map((event, index) => (
-                      <span key={index} className={event.off ? "tp-cal-event tp-cal-event-off" : "tp-cal-event"}>
+                      <span
+                        key={index}
+                        className={["tp-cal-event", event.off ? "tp-cal-event-off" : "", eventKindClass(event)]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
                         <b>
                           <JaText fine>{event.title}</JaText>
                         </b>

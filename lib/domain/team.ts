@@ -147,6 +147,11 @@ export function buildTeamTrainingRecordsPath(teamSlug: string): string {
   return `/t/${teamSlug}/training/team`;
 }
 
+/** ほかの部員のトレーニング録(読むだけ。2026-11-05 から)。 */
+export function buildTeamMemberTrainingPath(teamSlug: string, memberId: string): string {
+  return `/t/${teamSlug}/training/member?id=${encodeURIComponent(memberId)}`;
+}
+
 /** 自分の合言葉を決める・決め直すページ(2026-10-25 から)。 */
 export function buildTeamAccountPath(teamSlug: string): string {
   return `/t/${teamSlug}/account`;

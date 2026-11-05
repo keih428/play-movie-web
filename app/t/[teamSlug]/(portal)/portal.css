@@ -23,6 +23,11 @@ body:has(.tp) {
   --tp-danger-fg: #8b2f26;
   /* 「オフ」の予定(練習のない日)の色 */
   --tp-off: #8a94a3;
+  /* 予定表の色分け(2026-11-05 から):練習=いつもの青、練習試合=橙、試合=えんじ */
+  --tp-pmatch: #b3541e;
+  --tp-pmatch-soft: #f8e7dc;
+  --tp-match: #a3263b;
+  --tp-match-soft: #f9e1e5;
   --tp-off-soft: #eceef2;
   background: var(--tp-bg);
 }
@@ -48,6 +53,10 @@ body:has(.tp) {
     --tp-danger-fg: #f3b1aa;
     --tp-off: #7d8896;
     --tp-off-soft: #232b35;
+    --tp-pmatch: #e38c4e;
+    --tp-pmatch-soft: #3a2618;
+    --tp-match: #ef7d92;
+    --tp-match-soft: #3b1c24;
     color-scheme: dark;
   }
 }
@@ -2307,6 +2316,26 @@ body:has(.tp[data-mode="tango"]) {
   color: var(--tp-muted);
 }
 
+.tp-event.tp-kind-practice-match,
+.tp-cal-event.tp-kind-practice-match {
+  border-left-color: var(--tp-pmatch);
+  background: var(--tp-pmatch-soft);
+}
+
+.tp-event.tp-kind-match,
+.tp-cal-event.tp-kind-match {
+  border-left-color: var(--tp-match);
+  background: var(--tp-match-soft);
+}
+
+.tp-cal-list li.tp-kind-practice-match {
+  border-left: 4px solid var(--tp-pmatch);
+}
+
+.tp-cal-list li.tp-kind-match {
+  border-left: 4px solid var(--tp-match);
+}
+
 .tp-cal-list li.tp-cal-off {
   border-left: 4px solid var(--tp-off);
   background: var(--tp-off-soft);
@@ -4333,4 +4362,21 @@ body:has(.tp-counter) .team-header {
 /* 1かたまりで読ませたい短い言葉(「さらに前を見る」「(遅刻 19:00 から)」など) */
 .tp-nowrap {
   white-space: nowrap;
+}
+
+/* 予定表の色の凡例(2026-11-05 から) */
+.tp-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-cal-legend li {
+  margin-top: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
 }
