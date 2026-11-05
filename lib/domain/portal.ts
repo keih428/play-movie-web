@@ -1,6 +1,6 @@
 export const PORTAL_TEAM_SLUGS = ["utvb"];
 
-// 鉄壁(単語帳)の見た目に切り替えるトグルを出すかどうか。2026-10-13 からいったん止めている。
+// 単語帳の見た目に切り替えるトグルを出すかどうか。2026-10-13 からいったん止めている。
 // 見た目そのもの(portal.css の data-mode="tango"、tp-tango-only の中身)は消していない。
 // トグルのボタンは、2026-10-20 に上のバーを1つにしたときに外した。戻すなら、git の履歴の components/portal-top-nav.tsx から上のバーに足す。
 export const TANGO_MODE_ENABLED = false;

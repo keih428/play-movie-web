@@ -468,7 +468,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         weekLinks={weekLinks}
       >
         <div className="tp-weekhead">
-          <SectionHead no={1} title="今週のメニュー" tangoTitle="今週の鉄壁" />
+          <SectionHead no={1} title="今週のメニュー" tangoTitle="今週の単語" />
           <p className="tp-small tp-muted tp-tango-only">
             赤い字が今週の回数。赤シートをかけて、ジムに入る前に言えるか確かめよう。隠れた所はタップで1つずつ見える。
           </p>

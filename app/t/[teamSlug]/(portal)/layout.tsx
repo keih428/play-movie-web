@@ -11,8 +11,8 @@ type LayoutProps = {
 };
 
 export default async function PortalLayout({ children }: LayoutProps) {
-  // 見た目の切り替え(通常 / 鉄壁=単語帳)。端末ごとにクッキーで覚える。
-  // トグルを止めている間は、前に鉄壁を選んだ端末も通常の見た目で開く(戻す手段がなくなるため)。
+  // 見た目の切り替え(通常 / 単語帳)。端末ごとにクッキーで覚える。
+  // トグルを止めている間は、前に単語帳を選んだ端末も通常の見た目で開く(戻す手段がなくなるため)。
   // トグルは上のバーにあった(2026-10-20 に上のバーを1つにしたときに外した。戻すなら git の履歴の components/portal-top-nav.tsx)。
   const isTango = TANGO_MODE_ENABLED && (await cookies()).get(MODE_COOKIE)?.value === "tango";
 
