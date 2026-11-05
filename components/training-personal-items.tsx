@@ -11,7 +11,7 @@ type TrainingPersonalItemsProps = {
   members: { id: string; displayName: string }[];
 };
 
-// 面談で決めた種目は、ふつう土曜と自主の「個人の追加」の枠でやる。
+// 面談で決めた種目は、ふつう日曜と自主の「個人の追加」の枠でやる。
 const DEFAULT_DAYS: TrainingDay[] = ["sat", "self"];
 
 /**

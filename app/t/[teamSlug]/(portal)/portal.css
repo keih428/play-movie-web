@@ -2684,7 +2684,7 @@ body:has(.tp[data-mode="tango"]) {
 .tp-log-sets li {
   display: grid;
   /* 重さは「102.5」、回数は2桁が入る幅。広げすぎない(2026-10-31、けーいちの声)。 */
-  grid-template-columns: 1.4em minmax(0, 5.2em) auto minmax(0, 3.4em) auto 36px;
+  grid-template-columns: 1.4em minmax(0, 6.4em) auto minmax(0, 3.4em) auto 36px;
   justify-content: start;
   align-items: center;
   gap: 6px;
@@ -2701,6 +2701,28 @@ body:has(.tp[data-mode="tango"]) {
   font-family: var(--tp-num);
   font-size: 16px;
   text-align: right;
+}
+
+/* 自重の種目(2026-11-05 から):重さの欄の代わりに「自重 ×」。欄と単位の2マス分を使う。 */
+.tp-log-bwlabel {
+  grid-column: span 2;
+  color: var(--tp-muted);
+  font-size: 0.9em;
+}
+
+/* 懸垂・ディップス:「自重+」と足した重さを1マスに並べる。 */
+.tp-log-kg,
+.tp-log-plus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tp-log-kg input,
+.tp-log-plus input {
+  min-width: 0;
+  width: 100%;
 }
 
 .tp-log-no {

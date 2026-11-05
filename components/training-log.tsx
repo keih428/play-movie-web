@@ -11,6 +11,7 @@ import {
   getPreviousSetsByExercise,
   inferLift,
   summarizeSets,
+  weightModeOf,
   type LogMenuOption,
   type SessionExercise,
   type TrainingSessionRecord,
@@ -24,14 +25,20 @@ type TrainingLogProps = {
   // 選べるメニュー(期間・週・曜日)。記録の欄は、選んだメニューの全部の種目に、先週(なければ前回)の重さ・回数を入れて始める。
   // メニューの種目は名前を直せず、重さと回数だけを入れる(けーいちの決定、2026-10-24)。
   menuOptions: LogMenuOption[];
-  // 日付ごとの、初めに選ぶメニュー(火・木・土はその曜日、ほかの日は自主)。ない日は「メニューなし」。
+  // 日付ごとの、初めに選ぶメニュー(火・木・日はその曜日、ほかの日は自主)。ない日は「メニューなし」。
   menuKeyByDate: Record<string, string>;
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
 type DraftSet = { kg: string; reps: string };
 // fixed:メニューの種目(名前は直せない)。自分で足した種目は false。
-type DraftExercise = { key: number; name: string; lift: SessionExercise["lift"]; sets: DraftSet[]; fixed: boolean };
+type DraftExercise = {
+  key: number;
+  name: string;
+  lift: SessionExercise["lift"];
+  sets: DraftSet[];
+  fixed: boolean;
+};
 type Draft = {
   date: string;
   // 選んでいるメニュー(null は「メニューなし」:先週の同じ曜日の記録から始める)。
@@ -52,13 +59,19 @@ function toText(value: number | null): string {
   return value === null ? "" : String(value);
 }
 
-function toDraftExercises(exercises: SessionExercise[], menuNames: string[] = []): DraftExercise[] {
+function toDraftExercises(
+  exercises: SessionExercise[],
+  menuNames: string[] = [],
+): DraftExercise[] {
   return exercises.map((exercise) => ({
     fixed: menuNames.includes(exercise.name),
     key: nextKey++,
     name: exercise.name,
     lift: exercise.lift,
-    sets: (exercise.sets.length ? exercise.sets : [{ kg: null, reps: null }]).map((set) => ({
+    sets: (exercise.sets.length
+      ? exercise.sets
+      : [{ kg: null, reps: null }]
+    ).map((set) => ({
       kg: toText(set.kg),
       reps: toText(set.reps),
     })),
@@ -69,7 +82,13 @@ function toDraftExercises(exercises: SessionExercise[], menuNames: string[] = []
  * トレーニング録(日付ごと)。「+ 筋トレを記録する」→ 日付を選ぶ → その日のメニューが入った欄を直す → 保存。
  * 保存した記録は、新しい日付から順に並ぶ。押すと直せる(部員の声、2026-10-20)。
  */
-export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByDate }: TrainingLogProps) {
+export function TrainingLog({
+  teamSlug,
+  today,
+  sessions,
+  menuOptions,
+  menuKeyByDate,
+}: TrainingLogProps) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,18 +97,29 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shown, setShown] = useState(HISTORY_STEP);
 
-  const sessionOn = (date: string) => sessions.find((session) => session.date === date);
+  const sessionOn = (date: string) =>
+    sessions.find((session) => session.date === date);
 
-  const optionOf = (key: string | null) => menuOptions.find((option) => option.key === key) ?? null;
-  const menuNames = (key: string | null) => optionOf(key)?.items.map((item) => item.name) ?? [];
+  const optionOf = (key: string | null) =>
+    menuOptions.find((option) => option.key === key) ?? null;
+  const menuNames = (key: string | null) =>
+    optionOf(key)?.items.map((item) => item.name) ?? [];
 
   /** 選んだメニューの欄の最初の形(先週・前回の重さと回数を入れる)。メニューなしなら、先週の同じ曜日の記録。 */
   function exercisesFor(key: string | null, date: string): DraftExercise[] {
     const option = optionOf(key);
-    const weekAgo = sessions.find((session) => session.date === addDays(date, -7));
-    const items = option?.items.filter((item) => !item.name.startsWith("個人の追加")) ?? null;
+    const weekAgo = sessions.find(
+      (session) => session.date === addDays(date, -7),
+    );
+    const items =
+      option?.items.filter((item) => !item.name.startsWith("個人の追加")) ??
+      null;
     return toDraftExercises(
-      buildDefaultExercises(items ? { items } : null, getPreviousSetsByExercise(sessions, date), weekAgo),
+      buildDefaultExercises(
+        items ? { items } : null,
+        getPreviousSetsByExercise(sessions, date),
+        weekAgo,
+      ),
       menuNames(key),
     );
   }
@@ -107,7 +137,14 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
         request: existing.request,
       };
     }
-    return { date, menuKey, exercises: exercisesFor(menuKey, date), bodyWeight: "", memo: "", request: "" };
+    return {
+      date,
+      menuKey,
+      exercises: exercisesFor(menuKey, date),
+      bodyWeight: "",
+      memo: "",
+      request: "",
+    };
   }
 
   /**
@@ -117,11 +154,15 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
   function chooseMenu(key: string | null) {
     update((current) => {
       const next = exercisesFor(key, current.date).map((exercise) => {
-        const typed = current.exercises.find((entry) => entry.name === exercise.name);
+        const typed = current.exercises.find(
+          (entry) => entry.name === exercise.name,
+        );
         return typed ? { ...exercise, sets: typed.sets } : exercise;
       });
       const names = new Set(next.map((exercise) => exercise.name));
-      const added = current.exercises.filter((exercise) => !exercise.fixed && !names.has(exercise.name));
+      const added = current.exercises.filter(
+        (exercise) => !exercise.fixed && !names.has(exercise.name),
+      );
       return { ...current, menuKey: key, exercises: [...next, ...added] };
     });
   }
@@ -138,10 +179,15 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
     setDraft((current) => (current ? change(current) : current));
   }
 
-  function updateExercise(key: number, change: (exercise: DraftExercise) => DraftExercise) {
+  function updateExercise(
+    key: number,
+    change: (exercise: DraftExercise) => DraftExercise,
+  ) {
     update((current) => ({
       ...current,
-      exercises: current.exercises.map((exercise) => (exercise.key === key ? change(exercise) : exercise)),
+      exercises: current.exercises.map((exercise) =>
+        exercise.key === key ? change(exercise) : exercise,
+      ),
     }));
   }
 
@@ -153,30 +199,46 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(buildTeamApiPath("/api/portal/training/sessions", teamSlug), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          date: draft.date,
-          exercises: draft.exercises.map((exercise) => ({
-            name: exercise.name,
-            lift: exercise.lift,
-            sets: exercise.sets.map((set) => ({ kg: set.kg.trim() || null, reps: set.reps.trim() || null })),
-          })),
-          bodyWeightKg: draft.bodyWeight.trim() || null,
-          memo: draft.memo,
-          request: draft.request,
-        }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const response = await fetch(
+        buildTeamApiPath("/api/portal/training/sessions", teamSlug),
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            date: draft.date,
+            exercises: draft.exercises.map((exercise) => ({
+              name: exercise.name,
+              lift: exercise.lift,
+              // 自重の種目は重さを送らない(欄に「自重」と出すだけ)。
+              sets: exercise.sets.map((set) => ({
+                kg:
+                  weightModeOf(exercise.name) === "bw"
+                    ? null
+                    : set.kg.trim() || null,
+                reps: set.reps.trim() || null,
+              })),
+            })),
+            bodyWeightKg: draft.bodyWeight.trim() || null,
+            memo: draft.memo,
+            request: draft.request,
+          }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
       if (!response.ok) {
-        throw new Error(payload.error ?? "保存できませんでした。もう一度試してください。");
+        throw new Error(
+          payload.error ?? "保存できませんでした。もう一度試してください。",
+        );
       }
       setMessage(`${formatNoteDate(draft.date)}の記録を保存しました。`);
       setDraft(null);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存できませんでした。");
+      setError(
+        caught instanceof Error ? caught.message : "保存できませんでした。",
+      );
     } finally {
       setBusy(false);
     }
@@ -190,10 +252,15 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
     setError("");
     try {
       const response = await fetch(
-        buildTeamApiPath(`/api/portal/training/sessions?date=${draft.date}`, teamSlug),
+        buildTeamApiPath(
+          `/api/portal/training/sessions?date=${draft.date}`,
+          teamSlug,
+        ),
         { method: "DELETE" },
       );
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
       if (!response.ok) {
         throw new Error(payload.error ?? "消せませんでした。");
       }
@@ -249,13 +316,23 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
                 }
                 // 週を変えたら、同じ曜日(なければその週の最初の日)を選ぶ。
                 const day = optionOf(draft.menuKey)?.day;
-                const inWeek = menuOptions.filter((option) => option.weekKey === weekKey);
-                chooseMenu((inWeek.find((option) => option.day === day) ?? inWeek[0]).key);
+                const inWeek = menuOptions.filter(
+                  (option) => option.weekKey === weekKey,
+                );
+                chooseMenu(
+                  (inWeek.find((option) => option.day === day) ?? inWeek[0])
+                    .key,
+                );
               }}
             >
               <option value="">メニューなし(先週の同じ曜日の記録から)</option>
               {menuOptions
-                .filter((option, index) => menuOptions.findIndex((entry) => entry.weekKey === option.weekKey) === index)
+                .filter(
+                  (option, index) =>
+                    menuOptions.findIndex(
+                      (entry) => entry.weekKey === option.weekKey,
+                    ) === index,
+                )
                 .map((option) => (
                   <option key={option.weekKey} value={option.weekKey}>
                     {option.weekLabel}
@@ -266,7 +343,10 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
           {draft.menuKey ? (
             <div className="tp-log-menu-days" role="group" aria-label="曜日">
               {menuOptions
-                .filter((option) => option.weekKey === optionOf(draft.menuKey)?.weekKey)
+                .filter(
+                  (option) =>
+                    option.weekKey === optionOf(draft.menuKey)?.weekKey,
+                )
                 .map((option) => (
                   <button
                     key={option.key}
@@ -299,7 +379,9 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
                 placeholder="種目名"
                 maxLength={SESSION_LIMITS.nameLength}
                 value={exercise.name}
-                autoFocus={!exercise.name && exerciseIndex === draft.exercises.length - 1}
+                autoFocus={
+                  !exercise.name && exerciseIndex === draft.exercises.length - 1
+                }
                 // 名前を変えたら、集計の印(スクワット・ベンチ・トラップバーDL)は名前から決め直す。
                 onChange={(event) =>
                   updateExercise(exercise.key, (current) => ({
@@ -317,7 +399,9 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
               onClick={() =>
                 update((current) => ({
                   ...current,
-                  exercises: current.exercises.filter((entry) => entry.key !== exercise.key),
+                  exercises: current.exercises.filter(
+                    (entry) => entry.key !== exercise.key,
+                  ),
                 }))
               }
             >
@@ -328,21 +412,47 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
             {exercise.sets.map((set, setIndex) => (
               <li key={setIndex}>
                 <span className="tp-log-no">{setIndex + 1}</span>
-                <input
-                  inputMode="decimal"
-                  aria-label={`${exercise.name} ${setIndex + 1}セット目の重さ(kg)`}
-                  placeholder="—"
-                  value={set.kg}
-                  onChange={(event) =>
-                    updateExercise(exercise.key, (current) => ({
-                      ...current,
-                      sets: current.sets.map((entry, index) =>
-                        index === setIndex ? { ...entry, kg: event.target.value } : entry,
-                      ),
-                    }))
-                  }
-                />
-                <span className="tp-unit">kg ×</span>
+                {weightModeOf(exercise.name) === "bw" ? (
+                  // 自重の種目は数字を打たない(けーいちの決定、2026-11-05)。
+                  <span className="tp-log-bwlabel">自重 ×</span>
+                ) : (
+                  <>
+                    <span
+                      className={
+                        weightModeOf(exercise.name) === "bwplus"
+                          ? "tp-log-plus"
+                          : "tp-log-kg"
+                      }
+                    >
+                      {weightModeOf(exercise.name) === "bwplus" ? (
+                        <span className="tp-unit">自重+</span>
+                      ) : null}
+                      <input
+                        inputMode="decimal"
+                        aria-label={
+                          weightModeOf(exercise.name) === "bwplus"
+                            ? `${exercise.name} ${setIndex + 1}セット目に足した重さ(kg)`
+                            : `${exercise.name} ${setIndex + 1}セット目の重さ(kg)`
+                        }
+                        placeholder={
+                          weightModeOf(exercise.name) === "bwplus" ? "0" : "—"
+                        }
+                        value={set.kg}
+                        onChange={(event) =>
+                          updateExercise(exercise.key, (current) => ({
+                            ...current,
+                            sets: current.sets.map((entry, index) =>
+                              index === setIndex
+                                ? { ...entry, kg: event.target.value }
+                                : entry,
+                            ),
+                          }))
+                        }
+                      />
+                    </span>
+                    <span className="tp-unit">kg ×</span>
+                  </>
+                )}
                 <input
                   inputMode="numeric"
                   aria-label={`${exercise.name} ${setIndex + 1}セット目の回数`}
@@ -352,7 +462,9 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
                     updateExercise(exercise.key, (current) => ({
                       ...current,
                       sets: current.sets.map((entry, index) =>
-                        index === setIndex ? { ...entry, reps: event.target.value } : entry,
+                        index === setIndex
+                          ? { ...entry, reps: event.target.value }
+                          : entry,
                       ),
                     }))
                   }
@@ -366,7 +478,9 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
                   onClick={() =>
                     updateExercise(exercise.key, (current) => ({
                       ...current,
-                      sets: current.sets.filter((_, index) => index !== setIndex),
+                      sets: current.sets.filter(
+                        (_, index) => index !== setIndex,
+                      ),
                     }))
                   }
                 >
@@ -383,7 +497,15 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
               updateExercise(exercise.key, (current) => ({
                 ...current,
                 // 1つ前のセットと同じ重さ・回数で足す(変えるときだけ打ち直す)。
-                sets: [...current.sets, { ...(current.sets[current.sets.length - 1] ?? { kg: "", reps: "" }) }],
+                sets: [
+                  ...current.sets,
+                  {
+                    ...(current.sets[current.sets.length - 1] ?? {
+                      kg: "",
+                      reps: "",
+                    }),
+                  },
+                ],
               }))
             }
           >
@@ -401,7 +523,13 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
             ...current,
             exercises: [
               ...current.exercises,
-              { key: nextKey++, name: "", lift: null, sets: [{ kg: "", reps: "" }], fixed: false },
+              {
+                key: nextKey++,
+                name: "",
+                lift: null,
+                sets: [{ kg: "", reps: "" }],
+                fixed: false,
+              },
             ],
           }))
         }
@@ -416,7 +544,12 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
           inputMode="decimal"
           placeholder="—"
           value={draft.bodyWeight}
-          onChange={(event) => update((current) => ({ ...current, bodyWeight: event.target.value }))}
+          onChange={(event) =>
+            update((current) => ({
+              ...current,
+              bodyWeight: event.target.value,
+            }))
+          }
         />
       </div>
       <div className="tp-field">
@@ -425,16 +558,22 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
           id="log-memo"
           rows={2}
           value={draft.memo}
-          onChange={(event) => update((current) => ({ ...current, memo: event.target.value }))}
+          onChange={(event) =>
+            update((current) => ({ ...current, memo: event.target.value }))
+          }
         />
       </div>
       <div className="tp-field">
-        <label htmlFor="log-request">トレーニング担当へ(反応してほしいこと。なければ空のまま)</label>
+        <label htmlFor="log-request">
+          トレーニング担当へ(反応してほしいこと。なければ空のまま)
+        </label>
         <textarea
           id="log-request"
           rows={2}
           value={draft.request}
-          onChange={(event) => update((current) => ({ ...current, request: event.target.value }))}
+          onChange={(event) =>
+            update((current) => ({ ...current, request: event.target.value }))
+          }
         />
       </div>
 
@@ -445,9 +584,16 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
       ) : null}
 
       <div className="tp-savebar">
-        <p>重さも回数も空のセットは、保存しません。書いたことは部の全員に見えます。</p>
+        <p>
+          重さも回数も空のセットは、保存しません。書いたことは部の全員に見えます。
+        </p>
         <div className="tp-actions">
-          <button type="button" className="tp-button tp-ghost" disabled={busy} onClick={() => setDraft(null)}>
+          <button
+            type="button"
+            className="tp-button tp-ghost"
+            disabled={busy}
+            onClick={() => setDraft(null)}
+          >
             やめる
           </button>
           <button className="tp-button" type="submit" disabled={busy}>
@@ -460,16 +606,31 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
         <div className="tp-log-delete">
           {confirmDelete ? (
             <>
-              <span className="tp-small">この日の記録を消します。よければもう一度押してください。</span>
-              <button type="button" className="tp-button tp-danger" disabled={busy} onClick={remove}>
+              <span className="tp-small">
+                この日の記録を消します。よければもう一度押してください。
+              </span>
+              <button
+                type="button"
+                className="tp-button tp-danger"
+                disabled={busy}
+                onClick={remove}
+              >
                 消す
               </button>
-              <button type="button" className="tp-button tp-ghost" onClick={() => setConfirmDelete(false)}>
+              <button
+                type="button"
+                className="tp-button tp-ghost"
+                onClick={() => setConfirmDelete(false)}
+              >
                 やめる
               </button>
             </>
           ) : (
-            <button type="button" className="tp-clear" onClick={() => setConfirmDelete(true)}>
+            <button
+              type="button"
+              className="tp-clear"
+              onClick={() => setConfirmDelete(true)}
+            >
               この日の記録を消す
             </button>
           )}
@@ -483,7 +644,11 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
       {draft ? (
         editor
       ) : (
-        <button type="button" className="tp-button tp-log-start" onClick={() => open(today)}>
+        <button
+          type="button"
+          className="tp-button tp-log-start"
+          onClick={() => open(today)}
+        >
           ＋ 筋トレを記録する
         </button>
       )}
@@ -491,33 +656,50 @@ export function TrainingLog({ teamSlug, today, sessions, menuOptions, menuKeyByD
 
       <h2>自分の記録</h2>
       {sessions.length === 0 ? (
-        <p className="tp-small tp-muted">まだ記録はありません。筋トレをした日に、上のボタンから記録します。</p>
+        <p className="tp-small tp-muted">
+          まだ記録はありません。筋トレをした日に、上のボタンから記録します。
+        </p>
       ) : (
         <ol className="tp-log-history">
           {sessions.slice(0, shown).map((session) => (
             <li key={session.date} className="tp-card">
               <div className="tp-log-histhead">
                 <b>【{formatNoteDate(session.date)}】</b>
-                <button type="button" className="tp-log-edit" onClick={() => open(session.date)}>
+                <button
+                  type="button"
+                  className="tp-log-edit"
+                  onClick={() => open(session.date)}
+                >
                   編集
                 </button>
               </div>
               <ul className="tp-log-lines">
                 {session.exercises.map((exercise, index) => (
                   <li key={index}>
-                    {exercise.name}:{summarizeSets(exercise.sets)}
+                    {exercise.name}:
+                    {summarizeSets(exercise.sets, weightModeOf(exercise.name))}
                   </li>
                 ))}
-                {session.bodyWeightKg !== null ? <li>体重:{session.bodyWeightKg}kg</li> : null}
+                {session.bodyWeightKg !== null ? (
+                  <li>体重:{session.bodyWeightKg}kg</li>
+                ) : null}
               </ul>
-              {session.memo ? <p className="tp-small tp-muted">{session.memo}</p> : null}
-              {session.request ? <p className="tp-small tp-request">{session.request}</p> : null}
+              {session.memo ? (
+                <p className="tp-small tp-muted">{session.memo}</p>
+              ) : null}
+              {session.request ? (
+                <p className="tp-small tp-request">{session.request}</p>
+              ) : null}
             </li>
           ))}
         </ol>
       )}
       {sessions.length > shown ? (
-        <button type="button" className="tp-button tp-ghost" onClick={() => setShown(shown + HISTORY_STEP)}>
+        <button
+          type="button"
+          className="tp-button tp-ghost"
+          onClick={() => setShown(shown + HISTORY_STEP)}
+        >
           もっと見る
         </button>
       ) : null}

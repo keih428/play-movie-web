@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { resolveWeek, type MenuItem, type MenuWeek, type TrainingMenu } from "@/lib/domain/training";
+import {
+  buildDefaultExercises,
+  compactExercises,
+  findLogMenuKey,
+  resolveWeek,
+  summarizeSets,
+  weightModeOf,
+  type MenuItem,
+  type MenuWeek,
+  type TrainingMenu,
+} from "@/lib/domain/training";
 
 const week = (k: string, mode: MenuWeek["mode"]): MenuWeek => ({
   k,
@@ -50,8 +60,87 @@ describe("導入②の3RMの測定", () => {
     expect(doseOf(menu, "thu", "バックスクワット")).toBe("3RMの測定");
   });
 
-  it("土はベンチだけを測る", () => {
+  it("日(上半身の日)はベンチだけを測る", () => {
     const menu = menuWith([{ n: "バックスクワット", kind: "sq" }], [{ n: "トラップバーデッドリフト", kind: "dl" }]);
     expect(doseOf(menu, "sat", "ベンチプレス")).toBe("3RMの測定");
+  });
+});
+
+describe("上半身は日曜(2026-11-05 から)", () => {
+  const menu = menuWith([], []);
+  menu.s["日の枠A"] = "9:00〜10:30";
+  menu.s["日の枠B"] = "11:30〜13:00";
+  const dayOf = (slot: "AB" | "C", fresh = false) =>
+    resolveWeek(menu, 0, { tier: "T1", slot, position: "OH", fresh }, {}).days.find((entry) => entry.day === "sat");
+
+  it("日付は週の始まり(月)の6日後、時間は日の枠", () => {
+    expect(dayOf("AB")?.date).toBe("2026-11-15");
+    expect(dayOf("AB")?.time).toBe("9:00〜10:30");
+    expect(dayOf("C")?.time).toBe("11:30〜13:00");
+  });
+
+  it("日の枠がない古いメニューは、土の枠の時間を出す", () => {
+    const old = menuWith([], []);
+    old.s["土の枠A"] = "8:30〜10:00(練習の前)";
+    const day = resolveWeek(old, 0, { tier: "T1", slot: "AB", position: "OH", fresh: false }, {}).days.find(
+      (entry) => entry.day === "sat",
+    );
+    expect(day?.time).toBe("8:30〜10:00(練習の前)");
+  });
+
+  it("記録で初めに選ぶメニューは、日曜なら上半身、土曜なら自主", () => {
+    const programs = [{ key: "2026-11-09", menu }];
+    const options = ["tue", "thu", "sat", "self"].map((day) => ({
+      key: `2026-11-09/W2/${day}`,
+      weekKey: "2026-11-09/W2",
+      weekLabel: "",
+      day: day as "tue" | "thu" | "sat" | "self",
+      dayLabel: "",
+      items: [],
+    }));
+    expect(findLogMenuKey(programs, options, "2026-11-15")).toBe("2026-11-09/W2/sat");
+    expect(findLogMenuKey(programs, options, "2026-11-14")).toBe("2026-11-09/W2/self");
+  });
+});
+
+describe("重さの欄の出し方(2026-11-05 から)", () => {
+  it("懸垂・ディップスは自重+、加重しないやり方は自重", () => {
+    expect(weightModeOf("懸垂")).toBe("bwplus");
+    expect(weightModeOf("ディップス")).toBe("bwplus");
+    expect(weightModeOf("加重懸垂")).toBe("bwplus");
+    expect(weightModeOf("ネガティブ懸垂 5回 × 3")).toBe("bw");
+    expect(weightModeOf("ベンチディップス 10回 × 3")).toBe("bw");
+  });
+
+  it("体だけで行う種目は自重、道具や重りを使うものは kg", () => {
+    expect(weightModeOf("プランク")).toBe("bw");
+    expect(weightModeOf("ノルディックハムストリングカール")).toBe("bw");
+    expect(weightModeOf("ボックスジャンプ")).toBe("bw");
+    expect(weightModeOf("プランク(重り付き)")).toBe("kg");
+    expect(weightModeOf("トラップバージャンプ")).toBe("kg");
+    expect(weightModeOf("スプリットスクワット(自重〜軽いダンベル)")).toBe("kg");
+    expect(weightModeOf("ベンチプレス")).toBe("kg");
+    expect(weightModeOf("メディシンボールの叩きつけ(スラムボール)")).toBe("kg");
+  });
+
+  it("まとめの文字", () => {
+    expect(summarizeSets([{ kg: null, reps: 10 }, { kg: null, reps: 10 }], "bw")).toBe("自重 × 10回 × 2set");
+    expect(summarizeSets([{ kg: 70, reps: 10 }], "bw")).toBe("自重 × 10回");
+    expect(summarizeSets([{ kg: 10, reps: 8 }, { kg: null, reps: 6 }], "bwplus")).toBe("自重+10kg × 8回、自重 × 6回");
+    expect(summarizeSets([{ kg: 60, reps: 5 }])).toBe("60kg × 5回");
+  });
+
+  it("自重の種目は、保存のときも前回の記録から始めるときも重さを持たない", () => {
+    expect(compactExercises([{ name: "プランク", lift: null, sets: [{ kg: 70, reps: 1 }] }])).toEqual([
+      { name: "プランク", lift: null, sets: [{ kg: null, reps: 1 }] },
+    ]);
+    expect(compactExercises([{ name: "懸垂", lift: null, sets: [{ kg: 5, reps: 8 }] }])[0].sets).toEqual([
+      { kg: 5, reps: 8 },
+    ]);
+    const start = buildDefaultExercises(
+      { items: [{ name: "プランク", dose: "30秒 × 3", kind: "", weighted: false, targetKg: null }] },
+      { プランク: [{ kg: 70, reps: 1 }] },
+    );
+    expect(start[0].sets).toEqual([{ kg: null, reps: 1 }]);
   });
 });
