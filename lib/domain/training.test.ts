@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildDefaultExercises,
   compactExercises,
+  findVideoLink,
+  splitT0,
   exerciseUnit,
   inferUnit,
   parseDose,
@@ -59,13 +61,13 @@ describe("導入②の3RMの測定", () => {
       [{ n: "トラップバーデッドリフト", kind: "dl" }],
       [{ n: "バックスクワット", kind: "sq" }],
     );
-    expect(doseOf(menu, "tue", "トラップバーデッドリフト")).toBe("3RMの測定");
-    expect(doseOf(menu, "thu", "バックスクワット")).toBe("3RMの測定");
+    expect(doseOf(menu, "tue", "トラップバーデッドリフト")).toBe("3RMの測定 3回 × 3");
+    expect(doseOf(menu, "thu", "バックスクワット")).toBe("3RMの測定 3回 × 3");
   });
 
   it("日(上半身の日)はベンチだけを測る", () => {
     const menu = menuWith([{ n: "バックスクワット", kind: "sq" }], [{ n: "トラップバーデッドリフト", kind: "dl" }]);
-    expect(doseOf(menu, "sat", "ベンチプレス")).toBe("3RMの測定");
+    expect(doseOf(menu, "sat", "ベンチプレス")).toBe("3RMの測定 3回 × 3");
   });
 });
 
@@ -181,5 +183,46 @@ describe("秒数の種目(2026-11-05 から)", () => {
     });
     expect(summarizeSets(start[0].sets, "bw", "sec")).toBe("自重 × 45秒 × 3set");
     expect(compactExercises(start)[0].unit).toBe("sec");
+  });
+});
+
+describe("チェックの種目・T0 の置き換え・動画(2026-11-05 から)", () => {
+  it("「10分」の種目とストレッチ・ウォームアップは、やったかどうかのチェック", () => {
+    expect(inferUnit("動的ストレッチ・モビリティ(股関節・足首)", "10分")).toBe("check");
+    expect(inferUnit("肩のウォームアップ(チューブで外旋・肩甲骨まわり)", "5分")).toBe("check");
+    expect(inferUnit("動的ストレッチ")).toBe("check");
+    const start = buildDefaultExercises(
+      { items: [{ name: "動的ストレッチ", dose: "10分", kind: "", weighted: false, targetKg: null }] },
+      { 動的ストレッチ: [{ kg: null, reps: 1 }] },
+    );
+    // 前にやっていても、チェックなしから始める
+    expect(start[0]).toEqual({ name: "動的ストレッチ", lift: null, unit: "check", sets: [{ kg: null, reps: null }] });
+    expect(compactExercises(start)).toEqual([]);
+    expect(summarizeSets([{ kg: null, reps: 1 }], "kg", "check")).toBe("やった");
+  });
+
+  it("導入の週のメイン種目も、セットの数だけ欄ができる", () => {
+    // W2:火にベンチを置くと測定しない日 → 軽い重さで 8回 × 3。木のスクワットは測定 → 3回 × 3
+    const menu = menuWith([{ n: "ベンチプレス", kind: "bp" }], [{ n: "バックスクワット", kind: "sq" }]);
+    expect(doseOf(menu, "thu", "バックスクワット")).toBe("3RMの測定 3回 × 3");
+    expect(doseOf(menu, "tue", "ベンチプレス")).toBe("軽い重さで 8回 × 3");
+    expect(parseDose("3RMの測定 3回 × 3")).toEqual({ reps: 3, sets: 3 });
+  });
+
+  it("「T0の場合」を名前・回数・ポイントに分ける", () => {
+    expect(splitT0("ダンベルベンチプレス 10回 × 3(あと3回できる重さ)")).toEqual({
+      name: "ダンベルベンチプレス",
+      dose: "10回 × 3",
+      tip: "あと3回できる重さ",
+    });
+    expect(splitT0("ネガティブ懸垂 5回 × 3")).toEqual({ name: "ネガティブ懸垂", dose: "5回 × 3", tip: "" });
+    expect(splitT0("3kg で 各5回 × 3")).toEqual({ name: null, dose: "3kg で 各5回 × 3", tip: "" });
+  });
+
+  it("動画は、いちばん長く合う名前のもの", () => {
+    const links: [string, string][] = [["プランク", "u1"], ["サイドプランク", "u2"]];
+    expect(findVideoLink(links, "サイドプランク")).toBe("u2");
+    expect(findVideoLink(links, "プランク(重り付き)")).toBe("u1");
+    expect(findVideoLink(links, "ベンチプレス")).toBeNull();
   });
 });

@@ -11,6 +11,7 @@ import {
   getPreviousSetsByExercise,
   inferLift,
   summarizeSets,
+  findVideoLink,
   exerciseUnit,
   inferUnit,
   type RepUnit,
@@ -30,6 +31,8 @@ type TrainingLogProps = {
   menuOptions: LogMenuOption[];
   // 日付ごとの、初めに選ぶメニュー(火・木・日はその曜日、ほかの日は自主)。ない日は「メニューなし」。
   menuKeyByDate: Record<string, string>;
+  // 種目の動画([種目名の一部, URL])。記録の欄の種目名の横に「▶ 動画」を出す(2026-11-05 から)。
+  videoLinks: [string, string][];
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
@@ -96,6 +99,7 @@ export function TrainingLog({
   sessions,
   menuOptions,
   menuKeyByDate,
+  videoLinks,
 }: TrainingLogProps) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -217,15 +221,20 @@ export function TrainingLog({
             exercises: draft.exercises.map((exercise) => ({
               name: exercise.name,
               lift: exercise.lift,
-              ...(exercise.unit === "sec" ? { unit: "sec" } : {}),
-              // 自重の種目は重さを送らない(欄に「自重」と出すだけ)。
-              sets: exercise.sets.map((set) => ({
-                kg:
-                  weightModeOf(exercise.name) === "bw"
-                    ? null
-                    : set.kg.trim() || null,
-                reps: set.reps.trim() || null,
-              })),
+              ...(exercise.unit !== "reps" ? { unit: exercise.unit } : {}),
+              // 自重の種目は重さを送らない(欄に「自重」と出すだけ)。チェックの種目は、やったら回数 1 だけ。
+              sets:
+                exercise.unit === "check"
+                  ? exercise.sets.some((set) => set.reps.trim())
+                    ? [{ kg: null, reps: 1 }]
+                    : []
+                  : exercise.sets.map((set) => ({
+                      kg:
+                        weightModeOf(exercise.name) === "bw"
+                          ? null
+                          : set.kg.trim() || null,
+                      reps: set.reps.trim() || null,
+                    })),
             })),
             bodyWeightKg: draft.bodyWeight.trim() || null,
             memo: draft.memo,
@@ -397,26 +406,48 @@ export function TrainingLog({
                     ...current,
                     name: event.target.value,
                     lift: inferLift(event.target.value),
-                    unit: current.unitChosen ? current.unit : inferUnit(event.target.value),
+                    unit: current.unitChosen
+                      ? current.unit
+                      : inferUnit(event.target.value),
                   }))
                 }
               />
             )}
+            {findVideoLink(videoLinks, exercise.name) ? (
+              <a
+                className="tp-vid"
+                href={findVideoLink(videoLinks, exercise.name) ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${exercise.name} のフォーム動画`}
+              >
+                ▶ 動画
+              </a>
+            ) : null}
             {exercise.fixed ? null : (
-              // 自分で足した種目は、回数で記録するか秒数で記録するかを選べる。
+              // 自分で足した種目は、回数・秒数・チェック(やったかどうか)のどれで記録するかを選べる。押すたびに切り替わる。
               <button
                 type="button"
                 className="tp-log-unit"
-                aria-pressed={exercise.unit === "sec"}
+                aria-pressed={exercise.unit !== "reps"}
                 onClick={() =>
                   updateExercise(exercise.key, (current) => ({
                     ...current,
-                    unit: current.unit === "sec" ? "reps" : "sec",
+                    unit:
+                      current.unit === "reps"
+                        ? "sec"
+                        : current.unit === "sec"
+                          ? "check"
+                          : "reps",
                     unitChosen: true,
                   }))
                 }
               >
-                {exercise.unit === "sec" ? "秒で記録" : "回で記録"}
+                {exercise.unit === "sec"
+                  ? "秒で記録"
+                  : exercise.unit === "check"
+                    ? "チェックで記録"
+                    : "回で記録"}
               </button>
             )}
             <button
@@ -435,109 +466,134 @@ export function TrainingLog({
               種目を消す
             </button>
           </div>
-          <ol className="tp-log-sets">
-            {exercise.sets.map((set, setIndex) => (
-              <li key={setIndex}>
-                <span className="tp-log-no">{setIndex + 1}</span>
-                {weightModeOf(exercise.name) === "bw" ? (
-                  // 自重の種目は数字を打たない(けーいちの決定、2026-11-05)。
-                  <span className="tp-log-bwlabel">自重 ×</span>
-                ) : (
-                  <>
-                    <span
-                      className={
-                        weightModeOf(exercise.name) === "bwplus"
-                          ? "tp-log-plus"
-                          : "tp-log-kg"
+          {exercise.unit === "check" ? (
+            // ストレッチ・ウォームアップなどは、やったかどうかだけ(けーいちの決定、2026-11-05)。
+            <label className="tp-log-check">
+              <input
+                type="checkbox"
+                checked={exercise.sets.some((set) => set.reps.trim() !== "")}
+                onChange={(event) =>
+                  updateExercise(exercise.key, (current) => ({
+                    ...current,
+                    sets: [{ kg: "", reps: event.target.checked ? "1" : "" }],
+                  }))
+                }
+              />
+              やった
+            </label>
+          ) : (
+            <>
+              <ol className="tp-log-sets">
+                {exercise.sets.map((set, setIndex) => (
+                  <li key={setIndex}>
+                    <span className="tp-log-no">{setIndex + 1}</span>
+                    {weightModeOf(exercise.name) === "bw" ? (
+                      // 自重の種目は数字を打たない(けーいちの決定、2026-11-05)。
+                      <span className="tp-log-bwlabel">自重 ×</span>
+                    ) : (
+                      <>
+                        <span
+                          className={
+                            weightModeOf(exercise.name) === "bwplus"
+                              ? "tp-log-plus"
+                              : "tp-log-kg"
+                          }
+                        >
+                          {weightModeOf(exercise.name) === "bwplus" ? (
+                            <span className="tp-unit">自重+</span>
+                          ) : null}
+                          <input
+                            inputMode="decimal"
+                            aria-label={
+                              weightModeOf(exercise.name) === "bwplus"
+                                ? `${exercise.name} ${setIndex + 1}セット目に足した重さ(kg)`
+                                : `${exercise.name} ${setIndex + 1}セット目の重さ(kg)`
+                            }
+                            placeholder={
+                              weightModeOf(exercise.name) === "bwplus"
+                                ? "0"
+                                : "—"
+                            }
+                            value={set.kg}
+                            onChange={(event) =>
+                              updateExercise(exercise.key, (current) => ({
+                                ...current,
+                                sets: current.sets.map((entry, index) =>
+                                  index === setIndex
+                                    ? { ...entry, kg: event.target.value }
+                                    : entry,
+                                ),
+                              }))
+                            }
+                          />
+                        </span>
+                        <span className="tp-unit">kg ×</span>
+                      </>
+                    )}
+                    <input
+                      inputMode="numeric"
+                      aria-label={`${exercise.name} ${setIndex + 1}セット目の${exercise.unit === "sec" ? "秒数" : "回数"}`}
+                      placeholder="—"
+                      value={set.reps}
+                      onChange={(event) =>
+                        updateExercise(exercise.key, (current) => ({
+                          ...current,
+                          sets: current.sets.map((entry, index) =>
+                            index === setIndex
+                              ? { ...entry, reps: event.target.value }
+                              : entry,
+                          ),
+                        }))
+                      }
+                    />
+                    <span className="tp-unit">
+                      {exercise.unit === "sec" ? "秒" : "回"}
+                    </span>
+                    <button
+                      type="button"
+                      className="tp-log-x"
+                      aria-label={`${setIndex + 1}セット目を消す`}
+                      disabled={exercise.sets.length <= 1}
+                      onClick={() =>
+                        updateExercise(exercise.key, (current) => ({
+                          ...current,
+                          sets: current.sets.filter(
+                            (_, index) => index !== setIndex,
+                          ),
+                        }))
                       }
                     >
-                      {weightModeOf(exercise.name) === "bwplus" ? (
-                        <span className="tp-unit">自重+</span>
-                      ) : null}
-                      <input
-                        inputMode="decimal"
-                        aria-label={
-                          weightModeOf(exercise.name) === "bwplus"
-                            ? `${exercise.name} ${setIndex + 1}セット目に足した重さ(kg)`
-                            : `${exercise.name} ${setIndex + 1}セット目の重さ(kg)`
-                        }
-                        placeholder={
-                          weightModeOf(exercise.name) === "bwplus" ? "0" : "—"
-                        }
-                        value={set.kg}
-                        onChange={(event) =>
-                          updateExercise(exercise.key, (current) => ({
-                            ...current,
-                            sets: current.sets.map((entry, index) =>
-                              index === setIndex
-                                ? { ...entry, kg: event.target.value }
-                                : entry,
-                            ),
-                          }))
-                        }
-                      />
-                    </span>
-                    <span className="tp-unit">kg ×</span>
-                  </>
-                )}
-                <input
-                  inputMode="numeric"
-                  aria-label={`${exercise.name} ${setIndex + 1}セット目の${exercise.unit === "sec" ? "秒数" : "回数"}`}
-                  placeholder="—"
-                  value={set.reps}
-                  onChange={(event) =>
-                    updateExercise(exercise.key, (current) => ({
-                      ...current,
-                      sets: current.sets.map((entry, index) =>
-                        index === setIndex
-                          ? { ...entry, reps: event.target.value }
-                          : entry,
-                      ),
-                    }))
-                  }
-                />
-                <span className="tp-unit">{exercise.unit === "sec" ? "秒" : "回"}</span>
-                <button
-                  type="button"
-                  className="tp-log-x"
-                  aria-label={`${setIndex + 1}セット目を消す`}
-                  disabled={exercise.sets.length <= 1}
-                  onClick={() =>
-                    updateExercise(exercise.key, (current) => ({
-                      ...current,
-                      sets: current.sets.filter(
-                        (_, index) => index !== setIndex,
-                      ),
-                    }))
-                  }
-                >
-                  −
-                </button>
-              </li>
-            ))}
-          </ol>
-          <button
-            type="button"
-            className="tp-log-add"
-            disabled={exercise.sets.length >= SESSION_LIMITS.setsPerExercise}
-            onClick={() =>
-              updateExercise(exercise.key, (current) => ({
-                ...current,
-                // 1つ前のセットと同じ重さ・回数で足す(変えるときだけ打ち直す)。
-                sets: [
-                  ...current.sets,
-                  {
-                    ...(current.sets[current.sets.length - 1] ?? {
-                      kg: "",
-                      reps: "",
-                    }),
-                  },
-                ],
-              }))
-            }
-          >
-            + セット
-          </button>
+                      −
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                className="tp-log-add"
+                disabled={
+                  exercise.sets.length >= SESSION_LIMITS.setsPerExercise
+                }
+                onClick={() =>
+                  updateExercise(exercise.key, (current) => ({
+                    ...current,
+                    // 1つ前のセットと同じ重さ・回数で足す(変えるときだけ打ち直す)。
+                    sets: [
+                      ...current.sets,
+                      {
+                        ...(current.sets[current.sets.length - 1] ?? {
+                          kg: "",
+                          reps: "",
+                        }),
+                      },
+                    ],
+                  }))
+                }
+              >
+                + セット
+              </button>
+            </>
+          )}
         </div>
       ))}
 
