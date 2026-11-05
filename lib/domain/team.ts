@@ -91,7 +91,7 @@ export function buildTeamLoginPath(teamSlug: string): string {
   return `/t/${teamSlug}/login`;
 }
 
-// データベース/マニュアル(部のルール・役職の仕事・出欠のルールなど)。
+// データベース/マニュアル(出欠のルール・役職の仕事・マネマニュアル・筋トレなど)。
 export function buildTeamManualPath(teamSlug: string): string {
   return `/t/${teamSlug}/manual`;
 }

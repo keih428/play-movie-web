@@ -267,8 +267,8 @@ export const PORTAL_TEXT_MAX_LENGTH = 10000;
  * hint は、まだ書かれていないときに出す「何を書くか」の目安。
  */
 export const MANUAL_SECTIONS: { key: Exclude<PortalSectionKey, "goal">; title: string; hint: string }[] = [
-  { key: "policy", title: "チームとして目指す方針", hint: "1年の目標、大事にすること、目指すチームの姿" },
-  { key: "rules", title: "部のルール", hint: "練習・試合・部室・連絡などの決まり" },
+  // 「チームとして目指す方針」(policy)と「部のルール」(rules)は、2026-11-05 に外した(けーいちの決定)。
+  // 書かれていた文はデータベースに残っている(戻すときは、ここに足し直す)。
   {
     key: "attendance",
     title: "出欠・遅刻のルール",

@@ -11,6 +11,7 @@ import {
 } from "@/lib/domain/team";
 import { requireMember } from "@/lib/server/portal-session";
 import { listPortalTexts } from "@/lib/server/portal-text-store";
+import { MANUAL_DEFAULTS } from "@/lib/domain/manual-defaults";
 
 type PageProps = {
   params: Promise<{
@@ -60,7 +61,7 @@ export default async function TeamManualPage({ params }: PageProps) {
           textKey={section.key}
           title={section.title}
           hint={section.hint}
-          body={texts[section.key]?.body ?? null}
+          body={texts[section.key]?.body ?? MANUAL_DEFAULTS[section.key] ?? null}
           updatedAt={texts[section.key]?.updatedAt ?? null}
           canEdit={canEdit}
         >
