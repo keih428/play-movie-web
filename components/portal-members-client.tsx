@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { JaText } from "@/components/ja-text";
 import { SlackTestButton } from "@/components/slack-test-button";
 import {
   MEMBER_GROUP_LABELS,
@@ -49,7 +50,8 @@ async function sendJson<T>(url: string, method: string, body?: unknown): Promise
   return payload;
 }
 
-function describeMember(member: Member, isPlayerTable: boolean) {
+/** 役割の欄に出す言葉(役ごと)。名簿の表では1行に1つずつ並べる(2026-11-06 から。中黒でつなぐと、狭い画面で欄が広がりすぎるため)。 */
+function describeMemberParts(member: Member, isPlayerTable: boolean): string[] {
   const parts = [
     // スタッフの表では「スタッフ」は言うまでもないので、役職(肩書)などだけを出す(けーいちの指摘、2026-10-26)。
     member.role === "member" || !isPlayerTable ? null : MEMBER_ROLE_LABELS[member.role],
@@ -58,7 +60,8 @@ function describeMember(member: Member, isPlayerTable: boolean) {
     // 幹部かどうかは、名簿の一覧には出さない(「直す」の中だけで見える。けーいちの決定、2026-10-20)。
     member.title,
   ];
-  return parts.filter(Boolean).join("・");
+  // 肩書が「トレーニング担当」など、印と同じ言葉のときは1つにまとめる。
+  return [...new Set(parts.filter((part): part is string => Boolean(part)))];
 }
 
 export function PortalMembersClient({
@@ -193,7 +196,17 @@ export function PortalMembersClient({
                     {/* 背番号は左の列に出すので、名前の欄は名前だけにする。 */}
                     <td className="tp-num tp-roster-number">{member.number ?? "—"}</td>
                     <td>
-                      <span className="tp-name">{member.name}</span>
+                      {/* 名簿では「苗字 名前」(2026-11-06 から)。ほかの画面は背番号+苗字のまま。
+                          狭い画面では、苗字と名前の間でだけ折り返す */}
+                      <span className="tp-name tp-name-full">
+                        <span>{member.name}</span>
+                        {member.givenName ? (
+                          <>
+                            {" "}
+                            <span>{member.givenName}</span>
+                          </>
+                        ) : null}
+                      </span>
                       {member.id === currentMemberId ? <span className="tp-sub">自分</span> : null}
                       {member.active ? null : <span className="tp-sub">名簿から外した</span>}
                     </td>
@@ -208,8 +221,13 @@ export function PortalMembersClient({
                         ) : null}
                       </td>
                     ) : null}
-                    <td>
-                      {describeMember(member, isPlayerTable) || (member.tier || member.slot ? "" : "—")}
+                    <td className="tp-roster-role">
+                      {describeMemberParts(member, isPlayerTable).map((part) => (
+                        <span key={part} className="tp-role-line">
+                          <JaText fine>{part}</JaText>
+                        </span>
+                      ))}
+                      {describeMemberParts(member, isPlayerTable).length === 0 && !member.tier && !member.slot ? "—" : null}
                       {member.tier || member.slot ? (
                         <span className="tp-sub">
                           {member.tier ? <span className={`tp-tier ${member.tier}`}>{member.tier}</span> : null}{" "}
@@ -275,16 +293,24 @@ export function PortalMembersClient({
 
       {canManage && editingId ? (
         <section className="tp-section">
-          <h2>{editingId === "new" ? "部員・スタッフを足す" : `${draft.name} を編集`}</h2>
+          <h2>{editingId === "new" ? "部員・スタッフを足す" : `${[draft.name, draft.givenName].filter((part) => part.trim()).join(" ")} を編集`}</h2>
           <form className="tp-card" onSubmit={saveDraft}>
             <div className="tp-inputs">
               <div className="tp-field">
-                <label htmlFor="member-name">名前</label>
+                <label htmlFor="member-name">苗字(ほかの画面では、背番号+苗字で出ます)</label>
                 <input
                   id="member-name"
                   value={draft.name}
                   onChange={(event) => setField("name", event.target.value)}
                   required
+                />
+              </div>
+              <div className="tp-field">
+                <label htmlFor="member-given-name">名前(名簿にだけ出ます)</label>
+                <input
+                  id="member-given-name"
+                  value={draft.givenName}
+                  onChange={(event) => setField("givenName", event.target.value)}
                 />
               </div>
               <div className="tp-field">

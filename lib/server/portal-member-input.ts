@@ -33,6 +33,10 @@ export function parseMemberInput(
       }
       patch.name = name;
     }
+    if ("givenName" in body) {
+      // 下の名前(空なら消す)。
+      patch.givenName = readText(body.givenName);
+    }
     if ("number" in body) {
       const number = normalizeMemberNumber(body.number);
       if (number === undefined) {

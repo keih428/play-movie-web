@@ -34,7 +34,10 @@ export function toTrainingGroup(slot: string | null | undefined): TrainingGroup 
 export type Member = {
   id: string;
   teamSlug: string;
+  // 苗字。画面の表示名(背番号+苗字)と、名簿の取り込みの突き合わせに使う。
   name: string;
+  // 下の名前(2026-11-06 から)。名簿のページにだけ出す。なければ null。
+  givenName: string | null;
   // 背番号(なければ null)。プレイヤーは数字、スタッフは T・M・C などの文字。
   number: string | null;
   // 画面と Slack に出す名前。背番号があれば前に付ける(15林)。
@@ -63,6 +66,8 @@ export type Member = {
 
 export type MemberInput = {
   name: string;
+  // 下の名前。undefined は「触らない」、null は「なし」。
+  givenName?: string | null;
   // 背番号。undefined は「触らない」(取り込む表に背番号の列がないとき)、null は「番号なし」。
   number?: string | null;
   grade: number | null;
@@ -110,6 +115,11 @@ export const MEMBER_GROUP_LABELS: Record<MemberGroup, string> = {
 /** 背番号 + 名前(15林、T藤本)。背番号がなければ名前だけ。 */
 export function formatMemberName(name: string, number: string | null | undefined): string {
   return number ? `${number}${name}` : name;
+}
+
+/** 名簿に出す「苗字 名前」(下の名前がなければ苗字だけ)。名簿以外は formatMemberName(背番号+苗字)のまま。 */
+export function formatMemberFullName(member: Pick<Member, "name" | "givenName">): string {
+  return member.givenName ? `${member.name} ${member.givenName}` : member.name;
 }
 
 export const MEMBER_NUMBER_MAX_LENGTH = 4;
@@ -366,6 +376,8 @@ function parseRole(cell: string): {
 
 /**
  * 名簿の Markdown の表(背番号 | 名前 | 学年 | ポジション | リーダー | 役割)を読む。背番号の列は、なくてもよい。
+ * 「名前」の列は苗字として読む(これまでの表のまま)。下の名前は、「下の名前」の列か、「苗字」と「名前」の2列で書く
+ * (「苗字」の列があるときは、「名前」を下の名前として読む。2026-11-06 から)。下の名前の列がなければ、下の名前は触らない。
  * ポジションの欄が OH/OP/MB/S/Li 以外(トレーナー、コーチ など)の行は、それを肩書として持つ。
  */
 export function parseRosterMarkdown(markdown: string): MemberInput[] {
@@ -386,12 +398,14 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
       columns = cells;
       continue;
     }
-    if (!columns.includes("名前") || !columns.includes("ポジション")) {
+    const hasSurnameColumn = columns.includes("苗字");
+    if ((!columns.includes("名前") && !hasSurnameColumn) || !columns.includes("ポジション")) {
       continue;
     }
 
     const read = (column: string) => cells[columns!.indexOf(column)] ?? "";
-    const name = read("名前");
+    const name = hasSurnameColumn ? read("苗字") : read("名前");
+    const givenColumn = hasSurnameColumn && columns.includes("名前") ? "名前" : columns.includes("下の名前") ? "下の名前" : null;
     if (!name) {
       continue;
     }
@@ -404,6 +418,7 @@ export function parseRosterMarkdown(markdown: string): MemberInput[] {
 
     members.push({
       name,
+      ...(givenColumn ? { givenName: read(givenColumn) || null } : {}),
       ...(hasNumberColumn ? { number: normalizeMemberNumber(read("背番号")) ?? null } : {}),
       grade: Number.isFinite(grade) ? grade : null,
       position,

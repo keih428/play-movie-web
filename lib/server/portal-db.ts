@@ -452,6 +452,12 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "023_member_given_name",
+    // 名簿の下の名前(2026-11-06 から)。name は苗字のまま(画面の表示名「背番号+苗字」とログインの突き合わせに使う)。
+    // 下の名前は名簿のページにだけ出す。
+    sql: `ALTER TABLE members ADD COLUMN given_name text`,
+  },
 ];
 
 function getDatabaseUrl() {
