@@ -15,6 +15,7 @@ import {
   pickProgram,
   summarizeSets,
   topSetKg,
+  weightModeOf,
   type LiftKind,
 } from "@/lib/domain/training";
 import { listMembers } from "@/lib/server/portal-member-store";
@@ -234,7 +235,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
                 <ul className="tp-log-lines">
                   {comment.exercises.map((exercise, index) => (
                     <li key={index}>
-                      {exercise.name}:{summarizeSets(exercise.sets)}
+                      {exercise.name}:{summarizeSets(exercise.sets, weightModeOf(exercise.name))}
                     </li>
                   ))}
                 </ul>

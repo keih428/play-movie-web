@@ -97,13 +97,14 @@ export type TrainingPlan = {
 
 export type PeriodStatus = "past" | "current" | "upcoming";
 
+// "sat" は上半身の日。2026-11-05 から日曜に移した(それまでは土曜)。記録・個人の追加メニューに "sat" で残っているので、中の名前は変えない。
 export const TRAINING_DAYS = ["tue", "thu", "sat", "self"] as const;
 export type TrainingDay = (typeof TRAINING_DAYS)[number];
 
 export const TRAINING_DAY_LABELS: Record<TrainingDay, string> = {
   tue: "火",
   thu: "木",
-  sat: "土",
+  sat: "日",
   self: "自主",
 };
 
@@ -184,6 +185,32 @@ export function isWeightedItem(name: string, kind: MenuItemKind, override?: bool
     return true;
   }
   return name.includes("重り付き") || !NO_WEIGHT_PATTERN.test(name);
+}
+
+// ---------- 重さの欄の出し方(2026-11-05 から) ----------
+// けーいちの決定:自重の種目は、重さの欄に「自重」と出して数字は打たない。
+// 懸垂・ディップスは「自重+」で、足した重さ(加重)だけを打てる。
+// kg = ふつうに重さを打つ、bw = 「自重」(打たない)、bwplus = 「自重+」足した重さを打つ。
+export type WeightMode = "kg" | "bw" | "bwplus";
+
+const BODYWEIGHT_PLUS_PATTERN = /懸垂|ディップス|チンニング|チンアップ|プルアップ/;
+// 懸垂・ディップスでも、加重しないやり方。
+const BODYWEIGHT_ONLY_VARIANTS = /ネガティブ|ベンチディップス|斜め懸垂|アシスト/;
+const BODYWEIGHT_PATTERN =
+  /自重|プランク|デッドバグ|ノルディック|ヒップリフト|ジャンプ|ホップ|バウンド|ポゴ|幅跳び|着地|腕立て|プッシュアップ/;
+// 名前に自重の言葉があっても、道具や重りを使うもの。
+const LOADED_PATTERN = /重り付き|加重|ダンベル|バーベル|トラップバー|ケーブル|メディシンボール|ケトルベル|プレート/;
+
+/** 種目名から、重さの欄の出し方を決める。 */
+export function weightModeOf(name: string): WeightMode {
+  const text = name.replace(/\s+/g, "");
+  if (BODYWEIGHT_PLUS_PATTERN.test(text)) {
+    return BODYWEIGHT_ONLY_VARIANTS.test(text) ? "bw" : "bwplus";
+  }
+  if (BODYWEIGHT_PATTERN.test(text) && !LOADED_PATTERN.test(text)) {
+    return "bw";
+  }
+  return "kg";
 }
 
 export function roundToPlate(kg: number): number {
@@ -323,7 +350,7 @@ function resolveLift(
     };
   }
   if (week.mode === "intro2") {
-    // 火・木はその日のメイン(スクワットか DL)、土はベンチを測る。どの曜日に置くかはメニューで決める。
+    // 火・木はその日のメイン(スクワットか DL)、日はベンチを測る。どの曜日に置くかはメニューで決める。
     const isTestDay = day === "sat" ? lift === "bp" : lift !== "bp";
     return isTestDay
       ? { dose: "3RMの測定", tip: "フォームが合格した人。「測定」のやり方で", targetKg: null }
@@ -524,36 +551,26 @@ export function resolveWeek(
   }
 
   if (week.mode !== "test") {
-    if (freshBeforeMeet) {
-      days.push({
-        day: "sat",
-        title: "国公立大会",
-        time: "",
-        date: addDays(week.s, 5),
-        items: [],
-        extras: [settings["大会の土曜"]],
-      });
-    } else {
-      const extras: string[] = [];
-      if (slot === "C" && week.brun) {
-        extras.push(
-          `**10:30〜12:00 外で体力づくり:**${week.brun}。${settings["B枠の体力づくりの注意"]}`,
-        );
-      }
-      if (week.satnote) extras.push(week.satnote);
-      days.push({
-        day: "sat",
-        title: menu.upper.name1,
-        time: slot === "AB" ? settings["土の枠A"] : settings["土の枠B"],
-        date: addDays(week.s, 5),
-        items: resolveItems(slot === "AB" ? menu.upper.satA : menu.upper.satB, {
-          ...base,
-          day: "sat",
-          slot: "AB",
-        }),
-        extras,
-      });
+    // 上半身は日曜(2026-11-05 から)。1年生の大会(土曜)の翌日も、ふつうにやる(けーいちの決定)。
+    const extras: string[] = [];
+    if (slot === "C" && week.brun) {
+      extras.push(`**C の枠の中で、外で体力づくり:**${week.brun}。${settings["B枠の体力づくりの注意"]}`);
     }
+    if (week.satnote) extras.push(week.satnote);
+    // 日の枠がない古いメニュー(2026-11-05 より前に入れたもの)は、土の枠の時間を出す。
+    const sundayTime = slot === "AB" ? settings["日の枠A"] ?? settings["土の枠A"] : settings["日の枠B"] ?? settings["土の枠B"];
+    days.push({
+      day: "sat",
+      title: menu.upper.name1,
+      time: sundayTime ?? "",
+      date: addDays(week.s, 6),
+      items: resolveItems(slot === "AB" ? menu.upper.satA : menu.upper.satB, {
+        ...base,
+        day: "sat",
+        slot: "AB",
+      }),
+      extras,
+    });
 
     days.push({
       day: "self",
@@ -795,7 +812,8 @@ export function buildDefaultExercises(
 
   const toSets = (name: string, item: LogMenuItem | undefined): SessionSet[] => {
     if (previous[name]) {
-      return copy(previous[name]);
+      const sets = copy(previous[name]);
+      return weightModeOf(name) === "bw" ? sets.map((set) => ({ ...set, kg: null })) : sets;
     }
     if (!item) {
       return [{ kg: null, reps: null }];
@@ -834,7 +852,7 @@ export type LogMenuOption = {
   items: LogMenuItem[];
 };
 
-const LOG_DAY_LABELS: Record<TrainingDay, string> = { tue: "火", thu: "木", sat: "土", self: "自主" };
+const LOG_DAY_LABELS: Record<TrainingDay, string> = { tue: "火", thu: "木", sat: "日", self: "自主" };
 
 /** 記録で選べるメニュー(全部の期間・週・曜日。種目のない日は除く)。 */
 export function buildLogMenuOptions(
@@ -858,7 +876,7 @@ export function buildLogMenuOptions(
   );
 }
 
-/** その日付で初めに選ぶメニュー(火・木・土はその曜日、ほかの日は自主)。期間の外なら null。 */
+/** その日付で初めに選ぶメニュー(火・木・日はその曜日、ほかの日は自主)。期間の外なら null。 */
 export function findLogMenuKey(programs: TrainingProgram[], options: LogMenuOption[], date: string): string | null {
   for (const program of programs) {
     const week = program.menu.weeks.find((entry) => date >= entry.s && date <= entry.e);
@@ -866,7 +884,7 @@ export function findLogMenuKey(programs: TrainingProgram[], options: LogMenuOpti
       continue;
     }
     const offset = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${week.s}T00:00:00Z`)) / 86400000);
-    const day: TrainingDay = offset === 1 ? "tue" : offset === 3 ? "thu" : offset === 5 ? "sat" : "self";
+    const day: TrainingDay = offset === 1 ? "tue" : offset === 3 ? "thu" : offset === 6 ? "sat" : "self";
     const weekKey = `${program.key}/${week.k}`;
     const exact = options.find((option) => option.key === `${weekKey}/${day}`);
     return (exact ?? options.find((option) => option.weekKey === weekKey && option.day === "self") ?? options.find((option) => option.weekKey === weekKey))?.key ?? null;
@@ -874,7 +892,7 @@ export function findLogMenuKey(programs: TrainingProgram[], options: LogMenuOpti
   return null;
 }
 
-/** その日のメニュー(火・木・土はその曜日、ほかの日は自主の分)。メニューの期間の外なら null。 */
+/** その日のメニュー(火・木・日はその曜日、ほかの日は自主の分)。メニューの期間の外なら null。 */
 export function findDayForDate(
   programs: TrainingProgram[],
   date: string,
@@ -895,11 +913,18 @@ export function findDayForDate(
 /** 保存する前に、空のセット・空の種目を除く。 */
 export function compactExercises(exercises: SessionExercise[]): SessionExercise[] {
   return exercises
-    .map((exercise) => ({
-      ...exercise,
-      name: exercise.name.trim(),
-      sets: exercise.sets.filter((set) => set.kg !== null || set.reps !== null),
-    }))
+    .map((exercise) => {
+      const name = exercise.name.trim();
+      // 自重の種目は重さを持たない(「自重」と出すだけ)。
+      const bodyweight = weightModeOf(name) === "bw";
+      return {
+        ...exercise,
+        name,
+        sets: exercise.sets
+          .map((set) => (bodyweight ? { ...set, kg: null } : set))
+          .filter((set) => set.kg !== null || set.reps !== null),
+      };
+    })
     .filter((exercise) => exercise.name && exercise.sets.length > 0);
 }
 
@@ -907,11 +932,24 @@ function formatKg(kg: number): string {
   return `${Math.round(kg * 100) / 100}kg`;
 }
 
-/** 「100kg × 5回 × 3set」。セットごとに違えば「100kg × 5回、90kg × 8回」。 */
-export function summarizeSets(sets: SessionSet[]): string {
+/** 重さの欄の文字。自重の種目は「自重」、懸垂・ディップスは「自重+10kg」(足していなければ「自重」)。 */
+function describeKg(kg: number | null, mode: WeightMode): string {
+  if (mode === "bw") {
+    return "自重";
+  }
+  if (mode === "bwplus") {
+    return kg ? `自重+${formatKg(kg)}` : "自重";
+  }
+  return kg !== null ? formatKg(kg) : "";
+}
+
+/**
+ * 「100kg × 5回 × 3set」。セットごとに違えば「100kg × 5回、90kg × 8回」。
+ * 自重の種目は「自重 × 10回 × 3set」、懸垂・ディップスは「自重+10kg × 8回」。
+ */
+export function summarizeSets(sets: SessionSet[], mode: WeightMode = "kg"): string {
   const describe = (set: SessionSet) =>
-    [set.kg !== null ? formatKg(set.kg) : "", set.reps !== null ? `${set.reps}回` : ""].filter(Boolean).join(" × ") ||
-    "—";
+    [describeKg(set.kg, mode), set.reps !== null ? `${set.reps}回` : ""].filter(Boolean).join(" × ") || "—";
   const groups: { text: string; count: number }[] = [];
   for (const set of sets) {
     const text = describe(set);
