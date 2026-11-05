@@ -32,6 +32,7 @@ import {
   type SessionExercise,
   type TrainingMenu,
   buildLogMenuOptions,
+  collectVideoLinks,
   findLogMenuKey,
 } from "@/lib/domain/training";
 import { applyPersonalItems, applyPersonalLogItems } from "@/lib/domain/personal-items";
@@ -454,6 +455,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           sessions={sessions}
           menuOptions={menuOptions}
           menuKeyByDate={menuKeyByDate}
+          videoLinks={collectVideoLinks(programs)}
         />
       ) : null}
 

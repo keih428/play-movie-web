@@ -328,6 +328,26 @@ function findVideoUrl(menu: TrainingMenu, name: string): string | null {
   return menu.vid.find(([keyword]) => name.includes(keyword))?.[1] ?? null;
 }
 
+/** 全部の期間のメニューの動画([種目名の一部, URL])。記録の画面で、自分で足した種目にも動画を出すのに使う。 */
+export function collectVideoLinks(programs: TrainingProgram[]): [string, string][] {
+  const links: [string, string][] = [];
+  for (const program of [...programs].sort((left, right) => right.key.localeCompare(left.key))) {
+    for (const [keyword, url] of program.menu.vid) {
+      if (!links.some(([known]) => known === keyword)) {
+        links.push([keyword, url]);
+      }
+    }
+  }
+  return links;
+}
+
+/** 種目名に合う動画の URL。いちばん長い名前で合うものを選ぶ(「プランク」より「サイドプランク」)。 */
+export function findVideoLink(links: [string, string][], name: string): string | null {
+  const hits = links.filter(([keyword]) => name.includes(keyword));
+  hits.sort((left, right) => right[0].length - left[0].length);
+  return hits[0]?.[1] ?? null;
+}
+
 type LiftContext = {
   menu: TrainingMenu;
   week: MenuWeek;
@@ -344,7 +364,8 @@ function resolveLift(
 
   if (week.mode === "intro1") {
     return {
-      dose: "軽い重さ",
+      // 記録の欄がセットの数だけ用意されるよう、回数とセット数を書く(2026-11-05 から)。
+      dose: "軽い重さで 8回 × 3",
       tip: `フォームの確認(${lead}が見る)。合格したら W2 で3RMを測る`,
       targetKg: null,
     };
@@ -353,15 +374,15 @@ function resolveLift(
     // 火・木はその日のメイン(スクワットか DL)、日はベンチを測る。どの曜日に置くかはメニューで決める。
     const isTestDay = day === "sat" ? lift === "bp" : lift !== "bp";
     return isTestDay
-      ? { dose: "3RMの測定", tip: "フォームが合格した人。「測定」のやり方で", targetKg: null }
-      : { dose: "軽い重さ", tip: "フォームの確認と練習", targetKg: null };
+      ? { dose: "3RMの測定 3回 × 3", tip: "フォームが合格した人。「測定」のやり方で(試技は3回まで)", targetKg: null }
+      : { dose: "軽い重さで 8回 × 3", tip: "フォームの確認と練習", targetKg: null };
   }
   if (week.mode === "test") {
     const advanced = selection.tier === "T2" || selection.tier === "T3";
     return advanced
-      ? { dose: "1RMの記録会", tip: `「測定」のやり方で。${lead}が立ち会う`, targetKg: null }
+      ? { dose: "1RMの記録会 1回 × 3", tip: `「測定」のやり方で(試技は3回まで)。${lead}が立ち会う`, targetKg: null }
       : {
-          dose: "3RMの測定",
+          dose: "3RMの測定 3回 × 3",
           tip: "フォームの合格をもらった T1 は、1RMの記録会にも出られる",
           targetKg: null,
         };
@@ -411,11 +432,13 @@ function resolveItems(
     let targetKg: number | null = null;
     let weightOverride = item.w;
 
-    if (kind === "bp" && selection.tier === "T0" && item.t0) {
-      name = item.t0;
-      dose = "";
-      tip = "";
-      main = true;
+    // T0 の人は「T0の場合」の列を使う(2026-11-05 から、ベンチ以外の種目にも効く)。
+    const t0 = selection.tier === "T0" && item.t0 ? splitT0(item.t0) : null;
+    if (t0) {
+      name = t0.name ?? name;
+      dose = t0.dose;
+      tip = t0.tip;
+      main = kind === "bp";
     } else if (kind === "sq" || kind === "dl" || kind === "bp") {
       const lift = resolveLift(kind, context);
       dose = lift.dose;
@@ -453,7 +476,9 @@ function resolveItems(
       tip = "大会の前の週は軽く。キレを保つだけ";
     }
 
-    const effectiveKind: MenuItemKind = swapped && kind !== "pct" ? "" : kind;
+    // T0 のダンベルベンチは、ベンチの集計に入れない(メイン種目としては残す)。
+    const effectiveKind: MenuItemKind =
+      swapped && kind !== "pct" ? "" : t0 && (kind === "sq" || kind === "dl" || kind === "bp") ? "main" : kind;
     resolved.push({
       name,
       dose,
@@ -469,6 +494,23 @@ function resolveItems(
   }
 
   return resolved;
+}
+
+/**
+ * 「T0の場合」の列を、名前・回数・ポイントに分ける。
+ * 「ダンベルベンチプレス 10回 × 3(あと3回できる重さ)」→ 名前 + 回数 + ポイント。
+ * 「3kg で 5回 × 3」のように回数だけのものは、名前を変えない(name が null)。
+ */
+export function splitT0(text: string): { name: string | null; dose: string; tip: string } {
+  const match = text.match(/^(.*?)\s*((?:各|各脚|各腕|各側)?\s*\d+\s*(?:回|秒)\s*[×xX]\s*\d+)\s*(?:[((](.*)[))])?\s*$/);
+  if (!match) {
+    return { name: text, dose: "", tip: "" };
+  }
+  const [, head, dose, tip = ""] = match;
+  if (!head || /で$/.test(head)) {
+    return { name: null, dose: `${head ? `${head} ` : ""}${dose}`, tip };
+  }
+  return { name: head, dose, tip };
 }
 
 function plainItem(name: string, dose: string, tip = ""): ResolvedItem {
@@ -534,7 +576,7 @@ export function resolveWeek(
       date: addDays(week.s, 3),
       items: [
         plainItem("動的ストレッチ", "10分"),
-        plainItem("軽いジャンプ・ダッシュ", "数本", "体を起こすだけ。疲れを残さない"),
+        plainItem("軽いジャンプ・ダッシュ", "3回 × 2", "体を起こすだけ。疲れを残さない"),
         plainItem("肩のケア(フェイスプル、チューブで外旋)", "各15回 × 2"),
       ],
       extras: [],
@@ -725,25 +767,36 @@ export type SessionExercise = {
   name: string;
   // スクワット・トラップバーDL・ベンチなら、その印(みんなの記録の集計に使う)。ほかは null。
   lift: LiftKind | null;
-  // "sec" は、回数の欄に秒数を入れる種目(プランクなど。2026-11-05 から)。ない記録は名前から決める(exerciseUnit)。
+  // "sec" は、回数の欄に秒数を入れる種目(プランクなど)。"check" は、やったかどうかだけの種目(ストレッチなど。
+  // やったら sets が [{ kg: null, reps: 1 }])。どちらも 2026-11-05 から。ない記録は名前から決める(exerciseUnit)。
   unit?: RepUnit;
   sets: SessionSet[];
 };
 
 // ---------- 回数か秒数か(2026-11-05 から) ----------
 // けーいちの決定:プランクなど秒数で行う種目は、メニューで秒を指定し、記録では秒を打つ。
-export type RepUnit = "reps" | "sec";
+// けーいちの決定(同日):動的ストレッチ・ウォームアップなど時間(分)で書く種目は、やったかどうかのチェックにする。
+export type RepUnit = "reps" | "sec" | "check";
 
 const TIMED_PATTERN = /プランク|ホールド|キープ|ウォールシット|空気椅子/;
+const CHECK_PATTERN = /ストレッチ|モビリティ|ウォームアップ/;
 
-/** 回数か秒数か。メニューの「45秒 × 3」「10回 × 3」があればそれで、なければ種目名で決める。 */
+/**
+ * 回数か秒数かチェックか。メニューの「10分」「45秒 × 3」「10回 × 3」があればそれで、なければ種目名で決める。
+ */
 export function inferUnit(name: string, dose?: string): RepUnit {
   const text = (dose ?? "").replace(/\*\*/g, "");
+  if (/\d\s*分/.test(text)) {
+    return "check";
+  }
   if (/\d\s*秒/.test(text)) {
     return "sec";
   }
   if (/\d\s*回/.test(text)) {
     return "reps";
+  }
+  if (CHECK_PATTERN.test(name)) {
+    return "check";
   }
   return TIMED_PATTERN.test(name) ? "sec" : "reps";
 }
@@ -863,8 +916,9 @@ export function buildDefaultExercises(
     return {
       name: item.name,
       lift: item.kind === "sq" || item.kind === "dl" || item.kind === "bp" ? item.kind : inferLift(item.name),
-      ...(unit === "sec" ? { unit } : {}),
-      sets: toSets(item.name, item),
+      ...(unit !== "reps" ? { unit } : {}),
+      // チェックの種目は、前にやっていても毎回チェックなしから始める(やっていない日に「やった」で残らないように)。
+      sets: unit === "check" ? [{ kg: null, reps: null }] : toSets(item.name, item),
     };
   });
 }
@@ -982,6 +1036,9 @@ function describeKg(kg: number | null, mode: WeightMode): string {
  * 自重の種目は「自重 × 10回 × 3set」、懸垂・ディップスは「自重+10kg × 8回」。
  */
 export function summarizeSets(sets: SessionSet[], mode: WeightMode = "kg", unit: RepUnit = "reps"): string {
+  if (unit === "check") {
+    return sets.some((set) => set.reps) ? "やった" : "—";
+  }
   const label = unit === "sec" ? "秒" : "回";
   const describe = (set: SessionSet) =>
     [describeKg(set.kg, mode), set.reps !== null ? `${set.reps}${label}` : ""].filter(Boolean).join(" × ") || "—";

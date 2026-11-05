@@ -2703,7 +2703,23 @@ body:has(.tp[data-mode="tango"]) {
   text-align: right;
 }
 
-/* 自分で足した種目の「回で記録 / 秒で記録」の切り替え(2026-11-05 から)。 */
+/* ストレッチ・ウォームアップなどの「やった」のチェック(2026-11-05 から)。 */
+.tp-log-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  padding-block: 4px;
+  cursor: pointer;
+}
+
+.tp-log-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+/* 自分で足した種目の「回で記録 / 秒で記録 / チェックで記録」の切り替え(2026-11-05 から)。 */
 .tp-log-unit {
   border: 1px solid var(--tp-line);
   border-radius: 999px;
