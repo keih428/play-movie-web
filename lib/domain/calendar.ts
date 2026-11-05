@@ -59,15 +59,21 @@ export function isOffEvent(title: string): boolean {
 
 /**
  * 予定の種類(予定表の色分け。けーいちの決定、2026-11-05)。名前の最初が「練習試合」なら練習試合、「試合」なら試合、
- * 「オフ」ならオフ、それ以外は練習として扱う。
+ * 「オフ」ならオフ、それ以外は練習として扱う。最初に枠の英字(「AB」「BC」「C」など)が付いていてもよい
+ * (「AB練習試合」「BC試合」「C練習試合」。けーいちの依頼、2026-11-05)。「練習(試合形式)」のように途中にあるだけなら練習。
  */
+// 名前の頭に付く枠の英字(半角・全角)と、その後の空白・中黒。
+const GROUP_PREFIX = "^[A-Za-zＡ-Ｚａ-ｚ]*[\\s・]*";
+const PRACTICE_MATCH = new RegExp(`${GROUP_PREFIX}練習試合`);
+const MATCH = new RegExp(`${GROUP_PREFIX}試合`);
+
 export type EventKind = "practice" | "practice-match" | "match" | "off";
 
 export function getEventKind(event: Pick<PracticeEvent, "title" | "off">): EventKind {
   const title = event.title.trim();
   if (event.off || isOffEvent(title)) return "off";
-  if (title.startsWith("練習試合")) return "practice-match";
-  if (title.startsWith("試合")) return "match";
+  if (PRACTICE_MATCH.test(title)) return "practice-match";
+  if (MATCH.test(title)) return "match";
   return "practice";
 }
 

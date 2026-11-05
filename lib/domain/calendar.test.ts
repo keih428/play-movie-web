@@ -52,5 +52,14 @@ describe("getEventKind(予定表の色分け)", () => {
     // 名前の途中に「試合」があっても、最初でなければ練習
     expect(getEventKind({ title: "練習(試合形式)" })).toBe("practice");
     expect(getEventKind({ title: "練習", off: true })).toBe("off");
+    // 枠の英字が頭に付いていても反応する(半角・全角、空白をはさんでも)
+    expect(getEventKind({ title: "AB練習試合" })).toBe("practice-match");
+    expect(getEventKind({ title: "C練習試合 vs ○○大" })).toBe("practice-match");
+    expect(getEventKind({ title: "BC試合" })).toBe("match");
+    expect(getEventKind({ title: "ＡＢ 試合" })).toBe("match");
+    expect(getEventKind({ title: "A・練習試合" })).toBe("practice-match");
+    // 英字のあとが練習なら練習のまま
+    expect(getEventKind({ title: "AB練習" })).toBe("practice");
+    expect(getEventKind({ title: "C練習(試合形式)" })).toBe("practice");
   });
 });
