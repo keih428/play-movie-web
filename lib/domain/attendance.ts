@@ -22,9 +22,12 @@ export type AttendanceReport = {
   arriveAt: string | null;
   leaveAt: string | null;
   reason: string;
+  // 備考(書かなくてよい。2026-11-06 から)。
+  note: string;
 };
 
 export const ATTENDANCE_REASON_MAX = 500;
+export const ATTENDANCE_NOTE_MAX = 500;
 // 連絡は、今日から3か月先の日まで出せる(2026-11-06 に2か月から延ばした。けーいちの依頼)。
 export const ATTENDANCE_MONTHS_AHEAD = 3;
 
@@ -82,6 +85,7 @@ export function formatAttendanceMessage(
   return [
     `${event === "updated" ? "【訂正】" : ""}【${label}】${date} ${who}${time ? ` ${time}` : ""}`,
     `理由:${report.reason || "(書かれていません)"}`,
+    ...(report.note ? [`備考:${report.note}`] : []),
   ].join("\n");
 }
 
@@ -135,6 +139,7 @@ export type AttendanceInput = {
   arriveAt: string | null;
   leaveAt: string | null;
   reason: string;
+  note: string;
 };
 
 /** 種類・時刻・理由を確かめる。おかしければ、画面に出す言葉を返す。 */
@@ -143,6 +148,7 @@ export function parseAttendanceInput(payload: {
   arriveAt?: unknown;
   leaveAt?: unknown;
   reason?: unknown;
+  note?: unknown;
 }): { input: AttendanceInput } | { error: string } {
   if (!isAttendanceKind(payload.kind)) {
     return { error: "欠席・遅刻・早退のどれかを選んでください。" };
@@ -162,8 +168,9 @@ export function parseAttendanceInput(payload: {
   if (!reason) {
     return { error: "理由を書いてください。" };
   }
+  const note = typeof payload.note === "string" ? payload.note.trim().slice(0, ATTENDANCE_NOTE_MAX) : "";
   return {
-    input: { kind: payload.kind, arriveAt: arriveAt as string | null, leaveAt: leaveAt as string | null, reason },
+    input: { kind: payload.kind, arriveAt: arriveAt as string | null, leaveAt: leaveAt as string | null, reason, note },
   };
 }
 
@@ -198,6 +205,7 @@ export function formatBulkAttendanceMessage(
     `【${ATTENDANCE_KIND_LABELS[input.kind]}・まとめて${dates.length}日】${name}${time ? ` ${time}` : ""}`,
     `日付:${dates.map((date) => formatNoteDate(date)).join("、")}`,
     `理由:${input.reason}`,
+    ...(input.note ? [`備考:${input.note}`] : []),
     ...(updatedCount ? [`(うち${updatedCount}日は、前に出した連絡を訂正)`] : []),
   ].join("\n");
 }

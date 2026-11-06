@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     arriveAt?: unknown;
     leaveAt?: unknown;
     reason?: unknown;
+    note?: unknown;
   } | null;
   const today = getTodayInJapan();
   const lastDate = getLastAttendanceDate(today);

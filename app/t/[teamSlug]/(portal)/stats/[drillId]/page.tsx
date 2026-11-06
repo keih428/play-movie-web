@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DrillCounter } from "@/components/drill-counter";
+import { DrillMenu } from "@/components/drill-menu";
 import { ReceptionCounter } from "@/components/reception-counter";
 import { SpikeCounter } from "@/components/spike-counter";
 import { canRecordDrillStats } from "@/lib/domain/drill-stats";
@@ -45,8 +46,11 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
   const players = (await listMembers(teamSlug))
     .filter((member) => member.position)
     .map(({ id, displayName, position, slot }) => ({ id, displayName, position, slot }));
+  const canRecord = canRecordDrillStats(current);
+  // 「このメニューを消す」は、押しまちがえないよう右上の「⋯」の中に入れる(2026-11-06 から)。
   const header = (
-    <header className="tp-hero tp-hero-compact">
+    <header className="tp-hero tp-hero-compact tp-hero-menu">
+      {canRecord ? <DrillMenu teamSlug={teamSlug} drillId={drill.id} backTab={backTab} /> : null}
       <span className="tp-eyebrow">{formatNoteDate(drill.practiceDate)} の集計</span>
       <h1>{drill.name}</h1>
       <Link className="tp-link tp-small" href={`${buildTeamStatsPath(teamSlug)}?tab=${backTab}`}>
@@ -71,7 +75,7 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
           initialCounts={receptionCounts}
           initialSetup={setup}
           initialSetupSavedAt={savedAt}
-          canRecord={canRecordDrillStats(current)}
+          canRecord={canRecord}
         />
       </>
     );
@@ -100,7 +104,7 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
           initialSetup={setup}
           initialSetupSavedAt={savedAt}
           levelStatus={levelStatus}
-          canRecord={canRecordDrillStats(current)}
+          canRecord={canRecord}
         />
       </>
     );
@@ -118,7 +122,7 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
         players={players}
         initialCounts={counts}
         initialSkill={skill}
-        canRecord={canRecordDrillStats(current)}
+        canRecord={canRecord}
       />
     </>
   );

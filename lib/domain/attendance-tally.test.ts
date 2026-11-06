@@ -37,17 +37,23 @@ describe("遅刻・欠席をまとめて出す", () => {
 
   it("入力を確かめる(遅刻には来る時刻、理由は必ず)", () => {
     expect(parseAttendanceInput({ kind: "late", arriveAt: "18:30", reason: " 授業 " })).toEqual({
-      input: { kind: "late", arriveAt: "18:30", leaveAt: null, reason: "授業" },
+      input: { kind: "late", arriveAt: "18:30", leaveAt: null, reason: "授業", note: "" },
     });
     expect(parseAttendanceInput({ kind: "late", reason: "授業" })).toHaveProperty("error");
     expect(parseAttendanceInput({ kind: "absent", reason: "" })).toHaveProperty("error");
+  });
+
+  it("備考は書かなくてよい", () => {
+    expect(parseAttendanceInput({ kind: "absent", reason: "授業", note: " 試験前 " })).toEqual({
+      input: { kind: "absent", arriveAt: null, leaveAt: null, reason: "授業", note: "試験前" },
+    });
   });
 
   it("Slack には1通にまとめる", () => {
     const text = formatBulkAttendanceMessage(
       { memberName: "15林", position: "OH" },
       ["2026-11-10", "2026-11-17"],
-      { kind: "late", arriveAt: "18:30", leaveAt: null, reason: "授業" },
+      { kind: "late", arriveAt: "18:30", leaveAt: null, reason: "授業", note: "" },
       1,
     );
     expect(text).toContain("【遅刻・まとめて2日】15林(OH) 18:30 から");

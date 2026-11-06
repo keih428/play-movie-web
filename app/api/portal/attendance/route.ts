@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     arriveAt?: unknown;
     leaveAt?: unknown;
     reason?: unknown;
+    note?: unknown;
     test?: unknown;
   };
 

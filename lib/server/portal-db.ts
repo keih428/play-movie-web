@@ -506,6 +506,11 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "027_attendance_note",
+    // 遅刻・欠席の連絡の備考(書かなくてよい。2026-11-06 から)。
+    sql: `ALTER TABLE attendance_reports ADD COLUMN note text NOT NULL DEFAULT ''`,
+  },
 ];
 
 function getDatabaseUrl() {

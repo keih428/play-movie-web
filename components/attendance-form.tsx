@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import {
   ATTENDANCE_KINDS,
   ATTENDANCE_KIND_LABELS,
+  ATTENDANCE_NOTE_MAX,
   ATTENDANCE_REASON_MAX,
   describeAttendanceTime,
   needsArriveTime,
@@ -52,6 +53,7 @@ export function AttendanceForm({
   const [arriveAt, setArriveAt] = useState(initialReport?.arriveAt ?? "");
   const [leaveAt, setLeaveAt] = useState(initialReport?.leaveAt ?? "");
   const [reason, setReason] = useState(initialReport?.reason ?? "");
+  const [note, setNote] = useState(initialReport?.note ?? "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,6 +69,7 @@ export function AttendanceForm({
     setArriveAt(report?.arriveAt ?? "");
     setLeaveAt(report?.leaveAt ?? "");
     setReason(report?.reason ?? "");
+    setNote(report?.note ?? "");
     setMessage("");
     setError("");
   }
@@ -105,7 +108,7 @@ export function AttendanceForm({
   function submit(event: FormEvent) {
     event.preventDefault();
     void run(async () => {
-      const payload = await request("POST", apiPath, { date, kind, arriveAt, leaveAt, reason });
+      const payload = await request("POST", apiPath, { date, kind, arriveAt, leaveAt, reason, note });
       return `${formatNoteDate(date)}の連絡を${existing ? "訂正しました" : "出しました"}。${describeSlack(payload.slack)}`;
     });
   }
@@ -228,6 +231,17 @@ export function AttendanceForm({
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           required
+        />
+      </div>
+
+      <div className="tp-field">
+        <label htmlFor="attendance-note">備考(任意)</label>
+        <textarea
+          id="attendance-note"
+          rows={2}
+          maxLength={ATTENDANCE_NOTE_MAX}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
         />
       </div>
 
