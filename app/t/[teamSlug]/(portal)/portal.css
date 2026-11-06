@@ -4412,3 +4412,261 @@ body:has(.tp-counter) .team-header {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* ---------- スパイク練習の集計(2026-11-06 から)。スクロールなしで押せるよう、1人1行に「決定」「ミス」の2つだけ ---------- */
+.tp-spike.tp-counter-recording {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+.tp-spike .tp-counter-filters {
+  justify-content: space-between;
+}
+
+/* 見出しを1行に詰める(打つ人の行に場所を回す) */
+body:has(.tp-spike) .tp-hero-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+body:has(.tp-spike) .tp-hero-compact h1 {
+  grid-row: 2;
+  font-size: 18px;
+}
+
+body:has(.tp-spike) .tp-hero-compact .tp-link {
+  grid-row: 2;
+}
+
+.tp-spike-edit {
+  flex: none;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px dashed var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-spike-teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.tp-spike-teams > * {
+  padding: 9px 8px;
+  font-size: 15px;
+}
+
+.tp-spike-teams small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* いまトスを上げているセッター。押し間違えないよう大きめに */
+.tp-spike-setters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tp-spike-setters::-webkit-scrollbar {
+  display: none;
+}
+
+.tp-spike-label {
+  flex: none;
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tp-spike-setters button {
+  flex: 1 0 auto;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tp-spike-setters button[aria-pressed="true"] {
+  border-color: var(--tp-accent);
+  background: var(--tp-accent);
+  color: var(--tp-on-accent);
+}
+
+.tp-spike-setters small {
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tp-spike-round {
+  margin: 0;
+  font-size: 13px;
+}
+
+.tp-spike-round b {
+  font-family: var(--tp-num);
+  font-size: 17px;
+}
+
+.tp-spike-list {
+  display: grid;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-spike-row {
+  display: grid;
+  grid-template-columns: 5.2em minmax(0, 1fr) minmax(0, 0.8fr) 3.6em;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--tp-line);
+}
+
+.tp-spike-row .tp-counter-name small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tp-spike-level {
+  padding: 1px 5px;
+  border: 1px solid var(--tp-line);
+  border-radius: 6px;
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-spike-level:disabled {
+  cursor: default;
+}
+
+.tp-spike-promote {
+  border-color: var(--tp-ok);
+  color: var(--tp-ok);
+}
+
+.tp-spike-kill,
+.tp-spike-miss {
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s, transform 0.08s;
+}
+
+.tp-spike-kill {
+  border-color: var(--tp-ok);
+  background: var(--tp-ok);
+  color: var(--tp-surface);
+}
+
+.tp-spike-miss {
+  background: var(--tp-surface);
+  color: var(--tp-fg);
+}
+
+.tp-spike-kill:active:not(:disabled),
+.tp-spike-miss:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.tp-spike-kill:disabled,
+.tp-spike-miss:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tp-spike-kill.tp-counter-flash {
+  background: var(--tp-accent-soft);
+  color: var(--tp-fg);
+}
+
+.tp-spike-score {
+  display: grid;
+  justify-items: end;
+  line-height: 1.15;
+}
+
+.tp-spike-score b {
+  font-family: var(--tp-num);
+  font-size: 16px;
+}
+
+.tp-spike-score small {
+  color: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 11px;
+}
+
+/* 下の帯:チーム戦・セッター戦 */
+.tp-spike-dock {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.tp-spike-battle {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.tp-spike-battle > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-family: var(--tp-num);
+  font-weight: 700;
+}
+
+.tp-spike-battle > small {
+  overflow: hidden;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tp-spike-lose {
+  color: var(--tp-danger-fg);
+}
+
+/* 月の順位 */
+.tp-spike-rank-title {
+  margin: 14px 0 6px;
+  font-size: 15px;
+}
+
+.tp-stat-table tr.tp-spike-out td {
+  color: var(--tp-muted);
+}
+
+.tp-stat-table tr.tp-spike-top td {
+  font-weight: 700;
+}

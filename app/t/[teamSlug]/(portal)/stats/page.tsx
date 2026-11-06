@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DrillCreateForm } from "@/components/drill-create-form";
+import { SpikeRankings } from "@/components/spike-rankings";
 import {
   DRILL_GRADES,
+  DRILL_KIND_LABELS,
   DRILL_GRADE_LABELS,
   DRILL_SKILLS,
   DRILL_SKILL_LABELS,
@@ -16,11 +18,12 @@ import {
   type DrillSkill,
 } from "@/lib/domain/drill-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
-import { isPortalTeam } from "@/lib/domain/portal";
+import { isPortalTeam, toTrainingGroup } from "@/lib/domain/portal";
 import { buildTeamStatsPath } from "@/lib/domain/team";
 import { countDrillTotals, listDrills, sumDrillCounts } from "@/lib/server/portal-drill-stat-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
+import { sumSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
 
 type PageProps = {
@@ -30,6 +33,8 @@ type PageProps = {
   searchParams: Promise<{
     skill?: string;
     span?: string;
+    month?: string;
+    group?: string;
   }>;
 };
 
@@ -48,16 +53,21 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
   const basePath = buildTeamStatsPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
   const today = getTodayInJapan();
-  const { skill: requestedSkill, span: requestedSpan } = await searchParams;
+  const { skill: requestedSkill, span: requestedSpan, month: requestedMonth, group: requestedGroup } = await searchParams;
   const skill: DrillSkill = requestedSkill === "dig" ? "dig" : "serve";
   const span: "month" | "all" = requestedSpan === "all" ? "all" : "month";
   const from = span === "all" ? "2000-01-01" : `${today.slice(0, 7)}-01`;
 
-  const [members, drills, totals, sums] = await Promise.all([
+  // スパイクの月の順位(2026-11-06 から)。?month=YYYY-MM と ?group=AB|C。
+  const spikeMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth ?? "") ? requestedMonth! : today.slice(0, 7);
+  const spikeGroup = requestedGroup === "AB" || requestedGroup === "C" ? requestedGroup : "all";
+
+  const [members, drills, totals, sums, spikeCounts] = await Promise.all([
     listMembers(teamSlug),
     listDrills(teamSlug),
     countDrillTotals(teamSlug),
     sumDrillCounts(teamSlug, from),
+    sumSpikeCounts(teamSlug, `${spikeMonth}-01`, `${spikeMonth}-31`),
   ]);
   const players = members.filter((member) => member.position);
   const table = tableDrillCounts(sums);
@@ -68,17 +78,19 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
   for (const drill of drills) {
     byDate.set(drill.practiceDate, [...(byDate.get(drill.practiceDate) ?? []), drill]);
   }
+  // サーブ・ディグとスパイクの切り替えは、お互いの選んだものを残す。
+  const spikeQuery = `${requestedMonth ? `&month=${spikeMonth}` : ""}${spikeGroup !== "all" ? `&group=${spikeGroup}` : ""}`;
   const hrefFor = (nextSkill: DrillSkill, nextSpan: "month" | "all") =>
-    `${basePath}?skill=${nextSkill}${nextSpan === "all" ? "&span=all" : ""}#total`;
+    `${basePath}?skill=${nextSkill}${nextSpan === "all" ? "&span=all" : ""}${spikeQuery}#total`;
   const rate = (value: number | null) => (value === null ? "—" : `${value}%`);
 
   return (
     <>
       <header className="tp-hero">
-        <span className="tp-eyebrow">サーブ・ディグ</span>
+        <span className="tp-eyebrow">サーブ・ディグ・スパイク</span>
         <h1>練習の集計</h1>
         <p className="tp-small tp-muted">
-          マネージャーが、練習のメニューごとに、プレイヤーのサーブとディグを評価(# + ! - / =)ごとに数えます。
+          マネージャーが、練習のメニューごとに数えます。サーブとディグは評価(# + ! - / =)ごと、スパイクは決定と打数を、トスを上げたセッターごとに。
         </p>
       </header>
 
@@ -103,7 +115,10 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
                 <li key={drill.id}>
                   <Link href={buildTeamStatsPath(teamSlug, drill.id)}>
                     {drill.name}
-                    <span className="tp-sub">{totals.get(drill.id) ?? 0}本</span>
+                    <span className="tp-sub">
+                      {drill.kind === "spike" ? `${DRILL_KIND_LABELS.spike}・` : ""}
+                      {totals.get(drill.id) ?? 0}本
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -113,7 +128,7 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
       </section>
 
       <section className="tp-section" id="total">
-        <h2>プレイヤーごとの合計</h2>
+        <h2>サーブ・ディグ:プレイヤーごとの合計</h2>
         <div className="tp-actions">
           <nav className="tp-seg" aria-label="スキル">
             {DRILL_SKILLS.map((entry) => (
@@ -171,6 +186,17 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="tp-section" id="spike">
+        <h2>スパイク:月の順位</h2>
+        <SpikeRankings
+          basePath={`${basePath}?skill=${skill}${span === "all" ? "&span=all" : ""}`}
+          month={spikeMonth}
+          group={spikeGroup}
+          counts={spikeCounts}
+          members={members.map(({ id, displayName, slot }) => ({ id, displayName, group: toTrainingGroup(slot) }))}
+        />
       </section>
     </>
   );

@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DrillCounter } from "@/components/drill-counter";
+import { SpikeCounter } from "@/components/spike-counter";
 import { canRecordDrillStats } from "@/lib/domain/drill-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamStatsPath } from "@/lib/domain/team";
+import { levelStatusOf, spikeRounds } from "@/lib/domain/spike-stats";
 import { getDrill, listDrillCounts } from "@/lib/server/portal-drill-stat-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
+import { listLevelSessions, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 
 type PageProps = {
   params: Promise<{
@@ -18,7 +21,7 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
-/** 1つのメニューの集計。マネージャーなどは押して数え、ほかの人は本数を見る(2026-10-31 から)。 */
+/** 1つのメニューの集計。マネージャーなどは押して数え、ほかの人は本数を見る(2026-10-31 から。スパイクは 2026-11-06 から)。 */
 export default async function TeamDrillStatsPage({ params }: PageProps) {
   const { teamSlug, drillId } = await params;
   if (!isPortalTeam(teamSlug)) {
@@ -30,20 +33,50 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
   if (!drill) {
     notFound();
   }
-  const [members, counts] = await Promise.all([listMembers(teamSlug), listDrillCounts(drill.id)]);
-  const players = members
+  const players = (await listMembers(teamSlug))
     .filter((member) => member.position)
     .map(({ id, displayName, position, slot }) => ({ id, displayName, position, slot }));
+  const header = (
+    <header className="tp-hero tp-hero-compact">
+      <span className="tp-eyebrow">{formatNoteDate(drill.practiceDate)} の集計</span>
+      <h1>{drill.name}</h1>
+      <Link className="tp-link tp-small" href={buildTeamStatsPath(teamSlug)}>
+        ← 集計の一覧へ
+      </Link>
+    </header>
+  );
+
+  // スパイク練習(2026-11-06 から)。
+  if (drill.kind === "spike") {
+    const [spikeCounts, sessions] = await Promise.all([
+      listSpikeCounts(drill.id),
+      listLevelSessions(teamSlug, drill),
+    ]);
+    // 昇格の条件(10本中5本)は、セッター2人のときの周数で見る。
+    const { rounds } = spikeRounds(2);
+    const levelStatus = Object.fromEntries(
+      players.map((player) => [player.id, levelStatusOf(sessions.get(player.id) ?? [], rounds)]),
+    );
+    return (
+      <>
+        {header}
+        <SpikeCounter
+          teamSlug={teamSlug}
+          drillId={drill.id}
+          players={players}
+          initialCounts={spikeCounts}
+          levelStatus={levelStatus}
+          canRecord={canRecordDrillStats(current)}
+        />
+      </>
+    );
+  }
+
+  const counts = await listDrillCounts(drill.id);
 
   return (
     <>
-      <header className="tp-hero tp-hero-compact">
-        <span className="tp-eyebrow">{formatNoteDate(drill.practiceDate)} の集計</span>
-        <h1>{drill.name}</h1>
-        <Link className="tp-link tp-small" href={buildTeamStatsPath(teamSlug)}>
-          ← 集計の一覧へ
-        </Link>
-      </header>
+      {header}
 
       <DrillCounter
         teamSlug={teamSlug}

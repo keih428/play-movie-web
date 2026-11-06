@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DRILL_NAME_MAX, type Drill } from "@/lib/domain/drill-stats";
+import { DRILL_KINDS, DRILL_KIND_LABELS, DRILL_NAME_MAX, type Drill, type DrillKind } from "@/lib/domain/drill-stats";
 import { buildTeamApiPath, buildTeamStatsPath } from "@/lib/domain/team";
 
 type DrillCreateFormProps = {
@@ -10,14 +10,22 @@ type DrillCreateFormProps = {
   today: string;
 };
 
-// よく使うメニューの名前(押すと名前の欄に入る)。
-const NAME_SUGGESTIONS = ["サーブ練", "サーブレシーブ", "ディグ練", "スパレシ", "ゲーム"];
+// よく使うメニューの名前(押すと名前の欄に入る。種類も合わせる)。
+const NAME_SUGGESTIONS: { name: string; kind: DrillKind }[] = [
+  { name: "サーブ練", kind: "serve_dig" },
+  { name: "サーブレシーブ", kind: "serve_dig" },
+  { name: "ディグ練", kind: "serve_dig" },
+  { name: "スパレシ", kind: "serve_dig" },
+  { name: "ゲーム", kind: "serve_dig" },
+  { name: "スパイク練習", kind: "spike" },
+];
 
 /** 集計するメニューを作る(マネージャーなど)。作ったら、そのメニューの数える画面へ移る。 */
 export function DrillCreateForm({ teamSlug, today }: DrillCreateFormProps) {
   const router = useRouter();
   const [date, setDate] = useState(today);
   const [name, setName] = useState("");
+  const [kind, setKind] = useState<DrillKind>("serve_dig");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,7 +36,7 @@ export function DrillCreateForm({ teamSlug, today }: DrillCreateFormProps) {
       const response = await fetch(buildTeamApiPath("/api/portal/drill-stats", teamSlug), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ date, name }),
+        body: JSON.stringify({ date, name, kind }),
       });
       const payload = (await response.json().catch(() => null)) as { drill?: Drill; error?: string } | null;
       if (!response.ok || !payload?.drill) {
@@ -59,10 +67,25 @@ export function DrillCreateForm({ teamSlug, today }: DrillCreateFormProps) {
           />
         </div>
       </div>
+      <div className="tp-seg" role="group" aria-label="数えるもの">
+        {DRILL_KINDS.map((entry) => (
+          <button key={entry} type="button" aria-pressed={entry === kind} onClick={() => setKind(entry)}>
+            {DRILL_KIND_LABELS[entry]}
+          </button>
+        ))}
+      </div>
       <div className="tp-chips">
         {NAME_SUGGESTIONS.map((suggestion) => (
-          <button key={suggestion} type="button" className="tp-chip-button" onClick={() => setName(suggestion)}>
-            {suggestion}
+          <button
+            key={suggestion.name}
+            type="button"
+            className="tp-chip-button"
+            onClick={() => {
+              setName(suggestion.name);
+              setKind(suggestion.kind);
+            }}
+          >
+            {suggestion.name}
           </button>
         ))}
       </div>
