@@ -8,11 +8,13 @@ import {
   MEMBER_POSITIONS,
   MEMBER_ROLES,
   MEMBER_ROLE_LABELS,
+  MEMBER_SERVE_LEVELS,
   MEMBER_SLOTS,
   MEMBER_TIERS,
   SYSTEM_ADMIN_LABEL,
   TRAINING_LEAD_LABEL,
   formatMemberFullName,
+  hasMemberServeLevel,
   sortMembers,
   type Member,
 } from "@/lib/domain/portal";
@@ -26,7 +28,7 @@ type PortalMembersBulkClientProps = {
 };
 
 type TextKey = "number" | "name" | "givenName" | "grade" | "title" | "slackId";
-type ChoiceKey = "position" | "role" | "tier" | "slot";
+type ChoiceKey = "position" | "role" | "tier" | "slot" | "serveLevel";
 type FlagKey = "isLeader" | "isTrainingLead" | "isSystemAdmin" | "isExecutive" | "active";
 
 const FLAG_COLUMNS: { key: FlagKey; label: string }[] = [
@@ -145,14 +147,19 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
     </div>
   );
 
+  const serveLevel = (member: Member) =>
+    hasMemberServeLevel(member.position)
+      ? choice(member, "serveLevel", SERVE_LEVEL_OPTIONS, null, SERVE_LEVEL_OPTION_LABELS)
+      : "—";
+
   if (slotOnly) {
     return (
       <>
         <header className="tp-hero">
           <span className="tp-eyebrow">ポジションのリーダー</span>
-          <h1>枠をまとめて編集</h1>
+          <h1>枠・サーブLvをまとめて編集</h1>
           <p className="tp-small tp-muted">
-            自分のポジションの部員の枠(A・B・C)を編集できます。編集したい所を全部編集してから、「保存」を1回押します。色の付いた行が、まだ保存していない行です。
+            自分のポジションの部員の枠(A・B・C)と、OH・OP のサーブのレベル(スパイク練習で受けるサーブ)を編集できます。編集したい所を全部編集してから、「保存」を1回押します。色の付いた行が、まだ保存していない行です。
           </p>
           {saveBar}
         </header>
@@ -167,6 +174,7 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
                 <th>学年</th>
                 <th>ポジション</th>
                 <th>枠</th>
+                <th>サーブLv</th>
               </tr>
             </thead>
             <tbody>
@@ -184,6 +192,7 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
                     <td>{member.grade ?? "—"}</td>
                     <td>{member.position ?? "—"}</td>
                     <td>{choice(member, "slot", MEMBER_SLOTS, "—")}</td>
+                    <td>{serveLevel(member)}</td>
                   </tr>
                 );
               })}
@@ -221,6 +230,7 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
               <th>役割</th>
               <th>段階</th>
               <th>枠</th>
+              <th>サーブLv</th>
               <th>肩書</th>
               <th>Slack の ID</th>
               {FLAG_COLUMNS.map((column) => (
@@ -252,6 +262,7 @@ export function PortalMembersBulkClient({ teamSlug, initialMembers, slotOnly = f
                   <td>{choice(member, "role", MEMBER_ROLES, null, MEMBER_ROLE_LABELS)}</td>
                   <td>{choice(member, "tier", MEMBER_TIERS, "—")}</td>
                   <td>{choice(member, "slot", MEMBER_SLOTS, "—")}</td>
+                  <td>{serveLevel(member)}</td>
                   <td>{text(member, "title", 8)}</td>
                   <td>{text(member, "slackId", 11)}</td>
                   {FLAG_COLUMNS.map((column) => (
@@ -290,4 +301,9 @@ const CHOICE_LABELS: Record<ChoiceKey, string> = {
   role: "役割",
   tier: "段階",
   slot: "枠",
+  serveLevel: "サーブのレベル",
 };
+
+// サーブのレベル(OH・OP だけ。スパイク練習で受けるサーブ)。
+const SERVE_LEVEL_OPTIONS = MEMBER_SERVE_LEVELS.map(String);
+const SERVE_LEVEL_OPTION_LABELS = Object.fromEntries(SERVE_LEVEL_OPTIONS.map((level) => [level, `Lv${level}`]));

@@ -8,12 +8,11 @@ import { canRecordDrillStats } from "@/lib/domain/drill-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamStatsPath } from "@/lib/domain/team";
-import { levelStatusOf, spikeRounds } from "@/lib/domain/spike-stats";
 import { getDrill, listDrillCounts } from "@/lib/server/portal-drill-stat-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { getReceptionSetup, listReceptionCounts } from "@/lib/server/portal-reception-stat-store";
-import { getSpikeSetup, listLevelSessions, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
+import { getSpikeSetup, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 
 type PageProps = {
   params: Promise<{
@@ -45,7 +44,7 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
   const backTab = drill.kind === "serve_dig" ? (skill ?? "serve") : drill.kind;
   const players = (await listMembers(teamSlug))
     .filter((member) => member.position)
-    .map(({ id, displayName, position, slot }) => ({ id, displayName, position, slot }));
+    .map(({ id, displayName, position, slot, serveLevel }) => ({ id, displayName, position, slot, serveLevel }));
   const canRecord = canRecordDrillStats(current);
   // 「このメニューを消す」は、押しまちがえないよう右上の「⋯」の中に入れる(2026-11-06 から)。
   const header = (
@@ -83,16 +82,7 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
 
   // スパイク練習(2026-11-06 から)。
   if (drill.kind === "spike") {
-    const [spikeCounts, sessions, { setup, savedAt }] = await Promise.all([
-      listSpikeCounts(drill.id),
-      listLevelSessions(teamSlug, drill),
-      getSpikeSetup(drill.id),
-    ]);
-    // 昇格の条件(10本中5本)は、セッター2人のときの周数で見る。
-    const { rounds } = spikeRounds(2);
-    const levelStatus = Object.fromEntries(
-      players.map((player) => [player.id, levelStatusOf(sessions.get(player.id) ?? [], rounds)]),
-    );
+    const [spikeCounts, { setup, savedAt }] = await Promise.all([listSpikeCounts(drill.id), getSpikeSetup(drill.id)]);
     return (
       <>
         {header}
@@ -103,7 +93,6 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
           initialCounts={spikeCounts}
           initialSetup={setup}
           initialSetupSavedAt={savedAt}
-          levelStatus={levelStatus}
           canRecord={canRecord}
         />
       </>

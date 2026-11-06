@@ -1,7 +1,5 @@
 import {
   parseSpikeSetup,
-  type LevelSession,
-  type ServeLevel,
   type SpikeCount,
   type SpikeLevel,
   type SpikeSetup,
@@ -79,33 +77,6 @@ export async function sumSpikeCounts(teamSlug: string, from: string, to: string)
     [teamSlug, from, to],
   );
   return rows.map(toSpikeCount);
-}
-
-/**
- * このメニューより前の練習の、サーブありの位置(OH・OP)のレベルごとの合計(部員ごと、新しい順)。
- * 昇格の判定(2回連続)と、次に数えるときのレベルの初期値に使う。
- */
-export async function listLevelSessions(
-  teamSlug: string,
-  drill: { id: string; practiceDate: string; createdAt: string },
-): Promise<Map<string, LevelSession[]>> {
-  const rows = await query<{ member_id: string; level: number; kills: number; attempts: number }>(
-    `SELECT s.member_id, s.level, sum(s.kills)::int AS kills, sum(s.attempts)::int AS attempts
-     FROM spike_stat_counts s JOIN drill_stat_drills d ON d.id = s.drill_id
-     WHERE d.team_slug = $1 AND d.id <> $2 AND s.level > 0
-       AND (d.practice_date < $3 OR (d.practice_date = $3 AND d.created_at < $4))
-     GROUP BY s.member_id, d.id, d.practice_date, d.created_at, s.level
-     HAVING sum(s.attempts) > 0
-     ORDER BY d.practice_date DESC, d.created_at DESC`,
-    [teamSlug, drill.id, drill.practiceDate, drill.createdAt],
-  );
-  const sessions = new Map<string, LevelSession[]>();
-  for (const row of rows) {
-    const list = sessions.get(row.member_id) ?? [];
-    list.push({ level: Number(row.level) as ServeLevel, kills: Number(row.kills), attempts: Number(row.attempts) });
-    sessions.set(row.member_id, list);
-  }
-  return sessions;
 }
 
 /** メニューの組み方(共有)。まだ組んでいなければ setup は null。 */

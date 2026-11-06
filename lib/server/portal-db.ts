@@ -511,6 +511,12 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // 遅刻・欠席の連絡の備考(書かなくてよい。2026-11-06 から)。
     sql: `ALTER TABLE attendance_reports ADD COLUMN note text NOT NULL DEFAULT ''`,
   },
+  {
+    id: "028_member_serve_level",
+    // スパイク練習で、サイド(OH・OP)が受けるサーブのレベル(2026-11-07 から。主将の依頼)。
+    // 全員 Lv1 から始め、名簿で 2・3 に編集する。それ以外のポジションでは使わない。
+    sql: `ALTER TABLE members ADD COLUMN serve_level integer NOT NULL DEFAULT 1`,
+  },
 ];
 
 function getDatabaseUrl() {

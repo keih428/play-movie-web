@@ -4,6 +4,7 @@ import {
   isMemberPosition,
   isMemberRole,
   normalizeMemberNumber,
+  toMemberServeLevel,
 } from "@/lib/domain/portal";
 import type { MemberPatch } from "@/lib/server/portal-member-store";
 
@@ -87,6 +88,13 @@ export function parseMemberInput(
     }
     if ("tier" in body) {
       patch.tier = readChoice(body.tier, MEMBER_TIERS, "段階");
+    }
+    if ("serveLevel" in body) {
+      const level = toMemberServeLevel(body.serveLevel);
+      if (level === null) {
+        throw new Error("サーブのレベルは 1〜3 にしてください。");
+      }
+      patch.serveLevel = level;
     }
     if ("slot" in body) {
       patch.slot = readChoice(body.slot, MEMBER_SLOTS, "枠");

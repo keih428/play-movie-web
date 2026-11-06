@@ -42,7 +42,7 @@ const toCells = (counts: ReceptionCount[]): Record<string, Cell> =>
 
 /**
  * レセプションの集計の画面(2026-11-06 から。主将の依頼)。1人1行で「ABパス」「それ以外」の2つのボタン。
- * - 最初に「✎ 人」で受ける人を選ぶ(AB/C/全員で、OH・リベロを一度に選べる)。選び方はメニューごとに共有する
+ * - 最初に「✎ 人」で受ける人を選ぶ(AB/C/全員で、OH・OP・リベロを一度に選べる)。選び方はメニューごとに共有する
  * - マネージャーが何人かで同時に数えられるよう、2秒ごとにほかの人が数えた分と選び方を取りにいく
  *   (自分が送っている途中の分があるときは、取ってきたものを使わない。スパイクと同じ)
  */
@@ -356,7 +356,7 @@ export function ReceptionCounter({
             <span className="tp-counter-positions" role="group" aria-label="まとめて選ぶ">
               {(["AB", "C", "all"] as const).map((entry) => (
                 <button key={entry} type="button" onClick={() => chooseGroup(entry)}>
-                  {entry === "all" ? "全員" : entry} の OH・Li
+                  {entry === "all" ? "全員" : entry} の OH・OP・Li
                 </button>
               ))}
             </span>
@@ -410,7 +410,7 @@ function sortByPosition(players: CounterPlayer[]): CounterPlayer[] {
   return [...players].sort((a, b) => order(a) - order(b));
 }
 
-/** まだ選んでいないとき:数えた人がいればその人たちを、いなければ OH・リベロ全員を出す。 */
+/** まだ選んでいないとき:数えた人がいればその人たちを、いなければ OH・OP・リベロ全員を出す。 */
 function defaultSetup(players: CounterPlayer[], counts: ReceptionCount[]): ReceptionSetup {
   const counted = new Set(counts.map((entry) => entry.memberId));
   return {

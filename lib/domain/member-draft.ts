@@ -17,6 +17,7 @@ export type MemberDraft = {
   title: string;
   tier: string;
   slot: string;
+  serveLevel: string;
   slackId: string;
   active: boolean;
 };
@@ -35,6 +36,7 @@ export const EMPTY_DRAFT: MemberDraft = {
   title: "",
   tier: "",
   slot: "",
+  serveLevel: "1",
   slackId: "",
   active: true,
 };
@@ -54,6 +56,7 @@ export function toDraft(member: Member): MemberDraft {
     title: member.title ?? "",
     tier: member.tier ?? "",
     slot: member.slot ?? "",
+    serveLevel: String(member.serveLevel),
     slackId: member.slackId ?? "",
     active: member.active,
   };

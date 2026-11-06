@@ -13,14 +13,10 @@ import {
   formatSpikeRate,
   frontSpotOf,
   hasServeLevel,
-  meetsPromotion,
-  nextLevel,
   parseSpikeSetup,
-  spikeRounds,
   spotFor,
   splitSpikeTeams,
   toggleShownSetter,
-  type LevelStatus,
   type ServeLevel,
   type SpikeCount,
   type SpikeLevel,
@@ -37,6 +33,8 @@ type CounterPlayer = {
   position: MemberPosition | null;
   // 名簿の枠(A・B・C)。AB/C で選ぶのに使う。
   slot: string | null;
+  // 受けるサーブのレベル(名簿で決める。OH・OP だけ使う)。
+  serveLevel: ServeLevel;
 };
 
 type SpikeCounterProps = {
@@ -47,8 +45,6 @@ type SpikeCounterProps = {
   // メニューの組み方(共有)。まだ組んでいなければ null。
   initialSetup: SpikeSetup | null;
   initialSetupSavedAt: string | null;
-  // これまでの練習でのサーブのレベル(部員ごと。練習がなければ null)。
-  levelStatus: Record<string, LevelStatus | null>;
   canRecord: boolean;
 };
 
@@ -96,7 +92,6 @@ export function SpikeCounter({
   initialCounts,
   initialSetup,
   initialSetupSavedAt,
-  levelStatus,
   canRecord,
 }: SpikeCounterProps) {
   const apiPath = buildTeamApiPath(`/api/portal/drill-stats/${drillId}/spike`, teamSlug);
@@ -233,18 +228,9 @@ export function SpikeCounter({
   const nameOf = (id: string) => players.find((player) => player.id === id)?.displayName ?? "?";
   const setters = setup.setters.filter((id) => players.some((player) => player.id === id));
   const shownSetters = (shownChoice ?? setters).filter((id) => setters.includes(id)).slice(0, SPIKE_MAX_SHOWN_SETTERS);
-  const { rounds } = spikeRounds(setters.length);
-
-  const levelOf = (memberId: string): ServeLevel => {
-    const chosen = setup.levels[memberId];
-    if (chosen) {
-      return chosen;
-    }
-    const status = levelStatus[memberId];
-    return status ? nextLevel(status.level, status.streak) : 1;
-  };
   const spotOf = (player: CounterPlayer) => spotFor(mode, frontSpotOf(player.position));
-  const levelAt = (player: CounterPlayer, spot: SpikeSpot): SpikeLevel => (hasServeLevel(spot) ? levelOf(player.id) : 0);
+  // サーブのレベルは名簿で決める(2026-11-07 から。主将の依頼)。
+  const levelAt = (player: CounterPlayer, spot: SpikeSpot): SpikeLevel => (hasServeLevel(spot) ? player.serveLevel : 0);
 
   // 合計(条件に合う枠を足す)。
   const sumWhere = (match: (memberId: string, setter: string, spot: SpikeSpot, level: number) => boolean): Cell => {
@@ -264,11 +250,6 @@ export function SpikeCounter({
 
   const shown = hitters.filter((player) => setup.teams[player.id] === team && spotOf(player) !== null);
   const teamSize = (entry: SpikeTeam) => hitters.filter((player) => setup.teams[player.id] === entry).length;
-
-  // 周:このチームの打つ人のうち、この種目でいちばん少ない人の打数 + 1。
-  const done = shown.length
-    ? Math.min(...shown.map((player) => sumWhere((m, _s, spot) => m === player.id && modeSpots(spot)).attempts))
-    : 0;
 
   function addPending(key: string, cell: Cell, sign: 1 | -1) {
     const now = pending.current.get(key) ?? EMPTY;
@@ -355,11 +336,6 @@ export function SpikeCounter({
     void send({ ...last, delta: -1 });
   }
 
-  function cycleLevel(memberId: string) {
-    const level = levelOf(memberId);
-    void saveSetup({ ...setup, levels: { ...setup.levels, [memberId]: level === 3 ? 1 : ((level + 1) as ServeLevel) } });
-  }
-
   function chooseTeam(next: SpikeTeam) {
     setTeam(next);
     saveView({ team: next, setters: shownChoice });
@@ -377,22 +353,23 @@ export function SpikeCounter({
     void saveSetup({
       teams: splitSpikeTeams(hitters.filter(inGroup)),
       setters: setterCandidates.filter(inGroup).map((player) => player.id),
-      levels: setup.levels,
     });
   }
   function resplit() {
     void saveSetup({ ...setup, teams: splitSpikeTeams(hitters.filter((player) => setup.teams[player.id])) });
   }
-  // 前半 → 後半 → 出ない → 前半 …
-  function cycleTeam(id: string) {
+  // ↑ で1つ上(出ない → 後半 → 前半)、↓ で1つ下(前半 → 後半 → 出ない)へ移す(2026-11-07 から。主将の依頼)。
+  function moveTeam(id: string, direction: -1 | 1) {
+    const order: (SpikeTeam | null)[] = ["first", "second", null];
+    const next = order[order.indexOf(setup.teams[id] ?? null) + direction];
+    if (next === undefined) {
+      return;
+    }
     const teams = { ...setup.teams };
-    const now = teams[id];
-    if (now === "first") {
-      teams[id] = "second";
-    } else if (now === "second") {
-      delete teams[id];
+    if (next) {
+      teams[id] = next;
     } else {
-      teams[id] = "first";
+      delete teams[id];
     }
     void saveSetup({ ...setup, teams });
   }
@@ -474,13 +451,6 @@ export function SpikeCounter({
           {setters.length === 0 ? <span className="tp-small tp-muted">「✎ 人」でセッターを選んでください</span> : null}
         </div>
         <p className="tp-spike-round" aria-live="polite">
-          <span>
-            {shown.length ? (
-              <>
-                <b>{Math.min(done + 1, rounds)}</b>周目 / {rounds}周
-              </>
-            ) : null}
-          </span>
           <span className={online ? "tp-spike-sync" : "tp-spike-sync tp-spike-sync-off"}>
             {online ? "● ほかの人の入力も反映中" : "○ つながっていません"}
           </span>
@@ -510,11 +480,6 @@ export function SpikeCounter({
           const spot = spotOf(player)!;
           const level = levelAt(player, spot);
           const mine = sumWhere((m, _s, s) => m === player.id && s === spot);
-          const status = levelStatus[player.id];
-          const atLevel = sumWhere((m, _s, s, l) => m === player.id && hasServeLevel(s) && l === level);
-          const priorStreak = status && status.level === level ? status.streak : 0;
-          const promote =
-            level !== 0 && level < 3 && meetsPromotion(atLevel.kills, atLevel.attempts, rounds) && priorStreak + 1 >= 2;
           return (
             <div key={player.id} className="tp-spike-row" style={columns}>
               <span className="tp-counter-name">
@@ -522,17 +487,9 @@ export function SpikeCounter({
                 <small>
                   {mode === "front" ? SPIKE_SPOT_LABELS[spot].replace("前衛", "") : player.position}
                   {level ? (
-                    <button
-                      type="button"
-                      className={promote ? "tp-spike-level tp-spike-promote" : "tp-spike-level"}
-                      disabled={!canRecord}
-                      title={SERVE_LEVEL_LABELS[level]}
-                      aria-label={`サーブ Lv${level} ${SERVE_LEVEL_LABELS[level]}(押すと変える)`}
-                      onClick={() => cycleLevel(player.id)}
-                    >
+                    <span className="tp-spike-level" title={SERVE_LEVEL_LABELS[level]}>
                       Lv{level}
-                      {promote ? "↑" : ""}
-                    </button>
+                    </span>
                   ) : null}
                 </small>
                 <small>
@@ -628,7 +585,7 @@ export function SpikeCounter({
               </button>
             </span>
             <p className="tp-small tp-muted">
-              押すたびに 前半 → 後半 → 出ない と変わります。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
+              ↑↓ で 前半・後半・出ない を移します。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
             </p>
           </div>
           {[
@@ -642,21 +599,36 @@ export function SpikeCounter({
               <p className="tp-small tp-muted">
                 {section.title}・{section.entries.length}人
               </p>
-              <div className="tp-counter-picker-list">
-                {sortByPosition(section.entries).map((player) => (
-                  <button
-                    key={player.id}
-                    type="button"
-                    className="tp-counter-pick"
-                    aria-pressed={Boolean(setup.teams[player.id])}
-                    onClick={() => cycleTeam(player.id)}
-                  >
-                    <b>{player.displayName}</b>
-                    <small>
-                      {player.position} ・ {player.slot ?? "枠なし"}
-                    </small>
-                  </button>
-                ))}
+              <div className="tp-counter-picker-list tp-spike-move-list">
+                {sortByPosition(section.entries).map((player) => {
+                  const now = setup.teams[player.id] ?? null;
+                  return (
+                    <div key={player.id} className="tp-counter-pick tp-spike-move" aria-pressed={Boolean(now)}>
+                      <span>
+                        <b>{player.displayName}</b>
+                        <small>
+                          {player.position} ・ {player.slot ?? "枠なし"}
+                        </small>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={now === "first"}
+                        aria-label={`${player.displayName} を上へ(${now === "second" ? "前半" : "後半"}へ)`}
+                        onClick={() => moveTeam(player.id, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        disabled={now === null}
+                        aria-label={`${player.displayName} を下へ(${now === "first" ? "後半" : "出ない"}へ)`}
+                        onClick={() => moveTeam(player.id, 1)}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -701,6 +673,5 @@ function defaultSetup(hitters: CounterPlayer[], setters: CounterPlayer[], counts
   return {
     teams: splitSpikeTeams(counted.size ? hitters.filter((player) => counted.has(player.id)) : hitters),
     setters: usedSetters.length ? usedSetters : setters.map((player) => player.id),
-    levels: {},
   };
 }

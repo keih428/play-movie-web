@@ -12,13 +12,17 @@ import {
   SYSTEM_ADMIN_LABEL,
   EXECUTIVE_LABEL,
   TRAINING_LEAD_LABEL,
+  MEMBER_SERVE_LEVELS,
   MEMBER_SLOTS,
   MEMBER_TIERS,
   getMemberGroup,
+  hasMemberServeLevel,
+  isMemberPosition,
   sortMembers,
   type Member,
 } from "@/lib/domain/portal";
 import { EMPTY_DRAFT, toDraft, type MemberDraft } from "@/lib/domain/member-draft";
+import { SERVE_LEVEL_LABELS } from "@/lib/domain/spike-stats";
 import {
   buildTeamAccountPath,
   buildTeamApiPath,
@@ -29,7 +33,7 @@ import {
 
 type PortalMembersClientProps = {
   canManage: boolean;
-  // まとめて編集を開けるか(システム担当と、ポジションのリーダー。リーダーは枠だけ直せる)。
+  // まとめて編集を開けるか(システム担当と、ポジションのリーダー。リーダーは枠とサーブのレベルだけ編集できる)。
   canBulkEdit: boolean;
   canViewLoginLog: boolean;
   currentMemberId: string;
@@ -232,6 +236,7 @@ export function PortalMembersClient({
                         <span className="tp-sub">
                           {member.tier ? <span className={`tp-tier ${member.tier}`}>{member.tier}</span> : null}{" "}
                           {member.slot ? `${member.slot}枠` : ""}
+                          {hasMemberServeLevel(member.position) ? ` サーブLv${member.serveLevel}` : ""}
                         </span>
                       ) : null}
                     </td>
@@ -272,7 +277,7 @@ export function PortalMembersClient({
           ) : null}
           {canBulkEdit ? (
             <Link className="tp-button tp-ghost" href={buildTeamMembersBulkEditPath(teamSlug)}>
-              {canManage ? "まとめて編集" : "枠をまとめて編集"}
+              {canManage ? "まとめて編集" : "枠・サーブLvをまとめて編集"}
             </Link>
           ) : null}
           <Link className="tp-button tp-ghost" href={buildTeamAccountPath(teamSlug)}>
@@ -389,6 +394,22 @@ export function PortalMembersClient({
                   ))}
                 </select>
               </div>
+              {hasMemberServeLevel(isMemberPosition(draft.position) ? draft.position : null) ? (
+                <div className="tp-field">
+                  <label htmlFor="member-serve-level">スパイク練習で受けるサーブのレベル(OH・OP)</label>
+                  <select
+                    id="member-serve-level"
+                    value={draft.serveLevel}
+                    onChange={(event) => setField("serveLevel", event.target.value)}
+                  >
+                    {MEMBER_SERVE_LEVELS.map((level) => (
+                      <option key={level} value={String(level)}>
+                        Lv{level} {SERVE_LEVEL_LABELS[level]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className="tp-field">
                 <label htmlFor="member-title">肩書(主将、マネージャー など)</label>
                 <input

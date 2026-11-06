@@ -6,6 +6,7 @@ import {
   type MemberInput,
   type MemberPosition,
   type MemberRole,
+  type MemberServeLevel,
 } from "@/lib/domain/portal";
 import { query, transaction } from "@/lib/server/portal-db";
 
@@ -30,6 +31,7 @@ type MemberRow = {
   title: string | null;
   tier: string | null;
   slot: string | null;
+  serve_level: number | null;
   slack_id: string | null;
   active: boolean;
   sort_order: number;
@@ -40,6 +42,7 @@ export type MemberPatch = Partial<
     isExecutive: boolean;
     tier: string | null;
     slot: string | null;
+    serveLevel: MemberServeLevel;
     slackId: string | null;
     active: boolean;
   }
@@ -59,6 +62,7 @@ const PATCH_COLUMNS: Record<keyof MemberPatch, string> = {
   title: "title",
   tier: "tier",
   slot: "slot",
+  serveLevel: "serve_level",
   slackId: "slack_id",
   active: "active",
 };
@@ -83,6 +87,7 @@ function toMember(row: MemberRow): Member {
     title: row.title,
     tier: row.tier,
     slot: row.slot,
+    serveLevel: (row.serve_level === 2 || row.serve_level === 3 ? row.serve_level : 1) as MemberServeLevel,
     slackId: row.slack_id,
     active: row.active,
     sortOrder: row.sort_order,

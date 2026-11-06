@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TrainingRequestReplies } from "@/components/training-request-replies";
-import { canAdminister, isPortalTeam } from "@/lib/domain/portal";
+import {
+  MEMBER_GROUPS,
+  MEMBER_GROUP_LABELS,
+  canAdminister,
+  getMemberGroup,
+  isPortalTeam,
+  type MemberGroup,
+} from "@/lib/domain/portal";
 import { buildTeamMemberTrainingPath, buildTeamTrainingPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import { formatNoteDate } from "@/lib/domain/notes";
 import {
@@ -38,8 +45,14 @@ type PageProps = {
     week?: string;
     // 知らせのリンクから来たとき:その日が入る週を開く。
     date?: string;
+    // ポジションのまとまり(side・MB・S・Li)か all。ノートと同じ切り替え(2026-11-07 から)。
+    group?: string;
   }>;
 };
+
+type RecordsGroup = MemberGroup | "all";
+const RECORDS_GROUPS: RecordsGroup[] = [...MEMBER_GROUPS, "all"];
+const RECORDS_GROUP_LABELS: Record<RecordsGroup, string> = { ...MEMBER_GROUP_LABELS, all: "全員" };
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +68,14 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
 
   const basePath = buildTeamTrainingRecordsPath(teamSlug);
   const current = await requireMember(teamSlug, basePath);
-  const { menu: menuKey, week: weekKey, date } = await searchParams;
+  const { menu: menuKey, week: weekKey, date, group: requestedGroup } = await searchParams;
+  // 開いたときは自分のまとまり(OH と OP は同じ「サイド」)。スタッフと、知らせのリンク(?date=)から来たときは全員
+  // (知らせの書き込みが、ほかのまとまりの人のものでも見えるように)。
+  const group: RecordsGroup = RECORDS_GROUPS.includes(requestedGroup as RecordsGroup)
+    ? (requestedGroup as RecordsGroup)
+    : date
+      ? "all"
+      : (getMemberGroup(current.position) ?? "all");
   const today = getTodayInJapan();
   const programs = await listTrainingPrograms(teamSlug);
   const linkedDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
@@ -90,10 +110,23 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
     listRangeReplies(teamSlug, week.s, week.e),
   ]);
   const isTrainingLead = canAdminister(current);
-  const players = members.filter((member) => member.position);
+  const inGroup = (memberId: string) => {
+    const member = members.find((entry) => entry.id === memberId);
+    return group === "all" || (member ? getMemberGroup(member.position) === group : false);
+  };
+  const players = members.filter((member) => member.position && inGroup(member.id));
   const names = new Map(members.map((member) => [member.id, member.displayName]));
-  const recordedIds = new Set(sessions.map((session) => session.memberId));
-  const comments = sessions.filter((session) => session.memo || session.request);
+  const recordedIds = new Set(sessions.filter((session) => inGroup(session.memberId)).map((session) => session.memberId));
+  const comments = sessions.filter((session) => (session.memo || session.request) && inGroup(session.memberId));
+  // 期間・週・まとまりを切り替えるリンク(ほかの2つはそのまま)。
+  const hrefWith = (next: { menu?: string; week?: string; group?: RecordsGroup }) => {
+    const params = new URLSearchParams({ menu: next.menu ?? program.key });
+    if (next.week) {
+      params.set("week", next.week);
+    }
+    params.set("group", next.group ?? group);
+    return `${basePath}?${params.toString()}`;
+  };
 
   // この週にやった一番重いセット(同じ種目を週に何回かやっていれば、重いほう)。
   const weights = new Map<string, number>();
@@ -120,7 +153,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
             {periods.map((entry) => (
               <Link
                 key={entry.key}
-                href={`${basePath}?menu=${entry.key}`}
+                href={hrefWith({ menu: entry.key })}
                 aria-current={entry.key === program.key ? "page" : undefined}
               >
                 <b>{entry.label}</b>
@@ -135,7 +168,7 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
           {menu.weeks.map((entry, index) => (
             <Link
               key={entry.k}
-              href={`${basePath}?menu=${program.key}&week=${entry.k}`}
+              href={hrefWith({ week: entry.k })}
               aria-current={index === weekIndex ? "page" : undefined}
             >
               <b>{entry.k}</b>
@@ -147,13 +180,27 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
         </nav>
       </div>
 
+      <div className="tp-bar" role="region" aria-label="まとまりの切り替え">
+        <nav className="tp-seg tp-days" aria-label="まとまり">
+          {RECORDS_GROUPS.map((entry) => (
+            <Link
+              key={entry}
+              href={hrefWith({ week: week.k, group: entry })}
+              aria-current={entry === group ? "true" : undefined}
+            >
+              {RECORDS_GROUP_LABELS[entry]}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
       <div className="tp-weekhead">
         <span className="tp-k">
           {week.k} ・ {formatMonthDay(week.s)}〜{formatMonthDay(week.e)}
         </span>
         <h2>{week.name}</h2>
         <p className="tp-small tp-muted">
-          この週に記録した人 {recordedIds.size} / {players.length}人
+          {group === "all" ? "" : `${RECORDS_GROUP_LABELS[group]}で `}この週に記録した人 {recordedIds.size} / {players.length}人
         </p>
       </div>
 

@@ -59,6 +59,8 @@ export type Member = {
   title: string | null;
   tier: string | null;
   slot: string | null;
+  // スパイク練習で受けるサーブのレベル(1〜3。2026-11-07 から)。使うのはサイド(OH・OP)だけ。
+  serveLevel: MemberServeLevel;
   slackId: string | null;
   active: boolean;
   sortOrder: number;
@@ -310,6 +312,19 @@ export function canSetTeamMilestone(member: Pick<Member, "isExecutive">): boolea
 }
 
 /** 名簿を変える・Slack の知らせを試すのは、システム担当だけ。 */
+export const MEMBER_SERVE_LEVELS = [1, 2, 3] as const;
+export type MemberServeLevel = (typeof MEMBER_SERVE_LEVELS)[number];
+
+/** サーブのレベルを持つポジション(サーブを受けてから打つサイド:OH・OP)。 */
+export function hasMemberServeLevel(position: MemberPosition | null): boolean {
+  return position === "OH" || position === "OP";
+}
+
+export function toMemberServeLevel(value: unknown): MemberServeLevel | null {
+  const level = Number(value);
+  return MEMBER_SERVE_LEVELS.includes(level as MemberServeLevel) ? (level as MemberServeLevel) : null;
+}
+
 export function canManageSite(member: Pick<Member, "isSystemAdmin">): boolean {
   return member.isSystemAdmin;
 }
