@@ -20,7 +20,7 @@ type AttendanceFormProps = {
   // 日付 → その日の予定(「通常練習 17:00〜21:00」)。カレンダーを読めているときだけ入る。
   eventLabels: Record<string, string>;
   initialDate: string;
-  // 連絡を出せるいちばん先の日(今日から2か月先)。
+  // 連絡を出せるいちばん先の日(今日から3か月先)。
   lastDate: string;
   myReports: AttendanceReport[];
   practiceDates: string[];
@@ -264,7 +264,7 @@ export function AttendanceForm({
         ) : null}
       </div>
       <p className="tp-small tp-muted">
-        連絡は2か月先の日まで出せて、Slack の遅刻・欠席のチャンネルにも流れます。名前・日付・時刻・理由は、部の全員に見えます。
+        連絡は3か月先の日まで出せて、Slack の遅刻・欠席のチャンネルにも流れます。名前・日付・時刻・理由は、部の全員に見えます。
       </p>
     </form>
   );

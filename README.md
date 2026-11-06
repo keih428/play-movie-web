@@ -330,6 +330,8 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 * 連絡できるのは、ログインした全員(スタッフも)。1人・1日に1つで、出し直すと訂正になる。過ぎた日の連絡は出せない。
 * 出す・訂正する・取り消すたびに、Slack の遅刻・欠席のチャンネル(`SLACK_ATTENDANCE_CHANNEL`)に流れる。ボットをそのチャンネルに招待しておく。未設定なら、サイトにだけ残る。
 * 文の形は `lib/domain/attendance.ts` の `formatAttendanceMessage`。
+* 連絡は**3か月先の日まで**出せる(`ATTENDANCE_MONTHS_AHEAD`。2026-11-06 に2か月から延ばした)。
+* **まとめて出す**(2026-11-06 から。授業で毎週火曜は 18:30 から、のような人のため):「毎週の遅刻・欠席をまとめて出す」で曜日・種類・時刻・理由を入れると、カレンダーにある3か月先までの練習の日からその曜日の日が並ぶ。外したい日は押して外し、`POST /api/portal/attendance/bulk` でまとめて出す(一度に60日まで)。もう出してある日は訂正になる。Slack には1通にまとめて流す(`formatBulkAttendanceMessage`)。
 
 ### 練習の集計(`/t/utvb/stats`)
 

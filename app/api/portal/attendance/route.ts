@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  ATTENDANCE_REASON_MAX,
-  formatAttendanceMessage,
-  getLastAttendanceDate,
-  isAttendanceKind,
-  isClockTime,
-  needsArriveTime,
-  needsLeaveTime,
-} from "@/lib/domain/attendance";
+import { formatAttendanceMessage, getLastAttendanceDate, parseAttendanceInput } from "@/lib/domain/attendance";
 import { isIsoDate } from "@/lib/domain/notes";
 import { canManageSite, isPortalTeam } from "@/lib/domain/portal";
 import { deleteReport, saveReport } from "@/lib/server/portal-attendance-store";
@@ -54,36 +46,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "日付が正しくありません(過ぎた日の連絡は出せません)。" }, { status: 400 });
   }
   if (payload.date > getLastAttendanceDate(today)) {
-    return NextResponse.json({ error: "連絡を出せるのは、2か月先の日までです。" }, { status: 400 });
+    return NextResponse.json({ error: "連絡を出せるのは、3か月先の日までです。" }, { status: 400 });
   }
-  if (!isAttendanceKind(payload.kind)) {
-    return NextResponse.json({ error: "欠席・遅刻・早退のどれかを選んでください。" }, { status: 400 });
-  }
-  const arriveAt = needsArriveTime(payload.kind) ? payload.arriveAt : null;
-  const leaveAt = needsLeaveTime(payload.kind) ? payload.leaveAt : null;
-  if (arriveAt !== null && !isClockTime(arriveAt)) {
-    return NextResponse.json({ error: "遅刻のときは、何時から来られるかを入れてください。" }, { status: 400 });
-  }
-  if (leaveAt !== null && !isClockTime(leaveAt)) {
-    return NextResponse.json({ error: "早退のときは、何時までいられるかを入れてください。" }, { status: 400 });
-  }
-  if (arriveAt && leaveAt && arriveAt >= leaveAt) {
-    return NextResponse.json({ error: "来る時刻が、帰る時刻より後になっています。" }, { status: 400 });
-  }
-  const reason =
-    typeof payload.reason === "string" ? payload.reason.trim().slice(0, ATTENDANCE_REASON_MAX) : "";
-  if (!reason) {
-    return NextResponse.json({ error: "理由を書いてください。" }, { status: 400 });
+  const parsed = parseAttendanceInput(payload);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const { report, existed } = await saveReport({
     teamSlug,
     memberId: current.id,
     practiceDate: payload.date,
-    kind: payload.kind,
-    arriveAt: arriveAt as string | null,
-    leaveAt: leaveAt as string | null,
-    reason,
+    ...parsed.input,
   });
   const slack = await postToAttendanceChannel(
     formatAttendanceMessage(report, existed ? "updated" : "new"),
