@@ -36,10 +36,24 @@ export const DRILL_GRADE_LABELS: Record<DrillSkill, Record<DrillGrade, string>> 
 
 export const DRILL_NAME_MAX = 40;
 
+// メニューの種類(2026-11-06 から)。サーブ・ディグを評価ごとに数えるか、スパイクの決定と打数を数えるか。
+export const DRILL_KINDS = ["serve_dig", "spike"] as const;
+export type DrillKind = (typeof DRILL_KINDS)[number];
+
+export const DRILL_KIND_LABELS: Record<DrillKind, string> = {
+  serve_dig: "サーブ・ディグ",
+  spike: "スパイク",
+};
+
+export function isDrillKind(value: unknown): value is DrillKind {
+  return DRILL_KINDS.includes(value as DrillKind);
+}
+
 export type Drill = {
   id: string;
   practiceDate: string;
   name: string;
+  kind: DrillKind;
   createdBy: string | null;
   createdAt: string;
 };

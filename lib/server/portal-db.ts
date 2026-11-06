@@ -458,6 +458,27 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // 下の名前は名簿のページにだけ出す。
     sql: `ALTER TABLE members ADD COLUMN given_name text`,
   },
+  {
+    id: "024_spike_stats",
+    // スパイク練習の集計(2026-11-06 から)。メニューに種類(serve_dig / spike)を持たせ、スパイクは
+    // 部員・トスを上げたセッター・位置(OH/OP/MB/pipe/shoot/high_left/high_right)・サーブのレベル(0 はなし)ごとに
+    // 決定数と打数を持つ。メニューを消すと一緒に消える。
+    sql: `
+      ALTER TABLE drill_stat_drills ADD COLUMN kind text NOT NULL DEFAULT 'serve_dig';
+
+      CREATE TABLE spike_stat_counts (
+        drill_id text NOT NULL REFERENCES drill_stat_drills (id) ON DELETE CASCADE,
+        member_id text NOT NULL REFERENCES members (id),
+        setter_id text NOT NULL REFERENCES members (id),
+        spot text NOT NULL,
+        level integer NOT NULL DEFAULT 0,
+        kills integer NOT NULL DEFAULT 0,
+        attempts integer NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (drill_id, member_id, setter_id, spot, level)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

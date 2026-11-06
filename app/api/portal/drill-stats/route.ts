@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DRILL_NAME_MAX, canRecordDrillStats, normalizeDrillName } from "@/lib/domain/drill-stats";
+import { DRILL_NAME_MAX, canRecordDrillStats, isDrillKind, normalizeDrillName } from "@/lib/domain/drill-stats";
 import { isIsoDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { createDrill } from "@/lib/server/portal-drill-stat-store";
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "集計を付けられるのは、マネージャー・アナリストなどだけです。" }, { status: 403 });
   }
 
-  const payload = (await request.json().catch(() => null)) as { date?: unknown; name?: unknown } | null;
+  const payload = (await request.json().catch(() => null)) as { date?: unknown; name?: unknown; kind?: unknown } | null;
   if (!isIsoDate(payload?.date)) {
     return NextResponse.json({ error: "日付を選んでください。" }, { status: 400 });
   }
@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `メニューの名前を1〜${DRILL_NAME_MAX}文字で入れてください。` }, { status: 400 });
   }
 
-  const drill = await createDrill({ teamSlug, practiceDate: payload.date, name, createdBy: current.id });
+  // 種類がなければ、これまでどおりサーブ・ディグ。
+  const kind = isDrillKind(payload?.kind) ? payload.kind : "serve_dig";
+  const drill = await createDrill({ teamSlug, practiceDate: payload.date, name, kind, createdBy: current.id });
   return NextResponse.json({ drill });
 }

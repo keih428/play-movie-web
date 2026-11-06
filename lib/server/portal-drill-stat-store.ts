@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Drill, DrillCount, DrillGrade, DrillSkill } from "@/lib/domain/drill-stats";
+import { isDrillKind, type Drill, type DrillCount, type DrillGrade, type DrillKind, type DrillSkill } from "@/lib/domain/drill-stats";
 import { query } from "@/lib/server/portal-db";
 
 // マネージャーの集計(2026-10-31 から)。メニューごとに、部員・スキル・評価ごとの本数を持つ。
@@ -8,6 +8,7 @@ type DrillRow = {
   id: string;
   practice_date: string;
   name: string;
+  kind: string;
   created_by: string | null;
   created_at: Date | string;
 };
@@ -25,6 +26,7 @@ function toDrill(row: DrillRow): Drill {
     id: row.id,
     practiceDate: row.practice_date,
     name: row.name,
+    kind: isDrillKind(row.kind) ? row.kind : "serve_dig",
     createdBy: row.created_by,
     createdAt: new Date(row.created_at).toISOString(),
   };
@@ -44,13 +46,14 @@ export async function createDrill(input: {
   teamSlug: string;
   practiceDate: string;
   name: string;
+  kind: DrillKind;
   createdBy: string;
 }): Promise<Drill> {
   const rows = await query<DrillRow>(
-    `INSERT INTO drill_stat_drills (id, team_slug, practice_date, name, created_by)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, practice_date, name, created_by, created_at`,
-    [randomUUID(), input.teamSlug, input.practiceDate, input.name, input.createdBy],
+    `INSERT INTO drill_stat_drills (id, team_slug, practice_date, name, kind, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, practice_date, name, kind, created_by, created_at`,
+    [randomUUID(), input.teamSlug, input.practiceDate, input.name, input.kind, input.createdBy],
   );
   return toDrill(rows[0]);
 }
@@ -58,7 +61,7 @@ export async function createDrill(input: {
 /** そのチームのメニュー(新しい日から)。 */
 export async function listDrills(teamSlug: string, limit = 60): Promise<Drill[]> {
   const rows = await query<DrillRow>(
-    `SELECT id, practice_date, name, created_by, created_at FROM drill_stat_drills
+    `SELECT id, practice_date, name, kind, created_by, created_at FROM drill_stat_drills
      WHERE team_slug = $1 ORDER BY practice_date DESC, created_at DESC LIMIT $2`,
     [teamSlug, limit],
   );
@@ -67,7 +70,7 @@ export async function listDrills(teamSlug: string, limit = 60): Promise<Drill[]>
 
 export async function getDrill(teamSlug: string, drillId: string): Promise<Drill | null> {
   const rows = await query<DrillRow>(
-    `SELECT id, practice_date, name, created_by, created_at FROM drill_stat_drills
+    `SELECT id, practice_date, name, kind, created_by, created_at FROM drill_stat_drills
      WHERE team_slug = $1 AND id = $2`,
     [teamSlug, drillId],
   );
@@ -115,7 +118,7 @@ export async function sumDrillCounts(teamSlug: string, from: string): Promise<Om
   const rows = await query<Omit<CountRow, "drill_id">>(
     `SELECT c.member_id, c.skill, c.grade, sum(c.count)::int AS count
      FROM drill_stat_counts c JOIN drill_stat_drills d ON d.id = c.drill_id
-     WHERE d.team_slug = $1 AND d.practice_date >= $2
+     WHERE d.team_slug = $1 AND d.practice_date >= $2 AND d.kind = 'serve_dig'
      GROUP BY c.member_id, c.skill, c.grade`,
     [teamSlug, from],
   );
@@ -127,12 +130,16 @@ export async function sumDrillCounts(teamSlug: string, from: string): Promise<Om
   }));
 }
 
-/** メニューごとの本数の合計(一覧に出す)。 */
+/** メニューごとの本数の合計(一覧に出す。スパイクは打数)。 */
 export async function countDrillTotals(teamSlug: string): Promise<Map<string, number>> {
   const rows = await query<{ drill_id: string; total: number }>(
-    `SELECT c.drill_id, sum(c.count)::int AS total
-     FROM drill_stat_counts c JOIN drill_stat_drills d ON d.id = c.drill_id
-     WHERE d.team_slug = $1 GROUP BY c.drill_id`,
+    `SELECT drill_id, sum(total)::int AS total FROM (
+       SELECT c.drill_id, c.count AS total
+       FROM drill_stat_counts c JOIN drill_stat_drills d ON d.id = c.drill_id WHERE d.team_slug = $1
+       UNION ALL
+       SELECT s.drill_id, s.attempts AS total
+       FROM spike_stat_counts s JOIN drill_stat_drills d ON d.id = s.drill_id WHERE d.team_slug = $1
+     ) t GROUP BY drill_id`,
     [teamSlug],
   );
   return new Map(rows.map((row) => [row.drill_id, Number(row.total)]));
