@@ -4708,3 +4708,17 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 .tp-stat-table tr.tp-spike-top td {
   font-weight: 700;
 }
+
+/* 集計のタブ(サーブ・ディグ・スパイク。2026-11-06 から) */
+.tp-stats-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.tp-stats-tabs > * {
+  padding: 10px 8px;
+  font-size: 15px;
+  text-decoration: none;
+}

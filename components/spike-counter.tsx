@@ -383,7 +383,7 @@ export function SpikeCounter({
       method: "DELETE",
     });
     if (response.ok) {
-      router.push(buildTeamStatsPath(teamSlug));
+      router.push(`${buildTeamStatsPath(teamSlug)}?tab=spike`);
       router.refresh();
     } else {
       setDeleting(false);

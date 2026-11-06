@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   canRecordDrillStats,
+  drillKindOfTab,
   emptyGradeCounts,
   getErrorRate,
   getGoodRate,
   normalizeDrillName,
+  parseStatsTab,
   tableDrillCounts,
   totalOf,
 } from "@/lib/domain/drill-stats";
@@ -39,5 +41,15 @@ describe("マネージャーの集計", () => {
     expect(normalizeDrillName("  サーブ練  1  ")).toBe("サーブ練 1");
     expect(normalizeDrillName("   ")).toBeNull();
     expect(normalizeDrillName("あ".repeat(41))).toBeNull();
+  });
+});
+
+describe("集計のタブ", () => {
+  it("?tab= からタブを決め、前の ?skill=dig のリンクはディグへ", () => {
+    expect(parseStatsTab("spike")).toBe("spike");
+    expect(parseStatsTab(undefined, "dig")).toBe("dig");
+    expect(parseStatsTab("other")).toBe("serve");
+    expect(drillKindOfTab("dig")).toBe("serve_dig");
+    expect(drillKindOfTab("spike")).toBe("spike");
   });
 });
