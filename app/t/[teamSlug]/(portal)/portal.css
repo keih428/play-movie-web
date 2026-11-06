@@ -601,6 +601,30 @@ body:has(.tp) {
   resize: vertical;
 }
 
+/*
+ * 時刻・日付の欄。iPhone の Safari は、この欄だけ幅の指定を無視して中身(時計の部品)の幅に広がり、
+ * カードからはみ出すことがある(2026-11-06、まとめて出す欄の「何時から来られるか」で起きた)。
+ * 見た目を作り直させ、縮められるようにする。文字は左に寄せる(iPhone では真ん中に寄るため)。
+ */
+.tp-field input[type="time"],
+.tp-field input[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.tp-field input[type="time"]::-webkit-date-and-time-value,
+.tp-field input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+.tp-field {
+  min-width: 0;
+}
+
 /* 保存(下に固定) */
 .tp-savebar {
   position: sticky;
@@ -4730,7 +4754,14 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 
 /* 出欠:曜日でまとめて出す(2026-11-06 から)。ふだんは畳んでおく */
 .tp-bulk {
+  display: block;
   margin-top: 12px;
+}
+
+/* 畳める欄(details)の中身を、カードの幅に収める */
+.tp-bulk-form,
+.tp-bulk-form > * {
+  min-width: 0;
 }
 
 .tp-bulk summary {
