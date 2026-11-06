@@ -25,10 +25,10 @@ export type AttendanceReport = {
 };
 
 export const ATTENDANCE_REASON_MAX = 500;
-// 連絡は、今日から2か月先の日まで出せる。
-export const ATTENDANCE_MONTHS_AHEAD = 2;
+// 連絡は、今日から3か月先の日まで出せる(2026-11-06 に2か月から延ばした。けーいちの依頼)。
+export const ATTENDANCE_MONTHS_AHEAD = 3;
 
-/** 今日から、連絡を出せるいちばん先の日(2か月後の同じ日。その月にない日なら月末)。 */
+/** 今日から、連絡を出せるいちばん先の日(3か月後の同じ日。その月にない日なら月末)。 */
 export function getLastAttendanceDate(today: string): string {
   const [year, month, day] = today.split("-").map(Number);
   const lastDayOfTargetMonth = new Date(Date.UTC(year, month - 1 + ATTENDANCE_MONTHS_AHEAD + 1, 0)).getUTCDate();
@@ -126,4 +126,78 @@ export const ATTENDANCE_TALLY_START = "2026-11-01";
 export function getTallyStart(today: string, span: AttendanceTallySpan): string {
   const start = span === "all" ? ATTENDANCE_TALLY_START : `${today.slice(0, 7)}-01`;
   return start < ATTENDANCE_TALLY_START ? ATTENDANCE_TALLY_START : start;
+}
+
+// ---------- 入力の確かめ(1日分・まとめての両方で使う) ----------
+
+export type AttendanceInput = {
+  kind: AttendanceKind;
+  arriveAt: string | null;
+  leaveAt: string | null;
+  reason: string;
+};
+
+/** 種類・時刻・理由を確かめる。おかしければ、画面に出す言葉を返す。 */
+export function parseAttendanceInput(payload: {
+  kind?: unknown;
+  arriveAt?: unknown;
+  leaveAt?: unknown;
+  reason?: unknown;
+}): { input: AttendanceInput } | { error: string } {
+  if (!isAttendanceKind(payload.kind)) {
+    return { error: "欠席・遅刻・早退のどれかを選んでください。" };
+  }
+  const arriveAt = needsArriveTime(payload.kind) ? payload.arriveAt : null;
+  const leaveAt = needsLeaveTime(payload.kind) ? payload.leaveAt : null;
+  if (arriveAt !== null && !isClockTime(arriveAt)) {
+    return { error: "遅刻のときは、何時から来られるかを入れてください。" };
+  }
+  if (leaveAt !== null && !isClockTime(leaveAt)) {
+    return { error: "早退のときは、何時までいられるかを入れてください。" };
+  }
+  if (arriveAt && leaveAt && arriveAt >= leaveAt) {
+    return { error: "来る時刻が、帰る時刻より後になっています。" };
+  }
+  const reason = typeof payload.reason === "string" ? payload.reason.trim().slice(0, ATTENDANCE_REASON_MAX) : "";
+  if (!reason) {
+    return { error: "理由を書いてください。" };
+  }
+  return {
+    input: { kind: payload.kind, arriveAt: arriveAt as string | null, leaveAt: leaveAt as string | null, reason },
+  };
+}
+
+// ---------- まとめて出す(2026-11-06 から。授業で毎週火曜は 18:30 から、のような人のため) ----------
+
+export const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"] as const;
+
+/** 一度にまとめて出せる日の数(3か月分の練習日。週4日 × 13週より多めに)。 */
+export const ATTENDANCE_BULK_MAX = 60;
+
+/** 'YYYY-MM-DD' の曜日(0 = 日曜)。 */
+export function weekdayOf(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+/** 練習のある日のうち、選んだ曜日の日(古い順)。 */
+export function pickDatesByWeekday(practiceDates: string[], weekdays: number[]): string[] {
+  return [...new Set(practiceDates)].filter((date) => weekdays.includes(weekdayOf(date))).sort();
+}
+
+/** まとめて出したときに、Slack のチャンネルに流す文(1通にまとめる)。 */
+export function formatBulkAttendanceMessage(
+  who: { memberName: string; position: MemberPosition | null },
+  dates: string[],
+  input: AttendanceInput,
+  updatedCount: number,
+): string {
+  const name = `${who.memberName}${who.position ? `(${who.position})` : ""}`;
+  const time = describeAttendanceTime(input);
+  return [
+    `【${ATTENDANCE_KIND_LABELS[input.kind]}・まとめて${dates.length}日】${name}${time ? ` ${time}` : ""}`,
+    `日付:${dates.map((date) => formatNoteDate(date)).join("、")}`,
+    `理由:${input.reason}`,
+    ...(updatedCount ? [`(うち${updatedCount}日は、前に出した連絡を訂正)`] : []),
+  ].join("\n");
 }

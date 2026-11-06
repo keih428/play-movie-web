@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttendanceBulkForm } from "@/components/attendance-bulk-form";
 import { AttendanceForm } from "@/components/attendance-form";
 import {
   ATTENDANCE_KIND_LABELS,
@@ -153,6 +154,13 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
           practiceDates={practiceDates}
           teamSlug={teamSlug}
           today={today}
+        />
+        {/* 曜日でまとめて出す(2026-11-06 から)。予定のある練習の日だけから選ぶ。 */}
+        <AttendanceBulkForm
+          practiceDates={schedule.dates.filter((date) => date >= today && date <= until)}
+          eventLabels={eventLabels}
+          myReports={reports.filter((report) => report.memberId === current.id)}
+          teamSlug={teamSlug}
         />
       </section>
 

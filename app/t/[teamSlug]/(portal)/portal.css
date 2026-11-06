@@ -4727,3 +4727,41 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 .tp-reception-row {
   grid-template-columns: 5.2em minmax(0, 1fr) minmax(0, 1fr);
 }
+
+/* 出欠:曜日でまとめて出す(2026-11-06 から)。ふだんは畳んでおく */
+.tp-bulk {
+  margin-top: 12px;
+}
+
+.tp-bulk summary {
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.tp-bulk-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.tp-bulk-date {
+  display: inline-grid;
+  justify-items: start;
+  border-style: dashed;
+  color: var(--tp-muted);
+  text-decoration: line-through;
+}
+
+.tp-bulk-date[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--tp-accent);
+  background: var(--tp-accent-soft);
+  color: var(--tp-fg);
+  text-decoration: none;
+}
+
+.tp-bulk-date small {
+  font-size: 11px;
+  color: var(--tp-muted);
+}
