@@ -479,6 +479,15 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "025_spike_setup",
+    // スパイク練習の組み方(前半・後半の攻撃チーム、セッター、サーブのレベル)を、メニューごとに共有する(2026-11-06 から)。
+    // マネージャーが何人かで同時に数えるため、端末ではなくここに持つ。中身は JSON(parseSpikeSetup で読む)。
+    sql: `
+      ALTER TABLE drill_stat_drills ADD COLUMN spike_setup text;
+      ALTER TABLE drill_stat_drills ADD COLUMN spike_setup_at timestamptz
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

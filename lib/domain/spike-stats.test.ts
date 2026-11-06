@@ -5,10 +5,12 @@ import {
   meetsPromotion,
   nextLevel,
   normalizeSpikeLevel,
+  parseSpikeSetup,
   rankSetters,
   rankSpikers,
   spikeRounds,
   splitSpikeTeams,
+  toggleShownSetter,
   type SpikeCount,
 } from "@/lib/domain/spike-stats";
 
@@ -112,5 +114,25 @@ describe("スパイク練習の集計", () => {
     expect(first).toEqual(["oh1", "oh3", "op1", "mb1"]);
     expect(teams.s1).toBeUndefined();
     expect(teams.li).toBeUndefined();
+  });
+});
+
+describe("スパイク練習の組み方(共有)", () => {
+  it("形の合わないところは捨てて読む", () => {
+    expect(parseSpikeSetup(null)).toBeNull();
+    expect(parseSpikeSetup([])).toBeNull();
+    expect(
+      parseSpikeSetup({
+        teams: { a: "first", b: "second", c: "third" },
+        setters: ["s1", "s1", 3, "s2"],
+        levels: { a: 2, b: 5 },
+      }),
+    ).toEqual({ teams: { a: "first", b: "second" }, setters: ["s1", "s2"], levels: { a: 2 } });
+  });
+
+  it("画面に並べるセッターは3人まで。4人目を足すと、いちばん前に選んだ人が外れる", () => {
+    expect(toggleShownSetter(["s1", "s2"], "s3")).toEqual(["s1", "s2", "s3"]);
+    expect(toggleShownSetter(["s1", "s2", "s3"], "s4")).toEqual(["s2", "s3", "s4"]);
+    expect(toggleShownSetter(["s1", "s2"], "s1")).toEqual(["s2"]);
   });
 });

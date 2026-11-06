@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   FRONT_SPOTS,
   SERVE_LEVEL_LABELS,
+  SPIKE_MAX_SHOWN_SETTERS,
   SPIKE_MODES,
   SPIKE_MODE_LABELS,
   SPIKE_SPOT_LABELS,
@@ -15,14 +16,17 @@ import {
   hasServeLevel,
   meetsPromotion,
   nextLevel,
+  parseSpikeSetup,
   spikeRounds,
   spotFor,
   splitSpikeTeams,
+  toggleShownSetter,
   type LevelStatus,
   type ServeLevel,
   type SpikeCount,
   type SpikeLevel,
   type SpikeMode,
+  type SpikeSetup,
   type SpikeSpot,
   type SpikeTeam,
 } from "@/lib/domain/spike-stats";
@@ -41,19 +45,12 @@ type SpikeCounterProps = {
   drillId: string;
   players: CounterPlayer[];
   initialCounts: SpikeCount[];
+  // メニューの組み方(共有)。まだ組んでいなければ null。
+  initialSetup: SpikeSetup | null;
+  initialSetupSavedAt: string | null;
   // これまでの練習でのサーブのレベル(部員ごと。練習がなければ null)。
   levelStatus: Record<string, LevelStatus | null>;
   canRecord: boolean;
-};
-
-// このメニューの組み方(端末ごとに覚える)。
-type Setup = {
-  // 打つ人と、その人の攻撃チーム。入っていない人は出ない。
-  teams: Record<string, SpikeTeam>;
-  // トスを上げるセッター(順番どおり)。
-  setters: string[];
-  // サーブのレベルを変えた人(なければ、これまでの練習から決める)。
-  levels: Record<string, ServeLevel>;
 };
 
 type Tap = {
@@ -67,69 +64,179 @@ type Tap = {
 
 type Cell = { kills: number; attempts: number };
 
+// 何ミリ秒ごとに、ほかの人が数えた分を取りにいくか。
+const POLL_MS = 2000;
+
 const keyOf = (memberId: string, setterId: string, spot: SpikeSpot, level: SpikeLevel) =>
   `${memberId}|${setterId}|${spot}|${level}`;
-const setupKey = (drillId: string) => `spike-setup:${drillId}`;
+// この端末で画面に出すもの(チーム・セッター)を覚える。組み方そのものは共有。
+const viewKey = (drillId: string) => `spike-view:${drillId}`;
 const EMPTY: Cell = { kills: 0, attempts: 0 };
+
+const toCells = (counts: SpikeCount[]): Record<string, Cell> =>
+  Object.fromEntries(
+    counts.map((entry) => [
+      keyOf(entry.memberId, entry.setterId, entry.spot, entry.level),
+      { kills: entry.kills, attempts: entry.attempts },
+    ]),
+  );
 
 /**
  * スパイク練習の集計の画面(2026-11-06 から。主将の完成イメージをもとに、スクロールなしで押せるようにした)。
- * - 最初に「人を選ぶ」で、打つ人を前半・後半の攻撃チームに分け、セッターを選ぶ(AB/C で一度に選べる。端末に覚える)
- * - 上で種目(前衛・パイプ…)・攻撃チーム・いまトスを上げているセッターを選ぶ。1人1行で「決定」「ミス」の2つのボタンだけ
- *   (前衛の位置は名簿のポジションから。OH・OP はサーブのレベルを行の中で切り替える)
+ * - 最初に「人を選ぶ」で、打つ人を前半・後半の攻撃チームに分け、セッターを選ぶ(AB/C で一度に選べる)。組み方はメニューごとに共有する
+ * - 上で種目・攻撃チームと、画面に並べるセッター(最大3人。同時に何人かが上げるため)を選ぶ。
+ *   1人1行で、セッターごとに「決定」「ミス」の2つのボタン(押した数がボタンに出る)
+ * - マネージャーが何人かで分担して同時に数えられるよう、2秒ごとにほかの人が数えた分と組み方を取りにいく
+ *   (自分が送っている途中の分があるときは、取ってきたものを使わない。数がずれて見えないように)
  * - 下に固定した帯に、チーム戦(決定率)とセッター戦(決定本数)を出す。ペナルティは前衛だけ
  */
-export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelStatus, canRecord }: SpikeCounterProps) {
+export function SpikeCounter({
+  teamSlug,
+  drillId,
+  players,
+  initialCounts,
+  initialSetup,
+  initialSetupSavedAt,
+  levelStatus,
+  canRecord,
+}: SpikeCounterProps) {
   const router = useRouter();
-  const [counts, setCounts] = useState<Record<string, Cell>>(() =>
-    Object.fromEntries(
-      initialCounts.map((entry) => [
-        keyOf(entry.memberId, entry.setterId, entry.spot, entry.level),
-        { kills: entry.kills, attempts: entry.attempts },
-      ]),
-    ),
-  );
+  const apiPath = buildTeamApiPath(`/api/portal/drill-stats/${drillId}/spike`, teamSlug);
   const hitters = players.filter((player) => frontSpotOf(player.position) !== null);
   const setterCandidates = players.filter((player) => player.position === "S");
-  const [setup, setSetup] = useState<Setup>(() => defaultSetup(hitters, setterCandidates, initialCounts));
+
+  const [counts, setCounts] = useState<Record<string, Cell>>(() => toCells(initialCounts));
+  const [setup, setSetup] = useState<SpikeSetup>(
+    () => initialSetup ?? defaultSetup(hitters, setterCandidates, initialCounts),
+  );
+  const setupSavedAt = useRef(initialSetupSavedAt);
   const [picking, setPicking] = useState(false);
   const [mode, setMode] = useState<SpikeMode>("front");
   const [team, setTeam] = useState<SpikeTeam>("first");
-  const [setterId, setSetterId] = useState<string | null>(null);
+  // 画面に並べるセッター(null は「組み方の最初の3人」)。
+  const [shownChoice, setShownChoice] = useState<string[] | null>(null);
   const [history, setHistory] = useState<Tap[]>([]);
   const [error, setError] = useState("");
+  const [online, setOnline] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // 送っている途中の本数(枠ごと)と、送った・返事が来たたびに増やす番号。取ってきた数を使ってよいかの判断に使う。
+  const pending = useRef(new Map<string, Cell>());
+  const mutations = useRef(0);
+  const savingSetup = useRef(0);
 
-  // 前に組んだものを読み出す。なければ、数える人には最初に「人を選ぶ」を開く。
+  // この端末で出していたチーム・セッターを読み出す。組んでいなければ、数える人には最初に「人を選ぶ」を開く。
   useEffect(() => {
-    let saved: Setup | null = null;
     try {
-      saved = parseSetup(JSON.parse(window.localStorage.getItem(setupKey(drillId)) ?? "null"));
+      const saved = JSON.parse(window.localStorage.getItem(viewKey(drillId)) ?? "null") as {
+        team?: unknown;
+        setters?: unknown;
+      } | null;
+      if (saved?.team === "first" || saved?.team === "second") {
+        setTeam(saved.team);
+      }
+      if (Array.isArray(saved?.setters)) {
+        setShownChoice(saved.setters.filter((id): id is string => typeof id === "string"));
+      }
     } catch {
-      // 端末に保存できない設定なら、毎回組む。
+      // 端末に保存できない設定なら、毎回えらぶ。
     }
-    if (saved) {
-      setSetup(saved);
-    } else if (canRecord) {
+    if (!initialSetup && canRecord) {
       setPicking(true);
     }
-  }, [drillId, canRecord]);
+  }, [drillId, canRecord, initialSetup]);
 
-  function saveSetup(next: Setup) {
-    setSetup(next);
+  function saveView(next: { team: SpikeTeam; setters: string[] | null }) {
     try {
-      window.localStorage.setItem(setupKey(drillId), JSON.stringify(next));
+      window.localStorage.setItem(viewKey(drillId), JSON.stringify(next));
     } catch {
       // 保存できなくても、この画面の間は使える。
     }
   }
 
+  // ---- ほかの人が数えた分を取りにいく ----
+  const poll = useCallback(async () => {
+    const startedAt = mutations.current;
+    try {
+      const response = await fetch(apiPath, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error();
+      }
+      const payload = (await response.json()) as {
+        counts?: SpikeCount[];
+        setup?: unknown;
+        setupSavedAt?: string | null;
+      };
+      setOnline(true);
+      // 取りにいく間に押した・返事が来た、または送っている途中の分があれば、この結果は古いかもしれないので使わない。
+      if (mutations.current === startedAt && pending.current.size === 0 && Array.isArray(payload.counts)) {
+        setCounts(toCells(payload.counts));
+      }
+      const remote = parseSpikeSetup(payload.setup);
+      if (remote && savingSetup.current === 0 && payload.setupSavedAt && payload.setupSavedAt !== setupSavedAt.current) {
+        setupSavedAt.current = payload.setupSavedAt;
+        setSetup(remote);
+      }
+    } catch {
+      setOnline(false);
+    }
+  }, [apiPath]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let stopped = false;
+    const tick = async () => {
+      if (document.visibilityState === "visible") {
+        await poll();
+      }
+      if (!stopped) {
+        timer = setTimeout(tick, POLL_MS);
+      }
+    };
+    timer = setTimeout(tick, POLL_MS);
+    // 画面に戻ってきたら、すぐ取りにいく。
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void poll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stopped = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [poll]);
+
+  async function saveSetup(next: SpikeSetup) {
+    setSetup(next);
+    savingSetup.current += 1;
+    try {
+      const response = await fetch(apiPath, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      const payload = (await response.json().catch(() => null)) as { setupSavedAt?: string; error?: string } | null;
+      if (!response.ok || !payload?.setupSavedAt) {
+        throw new Error(payload?.error ?? "組み方を保存できませんでした。");
+      }
+      setupSavedAt.current = payload.setupSavedAt;
+      setError("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "組み方を保存できませんでした。");
+    } finally {
+      savingSetup.current -= 1;
+    }
+  }
+
   const nameOf = (id: string) => players.find((player) => player.id === id)?.displayName ?? "?";
   const setters = setup.setters.filter((id) => players.some((player) => player.id === id));
-  const { rounds, rotation } = spikeRounds(setters.length);
-  const currentSetter = setterId && setters.includes(setterId) ? setterId : (setters[0] ?? null);
+  const shownSetters = (shownChoice ?? setters).filter((id) => setters.includes(id)).slice(0, SPIKE_MAX_SHOWN_SETTERS);
+  const { rounds } = spikeRounds(setters.length);
 
   const levelOf = (memberId: string): ServeLevel => {
     const chosen = setup.levels[memberId];
@@ -165,17 +272,29 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
   const done = shown.length
     ? Math.min(...shown.map((player) => sumWhere((m, _s, spot) => m === player.id && modeSpots(spot)).attempts))
     : 0;
-  const turnSetter = setters.length ? setters[Math.floor(done / rotation) % setters.length] : null;
+
+  function addPending(key: string, cell: Cell, sign: 1 | -1) {
+    const now = pending.current.get(key) ?? EMPTY;
+    const next = { kills: now.kills + cell.kills * sign, attempts: now.attempts + cell.attempts * sign };
+    if (next.kills === 0 && next.attempts === 0) {
+      pending.current.delete(key);
+    } else {
+      pending.current.set(key, next);
+    }
+  }
 
   async function send(tap: Tap) {
     const key = keyOf(tap.memberId, tap.setterId, tap.spot, tap.level);
+    const change: Cell = { kills: tap.kill ? tap.delta : 0, attempts: tap.delta };
     const apply = (cell: Cell, sign: 1 | -1): Cell => {
-      const attempts = Math.max(cell.attempts + tap.delta * sign, 0);
-      return { attempts, kills: Math.min(Math.max(cell.kills + (tap.kill ? tap.delta * sign : 0), 0), attempts) };
+      const attempts = Math.max(cell.attempts + change.attempts * sign, 0);
+      return { attempts, kills: Math.min(Math.max(cell.kills + change.kills * sign, 0), attempts) };
     };
+    mutations.current += 1;
+    addPending(key, change, 1);
     setCounts((previous) => ({ ...previous, [key]: apply(previous[key] ?? EMPTY, 1) }));
     try {
-      const response = await fetch(buildTeamApiPath(`/api/portal/drill-stats/${drillId}/spike`, teamSlug), {
+      const response = await fetch(apiPath, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(tap),
@@ -186,13 +305,19 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
       if (!response.ok || typeof payload?.kills !== "number" || typeof payload.attempts !== "number") {
         throw new Error(payload?.error ?? "保存できませんでした。");
       }
-      const saved = { kills: payload.kills, attempts: payload.attempts };
+      addPending(key, change, -1);
+      // サーバーの数に、まだ送っている途中の分(同じ枠をすばやく続けて押したとき)を足して出す。
+      const rest = pending.current.get(key) ?? EMPTY;
+      const saved = { kills: payload.kills + rest.kills, attempts: payload.attempts + rest.attempts };
       setCounts((previous) => ({ ...previous, [key]: saved }));
       setError("");
     } catch (caught) {
       // 保存できなかった分は、画面の数を戻す。
+      addPending(key, change, -1);
       setCounts((previous) => ({ ...previous, [key]: apply(previous[key] ?? EMPTY, -1) }));
       setError(caught instanceof Error ? caught.message : "保存できませんでした。電波を確かめてください。");
+    } finally {
+      mutations.current += 1;
     }
   }
 
@@ -209,20 +334,16 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
     }
   }
 
-  function press(player: CounterPlayer, kill: boolean) {
+  const flashKey = (memberId: string, setterId: string, kill: boolean) =>
+    `${memberId}|${setterId}|${kill ? "kill" : "miss"}`;
+
+  function press(player: CounterPlayer, setterId: string, kill: boolean) {
     const spot = spotOf(player);
-    if (!spot || !currentSetter) {
+    if (!spot) {
       return;
     }
-    const tap: Tap = {
-      memberId: player.id,
-      setterId: currentSetter,
-      spot,
-      level: levelAt(player, spot),
-      kill,
-      delta: 1,
-    };
-    feedback(`${player.id}|${kill ? "kill" : "miss"}`);
+    const tap: Tap = { memberId: player.id, setterId, spot, level: levelAt(player, spot), kill, delta: 1 };
+    feedback(flashKey(player.id, setterId, kill));
     setHistory((previous) => [...previous, tap]);
     void send(tap);
   }
@@ -233,13 +354,24 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
       return;
     }
     setHistory((previous) => previous.slice(0, -1));
-    feedback(`${last.memberId}|${last.kill ? "kill" : "miss"}`);
+    feedback(flashKey(last.memberId, last.setterId, last.kill));
     void send({ ...last, delta: -1 });
   }
 
   function cycleLevel(memberId: string) {
     const level = levelOf(memberId);
-    saveSetup({ ...setup, levels: { ...setup.levels, [memberId]: level === 3 ? 1 : ((level + 1) as ServeLevel) } });
+    void saveSetup({ ...setup, levels: { ...setup.levels, [memberId]: level === 3 ? 1 : ((level + 1) as ServeLevel) } });
+  }
+
+  function chooseTeam(next: SpikeTeam) {
+    setTeam(next);
+    saveView({ team: next, setters: shownChoice });
+  }
+
+  function toggleShown(id: string) {
+    const next = toggleShownSetter(shownSetters, id);
+    setShownChoice(next);
+    saveView({ team, setters: next });
   }
 
   async function removeDrill() {
@@ -262,14 +394,14 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
   // ---- 人を選ぶ ----
   function chooseGroup(group: TrainingGroup | "all") {
     const inGroup = (player: CounterPlayer) => group === "all" || toTrainingGroup(player.slot) === group;
-    saveSetup({
+    void saveSetup({
       teams: splitSpikeTeams(hitters.filter(inGroup)),
       setters: setterCandidates.filter(inGroup).map((player) => player.id),
       levels: setup.levels,
     });
   }
   function resplit() {
-    saveSetup({ ...setup, teams: splitSpikeTeams(hitters.filter((player) => setup.teams[player.id])) });
+    void saveSetup({ ...setup, teams: splitSpikeTeams(hitters.filter((player) => setup.teams[player.id])) });
   }
   // 前半 → 後半 → 出ない → 前半 …
   function cycleTeam(id: string) {
@@ -282,18 +414,24 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
     } else {
       teams[id] = "first";
     }
-    saveSetup({ ...setup, teams });
+    void saveSetup({ ...setup, teams });
   }
   function toggleSetter(id: string) {
-    saveSetup({
+    void saveSetup({
       ...setup,
       setters: setup.setters.includes(id) ? setup.setters.filter((entry) => entry !== id) : [...setup.setters, id],
     });
   }
+  function closePicker() {
+    setPicking(false);
+    // まだだれも保存していなければ、いまの組み方(最初に自動で組んだもの)を保存して、ほかの人とそろえる。
+    if (!setupSavedAt.current && canRecord) {
+      void saveSetup(setup);
+    }
+  }
 
   // ---- 下の帯:チーム戦・セッター戦 ----
-  const teamCell = (entry: SpikeTeam) =>
-    sumWhere((m, _s, spot) => setup.teams[m] === entry && modeSpots(spot));
+  const teamCell = (entry: SpikeTeam) => sumWhere((m, _s, spot) => setup.teams[m] === entry && modeSpots(spot));
   // セッター戦は、この種目でトスを上げた人だけで比べる。
   const setterKills = setters
     .map((id) => ({ id, ...sumWhere((_m, s, spot) => s === id && modeSpots(spot)) }))
@@ -304,8 +442,7 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
   // ペナルティは前衛だけ(二段トス・バックアタックはなし)。
   const penalty = mode === "front";
   const teamLoser =
-    penalty &&
-    first.attempts && second.attempts && rateOf(first) !== rateOf(second)
+    penalty && first.attempts && second.attempts && rateOf(first) !== rateOf(second)
       ? rateOf(first)! < rateOf(second)!
         ? "first"
         : "second"
@@ -316,6 +453,8 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
       ? setterKills.filter((entry) => entry.kills === minKills).map((entry) => entry.id)
       : [];
   const lastTap = history[history.length - 1];
+  // 名前の列 + セッターごとに「決定」「ミス」の2列。
+  const columns = { gridTemplateColumns: `4.8em repeat(${Math.max(shownSetters.length, 1) * 2}, minmax(0, 1fr))` };
 
   return (
     <div className={canRecord ? "tp-counter tp-spike tp-counter-recording" : "tp-counter tp-spike"}>
@@ -336,30 +475,35 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
         </div>
         <div className="tp-seg tp-spike-teams" role="group" aria-label="攻撃チーム">
           {(["first", "second"] as const).map((entry) => (
-            <button key={entry} type="button" aria-pressed={entry === team} onClick={() => setTeam(entry)}>
+            <button key={entry} type="button" aria-pressed={entry === team} onClick={() => chooseTeam(entry)}>
               {SPIKE_TEAM_LABELS[entry]}攻撃 <small>{teamSize(entry)}人</small>
             </button>
           ))}
         </div>
-        <div className="tp-spike-setters" role="group" aria-label="トスを上げているセッター">
-          <span className="tp-spike-label">トス</span>
+        <div className="tp-spike-setters" role="group" aria-label={`画面に並べるセッター(${SPIKE_MAX_SHOWN_SETTERS}人まで)`}>
+          <span className="tp-spike-label">
+            トス
+            <br />
+            {SPIKE_MAX_SHOWN_SETTERS}人まで
+          </span>
           {setters.map((id) => (
-            <button key={id} type="button" aria-pressed={id === currentSetter} onClick={() => setSetterId(id)}>
+            <button key={id} type="button" aria-pressed={shownSetters.includes(id)} onClick={() => toggleShown(id)}>
               {nameOf(id)}
-              {id === turnSetter && setters.length > 1 ? <small>の番</small> : null}
             </button>
           ))}
           {setters.length === 0 ? <span className="tp-small tp-muted">「✎ 人」でセッターを選んでください</span> : null}
         </div>
         <p className="tp-spike-round" aria-live="polite">
-          {shown.length ? (
-            <>
-              <b>{Math.min(done + 1, rounds)}</b>周目 / {rounds}周
-              {setters.length > 1 && done < rounds ? (
-                <span className="tp-muted"> ・ {rotation}周ごとにセッター交代(あと{rotation - (done % rotation)}周)</span>
-              ) : null}
-            </>
-          ) : null}
+          <span>
+            {shown.length ? (
+              <>
+                <b>{Math.min(done + 1, rounds)}</b>周目 / {rounds}周
+              </>
+            ) : null}
+          </span>
+          <span className={online ? "tp-spike-sync" : "tp-spike-sync tp-spike-sync-off"}>
+            {online ? "● ほかの人の入力も反映中" : "○ つながっていません"}
+          </span>
         </p>
       </div>
 
@@ -367,6 +511,18 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
         <p className="tp-error" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {/* セッターの名前の見出し。下の行のボタンと同じ並び。スクロールしても上に残る */}
+      {shownSetters.length ? (
+        <div className="tp-spike-row tp-spike-legend" style={columns} aria-hidden="true">
+          <span className="tp-counter-legend-skill">{SPIKE_MODE_LABELS[mode]}</span>
+          {shownSetters.map((id) => (
+            <span key={id} className="tp-spike-legend-setter">
+              {nameOf(id)}
+            </span>
+          ))}
+        </div>
       ) : null}
 
       <div className="tp-spike-list">
@@ -380,7 +536,7 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
           const promote =
             level !== 0 && level < 3 && meetsPromotion(atLevel.kills, atLevel.attempts, rounds) && priorStreak + 1 >= 2;
           return (
-            <div key={player.id} className="tp-spike-row">
+            <div key={player.id} className="tp-spike-row" style={columns}>
               <span className="tp-counter-name">
                 <b>{player.displayName}</b>
                 <small>
@@ -399,34 +555,33 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
                     </button>
                   ) : null}
                 </small>
+                <small>
+                  {mine.kills}/{mine.attempts} {formatSpikeRate(mine.kills, mine.attempts)}
+                </small>
               </span>
-              <button
-                type="button"
-                className={[
-                  "tp-spike-kill",
-                  flash === `${player.id}|kill` ? "tp-counter-flash" : "",
-                ].join(" ")}
-                disabled={!canRecord || !currentSetter}
-                aria-label={`${player.displayName} 決定`}
-                onClick={() => press(player, true)}
-              >
-                決定
-              </button>
-              <button
-                type="button"
-                className={["tp-spike-miss", flash === `${player.id}|miss` ? "tp-counter-flash" : ""].join(" ")}
-                disabled={!canRecord || !currentSetter}
-                aria-label={`${player.displayName} ミス`}
-                onClick={() => press(player, false)}
-              >
-                ミス
-              </button>
-              <span className="tp-spike-score">
-                <b>
-                  {mine.kills}/{mine.attempts}
-                </b>
-                <small>{formatSpikeRate(mine.kills, mine.attempts)}</small>
-              </span>
+              {shownSetters.map((setterId) => {
+                const cell = sumWhere((m, s, sp, l) => m === player.id && s === setterId && sp === spot && l === level);
+                return (["kill", "miss"] as const).map((kind) => {
+                  const kill = kind === "kill";
+                  const value = kill ? cell.kills : cell.attempts - cell.kills;
+                  return (
+                    <button
+                      key={`${setterId}-${kind}`}
+                      type="button"
+                      className={[
+                        kill ? "tp-spike-kill" : "tp-spike-miss",
+                        flash === flashKey(player.id, setterId, kill) ? "tp-counter-flash" : "",
+                      ].join(" ")}
+                      disabled={!canRecord}
+                      aria-label={`${player.displayName} ${kill ? "決定" : "ミス"}(トス ${nameOf(setterId)}):${value}本`}
+                      onClick={() => press(player, setterId, kill)}
+                    >
+                      <b>{value}</b>
+                      <small>{kill ? "決定" : "ミス"}</small>
+                    </button>
+                  );
+                });
+              })}
             </div>
           );
         })}
@@ -435,6 +590,9 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
             {SPIKE_TEAM_LABELS[team]}攻撃チームに、この種目で打つ人がいません。
             {canRecord ? "「✎ 人」から選んでください。" : ""}
           </p>
+        ) : null}
+        {shown.length > 0 && shownSetters.length === 0 ? (
+          <p className="tp-muted">上の「トス」で、画面に並べるセッターを選んでください。</p>
         ) : null}
       </div>
 
@@ -473,18 +631,16 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
             ))}
           </div>
           <small className="tp-muted">
-            {mode === "front"
-              ? lastTap
-                ? `${nameOf(lastTap.memberId)} ${lastTap.kill ? "決定" : "ミス"}(トス ${nameOf(lastTap.setterId)})`
-                : "赤がいまのペナルティ(チームは決定率、セッターは決定本数)"
-              : "二段トス・バックアタックはペナルティなし"}
+            {lastTap
+              ? `自分の最後:${nameOf(lastTap.memberId)} ${lastTap.kill ? "決定" : "ミス"}(トス ${nameOf(lastTap.setterId)})`
+              : penalty
+                ? "赤がいまのペナルティ(チームは決定率、セッターは決定本数)"
+                : "二段トス・バックアタックはペナルティなし"}
           </small>
         </div>
       </div>
 
-      {picking ? (
-        <button type="button" className="tp-counter-backdrop" aria-label="閉じる" onClick={() => setPicking(false)} />
-      ) : null}
+      {picking ? <button type="button" className="tp-counter-backdrop" aria-label="閉じる" onClick={closePicker} /> : null}
       {picking ? (
         <div className="tp-card tp-counter-picker" role="dialog" aria-label="打つ人とセッター">
           <div className="tp-counter-picker-head">
@@ -499,7 +655,9 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
                 前半・後半を分け直す
               </button>
             </span>
-            <p className="tp-small tp-muted">押すたびに 前半 → 後半 → 出ない と変わります。前半・後半はポジションが偏らないように分けます。</p>
+            <p className="tp-small tp-muted">
+              押すたびに 前半 → 後半 → 出ない と変わります。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
+            </p>
           </div>
           {[
             ...(["first", "second"] as const).map((entry) => ({
@@ -548,7 +706,7 @@ export function SpikeCounter({ teamSlug, drillId, players, initialCounts, levelS
             </div>
           </div>
           <div className="tp-actions">
-            <button type="button" className="tp-button" onClick={() => setPicking(false)}>
+            <button type="button" className="tp-button" onClick={closePicker}>
               閉じる
             </button>
           </div>
@@ -564,8 +722,8 @@ function sortByPosition(players: CounterPlayer[]): CounterPlayer[] {
   return [...players].sort((a, b) => order(a) - order(b));
 }
 
-/** 端末に覚えたものがないとき:数えた人がいればその人たちを、いなければ打つ人全員を、前半・後半に分ける。 */
-function defaultSetup(hitters: CounterPlayer[], setters: CounterPlayer[], counts: SpikeCount[]): Setup {
+/** まだ組んでいないとき:数えた人がいればその人たちを、いなければ打つ人全員を、前半・後半に分ける。 */
+function defaultSetup(hitters: CounterPlayer[], setters: CounterPlayer[], counts: SpikeCount[]): SpikeSetup {
   const counted = new Set(counts.map((entry) => entry.memberId));
   const usedSetters = [...new Set(counts.map((entry) => entry.setterId))];
   return {
@@ -573,25 +731,4 @@ function defaultSetup(hitters: CounterPlayer[], setters: CounterPlayer[], counts
     setters: usedSetters.length ? usedSetters : setters.map((player) => player.id),
     levels: {},
   };
-}
-
-function parseSetup(value: unknown): Setup | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const raw = value as Partial<Setup>;
-  const teams: Record<string, SpikeTeam> = {};
-  for (const [id, team] of Object.entries(raw.teams ?? {})) {
-    if (team === "first" || team === "second") {
-      teams[id] = team;
-    }
-  }
-  const levels: Record<string, ServeLevel> = {};
-  for (const [id, level] of Object.entries(raw.levels ?? {})) {
-    if (level === 1 || level === 2 || level === 3) {
-      levels[id] = level;
-    }
-  }
-  const setters = Array.isArray(raw.setters) ? raw.setters.filter((id): id is string => typeof id === "string") : [];
-  return { teams, setters, levels };
 }

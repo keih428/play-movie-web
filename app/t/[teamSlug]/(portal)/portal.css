@@ -4484,7 +4484,8 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 .tp-spike-label {
   flex: none;
   color: var(--tp-muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.2;
   font-weight: 700;
 }
 
@@ -4516,8 +4517,22 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 }
 
 .tp-spike-round {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   margin: 0;
   font-size: 13px;
+}
+
+.tp-spike-sync {
+  color: var(--tp-ok);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tp-spike-sync-off {
+  color: var(--tp-danger-fg);
 }
 
 .tp-spike-round b {
@@ -4530,13 +4545,34 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   border-top: 1px solid var(--tp-line);
 }
 
+/* 列(名前 + セッターごとに決定・ミス)は、並べるセッターの数に合わせて画面から決める */
 .tp-spike-row {
   display: grid;
-  grid-template-columns: 5.2em minmax(0, 1fr) minmax(0, 0.8fr) 3.6em;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 4px 0;
   border-bottom: 1px solid var(--tp-line);
+}
+
+/* セッターの名前の見出し。スクロールしても上に残る */
+.tp-spike-legend {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -16px;
+  padding: calc(4px + env(safe-area-inset-top, 0px)) 16px 4px;
+  background: var(--tp-bg);
+}
+
+.tp-spike-legend-setter {
+  grid-column: span 2;
+  overflow: hidden;
+  border-bottom: 3px solid var(--tp-accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .tp-spike-row .tp-counter-name small {
@@ -4568,8 +4604,11 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 
 .tp-spike-kill,
 .tp-spike-miss {
-  height: 48px;
+  display: grid;
+  place-content: center;
+  height: 52px;
   padding: 0;
+  line-height: 1.05;
   border: 1px solid var(--tp-line);
   border-radius: 10px;
   font: inherit;
@@ -4593,6 +4632,22 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   color: var(--tp-fg);
 }
 
+.tp-spike-kill b,
+.tp-spike-miss b {
+  font-family: var(--tp-num);
+  font-size: 19px;
+}
+
+.tp-spike-kill small,
+.tp-spike-miss small {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tp-spike-miss b {
+  color: var(--tp-muted);
+}
+
 .tp-spike-kill:active:not(:disabled),
 .tp-spike-miss:active:not(:disabled) {
   transform: scale(0.95);
@@ -4607,23 +4662,6 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 .tp-spike-kill.tp-counter-flash {
   background: var(--tp-accent-soft);
   color: var(--tp-fg);
-}
-
-.tp-spike-score {
-  display: grid;
-  justify-items: end;
-  line-height: 1.15;
-}
-
-.tp-spike-score b {
-  font-family: var(--tp-num);
-  font-size: 16px;
-}
-
-.tp-spike-score small {
-  color: var(--tp-muted);
-  font-family: var(--tp-num);
-  font-size: 11px;
 }
 
 /* 下の帯:チーム戦・セッター戦 */
