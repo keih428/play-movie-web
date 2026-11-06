@@ -488,6 +488,24 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE drill_stat_drills ADD COLUMN spike_setup_at timestamptz
     `,
   },
+  {
+    id: "026_reception_stats",
+    // レセプションの集計(2026-11-06 から。主将の依頼)。メニューの種類 'reception' で、部員ごとに
+    // ABパスの数と受けた数を持つ。受ける人の選び方(共有)は reception_setup(JSON)。メニューを消すと一緒に消える。
+    sql: `
+      ALTER TABLE drill_stat_drills ADD COLUMN reception_setup text;
+      ALTER TABLE drill_stat_drills ADD COLUMN reception_setup_at timestamptz;
+
+      CREATE TABLE reception_stat_counts (
+        drill_id text NOT NULL REFERENCES drill_stat_drills (id) ON DELETE CASCADE,
+        member_id text NOT NULL REFERENCES members (id),
+        passes integer NOT NULL DEFAULT 0,
+        attempts integer NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (drill_id, member_id)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
