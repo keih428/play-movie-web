@@ -131,3 +131,27 @@ export function getErrorRate(counts: GradeCounts): number | null {
   const total = totalOf(counts);
   return total === 0 ? null : Math.round((counts["="] / total) * 1000) / 10;
 }
+
+// ---------- 集計のページのタブ(2026-11-06 から。サーブ・ディグ・スパイクを別のタブに) ----------
+
+export const STATS_TABS = ["serve", "dig", "spike"] as const;
+export type StatsTab = (typeof STATS_TABS)[number];
+
+export const STATS_TAB_LABELS: Record<StatsTab, string> = {
+  serve: "サーブ",
+  dig: "ディグ",
+  spike: "スパイク",
+};
+
+/** ?tab= からタブを決める(前の ?skill=dig のリンクはディグへ)。 */
+export function parseStatsTab(tab: unknown, skill?: unknown): StatsTab {
+  if (STATS_TABS.includes(tab as StatsTab)) {
+    return tab as StatsTab;
+  }
+  return skill === "dig" ? "dig" : "serve";
+}
+
+/** タブで作るメニューの種類(サーブ・ディグは同じメニューで両方数えられる)。 */
+export function drillKindOfTab(tab: StatsTab): DrillKind {
+  return tab === "spike" ? "spike" : "serve_dig";
+}

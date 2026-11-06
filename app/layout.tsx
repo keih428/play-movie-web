@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SiteHeaderNav } from "@/components/site-header-nav";
 import { getUnreadCounts } from "@/lib/server/portal-note-store";
+import { canRecordDrillStats } from "@/lib/domain/drill-stats";
+import { getMember } from "@/lib/server/portal-member-store";
 import { getSession } from "@/lib/server/portal-session";
 import "./globals.css";
 
@@ -29,7 +31,15 @@ export default async function RootLayout({
   const session = await getSession();
   // 上のバーの「ノート」に、新着のコメントの数を出す。ログインしていなければ、データベースには触らない。
   let unreadNotes = 0;
+  // マネージャー・アナリストは、上のバーの「トレ録」が「集計」になる(2026-11-06 から。ホームの下まで行かずに済むように)。
+  let showStats = false;
   if (session) {
+    try {
+      const member = await getMember(session.memberId);
+      showStats = member ? canRecordDrillStats({ title: member.title, isSystemAdmin: false }) : false;
+    } catch (error) {
+      console.error("[layout] member", error);
+    }
     try {
       unreadNotes = Object.values(await getUnreadCounts(session.memberId)).reduce((total, count) => total + count, 0);
     } catch (error) {
@@ -44,7 +54,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={FONT_STYLESHEET} precedence="default" />
         <SiteHeaderNav
-          portalUser={session ? { name: session.name, teamSlug: session.teamSlug } : null}
+          portalUser={session ? { name: session.name, teamSlug: session.teamSlug, showStats } : null}
           unreadNotes={unreadNotes}
         />
         <PullToRefresh />

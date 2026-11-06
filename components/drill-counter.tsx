@@ -33,6 +33,8 @@ type DrillCounterProps = {
   drillId: string;
   players: CounterPlayer[];
   initialCounts: DrillCount[];
+  // 一覧のタブから来たときのスキル(なければ、数えたものから決める)。
+  initialSkill?: DrillSkill | null;
   // 数えられる人(マネージャーなど)。そうでなければ、本数を見るだけ。
   canRecord: boolean;
 };
@@ -51,10 +53,19 @@ const pickedKey = (drillId: string) => `drill-players:${drillId}`;
  *   (2026-10-31 から。選んだ人は端末に覚える)
  * 画面の数はすぐ変え、サーバーの返事が来たらその数に合わせる(ほかの人が同時に数えていても、ずれない)。
  */
-export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRecord }: DrillCounterProps) {
+export function DrillCounter({
+  teamSlug,
+  drillId,
+  players,
+  initialCounts,
+  initialSkill,
+  canRecord,
+}: DrillCounterProps) {
   const router = useRouter();
-  const [skill, setSkill] = useState<DrillSkill>(() =>
-    initialCounts.some((entry) => entry.skill === "serve") || !initialCounts.length ? "serve" : "dig",
+  const [skill, setSkill] = useState<DrillSkill>(
+    () =>
+      initialSkill ??
+      (initialCounts.some((entry) => entry.skill === "serve") || !initialCounts.length ? "serve" : "dig"),
   );
   // 表示するポジション(いくつでも選べる。空なら全ポジション。2026-10-31 から)。
   const [positions, setPositions] = useState<MemberPosition[]>([]);
@@ -165,7 +176,7 @@ export function DrillCounter({ teamSlug, drillId, players, initialCounts, canRec
       method: "DELETE",
     });
     if (response.ok) {
-      router.push(buildTeamStatsPath(teamSlug));
+      router.push(`${buildTeamStatsPath(teamSlug)}?tab=${skill}`);
       router.refresh();
     } else {
       setDeleting(false);

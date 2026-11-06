@@ -17,12 +17,15 @@ type PageProps = {
     teamSlug: string;
     drillId: string;
   }>;
+  searchParams: Promise<{
+    skill?: string;
+  }>;
 };
 
 export const dynamic = "force-dynamic";
 
 /** 1つのメニューの集計。マネージャーなどは押して数え、ほかの人は本数を見る(2026-10-31 から。スパイクは 2026-11-06 から)。 */
-export default async function TeamDrillStatsPage({ params }: PageProps) {
+export default async function TeamDrillStatsPage({ params, searchParams }: PageProps) {
   const { teamSlug, drillId } = await params;
   if (!isPortalTeam(teamSlug)) {
     notFound();
@@ -33,6 +36,10 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
   if (!drill) {
     notFound();
   }
+  // 一覧のタブから来たら、そのスキルで数えはじめ、一覧の同じタブへ戻る(2026-11-06 から)。
+  const { skill: requestedSkill } = await searchParams;
+  const skill = requestedSkill === "dig" ? "dig" : requestedSkill === "serve" ? "serve" : null;
+  const backTab = drill.kind === "spike" ? "spike" : (skill ?? "serve");
   const players = (await listMembers(teamSlug))
     .filter((member) => member.position)
     .map(({ id, displayName, position, slot }) => ({ id, displayName, position, slot }));
@@ -40,7 +47,7 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
     <header className="tp-hero tp-hero-compact">
       <span className="tp-eyebrow">{formatNoteDate(drill.practiceDate)} の集計</span>
       <h1>{drill.name}</h1>
-      <Link className="tp-link tp-small" href={buildTeamStatsPath(teamSlug)}>
+      <Link className="tp-link tp-small" href={`${buildTeamStatsPath(teamSlug)}?tab=${backTab}`}>
         ← 集計の一覧へ
       </Link>
     </header>
@@ -86,6 +93,7 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
         drillId={drill.id}
         players={players}
         initialCounts={counts}
+        initialSkill={skill}
         canRecord={canRecordDrillStats(current)}
       />
     </>
