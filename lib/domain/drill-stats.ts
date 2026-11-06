@@ -37,12 +37,13 @@ export const DRILL_GRADE_LABELS: Record<DrillSkill, Record<DrillGrade, string>> 
 export const DRILL_NAME_MAX = 40;
 
 // メニューの種類(2026-11-06 から)。サーブ・ディグを評価ごとに数えるか、スパイクの決定と打数を数えるか。
-export const DRILL_KINDS = ["serve_dig", "spike"] as const;
+export const DRILL_KINDS = ["serve_dig", "spike", "reception"] as const;
 export type DrillKind = (typeof DRILL_KINDS)[number];
 
 export const DRILL_KIND_LABELS: Record<DrillKind, string> = {
   serve_dig: "サーブ・ディグ",
   spike: "スパイク",
+  reception: "レセプション",
 };
 
 export function isDrillKind(value: unknown): value is DrillKind {
@@ -134,24 +135,35 @@ export function getErrorRate(counts: GradeCounts): number | null {
 
 // ---------- 集計のページのタブ(2026-11-06 から。サーブ・ディグ・スパイクを別のタブに) ----------
 
-export const STATS_TABS = ["serve", "dig", "spike"] as const;
+export const STATS_TABS = ["spike", "reception", "serve", "dig"] as const;
 export type StatsTab = (typeof STATS_TABS)[number];
 
 export const STATS_TAB_LABELS: Record<StatsTab, string> = {
+  spike: "スパイク",
+  reception: "レセプション",
   serve: "サーブ",
   dig: "ディグ",
-  spike: "スパイク",
 };
 
-/** ?tab= からタブを決める(前の ?skill=dig のリンクはディグへ)。 */
+/**
+ * 集計のページに出すタブ。サーブ・ディグは集計を取らなくなったのでアーカイブ(主将の依頼、2026-11-06)。
+ * タブには出さないが、?tab=serve / ?tab=dig で開けば、これまでの記録を見られる(コードとデータは残す)。
+ */
+export const VISIBLE_STATS_TABS = ["spike", "reception"] as const satisfies readonly StatsTab[];
+
+export function isArchivedStatsTab(tab: StatsTab): boolean {
+  return !(VISIBLE_STATS_TABS as readonly StatsTab[]).includes(tab);
+}
+
+/** ?tab= からタブを決める(前の ?skill=dig のリンクはディグへ。何もなければスパイク)。 */
 export function parseStatsTab(tab: unknown, skill?: unknown): StatsTab {
   if (STATS_TABS.includes(tab as StatsTab)) {
     return tab as StatsTab;
   }
-  return skill === "dig" ? "dig" : "serve";
+  return skill === "dig" ? "dig" : skill === "serve" ? "serve" : "spike";
 }
 
 /** タブで作るメニューの種類(サーブ・ディグは同じメニューで両方数えられる)。 */
 export function drillKindOfTab(tab: StatsTab): DrillKind {
-  return tab === "spike" ? "spike" : "serve_dig";
+  return tab === "spike" || tab === "reception" ? tab : "serve_dig";
 }

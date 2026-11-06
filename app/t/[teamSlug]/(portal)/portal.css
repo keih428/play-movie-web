@@ -4722,3 +4722,8 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   font-size: 15px;
   text-decoration: none;
 }
+
+/* レセプションの集計(2026-11-06 から):名前 +「ABパス」「それ以外」 */
+.tp-reception-row {
+  grid-template-columns: 5.2em minmax(0, 1fr) minmax(0, 1fr);
+}

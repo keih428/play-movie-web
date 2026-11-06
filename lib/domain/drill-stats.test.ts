@@ -48,7 +48,9 @@ describe("集計のタブ", () => {
   it("?tab= からタブを決め、前の ?skill=dig のリンクはディグへ", () => {
     expect(parseStatsTab("spike")).toBe("spike");
     expect(parseStatsTab(undefined, "dig")).toBe("dig");
-    expect(parseStatsTab("other")).toBe("serve");
+    expect(parseStatsTab("other")).toBe("spike");
+    expect(parseStatsTab("reception")).toBe("reception");
+    expect(drillKindOfTab("reception")).toBe("reception");
     expect(drillKindOfTab("dig")).toBe("serve_dig");
     expect(drillKindOfTab("spike")).toBe("spike");
   });

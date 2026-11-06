@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DrillCounter } from "@/components/drill-counter";
+import { ReceptionCounter } from "@/components/reception-counter";
 import { SpikeCounter } from "@/components/spike-counter";
 import { canRecordDrillStats } from "@/lib/domain/drill-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
@@ -10,6 +11,7 @@ import { levelStatusOf, spikeRounds } from "@/lib/domain/spike-stats";
 import { getDrill, listDrillCounts } from "@/lib/server/portal-drill-stat-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
+import { getReceptionSetup, listReceptionCounts } from "@/lib/server/portal-reception-stat-store";
 import { getSpikeSetup, listLevelSessions, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 
 type PageProps = {
@@ -39,7 +41,7 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
   // 一覧のタブから来たら、そのスキルで数えはじめ、一覧の同じタブへ戻る(2026-11-06 から)。
   const { skill: requestedSkill } = await searchParams;
   const skill = requestedSkill === "dig" ? "dig" : requestedSkill === "serve" ? "serve" : null;
-  const backTab = drill.kind === "spike" ? "spike" : (skill ?? "serve");
+  const backTab = drill.kind === "serve_dig" ? (skill ?? "serve") : drill.kind;
   const players = (await listMembers(teamSlug))
     .filter((member) => member.position)
     .map(({ id, displayName, position, slot }) => ({ id, displayName, position, slot }));
@@ -52,6 +54,28 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
       </Link>
     </header>
   );
+
+  // レセプション(2026-11-06 から)。
+  if (drill.kind === "reception") {
+    const [receptionCounts, { setup, savedAt }] = await Promise.all([
+      listReceptionCounts(drill.id),
+      getReceptionSetup(drill.id),
+    ]);
+    return (
+      <>
+        {header}
+        <ReceptionCounter
+          teamSlug={teamSlug}
+          drillId={drill.id}
+          players={players}
+          initialCounts={receptionCounts}
+          initialSetup={setup}
+          initialSetupSavedAt={savedAt}
+          canRecord={canRecordDrillStats(current)}
+        />
+      </>
+    );
+  }
 
   // スパイク練習(2026-11-06 から)。
   if (drill.kind === "spike") {
