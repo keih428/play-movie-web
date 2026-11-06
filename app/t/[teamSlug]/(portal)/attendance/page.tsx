@@ -258,6 +258,7 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
                       </span>
                       <span className="tp-att-status">{report ? describe(report) : "○"}</span>
                       {report?.reason ? <span className="tp-att-reason">{report.reason}</span> : null}
+                      {report?.note ? <span className="tp-att-reason">備考:{report.note}</span> : null}
                     </li>
                   );
                 })}

@@ -3794,6 +3794,15 @@ button.tp-mystats-course {
   font-size: 22px;
 }
 
+/* 集計ページの見出しの右上に「⋯」を置く(2026-11-06 から)。見出しが「⋯」に重ならないよう右を空ける */
+.tp-hero-menu {
+  position: relative;
+}
+
+.tp-hero-menu:has(> .tp-cardmenu) > :is(.tp-eyebrow, h1) {
+  padding-right: 40px;
+}
+
 .tp-counter {
   --counter-columns: 4.4em minmax(0, 1fr);
 }

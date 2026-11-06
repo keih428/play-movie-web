@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   DRILL_GRADES,
@@ -12,7 +11,7 @@ import {
   type DrillSkill,
 } from "@/lib/domain/drill-stats";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
-import { buildTeamApiPath, buildTeamStatsPath } from "@/lib/domain/team";
+import { buildTeamApiPath } from "@/lib/domain/team";
 import { JaText } from "@/components/ja-text";
 
 // 列の見出しは幅がとても狭いので、改行の位置を決めておく(2026-11-03 から。「返ってき/た」と切れていたため)。
@@ -61,7 +60,6 @@ export function DrillCounter({
   initialSkill,
   canRecord,
 }: DrillCounterProps) {
-  const router = useRouter();
   const [skill, setSkill] = useState<DrillSkill>(
     () =>
       initialSkill ??
@@ -80,7 +78,6 @@ export function DrillCounter({
   const [picking, setPicking] = useState(false);
   // このメニューに出ている人。null は「全員」(空の配列は「だれもいない」。AB/C にだれもいないとき)。
   const [picked, setPicked] = useState<string[] | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // 前に選んだ人を読み出す(読めなくても、全員を出せばよい)。
   useEffect(() => {
@@ -165,23 +162,6 @@ export function DrillCounter({
     }
     feedback(keyOf(last.memberId, last.skill, last.grade));
     void send({ ...last, delta: last.delta === 1 ? -1 : 1 });
-  }
-
-  async function removeDrill() {
-    if (!window.confirm("このメニューと、数えた本数をすべて消します。元に戻せません。")) {
-      return;
-    }
-    setDeleting(true);
-    const response = await fetch(buildTeamApiPath(`/api/portal/drill-stats/${drillId}`, teamSlug), {
-      method: "DELETE",
-    });
-    if (response.ok) {
-      router.push(`${buildTeamStatsPath(teamSlug)}?tab=${skill}`);
-      router.refresh();
-    } else {
-      setDeleting(false);
-      setError("消せませんでした。");
-    }
   }
 
   const pickedSet = new Set(picked ?? []);
@@ -390,12 +370,6 @@ export function DrillCounter({
 
       {canRecord ? (
         <>
-          <div className="tp-actions tp-gap">
-            <button type="button" className="tp-button tp-ghost" disabled={deleting} onClick={() => void removeDrill()}>
-              {deleting ? "消しています…" : "このメニューを消す"}
-            </button>
-          </div>
-
           {/* 親指の届く下に固定する操作 */}
           <div className="tp-counter-dock">
             <button type="button" className="tp-counter-undo" disabled={!lastTap} onClick={undo}>

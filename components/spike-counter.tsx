@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
@@ -30,7 +29,7 @@ import {
   type SpikeSpot,
   type SpikeTeam,
 } from "@/lib/domain/spike-stats";
-import { buildTeamApiPath, buildTeamStatsPath } from "@/lib/domain/team";
+import { buildTeamApiPath } from "@/lib/domain/team";
 
 type CounterPlayer = {
   id: string;
@@ -100,7 +99,6 @@ export function SpikeCounter({
   levelStatus,
   canRecord,
 }: SpikeCounterProps) {
-  const router = useRouter();
   const apiPath = buildTeamApiPath(`/api/portal/drill-stats/${drillId}/spike`, teamSlug);
   const hitters = players.filter((player) => frontSpotOf(player.position) !== null);
   const setterCandidates = players.filter((player) => player.position === "S");
@@ -120,7 +118,6 @@ export function SpikeCounter({
   const [online, setOnline] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [deleting, setDeleting] = useState(false);
   // 送っている途中の本数(枠ごと)と、送った・返事が来たたびに増やす番号。取ってきた数を使ってよいかの判断に使う。
   const pending = useRef(new Map<string, Cell>());
   const mutations = useRef(0);
@@ -374,23 +371,6 @@ export function SpikeCounter({
     saveView({ team, setters: next });
   }
 
-  async function removeDrill() {
-    if (!window.confirm("このメニューと、数えた本数をすべて消します。元に戻せません。")) {
-      return;
-    }
-    setDeleting(true);
-    const response = await fetch(buildTeamApiPath(`/api/portal/drill-stats/${drillId}`, teamSlug), {
-      method: "DELETE",
-    });
-    if (response.ok) {
-      router.push(`${buildTeamStatsPath(teamSlug)}?tab=spike`);
-      router.refresh();
-    } else {
-      setDeleting(false);
-      setError("消せませんでした。");
-    }
-  }
-
   // ---- 人を選ぶ ----
   function chooseGroup(group: TrainingGroup | "all") {
     const inGroup = (player: CounterPlayer) => group === "all" || toTrainingGroup(player.slot) === group;
@@ -595,14 +575,6 @@ export function SpikeCounter({
           <p className="tp-muted">上の「トス」で、画面に並べるセッターを選んでください。</p>
         ) : null}
       </div>
-
-      {canRecord ? (
-        <div className="tp-actions tp-gap">
-          <button type="button" className="tp-button tp-ghost" disabled={deleting} onClick={() => void removeDrill()}>
-            {deleting ? "消しています…" : "このメニューを消す"}
-          </button>
-        </div>
-      ) : null}
 
       {/* 下に固定する帯:勝負の途中経過と「戻す」 */}
       <div className="tp-counter-dock tp-spike-dock">

@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import {
   ATTENDANCE_KINDS,
   ATTENDANCE_KIND_LABELS,
+  ATTENDANCE_NOTE_MAX,
   ATTENDANCE_REASON_MAX,
   WEEKDAY_LABELS,
   describeAttendanceTime,
@@ -46,6 +47,7 @@ export function AttendanceBulkForm({ practiceDates, eventLabels, myReports, team
   const [arriveAt, setArriveAt] = useState("");
   const [leaveAt, setLeaveAt] = useState("");
   const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,7 +76,7 @@ export function AttendanceBulkForm({ practiceDates, eventLabels, myReports, team
       const response = await fetch(buildTeamApiPath("/api/portal/attendance/bulk", teamSlug), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ dates, kind, arriveAt, leaveAt, reason }),
+        body: JSON.stringify({ dates, kind, arriveAt, leaveAt, reason, note }),
       });
       const payload = (await response.json().catch(() => null)) as
         | { count?: number; error?: string; slack?: SlackResult }
@@ -164,6 +166,17 @@ export function AttendanceBulkForm({ practiceDates, eventLabels, myReports, team
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             required
+          />
+        </div>
+
+        <div className="tp-field">
+          <label htmlFor="bulk-note">備考(任意)</label>
+          <textarea
+            id="bulk-note"
+            rows={2}
+            maxLength={ATTENDANCE_NOTE_MAX}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
           />
         </div>
 

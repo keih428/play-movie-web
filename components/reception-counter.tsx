@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
@@ -10,7 +9,7 @@ import {
   type ReceptionCount,
   type ReceptionSetup,
 } from "@/lib/domain/reception-stats";
-import { buildTeamApiPath, buildTeamStatsPath } from "@/lib/domain/team";
+import { buildTeamApiPath } from "@/lib/domain/team";
 
 type CounterPlayer = {
   id: string;
@@ -56,7 +55,6 @@ export function ReceptionCounter({
   initialSetupSavedAt,
   canRecord,
 }: ReceptionCounterProps) {
-  const router = useRouter();
   const apiPath = buildTeamApiPath(`/api/portal/drill-stats/${drillId}/reception`, teamSlug);
   const [counts, setCounts] = useState<Record<string, Cell>>(() => toCells(initialCounts));
   const [setup, setSetup] = useState<ReceptionSetup>(
@@ -69,7 +67,6 @@ export function ReceptionCounter({
   const [online, setOnline] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [deleting, setDeleting] = useState(false);
   // 送っている途中の数(人ごと)と、送った・返事が来たたびに増やす番号。取ってきた数を使ってよいかの判断に使う。
   const pending = useRef(new Map<string, Cell>());
   const mutations = useRef(0);
@@ -234,23 +231,6 @@ export function ReceptionCounter({
     void send({ ...last, delta: -1 });
   }
 
-  async function removeDrill() {
-    if (!window.confirm("このメニューと、数えた本数をすべて消します。元に戻せません。")) {
-      return;
-    }
-    setDeleting(true);
-    const response = await fetch(buildTeamApiPath(`/api/portal/drill-stats/${drillId}`, teamSlug), {
-      method: "DELETE",
-    });
-    if (response.ok) {
-      router.push(`${buildTeamStatsPath(teamSlug)}?tab=reception`);
-      router.refresh();
-    } else {
-      setDeleting(false);
-      setError("消せませんでした。");
-    }
-  }
-
   // ---- 人を選ぶ ----
   function chooseGroup(group: TrainingGroup | "all") {
     void saveSetup({
@@ -347,14 +327,6 @@ export function ReceptionCounter({
           <p className="tp-muted">受ける人がいません。{canRecord ? "「✎ 人」から選んでください。" : ""}</p>
         ) : null}
       </div>
-
-      {canRecord ? (
-        <div className="tp-actions tp-gap">
-          <button type="button" className="tp-button tp-ghost" disabled={deleting} onClick={() => void removeDrill()}>
-            {deleting ? "消しています…" : "このメニューを消す"}
-          </button>
-        </div>
-      ) : null}
 
       <div className="tp-counter-dock tp-spike-dock">
         {canRecord ? (

@@ -14,11 +14,12 @@ type ReportRow = {
   arrive_at: string | null;
   leave_at: string | null;
   reason: string;
+  note: string;
 };
 
 const REPORT_SELECT = `
   SELECT r.id, r.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, m.position, r.practice_date, r.kind,
-         r.arrive_at, r.leave_at, r.reason
+         r.arrive_at, r.leave_at, r.reason, r.note
   FROM attendance_reports r JOIN members m ON m.id = r.member_id`;
 
 function toReport(row: ReportRow): AttendanceReport {
@@ -32,6 +33,7 @@ function toReport(row: ReportRow): AttendanceReport {
     arriveAt: row.arrive_at,
     leaveAt: row.leave_at,
     reason: row.reason,
+    note: row.note,
   };
 }
 
@@ -69,14 +71,15 @@ export async function saveReport(input: {
   arriveAt: string | null;
   leaveAt: string | null;
   reason: string;
+  note: string;
 }): Promise<{ report: AttendanceReport; existed: boolean }> {
   const existed = Boolean(await getReport(input.memberId, input.practiceDate));
   await query(
-    `INSERT INTO attendance_reports (id, team_slug, member_id, practice_date, kind, arrive_at, leave_at, reason)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO attendance_reports (id, team_slug, member_id, practice_date, kind, arrive_at, leave_at, reason, note)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (member_id, practice_date) DO UPDATE SET
        kind = EXCLUDED.kind, arrive_at = EXCLUDED.arrive_at, leave_at = EXCLUDED.leave_at,
-       reason = EXCLUDED.reason, updated_at = now()`,
+       reason = EXCLUDED.reason, note = EXCLUDED.note, updated_at = now()`,
     [
       randomUUID(),
       input.teamSlug,
@@ -86,6 +89,7 @@ export async function saveReport(input: {
       input.arriveAt,
       input.leaveAt,
       input.reason,
+      input.note,
     ],
   );
   return { report: (await getReport(input.memberId, input.practiceDate))!, existed };
