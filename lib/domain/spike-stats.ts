@@ -280,3 +280,56 @@ export function levelStatusOf(sessions: LevelSession[], rounds = 10): LevelStatu
 export function nextLevel(level: ServeLevel, streak: number): ServeLevel {
   return streak >= 2 && level < 3 ? ((level + 1) as ServeLevel) : level;
 }
+
+// ---------- 組み方(メニューごとに共有する。2026-11-06 から) ----------
+
+/** 1つの画面に並べるセッターの数の上限(同時に何人かが上げるため)。 */
+export const SPIKE_MAX_SHOWN_SETTERS = 3;
+
+export type SpikeSetup = {
+  // 打つ人と、その人の攻撃チーム。入っていない人は出ない。
+  teams: Record<string, SpikeTeam>;
+  // このメニューでトスを上げるセッター。
+  setters: string[];
+  // サーブのレベルを変えた人(なければ、これまでの練習から決める)。
+  levels: Record<string, ServeLevel>;
+};
+
+const MAX_SETUP_ENTRIES = 200;
+
+/** 組み方を読む(形の合わないところは捨てる)。読めなければ null。 */
+export function parseSpikeSetup(value: unknown): SpikeSetup | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const raw = value as Partial<Record<keyof SpikeSetup, unknown>>;
+  const entries = (record: unknown) =>
+    record && typeof record === "object" && !Array.isArray(record)
+      ? Object.entries(record as Record<string, unknown>).slice(0, MAX_SETUP_ENTRIES)
+      : [];
+  const teams: Record<string, SpikeTeam> = {};
+  for (const [id, team] of entries(raw.teams)) {
+    if (team === "first" || team === "second") {
+      teams[id] = team;
+    }
+  }
+  const levels: Record<string, ServeLevel> = {};
+  for (const [id, level] of entries(raw.levels)) {
+    if (level === 1 || level === 2 || level === 3) {
+      levels[id] = level;
+    }
+  }
+  const setters = Array.isArray(raw.setters)
+    ? [...new Set(raw.setters.filter((id): id is string => typeof id === "string"))].slice(0, MAX_SETUP_ENTRIES)
+    : [];
+  return { teams, setters, levels };
+}
+
+/** 画面に並べるセッターを1人足す・外す。上限を超えたら、いちばん前に選んだ人を外す。 */
+export function toggleShownSetter(shown: string[], id: string, max = SPIKE_MAX_SHOWN_SETTERS): string[] {
+  if (shown.includes(id)) {
+    return shown.filter((entry) => entry !== id);
+  }
+  const next = [...shown, id];
+  return next.length > max ? next.slice(next.length - max) : next;
+}

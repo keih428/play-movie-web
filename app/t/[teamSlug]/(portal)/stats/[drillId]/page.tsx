@@ -10,7 +10,7 @@ import { levelStatusOf, spikeRounds } from "@/lib/domain/spike-stats";
 import { getDrill, listDrillCounts } from "@/lib/server/portal-drill-stat-store";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
-import { listLevelSessions, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
+import { getSpikeSetup, listLevelSessions, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 
 type PageProps = {
   params: Promise<{
@@ -48,9 +48,10 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
 
   // スパイク練習(2026-11-06 から)。
   if (drill.kind === "spike") {
-    const [spikeCounts, sessions] = await Promise.all([
+    const [spikeCounts, sessions, { setup, savedAt }] = await Promise.all([
       listSpikeCounts(drill.id),
       listLevelSessions(teamSlug, drill),
+      getSpikeSetup(drill.id),
     ]);
     // 昇格の条件(10本中5本)は、セッター2人のときの周数で見る。
     const { rounds } = spikeRounds(2);
@@ -65,6 +66,8 @@ export default async function TeamDrillStatsPage({ params }: PageProps) {
           drillId={drill.id}
           players={players}
           initialCounts={spikeCounts}
+          initialSetup={setup}
+          initialSetupSavedAt={savedAt}
           levelStatus={levelStatus}
           canRecord={canRecordDrillStats(current)}
         />

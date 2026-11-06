@@ -1,4 +1,12 @@
-import type { LevelSession, ServeLevel, SpikeCount, SpikeLevel, SpikeSpot } from "@/lib/domain/spike-stats";
+import {
+  parseSpikeSetup,
+  type LevelSession,
+  type ServeLevel,
+  type SpikeCount,
+  type SpikeLevel,
+  type SpikeSetup,
+  type SpikeSpot,
+} from "@/lib/domain/spike-stats";
 import { query } from "@/lib/server/portal-db";
 
 // スパイク練習の集計(2026-11-06 から)。メニュー(drill_stat_drills の kind = 'spike')ごとに、
@@ -98,4 +106,29 @@ export async function listLevelSessions(
     sessions.set(row.member_id, list);
   }
   return sessions;
+}
+
+/** メニューの組み方(共有)。まだ組んでいなければ setup は null。 */
+export async function getSpikeSetup(drillId: string): Promise<{ setup: SpikeSetup | null; savedAt: string | null }> {
+  const rows = await query<{ spike_setup: string | null; spike_setup_at: Date | string | null }>(
+    "SELECT spike_setup, spike_setup_at FROM drill_stat_drills WHERE id = $1",
+    [drillId],
+  );
+  const row = rows[0];
+  let setup: SpikeSetup | null = null;
+  try {
+    setup = row?.spike_setup ? parseSpikeSetup(JSON.parse(row.spike_setup)) : null;
+  } catch {
+    setup = null;
+  }
+  return { setup, savedAt: row?.spike_setup_at ? new Date(row.spike_setup_at).toISOString() : null };
+}
+
+/** 組み方を保存する(あとから保存したものが勝つ)。保存した時刻を返す。 */
+export async function saveSpikeSetup(drillId: string, setup: SpikeSetup): Promise<string> {
+  const rows = await query<{ spike_setup_at: Date | string }>(
+    `UPDATE drill_stat_drills SET spike_setup = $2, spike_setup_at = now() WHERE id = $1 RETURNING spike_setup_at`,
+    [drillId, JSON.stringify(setup)],
+  );
+  return new Date(rows[0]?.spike_setup_at ?? Date.now()).toISOString();
 }
