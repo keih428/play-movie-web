@@ -14,6 +14,7 @@ import {
   buildTeamRootPath,
   buildTeamMyPlaysPath,
   buildTeamSchedulePath,
+  buildTeamStatsPath,
   buildTeamStaffSettingsPath,
   buildTeamTrainingPath,
   buildTeamVideosPath,
@@ -27,7 +28,8 @@ function getTeamSlugFromParams(params: ReturnType<typeof useParams>): string | u
 }
 
 type SiteHeaderNavProps = {
-  portalUser: { name: string; teamSlug: string } | null;
+  // showStats:マネージャー・アナリスト。上のバーの「トレ録」を「集計」にする。
+  portalUser: { name: string; teamSlug: string; showStats?: boolean } | null;
   // 自分のノートに付いた、まだ読んでいないコメントの数(ログインしていなければ 0)。
   unreadNotes: number;
 };
@@ -67,10 +69,12 @@ function TeamHeader({
   teamSlug,
   loggedIn,
   unreadNotes,
+  showStats,
 }: {
   teamSlug: string;
   loggedIn: boolean;
   unreadNotes: number;
+  showStats: boolean;
 }) {
   const pathname = usePathname();
   const root = buildTeamRootPath(teamSlug);
@@ -81,7 +85,9 @@ function TeamHeader({
   const mainLinks = loggedIn
     ? [
         { href: buildTeamHomePath(teamSlug), label: "ホーム" },
-        { href: buildTeamTrainingPath(teamSlug), label: "トレ録" },
+        showStats
+          ? { href: buildTeamStatsPath(teamSlug), label: "集計" }
+          : { href: buildTeamTrainingPath(teamSlug), label: "トレ録" },
         { href: buildTeamNotesPath(teamSlug), label: "ノート", badge: unreadNotes },
         { href: buildTeamAttendancePath(teamSlug), label: "出欠" },
         { href: buildTeamSchedulePath(teamSlug), label: "予定" },
@@ -148,7 +154,14 @@ export function SiteHeaderNav({ portalUser, unreadNotes }: SiteHeaderNavProps) {
       return null;
     }
     const loggedIn = portalUser?.teamSlug === teamSlug;
-    return <TeamHeader teamSlug={teamSlug} loggedIn={loggedIn} unreadNotes={loggedIn ? unreadNotes : 0} />;
+    return (
+      <TeamHeader
+        teamSlug={teamSlug}
+        loggedIn={loggedIn}
+        unreadNotes={loggedIn ? unreadNotes : 0}
+        showStats={loggedIn && Boolean(portalUser?.showStats)}
+      />
+    );
   }
 
   // 部のチーム以外(ほかのチームの試合ビューア、チームを選ぶ前のページ)は、これまでどおり。
