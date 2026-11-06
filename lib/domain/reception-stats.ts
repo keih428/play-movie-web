@@ -19,9 +19,9 @@ export type ReceptionSetup = {
   members: string[];
 };
 
-/** 最初に選ぶ受ける人:サーブレシーブをするポジション(OH・リベロ)。 */
+/** 最初に選ぶ受ける人:サーブレシーブをするポジション(OH・OP・リベロ。OP は 2026-11-07 から)。 */
 export function isDefaultReceiver(position: MemberPosition | null): boolean {
-  return position === "OH" || position === "Li";
+  return position === "OH" || position === "OP" || position === "Li";
 }
 
 export function formatPassRate(passes: number, attempts: number): string {

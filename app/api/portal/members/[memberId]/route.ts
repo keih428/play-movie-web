@@ -24,9 +24,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { memberId } = await context.params;
 
-  // システム担当でない人(ポジションのリーダー)は、自分のまとまりの部員の「枠」だけを直せる(2026-10-31 から)。
+  // システム担当でない人(ポジションのリーダー)は、自分のまとまりの部員の「枠」と「サーブのレベル」だけを編集できる
+  // (枠は 2026-10-31、サーブのレベルは 2026-11-07 から)。
   if (!canManageSite(current)) {
-    const onlySlot = Object.keys(input.patch).every((key) => key === "slot");
+    const onlySlot = Object.keys(input.patch).every((key) => key === "slot" || key === "serveLevel");
     const target = onlySlot ? await getMember(memberId) : null;
     if (!target || target.teamSlug !== teamSlug || !canEditMemberSlot(current, target)) {
       return NextResponse.json({ error: "名簿を変える権限がありません。" }, { status: 403 });

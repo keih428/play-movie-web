@@ -4069,6 +4069,42 @@ body:has(.tp-counter) .team-header {
   background: var(--tp-accent-soft);
 }
 
+/* スパイクの「打つ人」:1人1行で、↑↓ で 前半・後半・出ない を移す(2026-11-07 から) */
+.tp-counter-pick.tp-spike-move {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+
+.tp-spike-move-list {
+  grid-template-columns: repeat(auto-fill, minmax(13em, 1fr));
+}
+
+.tp-spike-move > span {
+  display: grid;
+  min-width: 0;
+}
+
+.tp-spike-move button {
+  width: 44px;
+  height: 40px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tp-spike-move button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .tp-counter-pick b {
   font-size: 15px;
 }
@@ -4623,16 +4659,6 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   font: inherit;
   font-size: 11px;
   font-weight: 700;
-  cursor: pointer;
-}
-
-.tp-spike-level:disabled {
-  cursor: default;
-}
-
-.tp-spike-promote {
-  border-color: var(--tp-ok);
-  color: var(--tp-ok);
 }
 
 .tp-spike-kill,

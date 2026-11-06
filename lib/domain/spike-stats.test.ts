@@ -1,14 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSpikeRate,
-  levelStatusOf,
-  meetsPromotion,
-  nextLevel,
   normalizeSpikeLevel,
   parseSpikeSetup,
   rankSetters,
   rankSpikers,
-  spikeRounds,
   splitSpikeTeams,
   toggleShownSetter,
   type SpikeCount,
@@ -27,11 +23,6 @@ describe("スパイク練習の集計", () => {
     expect(normalizeSpikeLevel("OP", 4)).toBeNull();
     expect(normalizeSpikeLevel("MB", 3)).toBe(0);
     expect(normalizeSpikeLevel("pipe", undefined)).toBe(0);
-  });
-
-  it("セッター2人なら10周・5周ごと、3人なら12周・4周ごとに交代", () => {
-    expect(spikeRounds(2)).toEqual({ rounds: 10, rotation: 5 });
-    expect(spikeRounds(3)).toEqual({ rounds: 12, rotation: 4 });
   });
 
   it("スパイカーの順位は位置・レベルごと。規定打数に届かない人は対象外で下に", () => {
@@ -76,27 +67,6 @@ describe("スパイク練習の集計", () => {
     expect(ranking.bySpot.get("pipe")?.get("sA")).toEqual({ kills: 20, attempts: 35 });
   });
 
-  it("昇格は10本中5本決定を2回連続で", () => {
-    expect(meetsPromotion(5, 10)).toBe(true);
-    expect(meetsPromotion(4, 10)).toBe(false);
-    expect(meetsPromotion(5, 9)).toBe(false);
-    expect(meetsPromotion(6, 12, 12)).toBe(true);
-    const status = levelStatusOf([
-      { level: 1, kills: 6, attempts: 10 },
-      { level: 1, kills: 5, attempts: 10 },
-      { level: 1, kills: 2, attempts: 10 },
-    ]);
-    expect(status).toEqual({ level: 1, streak: 2 });
-    expect(nextLevel(status!.level, status!.streak)).toBe(2);
-    expect(nextLevel(3, 5)).toBe(3);
-    expect(levelStatusOf([])).toBeNull();
-    // レベルが変わったら、そこで数え直し。
-    expect(levelStatusOf([{ level: 2, kills: 5, attempts: 10 }, { level: 1, kills: 5, attempts: 10 }])).toEqual({
-      level: 2,
-      streak: 1,
-    });
-  });
-
   it("前半・後半はポジションが偏らないように分ける(セッター・リベロは入れない)", () => {
     const teams = splitSpikeTeams([
       { id: "oh1", position: "OH" },
@@ -125,9 +95,9 @@ describe("スパイク練習の組み方(共有)", () => {
       parseSpikeSetup({
         teams: { a: "first", b: "second", c: "third" },
         setters: ["s1", "s1", 3, "s2"],
-        levels: { a: 2, b: 5 },
+        levels: { a: 2 },
       }),
-    ).toEqual({ teams: { a: "first", b: "second" }, setters: ["s1", "s2"], levels: { a: 2 } });
+    ).toEqual({ teams: { a: "first", b: "second" }, setters: ["s1", "s2"] });
   });
 
   it("画面に並べるセッターは3人まで。4人目を足すと、いちばん前に選んだ人が外れる", () => {

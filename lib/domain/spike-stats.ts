@@ -3,6 +3,7 @@ import type { MemberPosition } from "@/lib/domain/portal";
 // ---------- スパイク練習の集計(2026-11-06 から) ----------
 // 決まりは vault の「ドリル_スパイク練習.pdf」(主将の資料)。選手ごと・トスを上げたセッターごとに「決定」と「打数」を数え、
 // 月ごとにスパイカーとセッターの順位を出す。前衛 OH・OP はサーブを受けてから打つので、サーブのレベル別に分ける。
+// レベルは名簿で1人ずつ決める(members.serve_level。全員 Lv1 から。2026-11-07 から。それまでは練習の成績で自動で上げていた)。
 
 export const SPIKE_SPOTS = ["OH", "OP", "MB", "pipe", "shoot", "high_left", "high_right"] as const;
 export type SpikeSpot = (typeof SPIKE_SPOTS)[number];
@@ -83,11 +84,6 @@ export function spotFor(mode: SpikeMode, front: FrontSpot | null): SpikeSpot | n
   return mode === "front" ? front : mode;
 }
 
-/** 周数と、セッターの交代(何周ごと)。セッター2人なら10周・5周ごと、3人なら12周・4周ごと。 */
-export function spikeRounds(setterCount: number): { rounds: number; rotation: number } {
-  return setterCount >= 3 ? { rounds: 12, rotation: 4 } : { rounds: 10, rotation: 5 };
-}
-
 export function spikeRate(kills: number, attempts: number): number | null {
   return attempts === 0 ? null : Math.round((kills / attempts) * 1000) / 10;
 }
@@ -95,11 +91,6 @@ export function spikeRate(kills: number, attempts: number): number | null {
 export function formatSpikeRate(kills: number, attempts: number): string {
   const rate = spikeRate(kills, attempts);
   return rate === null ? "—" : `${rate.toFixed(1)}%`;
-}
-
-/** 1回の練習で、そのレベルの昇格の条件を満たしたか(10本中5本、セッター3人なら12本中6本 = 半分以上の決定)。 */
-export function meetsPromotion(kills: number, attempts: number, rounds = 10): boolean {
-  return attempts >= rounds && kills * 2 >= attempts;
 }
 
 export type KillsAttempts = { kills: number; attempts: number };
@@ -246,41 +237,6 @@ export function splitSpikeTeams(players: { id: string; position: MemberPosition 
   return teams;
 }
 
-// ---------- サーブのレベル(昇格) ----------
-
-export type LevelSession = { level: ServeLevel; kills: number; attempts: number };
-
-export type LevelStatus = {
-  // いちばん最近の練習のレベル。
-  level: ServeLevel;
-  // そのレベルで、最近から続けて昇格の条件を満たした練習の数。
-  streak: number;
-};
-
-/**
- * これまでの練習(新しい順。1回の練習・1つのレベルごとの合計)から、いまのレベルと、条件を満たした回数を出す。
- * 「10本中5本決定を2回連続」で次のレベルへ。練習がなければ null(Lv1 から)。
- */
-export function levelStatusOf(sessions: LevelSession[], rounds = 10): LevelStatus | null {
-  const latest = sessions[0];
-  if (!latest) {
-    return null;
-  }
-  let streak = 0;
-  for (const session of sessions) {
-    if (session.level !== latest.level || !meetsPromotion(session.kills, session.attempts, rounds)) {
-      break;
-    }
-    streak += 1;
-  }
-  return { level: latest.level, streak };
-}
-
-/** 昇格の条件を2回続けて満たしたら、次のレベル(Lv3 はそのまま)。 */
-export function nextLevel(level: ServeLevel, streak: number): ServeLevel {
-  return streak >= 2 && level < 3 ? ((level + 1) as ServeLevel) : level;
-}
-
 // ---------- 組み方(メニューごとに共有する。2026-11-06 から) ----------
 
 /** 1つの画面に並べるセッターの数の上限(同時に何人かが上げるため)。 */
@@ -291,8 +247,6 @@ export type SpikeSetup = {
   teams: Record<string, SpikeTeam>;
   // このメニューでトスを上げるセッター。
   setters: string[];
-  // サーブのレベルを変えた人(なければ、これまでの練習から決める)。
-  levels: Record<string, ServeLevel>;
 };
 
 const MAX_SETUP_ENTRIES = 200;
@@ -313,16 +267,10 @@ export function parseSpikeSetup(value: unknown): SpikeSetup | null {
       teams[id] = team;
     }
   }
-  const levels: Record<string, ServeLevel> = {};
-  for (const [id, level] of entries(raw.levels)) {
-    if (level === 1 || level === 2 || level === 3) {
-      levels[id] = level;
-    }
-  }
   const setters = Array.isArray(raw.setters)
     ? [...new Set(raw.setters.filter((id): id is string => typeof id === "string"))].slice(0, MAX_SETUP_ENTRIES)
     : [];
-  return { teams, setters, levels };
+  return { teams, setters };
 }
 
 /** 画面に並べるセッターを1人足す・外す。上限を超えたら、いちばん前に選んだ人を外す。 */
