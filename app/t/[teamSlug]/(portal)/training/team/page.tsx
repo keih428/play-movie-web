@@ -118,6 +118,11 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
   const names = new Map(members.map((member) => [member.id, member.displayName]));
   const recordedIds = new Set(sessions.filter((session) => inGroup(session.memberId)).map((session) => session.memberId));
   const comments = sessions.filter((session) => (session.memo || session.request) && inGroup(session.memberId));
+  // この週の記録(新しい日から。同じ日は名簿の順)。
+  const order = new Map(members.map((member, index) => [member.id, index]));
+  const groupSessions = sessions
+    .filter((session) => inGroup(session.memberId) && session.exercises.length > 0)
+    .sort((a, b) => b.date.localeCompare(a.date) || (order.get(a.memberId) ?? 0) - (order.get(b.memberId) ?? 0));
   // 期間・週・まとまりを切り替えるリンク(ほかの2つはそのまま)。
   const hrefWith = (next: { menu?: string; week?: string; group?: RecordsGroup }) => {
     const params = new URLSearchParams({ menu: next.menu ?? program.key });
@@ -270,6 +275,40 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* 1回の記録ごとに、やった種目と重さ・回数・セット(2026-11-07 から。けーいちの依頼) */}
+      <section className="tp-section">
+        <h2>この週の記録</h2>
+        {groupSessions.length === 0 ? <p className="tp-small tp-muted">この週はまだありません。</p> : null}
+        <ol className="tp-log-history">
+          {groupSessions.map((session) => (
+            <li key={`${session.memberId}-${session.date}`} className="tp-card">
+              <div className="tp-dayhead">
+                <span className="tp-when">{formatNoteDate(session.date)}</span>
+                <Link
+                  className="tp-what tp-link"
+                  href={
+                    session.memberId === current.id
+                      ? buildTeamTrainingPath(teamSlug)
+                      : buildTeamMemberTrainingPath(teamSlug, session.memberId)
+                  }
+                >
+                  {names.get(session.memberId) ?? "—"}
+                </Link>
+              </div>
+              <ul className="tp-log-lines">
+                {session.exercises.map((exercise, index) => (
+                  <li key={index}>
+                    {exercise.name}:
+                    {summarizeSets(exercise.sets, weightModeOf(exercise.name), exerciseUnit(exercise))}
+                  </li>
+                ))}
+                {session.bodyWeightKg !== null ? <li>体重:{session.bodyWeightKg}kg</li> : null}
+              </ul>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <section className="tp-section">
