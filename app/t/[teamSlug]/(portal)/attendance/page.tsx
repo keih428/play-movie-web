@@ -238,11 +238,10 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
             この日は、部のカレンダーに予定がありません(オフになった、など)。出してあった連絡は、そのまま残してあります。
           </p>
         ) : null}
-        {canManageSite(current) ? (
+        {/* カレンダーから取れているときの説明は出さない(けーいちの依頼、2026-11-08)。読めないときだけ、システム担当に知らせる。 */}
+        {canManageSite(current) && schedule.source !== "calendar" ? (
           <p className="tp-small tp-muted">
-            {schedule.source === "calendar"
-              ? "練習日は、部の Google カレンダーから取っています(「オフ」以外の予定がある日。カレンダーを編集してから、サイトに出るまで長くて1分。Google 側の反映に、さらに時間がかかることがあります)。"
-              : `練習日は、曜日の決め打ち(日・火・木・土)です。${schedule.error ? `カレンダーを読めませんでした:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
+            {`練習日は、曜日の決め打ち(日・火・木・土)です。${schedule.error ? `カレンダーを読めませんでした:${schedule.error}` : "PRACTICE_CALENDAR_ICS_URL が入っていません。"}`}
           </p>
         ) : null}
 
