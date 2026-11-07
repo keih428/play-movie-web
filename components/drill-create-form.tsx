@@ -20,7 +20,7 @@ const NAME_SUGGESTIONS: Record<StatsTab, string[]> = {
   reception: ["レセプション"],
 };
 
-/** 集計するメニューを作る(マネージャーなど)。作ったら、そのメニューの数える画面へ移る。 */
+/** 集計するメニューを作る(スタッフ)。作ったら、そのメニューの数える画面へ移る。 */
 export function DrillCreateForm({ teamSlug, today, tab }: DrillCreateFormProps) {
   const router = useRouter();
   const [date, setDate] = useState(today);

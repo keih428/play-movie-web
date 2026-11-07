@@ -26,7 +26,7 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
-/** 1つのメニューの集計。マネージャーなどは押して数え、ほかの人は本数を見る(2026-10-31 から。スパイクは 2026-11-06 から)。 */
+/** 1つのメニューの集計。スタッフは押して数え、ほかの人は本数を見る(2026-10-31 から。スパイクは 2026-11-06 から)。 */
 export default async function TeamDrillStatsPage({ params, searchParams }: PageProps) {
   const { teamSlug, drillId } = await params;
   if (!isPortalTeam(teamSlug)) {

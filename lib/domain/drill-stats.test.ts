@@ -12,14 +12,11 @@ import {
 } from "@/lib/domain/drill-stats";
 
 describe("マネージャーの集計", () => {
-  it("集計を付けられるのは、マネージャー・アナリストと、システム担当(トレーニング担当は付けられない)", () => {
-    const base = { title: null, isSystemAdmin: false };
-    expect(canRecordDrillStats({ ...base, title: "マネージャー" })).toBe(true);
-    expect(canRecordDrillStats({ ...base, title: "主務・マネージャー" })).toBe(true);
-    expect(canRecordDrillStats({ ...base, title: "アナリスト" })).toBe(true);
-    expect(canRecordDrillStats({ ...base, isSystemAdmin: true })).toBe(true);
-    expect(canRecordDrillStats({ ...base, title: "コーチ" })).toBe(false);
-    expect(canRecordDrillStats(base)).toBe(false);
+  it("集計を付けられるのは、スタッフ(ポジションのない人)全員と、システム担当", () => {
+    const player = { position: "OH" as const, isSystemAdmin: false };
+    expect(canRecordDrillStats({ position: null, isSystemAdmin: false })).toBe(true);
+    expect(canRecordDrillStats({ ...player, isSystemAdmin: true })).toBe(true);
+    expect(canRecordDrillStats(player)).toBe(false);
   });
 
   it("本数を部員・スキル・評価の表にまとめ、割合を出す", () => {

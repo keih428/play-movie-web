@@ -19,7 +19,7 @@ async function getContext(request: NextRequest, context: RouteContext) {
   }
   if (!canRecordDrillStats(current)) {
     return {
-      error: NextResponse.json({ error: "集計を付けられるのは、マネージャー・アナリストなどだけです。" }, { status: 403 }),
+      error: NextResponse.json({ error: "集計を付けられるのは、スタッフだけです。" }, { status: 403 }),
     };
   }
   const { drillId } = await context.params;
