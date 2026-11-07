@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { eventKindClass, type PracticeEvent } from "@/lib/domain/calendar";
+import { eventKindClass, googleMapsUrl, type PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { JaText } from "@/components/ja-text";
 
@@ -25,6 +25,21 @@ export function describeEventTime(event: PracticeEvent): string {
   return event.start ? `${event.start}〜${event.end ?? ""}` : "終日";
 }
 
+/** 予定の場所。押すと Google マップでその場所が開く。 */
+export function PlaceLink({ location, className }: { location: string; className?: string }) {
+  return (
+    <a
+      className={["tp-place-link", className].filter(Boolean).join(" ")}
+      href={googleMapsUrl(location)}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${location}を Google マップで開く`}
+    >
+      {location}
+    </a>
+  );
+}
+
 /** 予定1つの詳細(予定名・時間・場所・説明)。詳細のパネルと週の表示で使う。 */
 export function EventDetail({ event, defaultLocation }: { event: PracticeEvent; defaultLocation: string }) {
   return (
@@ -34,7 +49,7 @@ export function EventDetail({ event, defaultLocation }: { event: PracticeEvent; 
       </b>
       <span className="tp-event-meta">
         <span className="tp-event-time">{describeEventTime(event)}</span>
-        <span>{event.location ?? defaultLocation}</span>
+        <PlaceLink location={event.location ?? defaultLocation} />
       </span>
       {event.description ? <p className="tp-event-desc">{event.description}</p> : null}
     </div>

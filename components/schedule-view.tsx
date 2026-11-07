@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { EventDetail, ScheduleCalendar } from "@/components/schedule-calendar";
+import { EventDetail, PlaceLink, ScheduleCalendar } from "@/components/schedule-calendar";
 import { DEFAULT_PRACTICE_LOCATION, eventKindClass, type PracticeEvent } from "@/lib/domain/calendar";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { getPracticeSchedule } from "@/lib/server/portal-calendar";
@@ -314,7 +314,7 @@ export async function ScheduleView({ teamSlug, basePath, query, showSource, eyeb
                     <JaText>{event.title}</JaText>
                   </b>
                   <span className="tp-cal-time">{describeTime(event)}</span>
-                  <span className="tp-cal-place">{event.location ?? DEFAULT_PRACTICE_LOCATION}</span>
+                  <PlaceLink className="tp-cal-place" location={event.location ?? DEFAULT_PRACTICE_LOCATION} />
                   {event.description ? <span className="tp-cal-desc">{event.description}</span> : null}
                 </li>
               )),
