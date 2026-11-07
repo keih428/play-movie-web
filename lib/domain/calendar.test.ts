@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEventKind, isOffEvent, parseCalendarEvents } from "./calendar";
+import { getEventKind, googleMapsUrl, isOffEvent, parseCalendarEvents } from "./calendar";
 
 const ICS = [
   "BEGIN:VCALENDAR",
@@ -76,5 +76,19 @@ describe("getEventKind(予定表の色分け)", () => {
     expect(getEventKind({ title: "作戦会議" })).toBe("practice");
     expect(getEventKind({ title: "戦術ミーティング" })).toBe("practice");
     expect(getEventKind({ title: "ミーティング(作戦)" })).toBe("practice");
+  });
+});
+
+describe("googleMapsUrl", () => {
+  it("場所を Google マップの検索 URL にする", () => {
+    expect(googleMapsUrl("駒沢オリンピック公園 屋内球技場")).toBe(
+      "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("駒沢オリンピック公園 屋内球技場"),
+    );
+  });
+
+  it("場所が「駒場」なら、駒場キャンパスで探す", () => {
+    expect(googleMapsUrl("駒場")).toBe(
+      "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("東京大学 駒場キャンパス"),
+    );
   });
 });

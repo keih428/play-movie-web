@@ -41,6 +41,15 @@ export function toPlainDescription(value: string | null | undefined): string | n
 // 場所が書かれていない練習は、駒場でやる。
 export const DEFAULT_PRACTICE_LOCATION = "駒場";
 
+// 「駒場」だけで地図を探すと駒場の町が出るので、地図では大学の場所で探す。
+const DEFAULT_PRACTICE_MAP_QUERY = "東京大学 駒場キャンパス";
+
+/** 予定の場所を Google マップで開く URL。スマホでは Google マップのアプリが開く。 */
+export function googleMapsUrl(location: string): string {
+  const query = location === DEFAULT_PRACTICE_LOCATION ? DEFAULT_PRACTICE_MAP_QUERY : location;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 const TIME_ZONE = "Asia/Tokyo";
 const MAX_OCCURRENCES = 5000;
 

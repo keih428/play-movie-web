@@ -2411,6 +2411,14 @@ body:has(.tp[data-mode="tango"]) {
   font-size: 13px;
 }
 
+/* 予定の場所(押すと Google マップが開く)。 */
+a.tp-place-link {
+  color: var(--tp-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
 .tp-event-time {
   font-family: var(--tp-num);
 }
