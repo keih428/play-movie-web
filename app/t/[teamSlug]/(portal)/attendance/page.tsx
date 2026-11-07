@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AttendanceBulkForm } from "@/components/attendance-bulk-form";
 import { AttendanceForm } from "@/components/attendance-form";
 import {
+  ATTENDANCE_KINDS,
   ATTENDANCE_KIND_LABELS,
   ATTENDANCE_TALLY_START,
   EMPTY_TALLY,
@@ -97,6 +98,12 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
     countByDate.set(report.practiceDate, (countByDate.get(report.practiceDate) ?? 0) + 1);
   }
 
+  // その日に連絡した人を、連絡の種類ごとに(名簿の順で)。ポジション別・ABC別のタブの上に出す(2026-11-08 から)。
+  const contacted = ATTENDANCE_KINDS.map((kind) => ({
+    kind,
+    members: members.filter((member) => dayReports.get(member.id)?.kind === kind),
+  })).filter((row) => row.members.length > 0);
+
   const players = members.filter((member) => member.position);
   const groups: { label: string; members: Member[] }[] = [
     ...(groupBy === "slot"
@@ -184,6 +191,25 @@ export default async function TeamAttendancePage({ params, searchParams }: PageP
             </Link>
           ))}
         </nav>
+
+        <article className="tp-card tp-contacted">
+          <div className="tp-dayhead">
+            <span className="tp-when">連絡した人</span>
+            <span className="tp-what">{contacted.reduce((sum, row) => sum + row.members.length, 0)}人</span>
+          </div>
+          {contacted.length > 0 ? (
+            <ul className="tp-contacted-list">
+              {contacted.map((row) => (
+                <li key={row.kind} className={row.kind === "absent" ? "tp-att-absent" : "tp-att-partial"}>
+                  <span className="tp-att-status">{ATTENDANCE_KIND_LABELS[row.kind]}</span>
+                  <span>{row.members.map((member) => member.displayName).join("、")}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="tp-small tp-muted">この日の連絡は、まだありません。</p>
+          )}
+        </article>
 
         <nav className="tp-seg tp-days" aria-label="出欠の並べ方">
           <Link
