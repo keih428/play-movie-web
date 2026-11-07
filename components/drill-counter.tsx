@@ -34,7 +34,7 @@ type DrillCounterProps = {
   initialCounts: DrillCount[];
   // 一覧のタブから来たときのスキル(なければ、数えたものから決める)。
   initialSkill?: DrillSkill | null;
-  // 数えられる人(マネージャーなど)。そうでなければ、本数を見るだけ。
+  // 数えられる人(スタッフ)。そうでなければ、本数を見るだけ。
   canRecord: boolean;
 };
 

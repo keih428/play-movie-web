@@ -31,12 +31,12 @@ export default async function RootLayout({
   const session = await getSession();
   // 上のバーの「ノート」に、新着のコメントの数を出す。ログインしていなければ、データベースには触らない。
   let unreadNotes = 0;
-  // マネージャー・アナリストは、上のバーの「トレ録」が「集計」になる(2026-11-06 から。ホームの下まで行かずに済むように)。
+  // スタッフは、上のバーの「トレ録」が「集計」になる(2026-11-06 から。ホームの下まで行かずに済むように。2026-11-08 にマネージャー・アナリストからスタッフ全員に)。
   let showStats = false;
   if (session) {
     try {
       const member = await getMember(session.memberId);
-      showStats = member ? canRecordDrillStats({ title: member.title, isSystemAdmin: false }) : false;
+      showStats = member ? canRecordDrillStats({ position: member.position, isSystemAdmin: false }) : false;
     } catch (error) {
       console.error("[layout] member", error);
     }

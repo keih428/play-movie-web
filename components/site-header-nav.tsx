@@ -28,7 +28,7 @@ function getTeamSlugFromParams(params: ReturnType<typeof useParams>): string | u
 }
 
 type SiteHeaderNavProps = {
-  // showStats:マネージャー・アナリスト。上のバーの「トレ録」を「集計」にする。
+  // showStats:スタッフ。上のバーの「トレ録」を「集計」にする。
   portalUser: { name: string; teamSlug: string; showStats?: boolean } | null;
   // 自分のノートに付いた、まだ読んでいないコメントの数(ログインしていなければ 0)。
   unreadNotes: number;

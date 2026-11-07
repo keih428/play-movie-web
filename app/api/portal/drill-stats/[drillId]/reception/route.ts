@@ -18,7 +18,7 @@ type RouteContext = {
   }>;
 };
 
-// record: true なら、数えられる人(マネージャーなど)だけ。
+// record: true なら、数えられる人(スタッフ)だけ。
 async function getContext(request: NextRequest, context: RouteContext, record: boolean) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
@@ -27,7 +27,7 @@ async function getContext(request: NextRequest, context: RouteContext, record: b
   }
   if (record && !canRecordDrillStats(current)) {
     return {
-      error: NextResponse.json({ error: "集計を付けられるのは、マネージャー・アナリストなどだけです。" }, { status: 403 }),
+      error: NextResponse.json({ error: "集計を付けられるのは、スタッフだけです。" }, { status: 403 }),
     };
   }
   const { drillId } = await context.params;

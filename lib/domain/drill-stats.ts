@@ -91,17 +91,12 @@ export function normalizeDrillName(value: unknown): string | null {
   return name && name.length <= DRILL_NAME_MAX ? name : null;
 }
 
-// 肩書がこれを含む人は、集計を付けられる。
-const RECORDER_TITLES = ["マネージャー", "アナリスト"];
-
-/** 集計を付けられる人:マネージャー・アナリスト(肩書)と、システム担当。見るのは全員(2026-11-01 にトレーニング担当を外した)。 */
-export function canRecordDrillStats(
-  member: Pick<Member, "title" | "isSystemAdmin">,
-): boolean {
-  return (
-    member.isSystemAdmin ||
-    RECORDER_TITLES.some((title) => member.title?.includes(title) ?? false)
-  );
+/**
+ * 集計を付けられる人:スタッフ(ポジションのない人)全員と、システム担当。見るのは全員。
+ * (2026-11-01 にトレーニング担当を外した。2026-11-08 にマネージャー・アナリストの肩書からスタッフ全員に広げた)
+ */
+export function canRecordDrillStats(member: Pick<Member, "position" | "isSystemAdmin">): boolean {
+  return member.isSystemAdmin || !member.position;
 }
 
 /** 本数を「部員 → スキル → 評価」の表にまとめる。 */

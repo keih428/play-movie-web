@@ -5,7 +5,7 @@ import { isPortalTeam } from "@/lib/domain/portal";
 import { createDrill } from "@/lib/server/portal-drill-stat-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 
-// 集計するメニューを作る(マネージャーなど、集計を付けられる人だけ。2026-10-31 から)。
+// 集計するメニューを作る(スタッフなど、集計を付けられる人だけ。2026-10-31 から)。
 export async function POST(request: NextRequest) {
   const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
   const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "ログインしてください。" }, { status: 401 });
   }
   if (!canRecordDrillStats(current)) {
-    return NextResponse.json({ error: "集計を付けられるのは、マネージャー・アナリストなどだけです。" }, { status: 403 });
+    return NextResponse.json({ error: "集計を付けられるのは、スタッフだけです。" }, { status: 403 });
   }
 
   const payload = (await request.json().catch(() => null)) as { date?: unknown; name?: unknown; kind?: unknown } | null;
