@@ -2131,6 +2131,22 @@ body:has(.tp[data-mode="tango"]) {
   font-weight: 700;
 }
 
+/* 練習ごとの出欠:その日に連絡した人(タブの上) */
+.tp-contacted-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-contacted-list li {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: 0 12px;
+  align-items: baseline;
+  padding: 5px 0;
+  overflow-wrap: anywhere;
+}
+
 /* 連絡は出ているが、カレンダーから予定がなくなった日 */
 .tp-weeks a.tp-no-event {
   border-style: dashed;
