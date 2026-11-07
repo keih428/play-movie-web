@@ -16,7 +16,7 @@ import {
   isMemberPosition,
   isPortalTeam,
 } from "@/lib/domain/portal";
-import { buildTeamTrainingPath, buildTeamTrainingPlanPath } from "@/lib/domain/team";
+import { buildTeamTrainingPath, buildTeamTrainingPlanPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import {
   FRESHMAN_GRADE,
   addDays,
@@ -417,6 +417,12 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           <span className="tp-chip">{selection.slot}枠</span>
           <span className="tp-chip">{selection.position}</span>
           {selection.fresh ? <span className="tp-chip">1年生</span> : null}
+        </div>
+        {/* ほかの部員の記録への入口(2026-11-07 から。ホームのいちばん下にしかなく、見つけにくかった) */}
+        <div className="tp-actions">
+          <Link className="tp-button tp-ghost" href={buildTeamTrainingRecordsPath(teamSlug)}>
+            みんなの記録を見る
+          </Link>
         </div>
         {choices.length > 0 ? (
           <>
