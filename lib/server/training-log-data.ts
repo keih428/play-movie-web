@@ -19,6 +19,7 @@ import {
   type TrainingSessionRecord,
 } from "@/lib/domain/training";
 import { listPersonalItems } from "@/lib/server/portal-personal-items-store";
+import { listMustItems } from "@/lib/server/portal-training-must-store";
 import { getLatestMeasurements, listMemberSessions, toEstimated1rm } from "@/lib/server/portal-training-store";
 
 // トレーニングのメニューのページと、トレ録を書く画面(2026-11-08 に分けた)で同じものを使う。
@@ -57,6 +58,8 @@ export type TrainingLogData = {
   menuOptions: LogMenuOption[];
   menuKeyByDate: Record<string, string>;
   videoLinks: [string, string][];
+  // 「これだけは欠かさない」種目(★)。記録の画面の各種目に出す。
+  mustItems: string[];
 };
 
 /**
@@ -71,10 +74,11 @@ export async function loadTrainingLogData(
   programs: TrainingProgram[],
   today: string,
 ): Promise<TrainingLogData> {
-  const [latest, sessions, personalItems] = await Promise.all([
+  const [latest, sessions, personalItems, mustItems] = await Promise.all([
     getLatestMeasurements(current.id),
     listMemberSessions(current.id),
     listPersonalItems(teamSlug, current.id),
+    listMustItems(teamSlug),
   ]);
   const menuOptions = buildLogMenuOptions(programs, selection, toEstimated1rm(latest)).map((option) =>
     applyPersonalLogItems(option, personalItems),
@@ -87,5 +91,5 @@ export async function loadTrainingLogData(
       menuKeyByDate[date] = key;
     }
   }
-  return { sessions, menuOptions, menuKeyByDate, videoLinks: collectVideoLinks(programs) };
+  return { sessions, menuOptions, menuKeyByDate, videoLinks: collectVideoLinks(programs), mustItems };
 }

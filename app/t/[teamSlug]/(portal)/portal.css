@@ -2810,6 +2810,102 @@ a.tp-place-link {
   gap: 4px 10px;
 }
 
+/* 種目の下の1行:★・印・回数・重さの目安(2026-11-08 から) */
+.tp-log-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--tp-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tp-log-meta .tp-must,
+.tp-log-meta .tp-swap {
+  margin-left: 0;
+}
+
+.tp-log-dose {
+  font-family: var(--tp-num);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/*
+ * 折りたたみ(ポイント・その日の追加・トレーニング担当へ)。閉じているときは1行だけ見せ、押すと全部開く。
+ * トレーニング中に開いておく画面なので、文が多くなりすぎないように(2026-11-08 から)。
+ */
+/* 種目の枠(grid)の中で、1行に詰めた文の幅まで広がって、枠からはみ出さないように */
+.tp-log-fold,
+.tp-log-menu {
+  min-width: 0;
+}
+
+.tp-log-fold summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tp-log-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.tp-log-fold summary::after {
+  content: "＋";
+  flex: none;
+  margin-left: auto;
+  color: var(--tp-muted);
+}
+
+.tp-log-fold[open] summary::after {
+  content: "−";
+}
+
+.tp-log-fold-label {
+  flex: none;
+  color: var(--tp-accent);
+  font-weight: 700;
+}
+
+.tp-log-fold-peek {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--tp-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-log-fold[open] .tp-log-fold-peek {
+  visibility: hidden;
+}
+
+.tp-log-fold-body {
+  padding-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.tp-log-extras,
+.tp-log-request {
+  padding: 10px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-log-extras .tp-extra + .tp-extra {
+  margin-top: 6px;
+}
+
 .tp-log-date {
   display: grid;
   gap: 4px;
@@ -3571,10 +3667,49 @@ button.tp-mystats-course {
 }
 
 /* トレ録:記録するときのメニューの選び方(2026-10-24) */
+/* 日付からメニューを選んであるので、ふだんは今のメニューの名前だけを出し、押すと選び直せる(2026-11-08 から) */
 .tp-log-menu {
-  display: grid;
+  padding: 10px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-log-menu summary {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.tp-log-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.tp-log-menu summary::after {
+  content: "変える";
+  flex: none;
+  margin-left: auto;
+  color: var(--tp-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tp-log-menu[open] summary::after {
+  content: "閉じる";
+}
+
+.tp-log-menu-now {
+  display: grid;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.tp-log-menu-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .tp-log-menu select {

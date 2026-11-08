@@ -25,7 +25,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * トレ録を書く画面(日付ごと)。2026-11-08 にトレーニングのページ(メニュー)から分けた。
- * ジムでやりながら開いておく画面。保存ボタンはページの最後に置く(画面には固定しない)。
+ * ジムでやりながら開いておく画面なので、その日の種目・回数の目安・ポイント・★ はこの画面だけで見られるようにし、
+ * 保存ボタンはページの最後に置く(画面には固定しない)。
  */
 export default async function TeamTrainingLogPage({ params, searchParams }: PageProps) {
   const { teamSlug } = await params;
@@ -76,6 +77,7 @@ export default async function TeamTrainingLogPage({ params, searchParams }: Page
       menuOptions={data.menuOptions}
       menuKeyByDate={data.menuKeyByDate}
       videoLinks={data.videoLinks}
+      mustItems={data.mustItems}
       trainingHref={trainingHref}
     />
   );
