@@ -24,6 +24,8 @@ import {
   findVideoLink,
   exerciseUnit,
   inferUnit,
+  isEditableLogDate,
+  LOG_MAX_PAST_DAYS,
   type RepUnit,
   weightModeOf,
   type LogMenuItem,
@@ -79,8 +81,6 @@ type Draft = {
 // 端末に残す形(種目の key は画面の中だけのもの。戻すときに付け直す)。
 type StoredContent = Omit<Draft, "exercises"> & { exercises: Omit<DraftExercise, "key">[] };
 
-// 選べる日:1年前から明日まで(API と同じ)。
-const MAX_PAST_DAYS = 366;
 
 let nextKey = 1;
 
@@ -422,7 +422,9 @@ export function TrainingLogEditor({
     for (const [name, value] of Object.entries(params)) {
       url.searchParams.set(name, value);
     }
-    router.push(`${url.pathname}${url.search}#log`);
+    // 履歴は置き換える。ブラウザの「戻る」で、保存する前の中身のままの記録画面に戻らないように
+    // (そのまま保存すると、古い値で上書きしてしまうため)。
+    router.replace(`${url.pathname}${url.search}#log`);
   }
 
   function forgetDraft(date: string) {
@@ -556,11 +558,12 @@ export function TrainingLogEditor({
               id="log-date"
               type="date"
               value={draft.date}
-              min={addDays(today, -MAX_PAST_DAYS)}
+              min={addDays(today, -LOG_MAX_PAST_DAYS)}
               max={addDays(today, 1)}
               onChange={(event) => {
                 const date = event.target.value;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                // 選べるのは1年前から明日まで(API と同じ)。範囲の外を打っても欄は変えない。
+                if (isEditableLogDate(date, today)) {
                   changeDate(date);
                 }
               }}

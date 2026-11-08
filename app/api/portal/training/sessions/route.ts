@@ -4,12 +4,12 @@ import { buildTeamTrainingRecordsPath } from "@/lib/domain/team";
 import {
   SESSION_LIMITS,
   TRAINING_REQUEST_LABEL,
-  addDays,
   compactExercises,
   type LiftKind,
   type SessionExercise,
   type SessionSet,
   inferLift,
+  isEditableLogDate,
 } from "@/lib/domain/training";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
@@ -24,7 +24,6 @@ import {
 
 const MAX_TEXT_LENGTH = 2000;
 // 記録できる日:1年前から、明日まで(日付の打ち間違いを防ぐ)。
-const MAX_PAST_DAYS = 366;
 const LIFTS: LiftKind[] = ["sq", "dl", "bp"];
 
 function readText(value: unknown): string {
@@ -40,10 +39,7 @@ function readNumber(value: unknown, max: number): number | null | undefined {
 }
 
 function readDate(value: unknown, today: string): string | null {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return null;
-  }
-  return value >= addDays(today, -MAX_PAST_DAYS) && value <= addDays(today, 1) ? value : null;
+  return typeof value === "string" && isEditableLogDate(value, today) ? value : null;
 }
 
 /** 送られてきた種目を確かめて、保存する形にする。おかしなところがあれば、その説明を返す。 */
