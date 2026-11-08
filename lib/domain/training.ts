@@ -228,6 +228,19 @@ export function addDays(isoDate: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+// トレ録を記録・直せる日:1年前から明日まで(API・書く画面・自分の記録の「編集」で同じにする)。
+export const LOG_MAX_PAST_DAYS = 366;
+
+/** トレ録を記録・直せる日付か(形が正しく、1年前から明日までの間)。 */
+export function isEditableLogDate(date: string | null | undefined, today: string): date is string {
+  return (
+    typeof date === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    date >= addDays(today, -LOG_MAX_PAST_DAYS) &&
+    date <= addDays(today, 1)
+  );
+}
+
 export function formatMonthDay(isoDate: string): string {
   const [, month, day] = isoDate.split("-").map(Number);
   return `${month}/${day}`;
@@ -927,8 +940,13 @@ export function buildDefaultExercises(
 // 部員の声(けーいち):「何週目の何曜(上半身の日・自主トレ)かを選べると、打ち込みが楽」。
 // 日付から決めたメニューを初めに選んでおき、ほかの週・曜日にも切り替えられる。
 
-/** 記録の欄を作るのに要る、メニューの種目の中身。 */
-export type LogMenuItem = Pick<ResolvedItem, "name" | "dose" | "kind" | "weighted" | "targetKg">;
+/**
+ * 記録の欄を作るのに要る、メニューの種目の中身。
+ * 注意点(tip)・C枠の置き換え・個人の追加の印は、記録の画面の各種目に出す(2026-11-08 から。記録の画面をメニューの
+ * ページから分けたので、トレーニング中に要るものは記録の画面だけで見られるように)。ないときは持たない。
+ */
+export type LogMenuItem = Pick<ResolvedItem, "name" | "dose" | "kind" | "weighted" | "targetKg"> &
+  Partial<Pick<ResolvedItem, "tip" | "swapped" | "personal">>;
 
 export type LogMenuOption = {
   // "期間のキー/週のキー/曜日"(例:"2026-11-02/W1/tue")
@@ -938,9 +956,34 @@ export type LogMenuOption = {
   day: TrainingDay;
   dayLabel: string;
   items: LogMenuItem[];
+  // その日の種目の表のあとの文(ポジション別の追加・タバタなど。**太字** を含む)。
+  extras?: string[];
 };
 
 const LOG_DAY_LABELS: Record<TrainingDay, string> = { tue: "火", thu: "木", sat: "日", self: "自主" };
+
+/** メニューの種目から、記録の欄に要る所だけを取り出す(空の注意点・印は持たない)。 */
+export function toLogMenuItem({
+  name,
+  dose,
+  kind,
+  weighted,
+  targetKg,
+  tip,
+  swapped,
+  personal,
+}: ResolvedItem): LogMenuItem {
+  return {
+    name,
+    dose,
+    kind,
+    weighted,
+    targetKg,
+    ...(tip ? { tip } : {}),
+    ...(swapped ? { swapped } : {}),
+    ...(personal ? { personal } : {}),
+  };
+}
 
 /** 記録で選べるメニュー(全部の期間・週・曜日。種目のない日は除く)。 */
 export function buildLogMenuOptions(
@@ -958,7 +1001,8 @@ export function buildLogMenuOptions(
           weekLabel: `${formatMonthDay(week.s)}〜 ${week.k} ${week.name}`,
           day: day.day,
           dayLabel: `${LOG_DAY_LABELS[day.day]}・${day.title}`,
-          items: day.items.map(({ name, dose, kind, weighted, targetKg }) => ({ name, dose, kind, weighted, targetKg })),
+          items: day.items.map(toLogMenuItem),
+          ...(day.extras.length > 0 ? { extras: day.extras } : {}),
         })),
     ),
   );

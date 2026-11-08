@@ -82,14 +82,17 @@ describe("個人の追加メニュー", () => {
       day: "self",
       dayLabel: "自主",
       items: [
-        { name: "ベンチプレス", dose: "5回 × 3", kind: "bp", weighted: true, targetKg: 60 },
+        { name: "ベンチプレス", dose: "5回 × 3", kind: "bp", weighted: true, targetKg: 60, tip: "胸を張る" },
         { name: "個人の追加(面談で林と決めたもの)", dose: "10〜15分", kind: "", weighted: false, targetKg: null },
       ],
     };
-    const result = applyPersonalLogItems(option, [{ ...personal("ダンベルロー", ["self"]), weighted: true }]);
+    const result = applyPersonalLogItems(option, [
+      { ...personal("ダンベルロー", ["self"]), weighted: true, tip: "肘を引く" },
+    ]);
+    // 記録の画面に出す注意点と「個人の追加」の印も残る(2026-11-08 から)
     expect(result.items).toEqual([
-      { name: "ベンチプレス", dose: "5回 × 3", kind: "bp", weighted: true, targetKg: 60 },
-      { name: "ダンベルロー", dose: "10回 × 3", kind: "", weighted: true, targetKg: null },
+      { name: "ベンチプレス", dose: "5回 × 3", kind: "bp", weighted: true, targetKg: 60, tip: "胸を張る" },
+      { name: "ダンベルロー", dose: "10回 × 3", kind: "", weighted: true, targetKg: null, tip: "肘を引く", personal: true },
     ]);
   });
 

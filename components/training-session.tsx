@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MouseEvent, useEffect, useState } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import { RichText } from "@/components/rich-text";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import {
@@ -198,6 +198,8 @@ export function TrainingSession({
 }: TrainingSessionProps) {
   const [selectedDay, setSelectedDay] = useState<TrainingDay>(initialDay);
   const [sheet, setSheet] = useState(false);
+  // 週と曜日の切り替えのバーが、固定される前にある位置(このバーの直前に置く空の印)。
+  const barAnchor = useRef<HTMLDivElement>(null);
   const [mustItems, setMustItems] = useState(() => new Set(initialMustItems));
   const [busyName, setBusyName] = useState<string | null>(null);
   const [mustError, setMustError] = useState("");
@@ -236,6 +238,23 @@ export function TrainingSession({
     document.querySelectorAll(".tp-peek").forEach((element) => element.classList.remove("tp-peek"));
   }, [sheet]);
 
+  /**
+   * 週・期間・曜日を変えたとき、ページの一番上ではなく、メニューの頭(このバーの位置)に合わせる(2026-11-08 から。
+   * それまでは一番上に戻り、メニューを見ていた所から遠くなっていた)。バーより上を見ているときは動かさない。
+   */
+  function keepMenuInView() {
+    const anchor = barAnchor.current;
+    if (!anchor) {
+      return;
+    }
+    // 上のバー(部のバー)の下に、このバーが来るように。
+    const header = document.querySelector(".team-header");
+    const top = anchor.getBoundingClientRect().top + window.scrollY - (header?.getBoundingClientRect().height ?? 0);
+    if (window.scrollY > top) {
+      window.scrollTo({ top });
+    }
+  }
+
   function toggleSheet() {
     const next = !sheet;
     setSheet(next);
@@ -248,6 +267,7 @@ export function TrainingSession({
 
   return (
     <>
+      <div ref={barAnchor} aria-hidden="true" />
       <div className="tp-bar" role="region" aria-label="週と曜日の切り替え">
         {periodLinks.length > 1 ? (
           <nav className="tp-weeks tp-periods" aria-label="期間">
@@ -255,6 +275,8 @@ export function TrainingSession({
               <Link
                 key={period.key}
                 href={period.href}
+                scroll={false}
+                onClick={keepMenuInView}
                 aria-current={period.isSelected ? "page" : undefined}
               >
                 <b>{period.label}</b>
@@ -267,7 +289,13 @@ export function TrainingSession({
         ) : null}
         <nav className="tp-weeks" aria-label="週">
           {weekLinks.map((week) => (
-            <Link key={week.key} href={week.href} aria-current={week.isSelected ? "page" : undefined}>
+            <Link
+              key={week.key}
+              href={week.href}
+              scroll={false}
+              onClick={keepMenuInView}
+              aria-current={week.isSelected ? "page" : undefined}
+            >
               <b>{week.key}</b>
               <span className={week.isCurrent ? "tp-now" : undefined}>{week.label}</span>
             </Link>
@@ -282,7 +310,7 @@ export function TrainingSession({
               aria-pressed={day.day === selectedDay}
               onClick={() => {
                 setSelectedDay(day.day);
-                window.scrollTo({ top: 0 });
+                keepMenuInView();
               }}
             >
               <span>

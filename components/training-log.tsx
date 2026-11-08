@@ -1,7 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { RichText } from "@/components/rich-text";
+import {
+  browserDraftStorage,
+  draftBase,
+  draftKey,
+  formatDraftTime,
+  readDraft,
+  removeDraft,
+  writeDraft,
+} from "@/lib/domain/drafts";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import {
@@ -10,20 +21,23 @@ import {
   buildDefaultExercises,
   getPreviousSetsByExercise,
   inferLift,
-  summarizeSets,
   findVideoLink,
   exerciseUnit,
   inferUnit,
   type RepUnit,
   weightModeOf,
+  type LogMenuItem,
   type LogMenuOption,
   type SessionExercise,
   type TrainingSessionRecord,
 } from "@/lib/domain/training";
 
-type TrainingLogProps = {
+type TrainingLogEditorProps = {
   teamSlug: string;
+  memberId: string;
   today: string;
+  // 開いたときの日付(URL の ?date=)。画面の中で日付を変えると、URL も書き換える(再読み込みしても同じ日に戻る)。
+  initialDate: string;
   // 自分の記録(新しい順)。
   sessions: TrainingSessionRecord[];
   // 選べるメニュー(期間・週・曜日)。記録の欄は、選んだメニューの全部の種目に、先週(なければ前回)の重さ・回数を入れて始める。
@@ -33,6 +47,10 @@ type TrainingLogProps = {
   menuKeyByDate: Record<string, string>;
   // 種目の動画([種目名の一部, URL])。記録の欄の種目名の横に「▶ 動画」を出す(2026-11-05 から)。
   videoLinks: [string, string][];
+  // 「これだけは欠かさない」種目(★)の名前。
+  mustItems: string[];
+  // メニューのページ(戻る先)。名簿で決まっていない段階・枠・ポジションを引き継ぐ。
+  trainingHref: string;
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
@@ -58,8 +76,9 @@ type Draft = {
   memo: string;
   request: string;
 };
+// 端末に残す形(種目の key は画面の中だけのもの。戻すときに付け直す)。
+type StoredContent = Omit<Draft, "exercises"> & { exercises: Omit<DraftExercise, "key">[] };
 
-const HISTORY_STEP = 20;
 // 選べる日:1年前から明日まで(API と同じ)。
 const MAX_PAST_DAYS = 366;
 
@@ -89,25 +108,118 @@ function toDraftExercises(
   }));
 }
 
+function contentOf(draft: Draft): StoredContent {
+  return {
+    ...draft,
+    exercises: draft.exercises.map(({ name, lift, unit, unitChosen, sets, fixed }) => ({
+      name,
+      lift,
+      unit,
+      ...(unitChosen ? { unitChosen } : {}),
+      sets,
+      fixed,
+    })),
+  };
+}
+
+function fromContent(content: StoredContent): Draft {
+  return {
+    ...content,
+    exercises: content.exercises.map((exercise) => ({ ...exercise, key: nextKey++ })),
+  };
+}
+
+/** 下書きを比べるための形(何も変えていなければ、開いたときと同じ文字になる)。 */
+function serialize(draft: Draft): string {
+  return JSON.stringify(contentOf(draft));
+}
+
+function isStoredContent(value: unknown): value is StoredContent {
+  const content = value as StoredContent | null;
+  return (
+    typeof content === "object" &&
+    content !== null &&
+    typeof content.date === "string" &&
+    (content.menuKey === null || typeof content.menuKey === "string") &&
+    typeof content.bodyWeight === "string" &&
+    typeof content.memo === "string" &&
+    typeof content.request === "string" &&
+    Array.isArray(content.exercises) &&
+    content.exercises.every(
+      (exercise) =>
+        typeof exercise?.name === "string" &&
+        typeof exercise.fixed === "boolean" &&
+        typeof exercise.unit === "string" &&
+        Array.isArray(exercise.sets) &&
+        exercise.sets.every(
+          (set) => typeof set?.kg === "string" && typeof set?.reps === "string",
+        ),
+    )
+  );
+}
+
+/** 折りたたみの見出しに出す1行(** を外し、改行を詰める)。 */
+function plainText(text: string): string {
+  return text.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+}
+
 /**
- * トレーニング録(日付ごと)。「+ 筋トレを記録する」→ 日付を選ぶ → その日のメニューが入った欄を直す → 保存。
- * 保存した記録は、新しい日付から順に並ぶ。押すと直せる(部員の声、2026-10-20)。
+ * 種目の下に出す、メニューの中身(2026-11-08 から)。
+ * 1行目に印と回数・重さの目安を短く出し、ポイント(注意点)は1行だけ見せて、押すと全部開く。
  */
-export function TrainingLog({
+function ExerciseGuide({ item, must }: { item: LogMenuItem; must: boolean }) {
+  const dose = plainText(item.dose);
+  const target = item.weighted && item.targetKg ? `目安 ${item.targetKg}kg` : "";
+  const marked = must && !item.personal;
+  return (
+    <>
+      {marked || item.swapped || item.personal || dose || target ? (
+        <p className="tp-log-meta">
+          {marked ? <span className="tp-must">★ 欠かさない</span> : null}
+          {item.swapped ? <span className="tp-swap">C枠</span> : null}
+          {item.personal ? <span className="tp-swap">個人</span> : null}
+          {dose ? <span className="tp-log-dose">{dose}</span> : null}
+          {target ? <span className="tp-log-dose">{target}</span> : null}
+        </p>
+      ) : null}
+      {item.tip ? (
+        <details className="tp-log-fold">
+          <summary>
+            <span className="tp-log-fold-label">ポイント</span>
+            <span className="tp-log-fold-peek">{plainText(item.tip)}</span>
+          </summary>
+          <p className="tp-log-fold-body">
+            <RichText text={item.tip} />
+          </p>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * トレ録を書く画面(日付ごと。2026-11-08 にメニューのページから分けた)。
+ * ジムでやりながら記録する。保存ボタンは画面に固定せず、入力欄の最後に置く(iOS 26 では、キーボードを閉じたあと
+ * 画面に固定したものがずれて、保存バーが画面の真ん中に浮いたため)。保存していない入力は端末に下書きとして残し、
+ * 次に開いたときにすぐ続きから書ける。
+ * その日の種目の回数・重さの目安・ポイント・★ は、この画面だけで見られるようにする(メニューのページへ行かずに済むよう)。
+ * 情報が多くなりすぎないよう、ふだん使わないもの(メニューの選び直し・ポイントの全文・担当への一言)は折りたたむ。
+ */
+export function TrainingLogEditor({
   teamSlug,
+  memberId,
   today,
+  initialDate,
   sessions,
   menuOptions,
   menuKeyByDate,
   videoLinks,
-}: TrainingLogProps) {
+  mustItems,
+  trainingHref,
+}: TrainingLogEditorProps) {
   const router = useRouter();
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [shown, setShown] = useState(HISTORY_STEP);
+  const must = new Set(mustItems);
+  const storageKey = (date: string) => draftKey("training", teamSlug, memberId, date);
 
   const sessionOn = (date: string) =>
     sessions.find((session) => session.date === date);
@@ -159,6 +271,113 @@ export function TrainingLog({
     };
   }
 
+  const [initial] = useState(() => {
+    const draft = draftFor(initialDate);
+    return { draft, baseline: serialize(draft) };
+  });
+  const [draft, setDraft] = useState<Draft>(initial.draft);
+  // 何も変えていないときの形。これと違えば、端末に下書きを残す。
+  const [baseline, setBaseline] = useState(initial.baseline);
+  // 下書きを作ったときの、サーバーの記録の写し(戻すときに、ほかの端末で変わっていないか比べる)。
+  const [base, setBase] = useState(() => draftBase(sessionOn(initialDate) ?? null));
+  // 端末の下書きから戻したとき、その下書きを最後に書いた時刻。
+  const [restoredAt, setRestoredAt] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const [storageFailed, setStorageFailed] = useState(false);
+  // 「トレーニング担当へ」は、書いてあるときだけ初めから開いておく(打っている途中で閉じないよう、開いたときに決める)。
+  const [requestOpen, setRequestOpen] = useState(Boolean(initial.draft.request));
+  // 端末の下書きを確かめ終わるまでは書かない(開いた直後の形で、残っている下書きを上書きしないように)。
+  const [ready, setReady] = useState(false);
+  const lastWritten = useRef("");
+  const leaving = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  // 「捨てる」を1回押した場所(もう一度押すと捨てる)。戻した知らせの中と保存の欄の2か所にあり、押した方だけ切り替える。
+  const [confirmDiscard, setConfirmDiscard] = useState<"notice" | "savearea" | null>(null);
+
+  const dirty = serialize(draft) !== baseline;
+
+  /** その日付を、保存した記録(なければメニュー)から始める。 */
+  function startFresh(date: string) {
+    const fresh = draftFor(date);
+    lastWritten.current = "";
+    setDraft(fresh);
+    setBaseline(serialize(fresh));
+    setBase(draftBase(sessionOn(date) ?? null));
+    setRestoredAt(null);
+    setStale(false);
+    setRequestOpen(Boolean(fresh.request));
+  }
+
+  /** その日付の欄を開く。端末に下書きがあれば、それで続きから。 */
+  function loadDate(date: string) {
+    const storage = browserDraftStorage();
+    const stored = storage
+      ? readDraft(storage, storageKey(date), isStoredContent)
+      : null;
+    if (stored && stored.data.date === date) {
+      const restored = fromContent(stored.data);
+      lastWritten.current = serialize(restored);
+      setDraft(restored);
+      setBaseline(serialize(draftFor(date)));
+      setBase(stored.base);
+      setRestoredAt(stored.savedAt);
+      setStale(stored.base !== draftBase(sessionOn(date) ?? null));
+      setRequestOpen(Boolean(restored.request));
+    } else {
+      startFresh(date);
+    }
+    setError("");
+    setConfirmDelete(false);
+    setConfirmDiscard(null);
+  }
+
+  // 開いたときに一度だけ:端末に下書きがあれば、すぐ続きから。
+  useEffect(() => {
+    const storage = browserDraftStorage();
+    if (storage && readDraft(storage, storageKey(initialDate), isStoredContent)) {
+      loadDate(initialDate);
+    }
+    setReady(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 開いたときに一度だけ
+
+  // 何か変えたら、端末に下書きを書く。開いたときと同じ形に戻したら消す。
+  useEffect(() => {
+    if (!ready || leaving.current) {
+      return;
+    }
+    const storage = browserDraftStorage();
+    if (!storage) {
+      return;
+    }
+    const key = storageKey(draft.date);
+    const content = serialize(draft);
+    if (content === baseline) {
+      removeDraft(storage, key);
+      lastWritten.current = "";
+      return;
+    }
+    if (content === lastWritten.current) {
+      return;
+    }
+    const ok = writeDraft(storage, key, {
+      savedAt: new Date().toISOString(),
+      base,
+      data: contentOf(draft),
+    });
+    lastWritten.current = ok ? content : "";
+    setStorageFailed(!ok);
+  }, [draft, baseline, base, ready]); // eslint-disable-line react-hooks/exhaustive-deps -- storageKey は人とチームで決まる
+
+  /** 日付を変える。打ちかけの日の下書きは端末に残り、その日に戻せば続きが出る。 */
+  function changeDate(date: string) {
+    loadDate(date);
+    const url = new URL(window.location.href);
+    url.searchParams.set("date", date);
+    window.history.replaceState(null, "", url);
+  }
+
   /**
    * メニューを切り替える。新しいメニューの種目で作り直すが、もう打った重さ・回数(同じ名前の種目)と、
    * 自分で足した種目は残す。
@@ -179,16 +398,9 @@ export function TrainingLog({
     });
   }
 
-  function open(date: string) {
-    setDraft(draftFor(date));
-    setError("");
-    setMessage("");
-    setConfirmDelete(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   function update(change: (current: Draft) => Draft) {
-    setDraft((current) => (current ? change(current) : current));
+    setDraft((current) => change(current));
+    setConfirmDiscard(null);
   }
 
   function updateExercise(
@@ -203,11 +415,25 @@ export function TrainingLog({
     }));
   }
 
+  /** メニューのページへ戻る(保存した・消したときは、そのことを出す)。 */
+  function leave(params: Record<string, string> = {}) {
+    leaving.current = true;
+    const url = new URL(trainingHref, window.location.origin);
+    for (const [name, value] of Object.entries(params)) {
+      url.searchParams.set(name, value);
+    }
+    router.push(`${url.pathname}${url.search}#log`);
+  }
+
+  function forgetDraft(date: string) {
+    const storage = browserDraftStorage();
+    if (storage) {
+      removeDraft(storage, storageKey(date));
+    }
+  }
+
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!draft) {
-      return;
-    }
     setBusy(true);
     setError("");
     try {
@@ -250,22 +476,20 @@ export function TrainingLog({
           payload.error ?? "保存できませんでした。もう一度試してください。",
         );
       }
-      setMessage(`${formatNoteDate(draft.date)}の記録を保存しました。`);
-      setDraft(null);
-      router.refresh();
+      // 下書きは、サーバーが受け付けてから消す(失敗したら残る)。
+      forgetDraft(draft.date);
+      leave({ saved: draft.date });
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "保存できませんでした。",
+        caught instanceof Error
+          ? `${caught.message}(入力はこの端末に残っています)`
+          : "保存できませんでした。",
       );
-    } finally {
       setBusy(false);
     }
   }
 
   async function remove() {
-    if (!draft) {
-      return;
-    }
     setBusy(true);
     setError("");
     try {
@@ -282,102 +506,178 @@ export function TrainingLog({
       if (!response.ok) {
         throw new Error(payload.error ?? "消せませんでした。");
       }
-      setMessage(`${formatNoteDate(draft.date)}の記録を消しました。`);
-      setDraft(null);
-      router.refresh();
+      forgetDraft(draft.date);
+      leave({ deleted: draft.date });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "消せませんでした。");
-    } finally {
       setBusy(false);
     }
   }
 
-  const editor = draft ? (
-    <form className="tp-log-editor" onSubmit={save}>
-      <div className="tp-log-date">
-        <div className="tp-field">
-          <label htmlFor="log-date">日付</label>
-          <input
-            id="log-date"
-            type="date"
-            value={draft.date}
-            min={addDays(today, -MAX_PAST_DAYS)}
-            max={addDays(today, 1)}
-            onChange={(event) => {
-              const date = event.target.value;
-              if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                setDraft(draftFor(date));
-                setConfirmDelete(false);
-              }
-            }}
-          />
+  /**
+   * 保存していない入力を捨てる。2回押し(1回目で「もう一度押すと捨てます」に変わる。うっかり押して消えないように)。
+   * 捨てたら、保存した記録(なければメニュー)から書き直す。画面を出るのは上の「戻る」(入力は端末に残る)。
+   */
+  function discard(place: "notice" | "savearea") {
+    if (confirmDiscard !== place) {
+      setConfirmDiscard(place);
+      return;
+    }
+    forgetDraft(draft.date);
+    startFresh(draft.date);
+    setConfirmDiscard(null);
+  }
+
+  const option = optionOf(draft.menuKey);
+  const existing = sessionOn(draft.date);
+  // 「この週のメニューをすべて見る」:メニューのページを、その週で開く(キーは「期間/週/曜日」)。
+  const [programKey, weekKey] = option?.key.split("/") ?? [];
+  const menuPageHref = option
+    ? `${trainingHref}${trainingHref.includes("?") ? "&" : "?"}menu=${programKey}&week=${weekKey}`
+    : trainingHref;
+  /** 種目の下に出す、メニューの中身(メニューにない種目には出さない)。 */
+  const guideFor = (name: string) => {
+    const item = option?.items.find((entry) => entry.name === name);
+    return item ? <ExerciseGuide item={item} must={must.has(item.name)} /> : null;
+  };
+
+  return (
+    // 保存・削除の通信中は、欄を触れなくする(その間に打った分は送られず、保存できると下書きごと消えるため)。
+    <form className="tp-log-editor" onSubmit={save} inert={busy}>
+      <header className="tp-log-head">
+        <Link className="tp-log-back" href={`${trainingHref}#log`}>
+          ← トレーニングへ戻る
+        </Link>
+        <h1>{formatNoteDate(draft.date)}の記録</h1>
+        <div className="tp-log-date">
+          <div className="tp-field">
+            <label htmlFor="log-date">日付</label>
+            <input
+              id="log-date"
+              type="date"
+              value={draft.date}
+              min={addDays(today, -MAX_PAST_DAYS)}
+              max={addDays(today, 1)}
+              onChange={(event) => {
+                const date = event.target.value;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                  changeDate(date);
+                }
+              }}
+            />
+          </div>
+          <p className="tp-small tp-muted">
+            {existing
+              ? "保存した記録を直しています。"
+              : "先週(なければ前回)の重さ・回数を入れてあります。違う所だけ直してください。"}
+          </p>
         </div>
-        <p className="tp-small tp-muted">
-          {sessionOn(draft.date)
-            ? "この日の記録を編集します。"
-            : "新しい記録です。重さと回数は、先週(なければ前回)の記録を入れてあります。違うところだけ直してください。"}
+      </header>
+
+      {restoredAt ? (
+        <div className="tp-draftnote" role="status">
+          <p>
+            保存していない入力を戻しました
+            {formatDraftTime(restoredAt)
+              ? `(${formatDraftTime(restoredAt)} まで)`
+              : ""}
+            。
+          </p>
+          {stale ? (
+            <p>
+              この日の記録は、そのあとにほかの端末などで保存されています。このまま保存すると、この入力で置き換わります。
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className={`tp-clear${confirmDiscard === "notice" ? " tp-clear-danger" : ""}`}
+            onClick={() => discard("notice")}
+          >
+            {confirmDiscard === "notice"
+              ? "もう一度押すと捨てます"
+              : existing
+                ? "捨てて、保存した記録に戻す"
+                : "捨てて、初めから"}
+          </button>
+        </div>
+      ) : null}
+      {storageFailed ? (
+        <p className="tp-error" role="alert">
+          この端末には下書きを残せません。保存するまで画面を閉じないでください。
         </p>
-      </div>
+      ) : null}
 
       {menuOptions.length > 0 ? (
-        <div className="tp-log-menu">
-          <div className="tp-field">
-            <label htmlFor="log-menu-week">メニュー(何週目・何曜か)</label>
-            <select
-              id="log-menu-week"
-              value={optionOf(draft.menuKey)?.weekKey ?? ""}
-              onChange={(event) => {
-                const weekKey = event.target.value;
-                if (!weekKey) {
-                  chooseMenu(null);
-                  return;
-                }
-                // 週を変えたら、同じ曜日(なければその週の最初の日)を選ぶ。
-                const day = optionOf(draft.menuKey)?.day;
-                const inWeek = menuOptions.filter(
-                  (option) => option.weekKey === weekKey,
-                );
-                chooseMenu(
-                  (inWeek.find((option) => option.day === day) ?? inWeek[0])
-                    .key,
-                );
-              }}
-            >
-              <option value="">メニューなし(先週の同じ曜日の記録から)</option>
-              {menuOptions
-                .filter(
-                  (option, index) =>
-                    menuOptions.findIndex(
-                      (entry) => entry.weekKey === option.weekKey,
-                    ) === index,
-                )
-                .map((option) => (
-                  <option key={option.weekKey} value={option.weekKey}>
-                    {option.weekLabel}
-                  </option>
-                ))}
-            </select>
-          </div>
-          {draft.menuKey ? (
-            <div className="tp-log-menu-days" role="group" aria-label="曜日">
-              {menuOptions
-                .filter(
-                  (option) =>
-                    option.weekKey === optionOf(draft.menuKey)?.weekKey,
-                )
-                .map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    aria-pressed={option.key === draft.menuKey}
-                    onClick={() => chooseMenu(option.key)}
-                  >
-                    {option.dayLabel}
-                  </button>
-                ))}
+        // 日付からメニューを選んであるので、ふだんは閉じておく(2026-11-08 から)。
+        <details className="tp-log-menu">
+          <summary>
+            <span className="tp-label">メニュー</span>
+            <span className="tp-log-menu-now">
+              <b>{option ? option.dayLabel : "メニューなし"}</b>
+              <span className="tp-small tp-muted">
+                {option ? option.weekLabel : "先週の同じ曜日の記録から"}
+              </span>
+            </span>
+          </summary>
+          <div className="tp-log-menu-body">
+            <div className="tp-field">
+              <label htmlFor="log-menu-week">何週目か</label>
+              <select
+                id="log-menu-week"
+                value={option?.weekKey ?? ""}
+                onChange={(event) => {
+                  const nextWeekKey = event.target.value;
+                  if (!nextWeekKey) {
+                    chooseMenu(null);
+                    return;
+                  }
+                  // 週を変えたら、同じ曜日(なければその週の最初の日)を選ぶ。
+                  const day = option?.day;
+                  const inWeek = menuOptions.filter(
+                    (entry) => entry.weekKey === nextWeekKey,
+                  );
+                  chooseMenu(
+                    (inWeek.find((entry) => entry.day === day) ?? inWeek[0])
+                      .key,
+                  );
+                }}
+              >
+                <option value="">メニューなし(先週の同じ曜日の記録から)</option>
+                {menuOptions
+                  .filter(
+                    (entry, index) =>
+                      menuOptions.findIndex(
+                        (other) => other.weekKey === entry.weekKey,
+                      ) === index,
+                  )
+                  .map((entry) => (
+                    <option key={entry.weekKey} value={entry.weekKey}>
+                      {entry.weekLabel}
+                    </option>
+                  ))}
+              </select>
             </div>
-          ) : null}
-        </div>
+            {option ? (
+              <div className="tp-log-menu-days" role="group" aria-label="曜日">
+                {menuOptions
+                  .filter((entry) => entry.weekKey === option.weekKey)
+                  .map((entry) => (
+                    <button
+                      key={entry.key}
+                      type="button"
+                      aria-pressed={entry.key === draft.menuKey}
+                      onClick={() => chooseMenu(entry.key)}
+                    >
+                      {entry.dayLabel}
+                    </button>
+                  ))}
+              </div>
+            ) : null}
+            <Link className="tp-more" href={menuPageHref}>
+              この週のメニューをすべて見る →
+            </Link>
+          </div>
+        </details>
       ) : null}
 
       {draft.exercises.map((exercise, exerciseIndex) => (
@@ -463,9 +763,10 @@ export function TrainingLog({
                 }))
               }
             >
-              種目を消す
+              消す
             </button>
           </div>
+          {guideFor(exercise.name)}
           {exercise.unit === "check" ? (
             // ストレッチ・ウォームアップなどは、やったかどうかだけ(けーいちの決定、2026-11-05)。
             <label className="tp-log-check">
@@ -597,6 +898,25 @@ export function TrainingLog({
         </div>
       ))}
 
+      {option?.extras?.length ? (
+        // ポジション別の追加・タバタなど。種目の欄はないので、1行だけ見せて、押すと全部開く。
+        <details className="tp-log-fold tp-log-extras">
+          <summary>
+            <span className="tp-log-fold-label">その日の追加</span>
+            <span className="tp-log-fold-peek">
+              {option.extras.map(plainText).join(" / ")}
+            </span>
+          </summary>
+          <div className="tp-log-fold-body">
+            {option.extras.map((extra) => (
+              <p key={extra} className="tp-extra">
+                <RichText text={extra} />
+              </p>
+            ))}
+          </div>
+        </details>
+      ) : null}
+
       <button
         type="button"
         className="tp-button tp-ghost"
@@ -647,19 +967,34 @@ export function TrainingLog({
           }
         />
       </div>
-      <div className="tp-field">
-        <label htmlFor="log-request">
-          トレーニング担当へ(反応してほしいこと。なければ空のまま)
-        </label>
-        <textarea
-          id="log-request"
-          rows={2}
-          value={draft.request}
-          onChange={(event) =>
-            update((current) => ({ ...current, request: event.target.value }))
-          }
-        />
-      </div>
+      {/* 毎回は書かないので、ふだんは閉じておく(書いてあれば開いておく)。 */}
+      <details
+        key={draft.date}
+        className="tp-log-fold tp-log-request"
+        open={requestOpen}
+      >
+        <summary>
+          <span className="tp-log-fold-label">トレーニング担当へ</span>
+          <span className="tp-log-fold-peek">
+            {draft.request ? plainText(draft.request) : "反応してほしいこと(なければ空のまま)"}
+          </span>
+        </summary>
+        <div className="tp-field tp-log-fold-body">
+          <label htmlFor="log-request" className="tp-sr">
+            トレーニング担当へ(反応してほしいこと。なければ空のまま)
+          </label>
+          <textarea
+            id="log-request"
+            rows={2}
+            // 開いたあとも、見出しの横の文言を入力欄に残す(開くと見出しの横の文言は隠れるため)。
+            placeholder="反応してほしいこと(なければ空のまま)"
+            value={draft.request}
+            onChange={(event) =>
+              update((current) => ({ ...current, request: event.target.value }))
+            }
+          />
+        </div>
+      </details>
 
       {error ? (
         <p className="tp-error" role="alert">
@@ -667,31 +1002,40 @@ export function TrainingLog({
         </p>
       ) : null}
 
-      <div className="tp-savebar">
-        <p>
+      {/* 保存は、入力欄の最後(画面には固定しない。2026-11-08 から)。 */}
+      {/*
+        押すのは「保存」だけ。「やめる」は置かない(上の「戻る」と同じく画面を出るだけで、紛らわしかったため)。
+        捨てたいときは、保存していない変更があるときだけ出る「入力を捨てる」から。
+      */}
+      <div className="tp-savearea">
+        {dirty ? (
+          <p className="tp-savearea-state">
+            まだ保存していません(入力はこの端末に残っています)
+            <button
+              type="button"
+              className={`tp-clear${confirmDiscard === "savearea" ? " tp-clear-danger" : ""}`}
+              disabled={busy}
+              onClick={() => discard("savearea")}
+            >
+              {confirmDiscard === "savearea" ? "もう一度押すと捨てます" : "入力を捨てる"}
+            </button>
+          </p>
+        ) : null}
+        <button className="tp-button" type="submit" disabled={busy}>
+          {busy ? "保存中…" : "保存"}
+        </button>
+        <p className="tp-small tp-muted">
           重さも回数も空のセットは、保存しません。書いたことは部の全員に見えます。
         </p>
-        <div className="tp-actions">
-          <button
-            type="button"
-            className="tp-button tp-ghost"
-            disabled={busy}
-            onClick={() => setDraft(null)}
-          >
-            やめる
-          </button>
-          <button className="tp-button" type="submit" disabled={busy}>
-            {busy ? "保存中…" : "保存"}
-          </button>
-        </div>
       </div>
 
-      {sessionOn(draft.date) ? (
-        <div className="tp-log-delete">
+      {existing ? (
+        // 保存した記録そのものを消す(日付を間違えて保存したときなど)。保存の欄とは離し、何が消えるかを書いておく。
+        <div className="tp-log-remove">
           {confirmDelete ? (
-            <>
+            <div className="tp-log-delete">
               <span className="tp-small">
-                この日の記録を消します。よければもう一度押してください。
+                保存した{formatNoteDate(draft.date)}の記録を消します。部員からも見えなくなります。よければもう一度押してください。
               </span>
               <button
                 type="button"
@@ -706,91 +1050,25 @@ export function TrainingLog({
                 className="tp-button tp-ghost"
                 onClick={() => setConfirmDelete(false)}
               >
-                やめる
+                消さない
               </button>
-            </>
+            </div>
           ) : (
-            <button
-              type="button"
-              className="tp-clear"
-              onClick={() => setConfirmDelete(true)}
-            >
-              この日の記録を消す
-            </button>
+            <>
+              <button
+                type="button"
+                className="tp-clear tp-clear-danger"
+                onClick={() => setConfirmDelete(true)}
+              >
+                この日の記録を消す
+              </button>
+              <p className="tp-small tp-muted">
+                保存した記録が消え、部員からも見えなくなります。
+              </p>
+            </>
           )}
         </div>
       ) : null}
     </form>
-  ) : null;
-
-  return (
-    <section className="tp-section tp-log">
-      {draft ? (
-        editor
-      ) : (
-        <button
-          type="button"
-          className="tp-button tp-log-start"
-          onClick={() => open(today)}
-        >
-          ＋ 筋トレを記録する
-        </button>
-      )}
-      {message ? <p className="tp-message">{message}</p> : null}
-
-      <h2>自分の記録</h2>
-      {sessions.length === 0 ? (
-        <p className="tp-small tp-muted">
-          まだ記録はありません。筋トレをした日に、上のボタンから記録します。
-        </p>
-      ) : (
-        <ol className="tp-log-history">
-          {sessions.slice(0, shown).map((session) => (
-            <li key={session.date} className="tp-card">
-              <div className="tp-log-histhead">
-                <b>【{formatNoteDate(session.date)}】</b>
-                <button
-                  type="button"
-                  className="tp-log-edit"
-                  onClick={() => open(session.date)}
-                >
-                  編集
-                </button>
-              </div>
-              <ul className="tp-log-lines">
-                {session.exercises.map((exercise, index) => (
-                  <li key={index}>
-                    {exercise.name}:
-                    {summarizeSets(
-                      exercise.sets,
-                      weightModeOf(exercise.name),
-                      exerciseUnit(exercise),
-                    )}
-                  </li>
-                ))}
-                {session.bodyWeightKg !== null ? (
-                  <li>体重:{session.bodyWeightKg}kg</li>
-                ) : null}
-              </ul>
-              {session.memo ? (
-                <p className="tp-small tp-muted">{session.memo}</p>
-              ) : null}
-              {session.request ? (
-                <p className="tp-small tp-request">{session.request}</p>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      )}
-      {sessions.length > shown ? (
-        <button
-          type="button"
-          className="tp-button tp-ghost"
-          onClick={() => setShown(shown + HISTORY_STEP)}
-        >
-          もっと見る
-        </button>
-      ) : null}
-    </section>
   );
 }

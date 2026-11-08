@@ -625,31 +625,74 @@ body:has(.tp) {
   min-width: 0;
 }
 
-/* 保存(下に固定) */
-.tp-savebar {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 -16px;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+/*
+ * 保存(トレ録・ノート)。入力欄の最後に置き、画面には固定しない(2026-11-08 から)。
+ * iOS 26 では、キーボードを閉じたあと、画面の下に固定した保存バーが画面の真ん中に浮いた(iOS の不具合で、確実な回避策がない)。
+ * 押し忘れは、端末の下書き(lib/domain/drafts.ts)で補う。
+ */
+/* 保存の通信中(inert)は、欄を触れないことが分かるよう薄くする */
+.tp form[inert] {
+  opacity: 0.7;
+}
+
+.tp-savearea {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 14px;
   border-top: 1px solid var(--tp-line);
-  background: var(--tp-bg);
 }
 
-.tp-savebar p {
-  flex: 1;
-  min-width: 0;
-  color: var(--tp-muted);
-  font-size: 12.5px;
-  line-height: 1.4;
+.tp-savearea > .tp-button {
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
 }
 
-.tp-savebar .tp-dirty {
+.tp-savearea-state {
   color: var(--tp-accent);
+  font-size: 13px;
   font-weight: 700;
+}
+
+/* 「まだ保存していません」の横の「入力を捨てる」(2回押し) */
+.tp-savearea-state .tp-clear {
+  margin-left: 8px;
+  padding: 0;
+  font-size: 13px;
+}
+
+/* 消える・捨てるものの文字(2回押しの1回目のあと、「この日の記録を消す」) */
+.tp-clear.tp-clear-danger {
+  color: var(--tp-danger-fg);
+}
+
+/* 端末の下書きから戻したとき・保存していない記録があるときの知らせ */
+.tp-draftnote {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--tp-accent);
+  border-radius: 10px;
+  background: var(--tp-accent-soft);
+  font-size: 14px;
+}
+
+.tp-draftnote .tp-clear {
+  margin-left: 0;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+/* 画面には出さず、読み上げにだけ出す */
+.tp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .tp-button {
@@ -2727,6 +2770,142 @@ a.tp-place-link {
   gap: 12px;
 }
 
+/* トレ録を書く画面(2026-11-08 にメニューのページから分けた)の頭 */
+.tp-log-head {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.tp-log-head h1 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.tp-log-back {
+  justify-self: start;
+  color: var(--tp-accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* メニューのページの「トレ録」へ戻ったとき、上のバーに隠れないように */
+#log {
+  scroll-margin-top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px) + 12px);
+}
+
+/* 保存していない記録(端末の下書き)の「続きを書く」 */
+.tp-log-resume ul {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-log-resume li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+/* 種目の下の1行:★・印・回数・重さの目安(2026-11-08 から) */
+.tp-log-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--tp-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tp-log-meta .tp-must,
+.tp-log-meta .tp-swap {
+  margin-left: 0;
+}
+
+.tp-log-dose {
+  font-family: var(--tp-num);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/*
+ * 折りたたみ(ポイント・その日の追加・トレーニング担当へ)。閉じているときは1行だけ見せ、押すと全部開く。
+ * トレーニング中に開いておく画面なので、文が多くなりすぎないように(2026-11-08 から)。
+ */
+/* 種目の枠(grid)の中で、1行に詰めた文の幅まで広がって、枠からはみ出さないように */
+.tp-log-fold,
+.tp-log-menu {
+  min-width: 0;
+}
+
+.tp-log-fold summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tp-log-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.tp-log-fold summary::after {
+  content: "＋";
+  flex: none;
+  margin-left: auto;
+  color: var(--tp-muted);
+}
+
+.tp-log-fold[open] summary::after {
+  content: "−";
+}
+
+.tp-log-fold-label {
+  flex: none;
+  color: var(--tp-accent);
+  font-weight: 700;
+}
+
+.tp-log-fold-peek {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--tp-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-log-fold[open] .tp-log-fold-peek {
+  visibility: hidden;
+}
+
+.tp-log-fold-body {
+  padding-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.tp-log-extras,
+.tp-log-request {
+  padding: 10px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-log-extras .tp-extra + .tp-extra {
+  margin-top: 6px;
+}
+
 .tp-log-date {
   display: grid;
   gap: 4px;
@@ -2917,6 +3096,22 @@ a.tp-place-link {
 
 .tp-log-delete .tp-clear {
   margin-left: 0;
+}
+
+/* トレ録を書く画面の「この日の記録を消す」。保存の欄から離す(2026-11-08 から) */
+.tp-log-remove {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--tp-line);
+}
+
+.tp-log-remove > .tp-clear {
+  margin-left: 0;
+  padding: 4px 0;
+  font-size: 14px;
 }
 
 .tp-button.tp-danger {
@@ -3472,10 +3667,49 @@ button.tp-mystats-course {
 }
 
 /* トレ録:記録するときのメニューの選び方(2026-10-24) */
+/* 日付からメニューを選んであるので、ふだんは今のメニューの名前だけを出し、押すと選び直せる(2026-11-08 から) */
 .tp-log-menu {
-  display: grid;
+  padding: 10px 14px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-surface);
+}
+
+.tp-log-menu summary {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.tp-log-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.tp-log-menu summary::after {
+  content: "変える";
+  flex: none;
+  margin-left: auto;
+  color: var(--tp-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tp-log-menu[open] summary::after {
+  content: "閉じる";
+}
+
+.tp-log-menu-now {
+  display: grid;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.tp-log-menu-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .tp-log-menu select {
