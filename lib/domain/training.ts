@@ -228,6 +228,19 @@ export function addDays(isoDate: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+// トレ録を記録・直せる日:1年前から明日まで(API・書く画面・自分の記録の「編集」で同じにする)。
+export const LOG_MAX_PAST_DAYS = 366;
+
+/** トレ録を記録・直せる日付か(形が正しく、1年前から明日までの間)。 */
+export function isEditableLogDate(date: string | null | undefined, today: string): date is string {
+  return (
+    typeof date === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    date >= addDays(today, -LOG_MAX_PAST_DAYS) &&
+    date <= addDays(today, 1)
+  );
+}
+
 export function formatMonthDay(isoDate: string): string {
   const [, month, day] = isoDate.split("-").map(Number);
   return `${month}/${day}`;

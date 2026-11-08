@@ -8,6 +8,7 @@ import {
   inferUnit,
   parseDose,
   findLogMenuKey,
+  isEditableLogDate,
   resolveWeek,
   summarizeSets,
   toLogMenuItem,
@@ -250,5 +251,17 @@ describe("チェックの種目・T0 の置き換え・動画(2026-11-05 から)
     expect(findVideoLink(links, "サイドプランク")).toBe("u2");
     expect(findVideoLink(links, "プランク(重り付き)")).toBe("u1");
     expect(findVideoLink(links, "ベンチプレス")).toBeNull();
+  });
+});
+
+describe("トレ録を記録・直せる日付(2026-11-08 から)", () => {
+  it("1年前(366日前)から明日まで。形の違うものは外す", () => {
+    const today = "2026-11-08";
+    expect(isEditableLogDate("2025-11-07", today)).toBe(true);
+    expect(isEditableLogDate("2025-11-06", today)).toBe(false);
+    expect(isEditableLogDate("2026-11-09", today)).toBe(true);
+    expect(isEditableLogDate("2026-11-10", today)).toBe(false);
+    expect(isEditableLogDate("2026-11-8", today)).toBe(false);
+    expect(isEditableLogDate(undefined, today)).toBe(false);
   });
 });

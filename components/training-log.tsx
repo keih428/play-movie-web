@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { formatNoteDate } from "@/lib/domain/notes";
@@ -10,7 +11,6 @@ import {
   buildDefaultExercises,
   getPreviousSetsByExercise,
   inferLift,
-  summarizeSets,
   findVideoLink,
   exerciseUnit,
   inferUnit,
@@ -21,9 +21,11 @@ import {
   type TrainingSessionRecord,
 } from "@/lib/domain/training";
 
-type TrainingLogProps = {
+type TrainingLogEditorProps = {
   teamSlug: string;
   today: string;
+  // 開いたときの日付(URL の ?date=)。画面の中で日付を変えると、URL も書き換える(再読み込みしても同じ日に戻る)。
+  initialDate: string;
   // 自分の記録(新しい順)。
   sessions: TrainingSessionRecord[];
   // 選べるメニュー(期間・週・曜日)。記録の欄は、選んだメニューの全部の種目に、先週(なければ前回)の重さ・回数を入れて始める。
@@ -33,6 +35,8 @@ type TrainingLogProps = {
   menuKeyByDate: Record<string, string>;
   // 種目の動画([種目名の一部, URL])。記録の欄の種目名の横に「▶ 動画」を出す(2026-11-05 から)。
   videoLinks: [string, string][];
+  // メニューのページ(戻る先)。名簿で決まっていない段階・枠・ポジションを引き継ぐ。
+  trainingHref: string;
 };
 
 // 欄の中では、数字を打ちかけの文字のまま持つ(「72.」なども打てるように)。
@@ -59,7 +63,6 @@ type Draft = {
   request: string;
 };
 
-const HISTORY_STEP = 20;
 // 選べる日:1年前から明日まで(API と同じ)。
 const MAX_PAST_DAYS = 366;
 
@@ -90,24 +93,21 @@ function toDraftExercises(
 }
 
 /**
- * トレーニング録(日付ごと)。「+ 筋トレを記録する」→ 日付を選ぶ → その日のメニューが入った欄を直す → 保存。
- * 保存した記録は、新しい日付から順に並ぶ。押すと直せる(部員の声、2026-10-20)。
+ * トレ録を書く画面(日付ごと。2026-11-08 にメニューのページから分けた)。
+ * ジムでやりながら記録する。保存ボタンは画面に固定せず、入力欄の最後に置く(iOS 26 では、キーボードを閉じたあと
+ * 画面に固定したものがずれて、保存バーが画面の真ん中に浮いたため)。
  */
-export function TrainingLog({
+export function TrainingLogEditor({
   teamSlug,
   today,
+  initialDate,
   sessions,
   menuOptions,
   menuKeyByDate,
   videoLinks,
-}: TrainingLogProps) {
+  trainingHref,
+}: TrainingLogEditorProps) {
   const router = useRouter();
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [shown, setShown] = useState(HISTORY_STEP);
 
   const sessionOn = (date: string) =>
     sessions.find((session) => session.date === date);
@@ -159,6 +159,21 @@ export function TrainingLog({
     };
   }
 
+  const [draft, setDraft] = useState<Draft>(() => draftFor(initialDate));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  /** 日付を変える。URL も書き換える(再読み込みしても同じ日に戻る)。 */
+  function changeDate(date: string) {
+    setDraft(draftFor(date));
+    setError("");
+    setConfirmDelete(false);
+    const url = new URL(window.location.href);
+    url.searchParams.set("date", date);
+    window.history.replaceState(null, "", url);
+  }
+
   /**
    * メニューを切り替える。新しいメニューの種目で作り直すが、もう打った重さ・回数(同じ名前の種目)と、
    * 自分で足した種目は残す。
@@ -179,16 +194,8 @@ export function TrainingLog({
     });
   }
 
-  function open(date: string) {
-    setDraft(draftFor(date));
-    setError("");
-    setMessage("");
-    setConfirmDelete(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   function update(change: (current: Draft) => Draft) {
-    setDraft((current) => (current ? change(current) : current));
+    setDraft((current) => change(current));
   }
 
   function updateExercise(
@@ -203,11 +210,17 @@ export function TrainingLog({
     }));
   }
 
+  /** メニューのページへ戻る(保存した・消したときは、そのことを出す)。 */
+  function leave(params: Record<string, string> = {}) {
+    const url = new URL(trainingHref, window.location.origin);
+    for (const [name, value] of Object.entries(params)) {
+      url.searchParams.set(name, value);
+    }
+    router.push(`${url.pathname}${url.search}#log`);
+  }
+
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!draft) {
-      return;
-    }
     setBusy(true);
     setError("");
     try {
@@ -250,22 +263,16 @@ export function TrainingLog({
           payload.error ?? "保存できませんでした。もう一度試してください。",
         );
       }
-      setMessage(`${formatNoteDate(draft.date)}の記録を保存しました。`);
-      setDraft(null);
-      router.refresh();
+      leave({ saved: draft.date });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "保存できませんでした。",
       );
-    } finally {
       setBusy(false);
     }
   }
 
   async function remove() {
-    if (!draft) {
-      return;
-    }
     setBusy(true);
     setError("");
     try {
@@ -282,42 +289,46 @@ export function TrainingLog({
       if (!response.ok) {
         throw new Error(payload.error ?? "消せませんでした。");
       }
-      setMessage(`${formatNoteDate(draft.date)}の記録を消しました。`);
-      setDraft(null);
-      router.refresh();
+      leave({ deleted: draft.date });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "消せませんでした。");
-    } finally {
       setBusy(false);
     }
   }
 
-  const editor = draft ? (
+  const existing = sessionOn(draft.date);
+
+  return (
     <form className="tp-log-editor" onSubmit={save}>
-      <div className="tp-log-date">
-        <div className="tp-field">
-          <label htmlFor="log-date">日付</label>
-          <input
-            id="log-date"
-            type="date"
-            value={draft.date}
-            min={addDays(today, -MAX_PAST_DAYS)}
-            max={addDays(today, 1)}
-            onChange={(event) => {
-              const date = event.target.value;
-              if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                setDraft(draftFor(date));
-                setConfirmDelete(false);
-              }
-            }}
-          />
+      <header className="tp-log-head">
+        <Link className="tp-log-back" href={`${trainingHref}#log`}>
+          ← トレーニングへ戻る
+        </Link>
+        <h1>{formatNoteDate(draft.date)}の記録</h1>
+        <div className="tp-log-date">
+          <div className="tp-field">
+            <label htmlFor="log-date">日付</label>
+            <input
+              id="log-date"
+              type="date"
+              value={draft.date}
+              min={addDays(today, -MAX_PAST_DAYS)}
+              max={addDays(today, 1)}
+              onChange={(event) => {
+                const date = event.target.value;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                  changeDate(date);
+                }
+              }}
+            />
+          </div>
+          <p className="tp-small tp-muted">
+            {existing
+              ? "保存した記録を直しています。"
+              : "先週(なければ前回)の重さ・回数を入れてあります。違う所だけ直してください。"}
+          </p>
         </div>
-        <p className="tp-small tp-muted">
-          {sessionOn(draft.date)
-            ? "この日の記録を編集します。"
-            : "新しい記録です。重さと回数は、先週(なければ前回)の記録を入れてあります。違うところだけ直してください。"}
-        </p>
-      </div>
+      </header>
 
       {menuOptions.length > 0 ? (
         <div className="tp-log-menu">
@@ -667,31 +678,31 @@ export function TrainingLog({
         </p>
       ) : null}
 
-      <div className="tp-savebar">
-        <p>
+      {/* 保存は、入力欄の最後(画面には固定しない。2026-11-08 から)。 */}
+      <div className="tp-savearea">
+        <button className="tp-button" type="submit" disabled={busy}>
+          {busy ? "保存中…" : "保存"}
+        </button>
+        <p className="tp-small tp-muted">
           重さも回数も空のセットは、保存しません。書いたことは部の全員に見えます。
         </p>
-        <div className="tp-actions">
-          <button
-            type="button"
-            className="tp-button tp-ghost"
-            disabled={busy}
-            onClick={() => setDraft(null)}
-          >
-            やめる
-          </button>
-          <button className="tp-button" type="submit" disabled={busy}>
-            {busy ? "保存中…" : "保存"}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="tp-clear tp-savearea-discard"
+          disabled={busy}
+          onClick={() => leave()}
+        >
+          やめる
+        </button>
       </div>
 
-      {sessionOn(draft.date) ? (
-        <div className="tp-log-delete">
+      {existing ? (
+        // 保存した記録そのものを消す(日付を間違えて保存したときなど)。保存の欄とは離し、何が消えるかを書いておく。
+        <div className="tp-log-remove">
           {confirmDelete ? (
-            <>
+            <div className="tp-log-delete">
               <span className="tp-small">
-                この日の記録を消します。よければもう一度押してください。
+                保存した{formatNoteDate(draft.date)}の記録を消します。部員からも見えなくなります。よければもう一度押してください。
               </span>
               <button
                 type="button"
@@ -706,91 +717,25 @@ export function TrainingLog({
                 className="tp-button tp-ghost"
                 onClick={() => setConfirmDelete(false)}
               >
-                やめる
+                消さない
               </button>
-            </>
+            </div>
           ) : (
-            <button
-              type="button"
-              className="tp-clear"
-              onClick={() => setConfirmDelete(true)}
-            >
-              この日の記録を消す
-            </button>
+            <>
+              <button
+                type="button"
+                className="tp-clear tp-clear-danger"
+                onClick={() => setConfirmDelete(true)}
+              >
+                この日の記録を消す
+              </button>
+              <p className="tp-small tp-muted">
+                保存した記録が消え、部員からも見えなくなります。
+              </p>
+            </>
           )}
         </div>
       ) : null}
     </form>
-  ) : null;
-
-  return (
-    <section className="tp-section tp-log">
-      {draft ? (
-        editor
-      ) : (
-        <button
-          type="button"
-          className="tp-button tp-log-start"
-          onClick={() => open(today)}
-        >
-          ＋ 筋トレを記録する
-        </button>
-      )}
-      {message ? <p className="tp-message">{message}</p> : null}
-
-      <h2>自分の記録</h2>
-      {sessions.length === 0 ? (
-        <p className="tp-small tp-muted">
-          まだ記録はありません。筋トレをした日に、上のボタンから記録します。
-        </p>
-      ) : (
-        <ol className="tp-log-history">
-          {sessions.slice(0, shown).map((session) => (
-            <li key={session.date} className="tp-card">
-              <div className="tp-log-histhead">
-                <b>【{formatNoteDate(session.date)}】</b>
-                <button
-                  type="button"
-                  className="tp-log-edit"
-                  onClick={() => open(session.date)}
-                >
-                  編集
-                </button>
-              </div>
-              <ul className="tp-log-lines">
-                {session.exercises.map((exercise, index) => (
-                  <li key={index}>
-                    {exercise.name}:
-                    {summarizeSets(
-                      exercise.sets,
-                      weightModeOf(exercise.name),
-                      exerciseUnit(exercise),
-                    )}
-                  </li>
-                ))}
-                {session.bodyWeightKg !== null ? (
-                  <li>体重:{session.bodyWeightKg}kg</li>
-                ) : null}
-              </ul>
-              {session.memo ? (
-                <p className="tp-small tp-muted">{session.memo}</p>
-              ) : null}
-              {session.request ? (
-                <p className="tp-small tp-request">{session.request}</p>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      )}
-      {sessions.length > shown ? (
-        <button
-          type="button"
-          className="tp-button tp-ghost"
-          onClick={() => setShown(shown + HISTORY_STEP)}
-        >
-          もっと見る
-        </button>
-      ) : null}
-    </section>
   );
 }

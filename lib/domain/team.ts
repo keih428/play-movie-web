@@ -139,6 +139,11 @@ export function buildTeamTrainingPath(teamSlug: string): string {
   return `/t/${teamSlug}/training`;
 }
 
+/** トレ録を書く画面(日付ごと。2026-11-08 にメニューのページから分けた)。 */
+export function buildTeamTrainingLogPath(teamSlug: string, date?: string): string {
+  return `/t/${teamSlug}/training/log${date ? `?date=${date}` : ""}`;
+}
+
 export function buildTeamTrainingPlanPath(teamSlug: string): string {
   return `/t/${teamSlug}/training/plan`;
 }

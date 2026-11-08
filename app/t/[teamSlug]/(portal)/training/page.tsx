@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { RichText } from "@/components/rich-text";
 import { TrainingMeasurementForm } from "@/components/training-measurement-form";
 import { TrainingGlossary as Glossary } from "@/components/training-glossary";
-import { TrainingLog } from "@/components/training-log";
+import { TrainingLogHistory } from "@/components/training-log-history";
 import { TrainingMenuUpload } from "@/components/training-menu-upload";
 import { TrainingPersonalItems } from "@/components/training-personal-items";
 import { TrainingSession, type PeriodLink, type WeekLink } from "@/components/training-session";
@@ -13,13 +13,16 @@ import {
   toTrainingGroup,
   MEMBER_TIERS,
   canAdminister,
-  isMemberPosition,
   isPortalTeam,
 } from "@/lib/domain/portal";
-import { buildTeamTrainingPath, buildTeamTrainingPlanPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
+import { formatNoteDate } from "@/lib/domain/notes";
 import {
-  FRESHMAN_GRADE,
-  addDays,
+  buildTeamTrainingLogPath,
+  buildTeamTrainingPath,
+  buildTeamTrainingPlanPath,
+  buildTeamTrainingRecordsPath,
+} from "@/lib/domain/team";
+import {
   findPlanBlock,
   findWeekIndex,
   formatMonthDay,
@@ -28,14 +31,10 @@ import {
   getProgramRange,
   pickProgram,
   resolveWeek,
-  type MenuSelection,
   type SessionExercise,
   type TrainingMenu,
-  buildLogMenuOptions,
-  collectVideoLinks,
-  findLogMenuKey,
 } from "@/lib/domain/training";
-import { applyPersonalItems, applyPersonalLogItems } from "@/lib/domain/personal-items";
+import { applyPersonalItems } from "@/lib/domain/personal-items";
 import { listMembers } from "@/lib/server/portal-member-store";
 import { listPersonalItems } from "@/lib/server/portal-personal-items-store";
 import { requireMember } from "@/lib/server/portal-session";
@@ -48,6 +47,7 @@ import {
   listTrainingPrograms,
   toEstimated1rm,
 } from "@/lib/server/portal-training-store";
+import { buildSelectionQuery, resolveMenuSelection } from "@/lib/server/training-log-data";
 
 type PageProps = {
   params: Promise<{
@@ -59,17 +59,15 @@ type PageProps = {
     tier?: string;
     slot?: string;
     pos?: string;
+    // トレ録を書く画面から戻ったとき:保存した・消した日付(「保存しました」を出す)。
+    saved?: string;
+    deleted?: string;
   }>;
 };
 
 export const dynamic = "force-dynamic";
 
-// 記録の欄の最初の形を、今日から何日前の分まで作っておくか(それより前の日は、空の欄から始める)。
-const DEFAULT_PAST_DAYS = 60;
-
-function pick<T extends string>(choices: readonly T[], ...candidates: (string | null | undefined)[]): T {
-  return (candidates.find((value) => choices.includes(value as T)) as T | undefined) ?? choices[0];
-}
+const isIsoDate = (value: string | undefined): value is string => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 
 /** 見出し。単語帳の表示では「SECTION n」の札が付き、題も変わる。 */
 function SectionHead({ no, title, tangoTitle }: { no: number; title: string; tangoTitle?: string }) {
@@ -309,13 +307,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
   // 名簿で決まっている項目はそれを使う。まだ決まっていない項目だけ、画面で選べる。
   const canRecord = Boolean(current.position);
-  const selection: MenuSelection = {
-    tier: pick(MEMBER_TIERS, current.tier, query.tier, "T1"),
-    // 名簿の枠(A・B・C)から、メニューのまとまり(AB・C)を決める。
-    slot: pick(TRAINING_GROUPS, toTrainingGroup(current.slot), query.slot),
-    position: isMemberPosition(current.position) ? current.position : pick(MEMBER_POSITIONS, query.pos),
-    fresh: current.grade === FRESHMAN_GRADE,
-  };
+  const selection = resolveMenuSelection(current, query);
   const choices = [
     { key: "tier", label: "段階", values: MEMBER_TIERS, value: selection.tier, fixed: Boolean(current.tier) },
     { key: "slot", label: "枠", values: TRAINING_GROUPS, value: selection.slot, fixed: Boolean(toTrainingGroup(current.slot)) },
@@ -342,26 +334,18 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
   const estimated = toEstimated1rm(latest);
   const resolved = resolveWeek(menu, weekIndex, selection, estimated);
   const { week } = resolved;
-  // 日付ごとの記録(2026-10-20 から)。欄の最初の形は、その日のメニューの種目と回数・セット数。
+  // 日付ごとの記録(2026-10-20 から)。書く画面は 2026-11-08 に分けた(training/log)。ここには自分の記録の一覧を出す。
   const sessions = canRecord ? await listMemberSessions(current.id) : [];
-  // 記録の欄は、選んだメニュー(初めは日付から決まる週・曜日)の全部の種目に、先週(なければ前回)の重さ・回数を入れたもの。
-  // メニューは、ほかの週・曜日(上半身の日・自主)にも切り替えられる(2026-10-24 から)。
   // 個人の追加メニュー(2026-10-26 から):トレーニング担当がその人に足した種目を、メニューとトレ録の欄に入れる。
   const personalItems = canRecord ? await listPersonalItems(teamSlug, current.id) : [];
   const days = resolved.days.map((day) => applyPersonalItems(day, personalItems));
-  const menuOptions = canRecord
-    ? buildLogMenuOptions(programs, selection, estimated).map((option) => applyPersonalLogItems(option, personalItems))
-    : [];
-  const menuKeyByDate: Record<string, string> = {};
-  if (canRecord) {
-    for (let offset = -DEFAULT_PAST_DAYS; offset <= 1; offset += 1) {
-      const date = addDays(today, offset);
-      const key = findLogMenuKey(programs, menuOptions, date);
-      if (key) {
-        menuKeyByDate[date] = key;
-      }
-    }
-  }
+  const selectionQuery = buildSelectionQuery(current, selection);
+  const logHref = `${buildTeamTrainingLogPath(teamSlug)}${selectionQuery ? `?${selectionQuery}` : ""}`;
+  const logNotice = isIsoDate(query.saved)
+    ? `${formatNoteDate(query.saved)}の記録を保存しました。`
+    : isIsoDate(query.deleted)
+      ? `${formatNoteDate(query.deleted)}の記録を消しました。`
+      : "";
 
   // 今週なら、今日の曜日を開く。
   const recordableDays = days.filter((day) => day.items.length > 0);
@@ -455,13 +439,11 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
       </header>
 
       {canRecord ? (
-        <TrainingLog
-          teamSlug={teamSlug}
+        <TrainingLogHistory
           today={today}
           sessions={sessions}
-          menuOptions={menuOptions}
-          menuKeyByDate={menuKeyByDate}
-          videoLinks={collectVideoLinks(programs)}
+          logHref={logHref}
+          notice={logNotice}
         />
       ) : null}
 

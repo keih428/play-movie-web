@@ -625,33 +625,6 @@ body:has(.tp) {
   min-width: 0;
 }
 
-/* 保存(下に固定) */
-.tp-savebar {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 -16px;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--tp-line);
-  background: var(--tp-bg);
-}
-
-.tp-savebar p {
-  flex: 1;
-  min-width: 0;
-  color: var(--tp-muted);
-  font-size: 12.5px;
-  line-height: 1.4;
-}
-
-.tp-savebar .tp-dirty {
-  color: var(--tp-accent);
-  font-weight: 700;
-}
-
 /*
  * 保存(トレ録・ノート)。入力欄の最後に置き、画面には固定しない(2026-11-08 から)。
  * iOS 26 では、キーボードを閉じたあと、画面の下に固定した保存バーが画面の真ん中に浮いた(iOS の不具合で、確実な回避策がない)。
@@ -2797,6 +2770,30 @@ a.tp-place-link {
   gap: 12px;
 }
 
+/* トレ録を書く画面(2026-11-08 にメニューのページから分けた)の頭 */
+.tp-log-head {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.tp-log-head h1 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.tp-log-back {
+  justify-self: start;
+  color: var(--tp-accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* メニューのページの「トレ録」へ戻ったとき、上のバーに隠れないように */
+#log {
+  scroll-margin-top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px) + 12px);
+}
+
 .tp-log-date {
   display: grid;
   gap: 4px;
@@ -2987,6 +2984,22 @@ a.tp-place-link {
 
 .tp-log-delete .tp-clear {
   margin-left: 0;
+}
+
+/* トレ録を書く画面の「この日の記録を消す」。保存の欄から離す(2026-11-08 から) */
+.tp-log-remove {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--tp-line);
+}
+
+.tp-log-remove > .tp-clear {
+  margin-left: 0;
+  padding: 4px 0;
+  font-size: 14px;
 }
 
 .tp-button.tp-danger {
