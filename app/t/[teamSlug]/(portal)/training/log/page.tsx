@@ -69,6 +69,7 @@ export default async function TeamTrainingLogPage({ params, searchParams }: Page
   return (
     <TrainingLogEditor
       teamSlug={teamSlug}
+      memberId={current.id}
       today={today}
       initialDate={date}
       sessions={data.sessions}

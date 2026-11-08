@@ -2794,6 +2794,22 @@ a.tp-place-link {
   scroll-margin-top: calc(var(--tp-top-h) + env(safe-area-inset-top, 0px) + 12px);
 }
 
+/* 保存していない記録(端末の下書き)の「続きを書く」 */
+.tp-log-resume ul {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-log-resume li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
 .tp-log-date {
   display: grid;
   gap: 4px;

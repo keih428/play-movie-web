@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+  browserDraftStorage,
+  draftBase,
+  draftKey,
+  formatDraftTime,
+  readDraft,
+  removeDraft,
+  writeDraft,
+} from "@/lib/domain/drafts";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import {
@@ -23,6 +32,7 @@ import {
 
 type TrainingLogEditorProps = {
   teamSlug: string;
+  memberId: string;
   today: string;
   // 開いたときの日付(URL の ?date=)。画面の中で日付を変えると、URL も書き換える(再読み込みしても同じ日に戻る)。
   initialDate: string;
@@ -62,6 +72,8 @@ type Draft = {
   memo: string;
   request: string;
 };
+// 端末に残す形(種目の key は画面の中だけのもの。戻すときに付け直す)。
+type StoredContent = Omit<Draft, "exercises"> & { exercises: Omit<DraftExercise, "key">[] };
 
 // 選べる日:1年前から明日まで(API と同じ)。
 const MAX_PAST_DAYS = 366;
@@ -92,13 +104,65 @@ function toDraftExercises(
   }));
 }
 
+function contentOf(draft: Draft): StoredContent {
+  return {
+    ...draft,
+    exercises: draft.exercises.map(({ name, lift, unit, unitChosen, sets, fixed }) => ({
+      name,
+      lift,
+      unit,
+      ...(unitChosen ? { unitChosen } : {}),
+      sets,
+      fixed,
+    })),
+  };
+}
+
+function fromContent(content: StoredContent): Draft {
+  return {
+    ...content,
+    exercises: content.exercises.map((exercise) => ({ ...exercise, key: nextKey++ })),
+  };
+}
+
+/** 下書きを比べるための形(何も変えていなければ、開いたときと同じ文字になる)。 */
+function serialize(draft: Draft): string {
+  return JSON.stringify(contentOf(draft));
+}
+
+function isStoredContent(value: unknown): value is StoredContent {
+  const content = value as StoredContent | null;
+  return (
+    typeof content === "object" &&
+    content !== null &&
+    typeof content.date === "string" &&
+    (content.menuKey === null || typeof content.menuKey === "string") &&
+    typeof content.bodyWeight === "string" &&
+    typeof content.memo === "string" &&
+    typeof content.request === "string" &&
+    Array.isArray(content.exercises) &&
+    content.exercises.every(
+      (exercise) =>
+        typeof exercise?.name === "string" &&
+        typeof exercise.fixed === "boolean" &&
+        typeof exercise.unit === "string" &&
+        Array.isArray(exercise.sets) &&
+        exercise.sets.every(
+          (set) => typeof set?.kg === "string" && typeof set?.reps === "string",
+        ),
+    )
+  );
+}
+
 /**
  * トレ録を書く画面(日付ごと。2026-11-08 にメニューのページから分けた)。
  * ジムでやりながら記録する。保存ボタンは画面に固定せず、入力欄の最後に置く(iOS 26 では、キーボードを閉じたあと
- * 画面に固定したものがずれて、保存バーが画面の真ん中に浮いたため)。
+ * 画面に固定したものがずれて、保存バーが画面の真ん中に浮いたため)。保存していない入力は端末に下書きとして残し、
+ * 次に開いたときにすぐ続きから書ける。
  */
 export function TrainingLogEditor({
   teamSlug,
+  memberId,
   today,
   initialDate,
   sessions,
@@ -108,6 +172,7 @@ export function TrainingLogEditor({
   trainingHref,
 }: TrainingLogEditorProps) {
   const router = useRouter();
+  const storageKey = (date: string) => draftKey("training", teamSlug, memberId, date);
 
   const sessionOn = (date: string) =>
     sessions.find((session) => session.date === date);
@@ -159,16 +224,104 @@ export function TrainingLogEditor({
     };
   }
 
-  const [draft, setDraft] = useState<Draft>(() => draftFor(initialDate));
+  const [initial] = useState(() => {
+    const draft = draftFor(initialDate);
+    return { draft, baseline: serialize(draft) };
+  });
+  const [draft, setDraft] = useState<Draft>(initial.draft);
+  // 何も変えていないときの形。これと違えば、端末に下書きを残す。
+  const [baseline, setBaseline] = useState(initial.baseline);
+  // 下書きを作ったときの、サーバーの記録の写し(戻すときに、ほかの端末で変わっていないか比べる)。
+  const [base, setBase] = useState(() => draftBase(sessionOn(initialDate) ?? null));
+  // 端末の下書きから戻したとき、その下書きを最後に書いた時刻。
+  const [restoredAt, setRestoredAt] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const [storageFailed, setStorageFailed] = useState(false);
+  // 端末の下書きを確かめ終わるまでは書かない(開いた直後の形で、残っている下書きを上書きしないように)。
+  const [ready, setReady] = useState(false);
+  const lastWritten = useRef("");
+  const leaving = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // 「捨てる」を1回押した場所(もう一度押すと捨てる)。戻した知らせの中と保存の欄の2か所にあり、押した方だけ切り替える。
+  const [confirmDiscard, setConfirmDiscard] = useState<"notice" | "savearea" | null>(null);
 
-  /** 日付を変える。URL も書き換える(再読み込みしても同じ日に戻る)。 */
-  function changeDate(date: string) {
-    setDraft(draftFor(date));
+  const dirty = serialize(draft) !== baseline;
+
+  /** その日付を、保存した記録(なければメニュー)から始める。 */
+  function startFresh(date: string) {
+    const fresh = draftFor(date);
+    lastWritten.current = "";
+    setDraft(fresh);
+    setBaseline(serialize(fresh));
+    setBase(draftBase(sessionOn(date) ?? null));
+    setRestoredAt(null);
+    setStale(false);
+  }
+
+  /** その日付の欄を開く。端末に下書きがあれば、それで続きから。 */
+  function loadDate(date: string) {
+    const storage = browserDraftStorage();
+    const stored = storage
+      ? readDraft(storage, storageKey(date), isStoredContent)
+      : null;
+    if (stored && stored.data.date === date) {
+      const restored = fromContent(stored.data);
+      lastWritten.current = serialize(restored);
+      setDraft(restored);
+      setBaseline(serialize(draftFor(date)));
+      setBase(stored.base);
+      setRestoredAt(stored.savedAt);
+      setStale(stored.base !== draftBase(sessionOn(date) ?? null));
+    } else {
+      startFresh(date);
+    }
     setError("");
     setConfirmDelete(false);
+    setConfirmDiscard(null);
+  }
+
+  // 開いたときに一度だけ:端末に下書きがあれば、すぐ続きから。
+  useEffect(() => {
+    const storage = browserDraftStorage();
+    if (storage && readDraft(storage, storageKey(initialDate), isStoredContent)) {
+      loadDate(initialDate);
+    }
+    setReady(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 開いたときに一度だけ
+
+  // 何か変えたら、端末に下書きを書く。開いたときと同じ形に戻したら消す。
+  useEffect(() => {
+    if (!ready || leaving.current) {
+      return;
+    }
+    const storage = browserDraftStorage();
+    if (!storage) {
+      return;
+    }
+    const key = storageKey(draft.date);
+    const content = serialize(draft);
+    if (content === baseline) {
+      removeDraft(storage, key);
+      lastWritten.current = "";
+      return;
+    }
+    if (content === lastWritten.current) {
+      return;
+    }
+    const ok = writeDraft(storage, key, {
+      savedAt: new Date().toISOString(),
+      base,
+      data: contentOf(draft),
+    });
+    lastWritten.current = ok ? content : "";
+    setStorageFailed(!ok);
+  }, [draft, baseline, base, ready]); // eslint-disable-line react-hooks/exhaustive-deps -- storageKey は人とチームで決まる
+
+  /** 日付を変える。打ちかけの日の下書きは端末に残り、その日に戻せば続きが出る。 */
+  function changeDate(date: string) {
+    loadDate(date);
     const url = new URL(window.location.href);
     url.searchParams.set("date", date);
     window.history.replaceState(null, "", url);
@@ -196,6 +349,7 @@ export function TrainingLogEditor({
 
   function update(change: (current: Draft) => Draft) {
     setDraft((current) => change(current));
+    setConfirmDiscard(null);
   }
 
   function updateExercise(
@@ -212,11 +366,19 @@ export function TrainingLogEditor({
 
   /** メニューのページへ戻る(保存した・消したときは、そのことを出す)。 */
   function leave(params: Record<string, string> = {}) {
+    leaving.current = true;
     const url = new URL(trainingHref, window.location.origin);
     for (const [name, value] of Object.entries(params)) {
       url.searchParams.set(name, value);
     }
     router.push(`${url.pathname}${url.search}#log`);
+  }
+
+  function forgetDraft(date: string) {
+    const storage = browserDraftStorage();
+    if (storage) {
+      removeDraft(storage, storageKey(date));
+    }
   }
 
   async function save(event: FormEvent) {
@@ -263,10 +425,14 @@ export function TrainingLogEditor({
           payload.error ?? "保存できませんでした。もう一度試してください。",
         );
       }
+      // 下書きは、サーバーが受け付けてから消す(失敗したら残る)。
+      forgetDraft(draft.date);
       leave({ saved: draft.date });
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "保存できませんでした。",
+        caught instanceof Error
+          ? `${caught.message}(入力はこの端末に残っています)`
+          : "保存できませんでした。",
       );
       setBusy(false);
     }
@@ -289,6 +455,7 @@ export function TrainingLogEditor({
       if (!response.ok) {
         throw new Error(payload.error ?? "消せませんでした。");
       }
+      forgetDraft(draft.date);
       leave({ deleted: draft.date });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "消せませんでした。");
@@ -296,10 +463,25 @@ export function TrainingLogEditor({
     }
   }
 
+  /**
+   * 保存していない入力を捨てる。2回押し(1回目で「もう一度押すと捨てます」に変わる。うっかり押して消えないように)。
+   * 捨てたら、保存した記録(なければメニュー)から書き直す。画面を出るのは上の「戻る」(入力は端末に残る)。
+   */
+  function discard(place: "notice" | "savearea") {
+    if (confirmDiscard !== place) {
+      setConfirmDiscard(place);
+      return;
+    }
+    forgetDraft(draft.date);
+    startFresh(draft.date);
+    setConfirmDiscard(null);
+  }
+
   const existing = sessionOn(draft.date);
 
   return (
-    <form className="tp-log-editor" onSubmit={save}>
+    // 保存・削除の通信中は、欄を触れなくする(その間に打った分は送られず、保存できると下書きごと消えるため)。
+    <form className="tp-log-editor" onSubmit={save} inert={busy}>
       <header className="tp-log-head">
         <Link className="tp-log-back" href={`${trainingHref}#log`}>
           ← トレーニングへ戻る
@@ -329,6 +511,39 @@ export function TrainingLogEditor({
           </p>
         </div>
       </header>
+
+      {restoredAt ? (
+        <div className="tp-draftnote" role="status">
+          <p>
+            保存していない入力を戻しました
+            {formatDraftTime(restoredAt)
+              ? `(${formatDraftTime(restoredAt)} まで)`
+              : ""}
+            。
+          </p>
+          {stale ? (
+            <p>
+              この日の記録は、そのあとにほかの端末などで保存されています。このまま保存すると、この入力で置き換わります。
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className={`tp-clear${confirmDiscard === "notice" ? " tp-clear-danger" : ""}`}
+            onClick={() => discard("notice")}
+          >
+            {confirmDiscard === "notice"
+              ? "もう一度押すと捨てます"
+              : existing
+                ? "捨てて、保存した記録に戻す"
+                : "捨てて、初めから"}
+          </button>
+        </div>
+      ) : null}
+      {storageFailed ? (
+        <p className="tp-error" role="alert">
+          この端末には下書きを残せません。保存するまで画面を閉じないでください。
+        </p>
+      ) : null}
 
       {menuOptions.length > 0 ? (
         <div className="tp-log-menu">
@@ -679,21 +894,30 @@ export function TrainingLogEditor({
       ) : null}
 
       {/* 保存は、入力欄の最後(画面には固定しない。2026-11-08 から)。 */}
+      {/*
+        押すのは「保存」だけ。「やめる」は置かない(上の「戻る」と同じく画面を出るだけで、紛らわしかったため)。
+        捨てたいときは、保存していない変更があるときだけ出る「入力を捨てる」から。
+      */}
       <div className="tp-savearea">
+        {dirty ? (
+          <p className="tp-savearea-state">
+            まだ保存していません(入力はこの端末に残っています)
+            <button
+              type="button"
+              className={`tp-clear${confirmDiscard === "savearea" ? " tp-clear-danger" : ""}`}
+              disabled={busy}
+              onClick={() => discard("savearea")}
+            >
+              {confirmDiscard === "savearea" ? "もう一度押すと捨てます" : "入力を捨てる"}
+            </button>
+          </p>
+        ) : null}
         <button className="tp-button" type="submit" disabled={busy}>
           {busy ? "保存中…" : "保存"}
         </button>
         <p className="tp-small tp-muted">
           重さも回数も空のセットは、保存しません。書いたことは部の全員に見えます。
         </p>
-        <button
-          type="button"
-          className="tp-clear tp-savearea-discard"
-          disabled={busy}
-          onClick={() => leave()}
-        >
-          やめる
-        </button>
       </div>
 
       {existing ? (

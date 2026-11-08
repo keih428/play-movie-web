@@ -440,6 +440,8 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
       {canRecord ? (
         <TrainingLogHistory
+          teamSlug={teamSlug}
+          memberId={current.id}
           today={today}
           sessions={sessions}
           logHref={logHref}

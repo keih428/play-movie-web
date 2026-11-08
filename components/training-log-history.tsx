@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  browserDraftStorage,
+  draftKey,
+  formatDraftTime,
+  listDraftDates,
+  removeDraft,
+} from "@/lib/domain/drafts";
 import { formatNoteDate } from "@/lib/domain/notes";
 import {
   exerciseUnit,
@@ -12,6 +19,8 @@ import {
 } from "@/lib/domain/training";
 
 type TrainingLogHistoryProps = {
+  teamSlug: string;
+  memberId: string;
   today: string;
   // 自分の記録(新しい順)。
   sessions: TrainingSessionRecord[];
@@ -22,25 +31,70 @@ type TrainingLogHistoryProps = {
 };
 
 const HISTORY_STEP = 20;
+// 「記録の途中」は、新しいものから何件まで出すか。
+const DRAFTS_SHOWN = 3;
 
 /**
  * トレーニングのページの「トレ録」:記録を書く画面への入口と、自分の記録(新しい日付から順)。
- * 記録を書く画面は 2026-11-08 に分けた。
+ * 記録を書く画面は 2026-11-08 に分けた。保存していない記録(端末の下書き)があれば、まず「続きを書く」を出す。
  */
 export function TrainingLogHistory({
+  teamSlug,
+  memberId,
   today,
   sessions,
   logHref,
   notice,
 }: TrainingLogHistoryProps) {
+  const [drafts, setDrafts] = useState<{ date: string; savedAt: string }[]>([]);
   const [shown, setShown] = useState(HISTORY_STEP);
+
+  // 下書きは端末にしかないので、開いたあとに読む。
+  // 直せる日付(1年前から明日まで)を外れた下書きは、もう保存できないので片付ける。
+  useEffect(() => {
+    const storage = browserDraftStorage();
+    if (!storage) {
+      return;
+    }
+    const all = listDraftDates(storage, "training", teamSlug, memberId);
+    for (const entry of all) {
+      if (!isEditableLogDate(entry.date, today)) {
+        removeDraft(storage, draftKey("training", teamSlug, memberId, entry.date));
+      }
+    }
+    setDrafts(all.filter((entry) => isEditableLogDate(entry.date, today)));
+  }, [teamSlug, memberId, today]);
 
   const hrefFor = (date: string) =>
     `${logHref}${logHref.includes("?") ? "&" : "?"}date=${date}`;
 
   return (
     <section id="log" className="tp-section tp-log">
-      <Link className="tp-button tp-log-start" href={hrefFor(today)}>
+      {drafts.length > 0 ? (
+        <div className="tp-draftnote tp-log-resume" role="status">
+          <p>
+            <b>保存していない記録があります</b>
+          </p>
+          <ul>
+            {drafts.slice(0, DRAFTS_SHOWN).map((entry) => (
+              <li key={entry.date}>
+                <Link className="tp-button" href={hrefFor(entry.date)}>
+                  {formatNoteDate(entry.date)}の続きを書く
+                </Link>
+                {formatDraftTime(entry.savedAt) ? (
+                  <span className="tp-small tp-muted">
+                    {formatDraftTime(entry.savedAt)} まで入力
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <Link
+        className={`tp-button tp-log-start${drafts.length > 0 ? " tp-ghost" : ""}`}
+        href={hrefFor(today)}
+      >
         ＋ 筋トレを記録する
       </Link>
       {notice ? <p className="tp-message">{notice}</p> : null}
