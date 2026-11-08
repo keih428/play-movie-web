@@ -95,16 +95,23 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
           {existing?.body.trim() ? " ・ 書いてあるノートを編集しています" : ""}
         </p>
         <div className="tp-actions">
+          {/* 打ちかけの入力は端末に下書きとして残るので「戻る」。捨てるのは欄の最後の「入力を捨てる」(2026-11-08 から)。 */}
           <Link className="tp-button tp-ghost" href={`${basePath}/mine`}>
-            やめて戻る
+            戻る
           </Link>
         </div>
       </header>
       <NoteEditor
         date={date}
+        memberId={current.id}
         initialBody={existing?.body.trim() ? existing.body : matchDraft}
         initialRequest={existing?.request ?? ""}
         initialTeamMessage={existing?.teamMessage ?? ""}
+        savedNote={
+          existing
+            ? { body: existing.body, request: existing.request ?? "", teamMessage: existing.teamMessage ?? "" }
+            : null
+        }
         teamSlug={teamSlug}
       />
     </>

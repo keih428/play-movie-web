@@ -652,6 +652,76 @@ body:has(.tp) {
   font-weight: 700;
 }
 
+/*
+ * 保存(トレ録・ノート)。入力欄の最後に置き、画面には固定しない(2026-11-08 から)。
+ * iOS 26 では、キーボードを閉じたあと、画面の下に固定した保存バーが画面の真ん中に浮いた(iOS の不具合で、確実な回避策がない)。
+ * 押し忘れは、端末の下書き(lib/domain/drafts.ts)で補う。
+ */
+/* 保存の通信中(inert)は、欄を触れないことが分かるよう薄くする */
+.tp form[inert] {
+  opacity: 0.7;
+}
+
+.tp-savearea {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-savearea > .tp-button {
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
+}
+
+.tp-savearea-state {
+  color: var(--tp-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 「まだ保存していません」の横の「入力を捨てる」(2回押し) */
+.tp-savearea-state .tp-clear {
+  margin-left: 8px;
+  padding: 0;
+  font-size: 13px;
+}
+
+/* 消える・捨てるものの文字(2回押しの1回目のあと、「この日の記録を消す」) */
+.tp-clear.tp-clear-danger {
+  color: var(--tp-danger-fg);
+}
+
+/* 端末の下書きから戻したとき・保存していない記録があるときの知らせ */
+.tp-draftnote {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--tp-accent);
+  border-radius: 10px;
+  background: var(--tp-accent-soft);
+  font-size: 14px;
+}
+
+.tp-draftnote .tp-clear {
+  margin-left: 0;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+/* 画面には出さず、読み上げにだけ出す */
+.tp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .tp-button {
   display: inline-flex;
   align-items: center;
