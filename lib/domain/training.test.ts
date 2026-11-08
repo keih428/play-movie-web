@@ -10,6 +10,7 @@ import {
   findLogMenuKey,
   resolveWeek,
   summarizeSets,
+  toLogMenuItem,
   weightModeOf,
   type MenuItem,
   type MenuWeek,
@@ -105,6 +106,31 @@ describe("上半身は日曜(2026-11-05 から)", () => {
     }));
     expect(findLogMenuKey(programs, options, "2026-11-15")).toBe("2026-11-09/W2/sat");
     expect(findLogMenuKey(programs, options, "2026-11-14")).toBe("2026-11-09/W2/self");
+  });
+
+  it("記録の画面には、注意点・C枠の置き換えの印も渡す(空なら持たない)", () => {
+    const base = {
+      name: "ベンチプレス",
+      dose: "5回 × 3",
+      tip: "",
+      main: true,
+      swapped: false,
+      weighted: true,
+      kind: "bp" as const,
+      targetKg: 60,
+      videoUrl: "https://example.com/v",
+      english: null,
+    };
+    expect(toLogMenuItem(base)).toEqual({ name: "ベンチプレス", dose: "5回 × 3", kind: "bp", weighted: true, targetKg: 60 });
+    expect(toLogMenuItem({ ...base, tip: "胸を張る", swapped: true })).toEqual({
+      name: "ベンチプレス",
+      dose: "5回 × 3",
+      kind: "bp",
+      weighted: true,
+      targetKg: 60,
+      tip: "胸を張る",
+      swapped: true,
+    });
   });
 });
 

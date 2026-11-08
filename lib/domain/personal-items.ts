@@ -1,5 +1,6 @@
 import {
   TRAINING_DAYS,
+  toLogMenuItem,
   type LogMenuOption,
   type ResolvedDay,
   type ResolvedItem,
@@ -70,9 +71,9 @@ export function applyPersonalLogItems(option: LogMenuOption, items: PersonalItem
     date: null,
     items: option.items.map((item) => ({
       ...item,
-      tip: "",
+      tip: item.tip ?? "",
       main: false,
-      swapped: false,
+      swapped: item.swapped ?? false,
       videoUrl: null,
       english: null,
     })),
@@ -82,10 +83,7 @@ export function applyPersonalLogItems(option: LogMenuOption, items: PersonalItem
   if (applied === day) {
     return option;
   }
-  return {
-    ...option,
-    items: applied.items.map(({ name, dose, kind, weighted, targetKg }) => ({ name, dose, kind, weighted, targetKg })),
-  };
+  return { ...option, items: applied.items.map(toLogMenuItem) };
 }
 
 /** 画面・API から来た曜日の並びを、決まった順に揃える(知らない値は捨てる)。 */
