@@ -209,8 +209,9 @@ export function buildVsm(session: InputAssistSession, options: BuildVsmOptions =
       home: toVsmTeam(session.teams.home),
       away: toVsmTeam(session.teams.away),
     },
-    attackCombinations: session.extras.attackCombinations ?? DEFAULT_ATTACK_COMBINATIONS,
-    setterCalls: session.extras.setterCalls ?? DEFAULT_SETTER_CALLS,
+    // 攻撃コンビ・セッターコールは、読み込んだ名簿のものではなく、いつも昨シーズンの手直し版を使う(vsm-defaults.ts)
+    attackCombinations: DEFAULT_ATTACK_COMBINATIONS,
+    setterCalls: DEFAULT_SETTER_CALLS,
     spectators: null,
     createdAt: now.toISOString(),
   };

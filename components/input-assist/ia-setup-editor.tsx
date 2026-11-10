@@ -100,9 +100,8 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
     if (!home || !away) {
       return;
     }
-    // 攻撃コンビ・セッターコールは、vsdb の試合のものを写す(どの試合もほぼ同じ一覧)。
-    const extras = roster?.matches.find((match) => match.extras.attackCombinations)?.extras ?? value.extras;
-    update({ teams: { home, away }, extras, opponent: value.opponent || away.name });
+    // 名簿から取るのは選手とチームだけ。攻撃コンビ・セッターコールは書き出しのとき昨シーズンの手直し版を使う。
+    update({ teams: { home, away }, opponent: value.opponent || away.name });
   }
 
   function addSet() {
