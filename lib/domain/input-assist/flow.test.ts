@@ -136,6 +136,12 @@ describe("P1:注意", () => {
     expect(messages).toContain("東大が4回続けて触っています");
   });
 
+  it("スタメンが入っていないチームは、コートにいるかを見ない", () => {
+    const empty: IaLineup = { positions: { "1": null, "2": null, "3": null, "4": null, "5": null, "6": null }, setterAt: 1 };
+    const warnings = flowWarnings(plays(["a", 0, "S"], ["*", 25, "R"]), { ...context, pointWinner: "away", lineup: { home: homeLineup, away: empty } });
+    expect(warnings).toEqual([]);
+  });
+
   it("最後が点を取られた側のアタック・点を取った側のディグなら、そっと知らせる", () => {
     const lost = flowWarnings(plays(["*", 5, "S"], ["a", 1, "R"], ["a", 13, "E"], ["a", 8, "A"]), context);
     expect(lost.at(-1)?.message).toContain("点を取られた側(相手)のアタック");

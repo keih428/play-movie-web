@@ -312,7 +312,9 @@ export function flowWarnings(plays: IaPlay[], context: FlowWarningContext): IaFl
 
   plays.forEach((play, index) => {
     const side = sideOfCode(play.team);
-    if (!isOnCourt(play.player, context.lineup[side], context.teams[side])) {
+    // スタメンが入っていないチームは見ない
+    const hasLineup = Object.values(context.lineup[side].positions).some((shirt) => shirt !== null);
+    if (hasLineup && !isOnCourt(play.player, context.lineup[side], context.teams[side])) {
       warnings.push({ playId: play.id, message: `${play.player}番は、${name(play.team)}のコートにいません(交代の入れ忘れ?)` });
     }
     const contacts = contactsInPossession(plays.slice(0, index + 1));
