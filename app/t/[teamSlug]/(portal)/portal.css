@@ -5139,3 +5139,10 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 .tp-serve-row {
   grid-template-columns: 4.6em repeat(6, minmax(0, 1fr));
 }
+
+/* サーブ効果率の「入力|結果」(2026-11-10 から) */
+.tp-serve-views {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+}
