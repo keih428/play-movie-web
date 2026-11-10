@@ -162,3 +162,90 @@ describe("このセットは打たない", () => {
     expect(checkSets(session).map((c) => c.setIndex)).toEqual([2]);
   });
 });
+
+describe("P1 のタッチの書き出し", () => {
+  function p1Session(): InputAssistSession {
+    const set = {
+      ...createEmptySet(1),
+      startingLineup: {
+        home: { positions: { "1": 5, "2": 12, "3": 14, "4": 24, "5": 29, "6": 7 } as const, setterAt: 5 },
+        away: { positions: { "1": 13, "2": 3, "3": 9, "4": 8, "5": 5, "6": 11 } as const, setterAt: 1 },
+      },
+      finalScore: { home: 0, away: 2 },
+      rallies: [
+        {
+          id: "a".repeat(24),
+          serveTime: 131.8,
+          side: "near" as const,
+          status: "rally" as const,
+          source: "auto" as const,
+          flowDone: true,
+          plays: [
+            { id: "1".repeat(24), team: "a" as const, player: 11, skill: "R" as const, time: 133.2, source: "manual" as const },
+            { id: "2".repeat(24), team: "a" as const, player: 13, skill: "E" as const, time: 134.4, source: "manual" as const },
+            { id: "3".repeat(24), team: "a" as const, player: 8, skill: "A" as const, time: 135.1, source: "manual" as const },
+            { id: "4".repeat(24), team: "*" as const, player: 7, skill: "D" as const, time: 135.6, source: "manual" as const },
+          ],
+        },
+        // サーブだけで入れ終えた(エース)
+        { id: "b".repeat(24), serveTime: 149.2, side: "far" as const, status: "rally" as const, source: "auto" as const, flowDone: true },
+      ],
+    };
+    return { ...sessionFromSample(), sets: [set] };
+  }
+
+  it("サーブのあとに入れた順で、仮の種類・評価と code を付ける。最後のタッチは点と合わせる", () => {
+    const vsm = buildVsm(p1Session(), { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    const [first, second] = vsm.scout.sets[0].events;
+    expect(first.exchange.point).toBe("a");
+    expect(first.exchange.plays.map((play: Record<string, unknown>) => [play.team, play.player, play.skill, play.hitType, play.effect, play.code, play.time, play.originalTime])).toEqual([
+      ["*", "05", "S", "M", "-", "5SM.", 1318, 1318],
+      ["a", "11", "R", "M", "#", ".11#", 1332, 1332],
+      ["a", "13", "E", "M", "+", "a13E", 1344, 1344],
+      ["a", "08", "A", "M", "#", "a8A.", 1351, 1351],
+      // 点を取られた側が最後 → ミス。相手のアタックのあとのディグなので頭に "."
+      ["*", "07", "D", "M", "=", ".7D=", 1356, 1356],
+    ]);
+    // P0 とエンジンのサーブには、ラリーから決まる id
+    expect(first.exchange.plays[0]._id).toMatch(/^[0-9a-f]{24}$/);
+    expect(first.exchange.plays[0]).not.toHaveProperty("source");
+    // サーブだけで入れ終えたラリー:サーブした側の点 → エース
+    expect(second.exchange.plays).toHaveLength(1);
+    expect(second.exchange.plays[0]).toMatchObject({ team: "a", player: "03", effect: "#", code: "a3SM." });
+  });
+
+  it("書き出した VSM を今のパーサーで読むと、タッチの順・選手・スキル・評価・時刻がそろう", () => {
+    const session = p1Session();
+    const parsed = parseVsmText(buildVsmText(session, { idFactory }), buildVsmFileName(session)).matches[0];
+    const rallies = parsed.sets[0].events.filter((event) => event.plays.length > 0);
+    expect(rallies).toHaveLength(2);
+    expect(rallies[0].point).toBe("a");
+    expect(rallies[0].plays.map((play) => `${play.team}${play.player}${play.skill}${play.effect}@${play.time}`)).toEqual([
+      "*05S-@1318",
+      "a11R#@1332",
+      "a13E+@1344",
+      "a08A#@1351",
+      "*07D=@1356",
+    ]);
+    expect(rallies.map((event) => event.score)).toEqual([
+      { home: 0, away: 1 },
+      { home: 0, away: 2 },
+    ]);
+    expect(parsed.sets[0].score).toEqual({ home: 0, away: 2 });
+  });
+
+  it("P0 でサーブの向きを変えたら、書き出すサーブも変わる(入れたタッチは残す)", () => {
+    const session = p1Session();
+    const set = session.sets[0];
+    const flipped = {
+      ...session,
+      sets: [{ ...set, rallies: set.rallies.map((rally, index) => (index === 0 ? { ...rally, side: "far" as const } : rally)) }],
+    };
+    const vsm = buildVsm(flipped, { idFactory }) as { scout: { sets: Array<{ events: Array<Record<string, any>> }> } };
+    const plays = vsm.scout.sets[0].events[0].exchange.plays;
+    expect(plays[0]).toMatchObject({ team: "a", player: "13", skill: "S" });
+    expect(plays).toHaveLength(5);
+  });
+});

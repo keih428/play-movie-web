@@ -3,6 +3,7 @@
 // 途中まででも書き出せる:サーブの向きが決まっていないラリーと、ラリーでないものは入れない。
 
 import { computeSet, teamCode, type IaRallyResult } from "@/lib/domain/input-assist/engine";
+import { isFlowEntered, syncServePlay, withPlaceholders } from "@/lib/domain/input-assist/flow";
 import { createObjectId, type IdFactory } from "@/lib/domain/input-assist/ids";
 import { buildPlayCode } from "@/lib/domain/input-assist/play-code";
 import { emptyStaff } from "@/lib/domain/input-assist/session";
@@ -49,27 +50,6 @@ function twoDigits(player: number | null): string {
   return String(player ?? 0).padStart(2, "0");
 }
 
-/** 骨組みだけのラリーのサーブ(種類 M・評価 -。code は `a2SM.` の形)。 */
-export function buildServePlay(
-  team: IaTeamCode,
-  player: number | null,
-  serveTime: number,
-  newId: IdFactory,
-): VsmPlay {
-  const time = toVsmTime(serveTime);
-  return {
-    _id: newId(),
-    team,
-    player: twoDigits(player),
-    skill: "S",
-    hitType: "M",
-    effect: "-",
-    code: buildPlayCode({ team, player: player ?? 0, skill: "S", hitType: "M", effect: "-" }),
-    time,
-    originalTime: time,
-  };
-}
-
 /** 田中の書き方の欄の順で並べる(ない欄は書かない)。 */
 function toVsmPlay(play: IaPlay, previous: IaPlay | undefined, fallbackTime: number): VsmPlay {
   const time = toVsmTime(play.time ?? fallbackTime);
@@ -104,14 +84,15 @@ function toVsmPlay(play: IaPlay, previous: IaPlay | undefined, fallbackTime: num
   return output;
 }
 
-function buildRallyPlays(rally: IaRally, result: IaRallyResult, newId: IdFactory): VsmPlay[] {
-  // 入れたプレーは入れた順のまま。サーブがなければ、サーバーのサーブを先頭に足す。
-  const entered = rally.plays ?? [];
-  const plays = entered.map((play, index) => toVsmPlay(play, entered[index - 1], rally.serveTime));
-  if (!entered.some((play) => play.skill === "S")) {
-    plays.unshift(buildServePlay(teamCode(result.servingTeam), result.server, rally.serveTime, newId));
-  }
-  return plays;
+function buildRallyPlays(rally: IaRally, result: IaRallyResult): VsmPlay[] {
+  // 先頭はいつもサーブ(P0 とエンジンから決まる)。そのあとは P1 で入れた順のまま。
+  // 評価・種類の決まっていないタッチ(P1 で入れたもの)には、仮のものを入れる(flow.ts)。
+  const plays = withPlaceholders(
+    syncServePlay(rally, result.servingTeam, result.server),
+    teamCode(result.pointWinner),
+    isFlowEntered(rally),
+  );
+  return plays.map((play, index) => toVsmPlay(play, plays[index - 1], rally.serveTime));
 }
 
 export function buildVsmSet(set: IaSet, newId: IdFactory = createObjectId): Record<string, unknown> {
@@ -143,7 +124,7 @@ export function buildVsmSet(set: IaSet, newId: IdFactory = createObjectId): Reco
       _id: rally.id || newId(),
       lineup: toVsmLineups(entry.result.lineup),
       exchange: {
-        plays: buildRallyPlays(rally, entry.result, newId),
+        plays: buildRallyPlays(rally, entry.result),
         point: teamCode(entry.result.pointWinner),
       },
       score: { ...entry.result.scoreAfter },

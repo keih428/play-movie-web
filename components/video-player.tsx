@@ -29,6 +29,8 @@ declare global {
         playVideo: () => void;
         pauseVideo: () => void;
         getCurrentTime: () => number;
+        getPlayerState?: () => number;
+        setPlaybackRate?: (rate: number) => void;
       };
     };
     onYouTubeIframeAPIReady?: () => void;

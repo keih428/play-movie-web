@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IaFlowPass } from "@/components/input-assist/ia-flow-pass";
+import { formatClock, formatDuration, isTypingTarget } from "@/components/input-assist/ia-utils";
 import { IaPlayer, type IaPlayerHandle } from "@/components/input-assist/ia-player";
 import { IaSetupEditor, type IaSetupValue } from "@/components/input-assist/ia-setup-editor";
 import { usePassTimer, type PassTimerFlush } from "@/components/input-assist/use-pass-timer";
@@ -15,6 +17,7 @@ import {
   roundTime,
   type IaSetCheck,
 } from "@/lib/domain/input-assist/session";
+import { flowProgress } from "@/lib/domain/input-assist/flow";
 import { applySkeleton, parseSkeleton } from "@/lib/domain/input-assist/skeleton";
 import type {
   IaCourtSide,
@@ -27,7 +30,7 @@ import type {
 import { buildVsmFileName, buildVsmText } from "@/lib/domain/input-assist/vsm-writer";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
-type Tab = "setup" | "p0";
+type Tab = "setup" | "p0" | "p1";
 type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
 type InputAssistSessionClientProps = {
@@ -46,25 +49,6 @@ const SAVE_LABELS: Record<SaveState, string> = {
   error: "保存できませんでした",
   conflict: "ほかの画面と重なりました",
 };
-
-export function formatClock(seconds: number): string {
-  const safe = Math.max(0, seconds);
-  const minutes = Math.floor(safe / 60);
-  const rest = safe - minutes * 60;
-  return `${minutes}:${rest.toFixed(1).padStart(4, "0")}`;
-}
-
-function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}分${String(Math.round(seconds % 60)).padStart(2, "0")}秒`;
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
-  );
-}
 
 function downloadText(text: string, fileName: string) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -228,16 +212,19 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     [teamSlug],
   );
 
+  // P0 と P1 は同じ仕組みで、開いているパスの時間を数える
+  const passName = tab === "p1" ? "P1" : "P0";
   const { pendingSeconds, markActivity } = usePassTimer({
-    active: tab === "p0" && Boolean(activeSet),
+    active: (tab === "p0" || tab === "p1") && Boolean(activeSet),
     setIndex: activeSet?.setIndex ?? 1,
-    pass: "P0",
+    pass: passName,
     onFlush: handlePassFlush,
   });
   const passSeconds =
     session.passLogs
-      .filter((log) => log.pass === "P0" && log.setIndex === activeSet?.setIndex)
+      .filter((log) => log.pass === passName && log.setIndex === activeSet?.setIndex)
       .reduce((total, log) => total + log.seconds, 0) + pendingSeconds;
+  const progress = useMemo(() => flowProgress(session.sets), [session.sets]);
 
   // ---- 動画とラリーの区間 ----
 
@@ -538,6 +525,15 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
             >
               P0 ラリー
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "p1"}
+              className={`tab-button ${tab === "p1" ? "tab-button-active" : ""}`}
+              onClick={() => setTab("p1")}
+            >
+              P1 流れ
+            </button>
           </div>
           {message ? (
             <p className="ia-message" role="status">
@@ -556,6 +552,27 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
             />
           </div>
         </section>
+      ) : tab === "p1" && activeSet && setResult ? (
+        <IaFlowPass
+          key={activeSet.setIndex}
+          session={session}
+          set={activeSet}
+          setResult={setResult}
+          progress={progress}
+          passSeconds={formatDuration(passSeconds)}
+          onSelectSet={(index) => {
+            setSetIndex(index);
+            setSelectedRallyId(null);
+            windowRef.current = null;
+          }}
+          onChangeRally={(rallyId, change) =>
+            editSet(activeSet.setIndex, (set) => ({
+              ...set,
+              rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
+            }))
+          }
+          onActivity={markActivity}
+        />
       ) : activeSet && setResult ? (
         <div className="ia-p0">
           <section className="panel ia-video-panel">
