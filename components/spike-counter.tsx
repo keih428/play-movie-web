@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { HalfTeamColumns } from "@/components/half-team-columns";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   FRONT_SPOTS,
@@ -358,13 +359,8 @@ export function SpikeCounter({
   function resplit() {
     void saveSetup({ ...setup, teams: splitSpikeTeams(hitters.filter((player) => setup.teams[player.id])) });
   }
-  // ↑ で1つ上(出ない → 後半 → 前半)、↓ で1つ下(前半 → 後半 → 出ない)へ移す(2026-11-07 から。主将の依頼)。
-  function moveTeam(id: string, direction: -1 | 1) {
-    const order: (SpikeTeam | null)[] = ["first", "second", null];
-    const next = order[order.indexOf(setup.teams[id] ?? null) + direction];
-    if (next === undefined) {
-      return;
-    }
+  // 前半・後半・出ないへ移す(2026-11-07 は ↑↓、2026-11-10 から2列の画面で ← → ×)。
+  function moveTeam(id: string, next: SpikeTeam | null) {
     const teams = { ...setup.teams };
     if (next) {
       teams[id] = next;
@@ -585,53 +581,15 @@ export function SpikeCounter({
               </button>
             </span>
             <p className="tp-small tp-muted">
-              ↑↓ で 前半・後半・出ない を移します。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
+              ← → でもう片方へ、× で出ない人へ移します。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
             </p>
           </div>
-          {[
-            ...(["first", "second"] as const).map((entry) => ({
-              title: `${SPIKE_TEAM_LABELS[entry]}攻撃チーム`,
-              entries: hitters.filter((player) => setup.teams[player.id] === entry),
-            })),
-            { title: "出ない人", entries: hitters.filter((player) => !setup.teams[player.id]) },
-          ].map((section) => (
-            <div key={section.title} className="tp-counter-picker-section">
-              <p className="tp-small tp-muted">
-                {section.title}・{section.entries.length}人
-              </p>
-              <div className="tp-counter-picker-list tp-spike-move-list">
-                {sortByPosition(section.entries).map((player) => {
-                  const now = setup.teams[player.id] ?? null;
-                  return (
-                    <div key={player.id} className="tp-counter-pick tp-spike-move" aria-pressed={Boolean(now)}>
-                      <span>
-                        <b>{player.displayName}</b>
-                        <small>
-                          {player.position} ・ {player.slot ?? "枠なし"}
-                        </small>
-                      </span>
-                      <button
-                        type="button"
-                        disabled={now === "first"}
-                        aria-label={`${player.displayName} を上へ(${now === "second" ? "前半" : "後半"}へ)`}
-                        onClick={() => moveTeam(player.id, -1)}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        disabled={now === null}
-                        aria-label={`${player.displayName} を下へ(${now === "first" ? "後半" : "出ない"}へ)`}
-                        onClick={() => moveTeam(player.id, 1)}
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <HalfTeamColumns
+            players={hitters}
+            teams={setup.teams}
+            labels={{ first: `${SPIKE_TEAM_LABELS.first}攻撃`, second: `${SPIKE_TEAM_LABELS.second}攻撃` }}
+            onMove={moveTeam}
+          />
           <div className="tp-counter-picker-section">
             <p className="tp-small tp-muted">セッター(押すと入る・外す)・{setters.length}人</p>
             <div className="tp-counter-picker-list">

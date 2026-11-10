@@ -4328,40 +4328,10 @@ body:has(.tp-counter) .team-header {
 }
 
 /* スパイクの「打つ人」:1人1行で、↑↓ で 前半・後半・出ない を移す(2026-11-07 から) */
-.tp-counter-pick.tp-spike-move {
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 6px;
-  cursor: default;
-}
 
-.tp-spike-move-list {
-  grid-template-columns: repeat(auto-fill, minmax(13em, 1fr));
-}
 
-.tp-spike-move > span {
-  display: grid;
-  min-width: 0;
-}
 
-.tp-spike-move button {
-  width: 44px;
-  height: 40px;
-  border: 1px solid var(--tp-line);
-  border-radius: 8px;
-  background: var(--tp-bg);
-  color: var(--tp-fg);
-  font: inherit;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  touch-action: manipulation;
-}
 
-.tp-spike-move button:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
 
 .tp-counter-pick b {
   font-size: 15px;
@@ -5045,11 +5015,6 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   grid-template-columns: 5.2em minmax(0, 1fr) minmax(0, 1fr);
 }
 
-/* サーブ効果率(2026-11-10 から):名前 + エース・効果・入った・ミス */
-.tp-serve-row {
-  grid-template-columns: 5.2em repeat(4, minmax(0, 1fr));
-}
-
 .tp-spike-kill.tp-serve-effect {
   border-color: var(--tp-ok);
   background: var(--tp-surface);
@@ -5104,4 +5069,73 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
 .tp-bulk-date small {
   font-size: 11px;
   color: var(--tp-muted);
+}
+
+/* 前半・後半を2列に並べて分ける(2026-11-10 から。サーブ効果率・スパイク練習) */
+.tp-half-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tp-half-col {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tp-half-out {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13em, 1fr));
+  gap: 6px;
+}
+
+.tp-half-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 4px 6px 4px 8px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-surface);
+}
+
+.tp-half-item > span:first-child {
+  display: grid;
+  min-width: 0;
+}
+
+.tp-half-item b,
+.tp-half-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-half-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.tp-half-buttons button {
+  min-width: 34px;
+  height: 38px;
+  padding: 0 6px;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-bg);
+  color: var(--tp-fg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* サーブ効果率は # + ! - / = の6つ */
+.tp-serve-row {
+  grid-template-columns: 4.6em repeat(6, minmax(0, 1fr));
 }

@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { TRAINING_GROUPS, type TrainingGroup } from "@/lib/domain/portal";
-import { SERVE_MIN_ATTEMPTS, formatServeEfficiency, rankServes, type ServeCount } from "@/lib/domain/serve-stats";
+import {
+  SERVE_EFFECT_RULE,
+  SERVE_MIN_ATTEMPTS,
+  SERVE_RESULTS,
+  formatServeEfficiency,
+  rankServes,
+  type ServeCount,
+} from "@/lib/domain/serve-stats";
 
 type ServeRankingsProps = {
   // 切り替えのリンクの元(?tab=serving)。
@@ -45,7 +52,7 @@ export function ServeRankings({ basePath, month, counts, members }: ServeRanking
         </nav>
       </div>
       <p className="tp-small tp-muted">
-        サーブ効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数。規定の打数は月{SERVE_MIN_ATTEMPTS}本以上です。
+        サーブ効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数。規定の打数は月{SERVE_MIN_ATTEMPTS}本以上です。{SERVE_EFFECT_RULE}。
       </p>
       {tables.every((table) => table.rows.length === 0) ? (
         <p className="tp-muted">この月のサーブの記録はありません。</p>
@@ -65,9 +72,9 @@ export function ServeRankings({ basePath, month, counts, members }: ServeRanking
                       <th>順位</th>
                       <th>選手</th>
                       <th>打数</th>
-                      <th>エース</th>
-                      <th>効果</th>
-                      <th>ミス</th>
+                      {SERVE_RESULTS.map((result) => (
+                        <th key={result}>{result}</th>
+                      ))}
                       <th>効果率</th>
                     </tr>
                   </thead>
@@ -82,9 +89,11 @@ export function ServeRankings({ basePath, month, counts, members }: ServeRanking
                           <span className="tp-nowrap">{nameOf(row.memberId)}</span>
                         </td>
                         <td className="tp-num">{row.attempts}</td>
-                        <td className="tp-num">{row.ace}</td>
-                        <td className="tp-num">{row.effect}</td>
-                        <td className="tp-num">{row.miss}</td>
+                        {SERVE_RESULTS.map((result) => (
+                          <td key={result} className="tp-num">
+                            {row[result]}
+                          </td>
+                        ))}
                         <td className="tp-num tp-nowrap">
                           {formatServeEfficiency(row)}
                           {row.rank === null ? "(数が足りない)" : ""}
