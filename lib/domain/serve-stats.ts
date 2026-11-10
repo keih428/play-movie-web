@@ -1,25 +1,31 @@
+import { DRILL_GRADES, DRILL_GRADE_LABELS, type DrillGrade } from "@/lib/domain/drill-stats";
 import type { MemberPosition } from "@/lib/domain/portal";
 
 // ---------- サーブ効果率の集計(2026-11-10 から。主将の依頼) ----------
-// サーブを打つたびに「エース」「効果」「入った(それ以外)」「ミス」のどれかを数え、
+// サーブを打つたびに、DataVolley の6段階(# + ! - / =)のどれかを数え、
 // 月ごとに AB・C に分けてサーブ効果率の順位を出す。打つのはリベロ以外のプレイヤーで、前半・後半に分かれて打つ。
 // サーブ効果率 =(エース × 100 + 効果 × 25 − ミス × 25)÷ 打数
+// エースは #、効果は + (相手のレセプションが Cパス以下)と / (直接返ってきた)、ミスは =。! と - は数に入れない
+// (Vリーグの「サーブ効果」に合わせた。けーいちの決定、2026-11-10)。
+// 数は旧サーブと同じ drill_stat_counts(skill = 'serve')に持つ。
 
-export const SERVE_RESULTS = ["ace", "effect", "in", "miss"] as const;
-export type ServeResult = (typeof SERVE_RESULTS)[number];
+export const SERVE_RESULTS = DRILL_GRADES;
+export type ServeResult = DrillGrade;
 
-export const SERVE_RESULT_LABELS: Record<ServeResult, string> = {
-  ace: "エース",
-  effect: "効果",
-  in: "入った",
-  miss: "ミス",
+export const SERVE_RESULT_LABELS: Record<ServeResult, string> = DRILL_GRADE_LABELS.serve;
+
+/** ボタンに出す短い言葉(1行に6つ並べるため)。 */
+export const SERVE_RESULT_SHORT: Record<ServeResult, string> = {
+  "#": "エース",
+  "+": "崩した",
+  "!": "B",
+  "-": "A",
+  "/": "直返",
+  "=": "ミス",
 };
 
-/**
- * 「効果」の基準(2026-11-10、けーいちの決定)。相手のレセプションが Cパス以下(DataVolley の +)か、
- * 直接返ってきた(/)サーブ。Bパス(!)・Aパス(-)は「入った」。Vリーグの「サーブ効果」に合わせた。
- */
-export const SERVE_EFFECT_RULE = "効果 = 相手のレセプションが Cパス以下か、直接返ってきた。Bパス・Aパスは「入った」";
+export const SERVE_EFFECT_RULE =
+  "# エース / + 崩した(Cパス以下) / ! Bパス / - Aパス / / 直接返ってきた / = ミス。効果は + と /";
 
 /** 月の順位に載る打数(月20本以上。スパイク・レセプションにそろえた)。 */
 export const SERVE_MIN_ATTEMPTS = 20;
@@ -31,22 +37,40 @@ export type ServeCount = ServeTally & {
 };
 
 export function emptyServeTally(): ServeTally {
-  return { ace: 0, effect: 0, in: 0, miss: 0 };
+  return { "#": 0, "+": 0, "!": 0, "-": 0, "/": 0, "=": 0 };
 }
 
 export function isServeResult(value: unknown): value is ServeResult {
   return SERVE_RESULTS.includes(value as ServeResult);
 }
 
-/** 打数(エース・効果・入った・ミスの合計)。 */
+/** 2つの数を足す(sign: -1 なら引く。0より下にはしない)。 */
+export function addServeTally(base: ServeTally, change: ServeTally, sign: 1 | -1 = 1): ServeTally {
+  const next = emptyServeTally();
+  for (const result of SERVE_RESULTS) {
+    next[result] = Math.max(base[result] + change[result] * sign, 0);
+  }
+  return next;
+}
+
+/** 打数(6段階の合計)。 */
 export function serveAttempts(tally: ServeTally): number {
-  return tally.ace + tally.effect + tally.in + tally.miss;
+  return SERVE_RESULTS.reduce((sum, result) => sum + tally[result], 0);
+}
+
+/** 効果(+ と /)の数。 */
+export function serveEffects(tally: ServeTally): number {
+  return tally["+"] + tally["/"];
+}
+
+function servePoints(tally: ServeTally): number {
+  return tally["#"] * 100 + serveEffects(tally) * 25 - tally["="] * 25;
 }
 
 /** サーブ効果率(%)。打数が0なら null。 */
 export function serveEfficiency(tally: ServeTally): number | null {
   const attempts = serveAttempts(tally);
-  return attempts === 0 ? null : (tally.ace * 100 + tally.effect * 25 - tally.miss * 25) / attempts;
+  return attempts === 0 ? null : servePoints(tally) / attempts;
 }
 
 export function formatServeEfficiency(tally: ServeTally): string {
@@ -77,8 +101,7 @@ export function rankServes(counts: ServeCount[], minAttempts = SERVE_MIN_ATTEMPT
     byMember.set(entry.memberId, row);
   }
   // 比べるときは割り算をせず、分子 × 相手の打数 で比べる(小数のずれで同じ順位が分かれないように)。
-  const points = (row: ServeRow) => row.ace * 100 + row.effect * 25 - row.miss * 25;
-  const compare = (a: ServeRow, b: ServeRow) => points(b) * a.attempts - points(a) * b.attempts;
+  const compare = (a: ServeRow, b: ServeRow) => servePoints(b) * a.attempts - servePoints(a) * b.attempts;
   const rows = [...byMember.values()].filter((row) => row.attempts > 0);
   const qualified = (row: ServeRow) => row.attempts >= minAttempts;
   rows.sort((a, b) => Number(qualified(b)) - Number(qualified(a)) || compare(a, b) || b.attempts - a.attempts);

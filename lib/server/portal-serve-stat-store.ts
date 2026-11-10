@@ -1,34 +1,39 @@
-import { parseServeSetup, type ServeCount, type ServeResult, type ServeSetup } from "@/lib/domain/serve-stats";
+import {
+  emptyServeTally,
+  isServeResult,
+  parseServeSetup,
+  serveAttempts,
+  type ServeCount,
+  type ServeResult,
+  type ServeSetup,
+} from "@/lib/domain/serve-stats";
 import { query } from "@/lib/server/portal-db";
 
 // サーブ効果率の集計(2026-11-10 から)。メニュー(drill_stat_drills の kind = 'serving')ごとに、
-// 部員ごとのエース・効果・入った・ミスの数を持つ。
+// 部員ごと・評価(# + ! - / =)ごとの本数を、旧サーブと同じ drill_stat_counts(skill = 'serve')に持つ。
 
-type ServeRow = { member_id: string; aces: number; effects: number; ins: number; misses: number };
+type GradeRow = { member_id: string; grade: string; count: number };
 
-const toCount = (row: ServeRow): ServeCount => ({
-  memberId: row.member_id,
-  ace: Number(row.aces),
-  effect: Number(row.effects),
-  in: Number(row.ins),
-  miss: Number(row.misses),
-});
-
-// 結果ごとの列(決まった名前だけを SQL に入れる)。
-const COLUMNS: Record<ServeResult, string> = {
-  ace: "aces",
-  effect: "effects",
-  in: "ins",
-  miss: "misses",
-};
+/** 「部員・評価・本数」の行を、部員ごとの数にまとめる。 */
+function toCounts(rows: GradeRow[]): ServeCount[] {
+  const byMember = new Map<string, ServeCount>();
+  for (const row of rows) {
+    if (!isServeResult(row.grade)) {
+      continue;
+    }
+    const entry = byMember.get(row.member_id) ?? { memberId: row.member_id, ...emptyServeTally() };
+    entry[row.grade] += Number(row.count);
+    byMember.set(row.member_id, entry);
+  }
+  return [...byMember.values()].filter((entry) => serveAttempts(entry) > 0);
+}
 
 export async function listServeCounts(drillId: string): Promise<ServeCount[]> {
-  const rows = await query<ServeRow>(
-    `SELECT member_id, aces, effects, ins, misses FROM serve_stat_counts
-     WHERE drill_id = $1 AND aces + effects + ins + misses > 0`,
+  const rows = await query<GradeRow>(
+    "SELECT member_id, grade, count FROM drill_stat_counts WHERE drill_id = $1 AND skill = 'serve' AND count > 0",
     [drillId],
   );
-  return rows.map(toCount);
+  return toCounts(rows);
 }
 
 /** 1本数える(delta: -1 なら取り消す。0より下にはしない)。変えたあとのその人の数を返す。 */
@@ -38,31 +43,31 @@ export async function addServeCount(input: {
   result: ServeResult;
   delta: 1 | -1;
 }): Promise<ServeCount> {
-  const column = COLUMNS[input.result];
-  const rows = await query<ServeRow>(
-    `INSERT INTO serve_stat_counts (drill_id, member_id, ${column})
-     VALUES ($1, $2, GREATEST($3, 0))
-     ON CONFLICT (drill_id, member_id) DO UPDATE SET
-       ${column} = GREATEST(serve_stat_counts.${column} + $3, 0),
-       updated_at = now()
-     RETURNING member_id, aces, effects, ins, misses`,
-    [input.drillId, input.memberId, input.delta],
+  await query(
+    `INSERT INTO drill_stat_counts (drill_id, member_id, skill, grade, count)
+     VALUES ($1, $2, 'serve', $3, GREATEST($4, 0))
+     ON CONFLICT (drill_id, member_id, skill, grade) DO UPDATE SET
+       count = GREATEST(drill_stat_counts.count + $4, 0), updated_at = now()`,
+    [input.drillId, input.memberId, input.result, input.delta],
   );
-  return rows[0] ? toCount(rows[0]) : { memberId: input.memberId, ace: 0, effect: 0, in: 0, miss: 0 };
+  const rows = await query<GradeRow>(
+    "SELECT member_id, grade, count FROM drill_stat_counts WHERE drill_id = $1 AND member_id = $2 AND skill = 'serve'",
+    [input.drillId, input.memberId],
+  );
+  return toCounts(rows)[0] ?? { memberId: input.memberId, ...emptyServeTally() };
 }
 
-/** その期間(from〜to、'YYYY-MM-DD')の、全部のサーブのメニューの合計(部員ごと)。 */
+/** その期間(from〜to、'YYYY-MM-DD')の、全部のサーブ効果率のメニューの合計(部員ごと)。 */
 export async function sumServeCounts(teamSlug: string, from: string, to: string): Promise<ServeCount[]> {
-  const rows = await query<ServeRow>(
-    `SELECT v.member_id, sum(v.aces)::int AS aces, sum(v.effects)::int AS effects,
-       sum(v.ins)::int AS ins, sum(v.misses)::int AS misses
-     FROM serve_stat_counts v JOIN drill_stat_drills d ON d.id = v.drill_id
-     WHERE d.team_slug = $1 AND d.practice_date >= $2 AND d.practice_date <= $3
-     GROUP BY v.member_id
-     HAVING sum(v.aces + v.effects + v.ins + v.misses) > 0`,
+  const rows = await query<GradeRow>(
+    `SELECT c.member_id, c.grade, sum(c.count)::int AS count
+     FROM drill_stat_counts c JOIN drill_stat_drills d ON d.id = c.drill_id
+     WHERE d.team_slug = $1 AND d.kind = 'serving' AND c.skill = 'serve'
+       AND d.practice_date >= $2 AND d.practice_date <= $3
+     GROUP BY c.member_id, c.grade`,
     [teamSlug, from, to],
   );
-  return rows.map(toCount);
+  return toCounts(rows);
 }
 
 /** 前半・後半の組み方(共有)。まだ組んでいなければ setup は null。 */

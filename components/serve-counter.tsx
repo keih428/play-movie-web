@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { HalfTeamColumns } from "@/components/half-team-columns";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   SERVE_EFFECT_RULE,
   SERVE_RESULTS,
   SERVE_RESULT_LABELS,
+  SERVE_RESULT_SHORT,
+  addServeTally,
   SERVE_TEAM_LABELS,
   emptyServeTally,
   formatServeEfficiency,
@@ -48,28 +51,22 @@ const POLL_MS = 2000;
 const viewKey = (drillId: string) => `serve-view:${drillId}`;
 
 const toTallies = (counts: ServeCount[]): Record<string, ServeTally> =>
-  Object.fromEntries(
-    counts.map(({ memberId, ...tally }) => [memberId, { ace: tally.ace, effect: tally.effect, in: tally.in, miss: tally.miss }]),
-  );
+  Object.fromEntries(counts.map(({ memberId, ...tally }) => [memberId, addServeTally(emptyServeTally(), tally)]));
 
-const addTally = (base: ServeTally, change: ServeTally, sign: 1 | -1): ServeTally => ({
-  ace: Math.max(base.ace + change.ace * sign, 0),
-  effect: Math.max(base.effect + change.effect * sign, 0),
-  in: Math.max(base.in + change.in * sign, 0),
-  miss: Math.max(base.miss + change.miss * sign, 0),
-});
-
+// # はエース、+ と / は効果(緑の枠)、= はミス(赤)、! と - はふつう。
 const BUTTON_CLASS: Record<ServeResult, string> = {
-  ace: "tp-spike-kill",
-  effect: "tp-spike-kill tp-serve-effect",
-  in: "tp-spike-miss",
-  miss: "tp-spike-miss tp-serve-miss",
+  "#": "tp-spike-kill",
+  "+": "tp-spike-kill tp-serve-effect",
+  "!": "tp-spike-miss",
+  "-": "tp-spike-miss",
+  "/": "tp-spike-kill tp-serve-effect",
+  "=": "tp-spike-miss tp-serve-miss",
 };
 
 /**
- * サーブ効果率の集計の画面(2026-11-10 から。主将の依頼)。1人1行で「エース」「効果」「入った」「ミス」の4つのボタン。
+ * サーブ効果率の集計の画面(2026-11-10 から。主将の依頼)。1人1行で # + ! - / = の6つのボタン(DataVolley の評価)。
  * - 打つのはリベロ以外のプレイヤー。前半・後半に分かれて打つので、上で前半・後半を切り替える(端末ごとに覚える)
- * - 「✎ 人」で前半・後半・出ないを ↑↓ で移す(スパイクと同じ)。組み方はメニューごとに共有する
+ * - 「✎ 人」で前半・後半を2列に並べて分ける(スパイクと同じ)。組み方はメニューごとに共有する
  * - マネージャーが何人かで同時に数えられるよう、2秒ごとにほかの人が数えた分と組み方を取りにいく
  */
 export function ServeCounter({
@@ -200,12 +197,11 @@ export function ServeCounter({
 
   function addPending(key: string, change: ServeTally, sign: 1 | -1) {
     const now = pending.current.get(key) ?? emptyServeTally();
-    const next: ServeTally = {
-      ace: now.ace + change.ace * sign,
-      effect: now.effect + change.effect * sign,
-      in: now.in + change.in * sign,
-      miss: now.miss + change.miss * sign,
-    };
+    // 送っている途中の分は、マイナスにもなる(足し引きだけ。0で止めない)。
+    const next = emptyServeTally();
+    for (const result of SERVE_RESULTS) {
+      next[result] = now[result] + change[result] * sign;
+    }
     if (SERVE_RESULTS.every((result) => next[result] === 0)) {
       pending.current.delete(key);
     } else {
@@ -218,7 +214,7 @@ export function ServeCounter({
     const change: ServeTally = { ...emptyServeTally(), [tap.result]: tap.delta };
     mutations.current += 1;
     addPending(key, change, 1);
-    setCounts((previous) => ({ ...previous, [key]: addTally(previous[key] ?? emptyServeTally(), change, 1) }));
+    setCounts((previous) => ({ ...previous, [key]: addServeTally(previous[key] ?? emptyServeTally(), change, 1) }));
     try {
       const response = await fetch(apiPath, {
         method: "PATCH",
@@ -231,12 +227,12 @@ export function ServeCounter({
       }
       addPending(key, change, -1);
       const rest = pending.current.get(key) ?? emptyServeTally();
-      const saved = addTally(payload as ServeTally, rest, 1);
+      const saved = addServeTally(payload as ServeTally, rest, 1);
       setCounts((previous) => ({ ...previous, [key]: saved }));
       setError("");
     } catch (caught) {
       addPending(key, change, -1);
-      setCounts((previous) => ({ ...previous, [key]: addTally(previous[key] ?? emptyServeTally(), change, -1) }));
+      setCounts((previous) => ({ ...previous, [key]: addServeTally(previous[key] ?? emptyServeTally(), change, -1) }));
       setError(caught instanceof Error ? caught.message : "保存できませんでした。電波を確かめてください。");
     } finally {
       mutations.current += 1;
@@ -282,13 +278,8 @@ export function ServeCounter({
   function resplit() {
     void saveSetup({ teams: splitServeTeams(servers.filter((player) => setup.teams[player.id])) });
   }
-  // ↑ で1つ上(出ない → 後半 → 前半)、↓ で1つ下(前半 → 後半 → 出ない)へ移す(スパイクと同じ)。
-  function moveTeam(id: string, direction: -1 | 1) {
-    const order: (ServeTeam | null)[] = ["first", "second", null];
-    const next = order[order.indexOf(setup.teams[id] ?? null) + direction];
-    if (next === undefined) {
-      return;
-    }
+  // 前半・後半・出ないへ移す(2列の画面から。2026-11-10 から)。
+  function moveTeam(id: string, next: ServeTeam | null) {
     const teams = { ...setup.teams };
     if (next) {
       teams[id] = next;
@@ -311,7 +302,7 @@ export function ServeCounter({
   const teamTally = (entry: ServeTeam) =>
     servers
       .filter((player) => setup.teams[player.id] === entry)
-      .reduce((sum, player) => addTally(sum, counts[player.id] ?? emptyServeTally(), 1), emptyServeTally());
+      .reduce((sum, player) => addServeTally(sum, counts[player.id] ?? emptyServeTally()), emptyServeTally());
   const lastTap = history[history.length - 1];
 
   return (
@@ -367,7 +358,9 @@ export function ServeCounter({
                   onClick={() => press(player.id, result)}
                 >
                   <b>{tally[result]}</b>
-                  <small>{SERVE_RESULT_LABELS[result]}</small>
+                  <small>
+                    {result} {SERVE_RESULT_SHORT[result]}
+                  </small>
                 </button>
               ))}
             </div>
@@ -421,53 +414,10 @@ export function ServeCounter({
               </button>
             </span>
             <p className="tp-small tp-muted">
-              打つのはリベロ以外のプレイヤー。↑↓ で 前半・後半・出ない を移します。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
+              打つのはリベロ以外のプレイヤー。← → でもう片方へ、× で出ない人へ移します。前半・後半はポジションが偏らないように分けます。組み方は、このメニューを数えている全員で共有します。
             </p>
           </div>
-          {[
-            ...(["first", "second"] as const).map((entry) => ({
-              title: SERVE_TEAM_LABELS[entry],
-              entries: servers.filter((player) => setup.teams[player.id] === entry),
-            })),
-            { title: "出ない人", entries: servers.filter((player) => !setup.teams[player.id]) },
-          ].map((section) => (
-            <div key={section.title} className="tp-counter-picker-section">
-              <p className="tp-small tp-muted">
-                {section.title}・{section.entries.length}人
-              </p>
-              <div className="tp-counter-picker-list tp-spike-move-list">
-                {sortByPosition(section.entries).map((player) => {
-                  const now = setup.teams[player.id] ?? null;
-                  return (
-                    <div key={player.id} className="tp-counter-pick tp-spike-move" aria-pressed={Boolean(now)}>
-                      <span>
-                        <b>{player.displayName}</b>
-                        <small>
-                          {player.position} ・ {player.slot ?? "枠なし"}
-                        </small>
-                      </span>
-                      <button
-                        type="button"
-                        disabled={now === "first"}
-                        aria-label={`${player.displayName} を上へ(${now === "second" ? "前半" : "後半"}へ)`}
-                        onClick={() => moveTeam(player.id, -1)}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        disabled={now === null}
-                        aria-label={`${player.displayName} を下へ(${now === "first" ? "後半" : "出ない"}へ)`}
-                        onClick={() => moveTeam(player.id, 1)}
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <HalfTeamColumns players={servers} teams={setup.teams} labels={SERVE_TEAM_LABELS} onMove={moveTeam} />
           <div className="tp-actions">
             <button type="button" className="tp-button" onClick={closePicker}>
               閉じる

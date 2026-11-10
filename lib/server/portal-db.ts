@@ -538,6 +538,21 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       )
     `,
   },
+  {
+    id: "030_serve_stats_grades",
+    // サーブ効果率は、エース・効果・入った・ミスの4つではなく、DataVolley の6段階(# + ! - / =)で数えることにした
+    // (2026-11-10、けーいち)。数は旧サーブと同じ drill_stat_counts(skill = 'serve')に持つ。
+    // 029 の serve_stat_counts の数は、エース → #、効果 → +、入った → !、ミス → = として移す(表は残すが使わない)。
+    sql: `
+      INSERT INTO drill_stat_counts (drill_id, member_id, skill, grade, count)
+      SELECT drill_id, member_id, 'serve', g.grade, g.count
+      FROM serve_stat_counts,
+        LATERAL (VALUES ('#', aces), ('+', effects), ('!', ins), ('=', misses)) AS g (grade, count)
+      WHERE g.count > 0
+      ON CONFLICT (drill_id, member_id, skill, grade) DO UPDATE SET
+        count = drill_stat_counts.count + EXCLUDED.count, updated_at = now()
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

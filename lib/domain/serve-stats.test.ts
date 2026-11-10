@@ -9,12 +9,15 @@ import {
   type ServeCount,
 } from "@/lib/domain/serve-stats";
 
+// エース(#)・効果(+)・入った(!)・ミス(=)の数から作る(/ と - は別のテストで)。
 const count = (memberId: string, ace: number, effect: number, inPlay: number, miss: number): ServeCount => ({
   memberId,
-  ace,
-  effect,
-  in: inPlay,
-  miss,
+  "#": ace,
+  "+": effect,
+  "!": inPlay,
+  "-": 0,
+  "/": 0,
+  "=": miss,
 });
 
 describe("serveEfficiency", () => {
@@ -22,6 +25,11 @@ describe("serveEfficiency", () => {
     // (2×100 + 4×25 − 2×25)÷ 20 = 12.5
     expect(serveEfficiency(count("a", 2, 4, 12, 2))).toBe(12.5);
     expect(formatServeEfficiency(count("a", 2, 4, 12, 2))).toBe("12.5%");
+  });
+
+  it("/(直接返ってきた)は効果、-(Aパス)は数に入れない", () => {
+    // (2×25)÷ 4 = 12.5
+    expect(serveEfficiency({ "#": 0, "+": 1, "!": 0, "-": 2, "/": 1, "=": 0 })).toBe(12.5);
   });
 
   it("ミスが多いとマイナスになる", () => {
