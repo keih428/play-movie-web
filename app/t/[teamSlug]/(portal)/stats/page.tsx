@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DrillCreateForm } from "@/components/drill-create-form";
 import { ReceptionRankings } from "@/components/reception-rankings";
+import { ServeRankings } from "@/components/serve-rankings";
 import { SpikeRankings } from "@/components/spike-rankings";
 import {
   DRILL_GRADES,
@@ -28,6 +29,7 @@ import { countDrillTotals, listDrills, sumDrillCounts } from "@/lib/server/porta
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { sumReceptionCounts } from "@/lib/server/portal-reception-stat-store";
+import { sumServeCounts } from "@/lib/server/portal-serve-stat-store";
 import { sumSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
 
@@ -49,7 +51,8 @@ export const dynamic = "force-dynamic";
 /**
  * マネージャーの集計(2026-10-31 から)。練習のメニューごとに数える。タブ(?tab=)ごとに、上でメニューを作り(スタッフ)、
  * 下にメニューの一覧と、月の順位(スパイク・レセプション)か合計(サーブ・ディグ)を出す(見るのは全員)。
- * タブに出すのはスパイクとレセプション(2026-11-06 から)。サーブ・ディグはアーカイブで、?tab=serve / dig で開ける。
+ * タブに出すのはスパイクとレセプション(2026-11-06 から)とサーブ効果率(?tab=serving、2026-11-10 から)。
+ * 旧サーブ・ディグはアーカイブで、?tab=serve / dig で開ける。
  */
 export default async function TeamStatsPage({ params, searchParams }: PageProps) {
   const { teamSlug } = await params;
@@ -77,13 +80,14 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
   const spikeMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth ?? "") ? requestedMonth! : today.slice(0, 7);
   const spikeGroup = requestedGroup === "AB" || requestedGroup === "C" ? requestedGroup : "all";
 
-  const [members, allDrills, totals, sums, spikeCounts, receptionCounts] = await Promise.all([
+  const [members, allDrills, totals, sums, spikeCounts, receptionCounts, serveCounts] = await Promise.all([
     listMembers(teamSlug),
     listDrills(teamSlug),
     countDrillTotals(teamSlug),
     tab === "serve" || tab === "dig" ? sumDrillCounts(teamSlug, from) : Promise.resolve([]),
     tab === "spike" ? sumSpikeCounts(teamSlug, `${spikeMonth}-01`, `${spikeMonth}-31`) : Promise.resolve([]),
     tab === "reception" ? sumReceptionCounts(teamSlug, `${spikeMonth}-01`, `${spikeMonth}-31`) : Promise.resolve([]),
+    tab === "serving" ? sumServeCounts(teamSlug, `${spikeMonth}-01`, `${spikeMonth}-31`) : Promise.resolve([]),
   ]);
   // このタブのメニューだけ(サーブとディグは同じメニューで両方数えるので、どちらのタブにも出る)。
   const drills = allDrills.filter((drill) => drill.kind === kind);
@@ -112,7 +116,9 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
             ? "スタッフが、練習のメニューごとに、スパイクの決定と打数をトスを上げたセッターごとに数えます。"
             : tab === "reception"
               ? "スタッフが、練習のメニューごとに、レセプションがABパスかどうかを数えます。"
-              : `アーカイブ:${STATS_TAB_LABELS[tab]}の集計はいまは取っていません。これまでの記録を見られます。`}
+              : tab === "serving"
+                ? "スタッフが、練習のメニューごとに、サーブのエース・効果・入った・ミスを数えます。打つのはリベロ以外のプレイヤーです。"
+                : `アーカイブ:${STATS_TAB_LABELS[tab]}の集計はいまは取っていません。これまでの記録を見られます。`}
         </p>
       </header>
 
@@ -165,7 +171,17 @@ export default async function TeamStatsPage({ params, searchParams }: PageProps)
         </section>
       ) : null}
 
-      {tab === "reception" ? (
+      {tab === "serving" ? (
+        <section className="tp-section" id="serving">
+          <h2>月の順位(AB・C)</h2>
+          <ServeRankings
+            basePath={tabHref("serving")}
+            month={spikeMonth}
+            counts={serveCounts}
+            members={members.map(({ id, displayName, slot }) => ({ id, displayName, group: toTrainingGroup(slot) }))}
+          />
+        </section>
+      ) : tab === "reception" ? (
         <section className="tp-section" id="reception">
           <h2>月の順位</h2>
           <ReceptionRankings

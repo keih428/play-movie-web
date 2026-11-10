@@ -130,7 +130,7 @@ export async function sumDrillCounts(teamSlug: string, from: string): Promise<Om
   }));
 }
 
-/** メニューごとの本数の合計(一覧に出す。スパイクは打数、レセプションは受けた数)。 */
+/** メニューごとの本数の合計(一覧に出す。スパイクは打数、レセプションは受けた数、サーブは打数)。 */
 export async function countDrillTotals(teamSlug: string): Promise<Map<string, number>> {
   const rows = await query<{ drill_id: string; total: number }>(
     `SELECT drill_id, sum(total)::int AS total FROM (
@@ -142,6 +142,9 @@ export async function countDrillTotals(teamSlug: string): Promise<Map<string, nu
        UNION ALL
        SELECT r.drill_id, r.attempts AS total
        FROM reception_stat_counts r JOIN drill_stat_drills d ON d.id = r.drill_id WHERE d.team_slug = $1
+       UNION ALL
+       SELECT v.drill_id, v.aces + v.effects + v.ins + v.misses AS total
+       FROM serve_stat_counts v JOIN drill_stat_drills d ON d.id = v.drill_id WHERE d.team_slug = $1
      ) t GROUP BY drill_id`,
     [teamSlug],
   );

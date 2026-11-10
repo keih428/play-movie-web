@@ -18,6 +18,7 @@ const NAME_SUGGESTIONS: Record<StatsTab, string[]> = {
   dig: ["ディグ練", "スパレシ", "ゲーム"],
   spike: ["スパイク練習"],
   reception: ["レセプション"],
+  serving: ["サーブ練"],
 };
 
 /** 集計するメニューを作る(スタッフ)。作ったら、そのメニューの数える画面へ移る。 */

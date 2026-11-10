@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { DrillCounter } from "@/components/drill-counter";
 import { DrillMenu } from "@/components/drill-menu";
 import { ReceptionCounter } from "@/components/reception-counter";
+import { ServeCounter } from "@/components/serve-counter";
 import { SpikeCounter } from "@/components/spike-counter";
 import { canRecordDrillStats } from "@/lib/domain/drill-stats";
 import { formatNoteDate } from "@/lib/domain/notes";
@@ -12,6 +13,7 @@ import { getDrill, listDrillCounts } from "@/lib/server/portal-drill-stat-store"
 import { listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { getReceptionSetup, listReceptionCounts } from "@/lib/server/portal-reception-stat-store";
+import { getServeSetup, listServeCounts } from "@/lib/server/portal-serve-stat-store";
 import { getSpikeSetup, listSpikeCounts } from "@/lib/server/portal-spike-stat-store";
 
 type PageProps = {
@@ -57,6 +59,25 @@ export default async function TeamDrillStatsPage({ params, searchParams }: PageP
       </Link>
     </header>
   );
+
+  // サーブ効果率(2026-11-10 から)。
+  if (drill.kind === "serving") {
+    const [serveCounts, { setup, savedAt }] = await Promise.all([listServeCounts(drill.id), getServeSetup(drill.id)]);
+    return (
+      <>
+        {header}
+        <ServeCounter
+          teamSlug={teamSlug}
+          drillId={drill.id}
+          players={players}
+          initialCounts={serveCounts}
+          initialSetup={setup}
+          initialSetupSavedAt={savedAt}
+          canRecord={canRecord}
+        />
+      </>
+    );
+  }
 
   // レセプション(2026-11-06 から)。
   if (drill.kind === "reception") {
