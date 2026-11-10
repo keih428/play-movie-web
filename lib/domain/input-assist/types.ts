@@ -1,0 +1,146 @@
+// 打ち込み補助(v1)のデータの形。1つの試合 = 1つのセッション。
+// 動画の時刻は秒(小数)。VSM に書き出すときに 10 倍して整数にする。
+
+export type IaTeamSide = "home" | "away";
+/** VSM の team の値。ホームは "*"、アウェイは "a"。 */
+export type IaTeamCode = "*" | "a";
+/** 動画で手前に映っている側(near)か奥(far)か。 */
+export type IaCourtSide = "near" | "far";
+
+export type IaPlayer = {
+  shirtNumber: number;
+  code?: string;
+  firstName?: string;
+  lastName?: string;
+  position?: number;
+  _id?: string;
+  [key: string]: unknown;
+};
+
+/** VSM / vsdb の team.home / team.away をそのまま持つ(書き出すときにそのまま戻す)。 */
+export type IaTeam = {
+  name: string;
+  code?: string;
+  shortCode?: string;
+  libero?: number[];
+  players: IaPlayer[];
+  staff?: unknown[];
+  [key: string]: unknown;
+};
+
+export type IaPosition = "1" | "2" | "3" | "4" | "5" | "6";
+export const IA_POSITIONS: IaPosition[] = ["1", "2", "3", "4", "5", "6"];
+
+export type IaLineup = {
+  /** 位置ごとの背番号。決まっていなければ null。 */
+  positions: Record<IaPosition, number | null>;
+  /** セッターのいる位置(1〜6)。 */
+  setterAt: number;
+};
+
+export type IaPlay = {
+  id: string;
+  team: IaTeamCode;
+  player: number;
+  skill: "S" | "R" | "E" | "A" | "B" | "D" | "F";
+  hitType?: string;
+  effect?: string;
+  /** 動画の時刻(秒)。 */
+  time?: number;
+  startZone?: number;
+  endZone?: number;
+  code?: string;
+};
+
+export type IaRally = {
+  id: string;
+  /** サーブを打った時刻(動画の秒)。 */
+  serveTime: number;
+  /** サーブを打った側。まだ決まっていなければ null。 */
+  side: IaCourtSide | null;
+  /** AI の確かさ(0〜1)。人が決めたものにはない。 */
+  confidence?: number;
+  status: "rally" | "not_rally";
+  source: "auto" | "manual";
+  /** 人が確かめた(N/F/X を押した)か。 */
+  checked?: boolean;
+  plays?: IaPlay[];
+};
+
+export type IaSubstitution = {
+  id: string;
+  /** 交代した時刻(動画の秒)。この時刻より後のラリーから入れ替わる。 */
+  time: number;
+  team: IaTeamSide;
+  playerIn: number;
+  playerOut: number;
+};
+
+export type IaSet = {
+  setIndex: number;
+  youtubeUrl: string;
+  /** 手前に映っているチーム(ふつうはホーム = 東大)。 */
+  nearTeam: IaTeamSide;
+  startingLineup: Record<IaTeamSide, IaLineup>;
+  finalScore: { home: number | null; away: number | null };
+  rallies: IaRally[];
+  substitutions: IaSubstitution[];
+};
+
+export type IaPassName = "P0" | "P1";
+
+export type IaPassLog = {
+  id: string;
+  setIndex: number;
+  pass: IaPassName;
+  startedAt: string;
+  endedAt: string;
+  /** 実際に作業していた秒数(タブを開いていた間だけ数える)。 */
+  seconds: number;
+  memberId?: string;
+  memberName?: string;
+};
+
+/** VSM の、チーム以外で持ち回るもの(アタックのコンビなど)。 */
+export type IaMatchExtras = {
+  gameType?: string;
+  attackCombinations?: unknown[];
+  setterCalls?: unknown[];
+};
+
+export type InputAssistSession = {
+  id: string;
+  teamSlug: string;
+  title: string;
+  /** 試合の日(YYYY-MM-DD)。 */
+  date: string;
+  opponent: string;
+  teams: Record<IaTeamSide, IaTeam>;
+  extras: IaMatchExtras;
+  sets: IaSet[];
+  passLogs: IaPassLog[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+};
+
+export type InputAssistSessionSummary = Pick<
+  InputAssistSession,
+  "id" | "teamSlug" | "title" | "date" | "opponent" | "createdAt" | "updatedAt"
+> & {
+  setCount: number;
+  rallyCount: number;
+};
+
+/** AI が作る骨組み(Python から渡す JSON)。 */
+export type IaSkeleton = {
+  version: 1;
+  youtube?: Record<string, string>;
+  rallies: Array<{
+    set: number;
+    serveTime: number;
+    side?: IaCourtSide | null;
+    pSide?: number;
+    source?: "auto" | "manual";
+  }>;
+};
