@@ -80,7 +80,7 @@ function downloadText(text: string, fileName: string) {
 export function InputAssistSessionClient({ initialSession, teamSlug, listHref }: InputAssistSessionClientProps) {
   const [session, setSession] = useState(initialSession);
   const [tab, setTab] = useState<Tab>(initialSession.sets.some((set) => set.rallies.length > 0) ? "p0" : "setup");
-  const [setIndex, setSetIndex] = useState(initialSession.sets[0]?.setIndex ?? 1);
+  const [setIndex, setSetIndex] = useState(initialSession.sets.find((set) => !set.skipped)?.setIndex ?? 1);
   const [selectedRallyId, setSelectedRallyId] = useState<string | null>(null);
   const [continuous, setContinuous] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
@@ -107,7 +107,7 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
   }, [continuous]);
 
   const activeSet: IaSet | undefined =
-    session.sets.find((set) => set.setIndex === setIndex) ?? session.sets[0];
+    session.sets.find((set) => set.setIndex === setIndex && !set.skipped) ?? session.sets.find((set) => !set.skipped);
   const sortedRallies = useMemo(() => (activeSet ? sortRallies(activeSet.rallies) : []), [activeSet]);
   const setResult = useMemo(() => (activeSet ? computeSet(activeSet) : null), [activeSet]);
   const checks = useMemo(() => checkSets(session), [session]);

@@ -98,7 +98,7 @@ export type IaSetCheck = {
 };
 
 export function checkSets(session: Pick<InputAssistSession, "sets">): IaSetCheck[] {
-  return session.sets.map((set) => {
+  return session.sets.filter((set) => !set.skipped).map((set) => {
     const result = computeSet(set);
     return {
       setIndex: set.setIndex,

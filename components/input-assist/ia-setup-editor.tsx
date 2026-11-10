@@ -230,6 +230,16 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
       {value.sets.map((set) => (
         <section className="soft-panel stack" key={set.setIndex}>
           <h3 className="ia-subheading">{set.setIndex}セット目</h3>
+          <label className="ia-checkbox">
+            <input
+              type="checkbox"
+              checked={Boolean(set.skipped)}
+              onChange={(event) => updateSet(set.setIndex, { skipped: event.target.checked })}
+            />
+            このセットは打たない(一覧・得点の確認・VSM の書き出しから外す)
+          </label>
+          {set.skipped ? null : (
+          <>
           <div className="ia-field-grid">
             <div className="field ia-field-wide">
               <label htmlFor={`ia-url-${set.setIndex}`}>YouTube の URL</label>
@@ -283,6 +293,8 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
               onChange={(lineup) => updateLineup(set, side, lineup)}
             />
           ))}
+          </>
+          )}
         </section>
       ))}
 

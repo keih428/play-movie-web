@@ -152,3 +152,13 @@ describe("攻撃コンビ・セッターコール", () => {
     expect(DEFAULT_SETTER_CALLS).toHaveLength(18);
   });
 });
+
+describe("このセットは打たない", () => {
+  it("印を付けたセットは、書き出しと得点の確認から外れる", async () => {
+    const { checkSets } = await import("@/lib/domain/input-assist/session");
+    const s1 = { ...createEmptySet(1), skipped: true };
+    const s2 = createEmptySet(2, s1);
+    const session = { sets: [s1, s2] } as unknown as InputAssistSession;
+    expect(checkSets(session).map((c) => c.setIndex)).toEqual([2]);
+  });
+});

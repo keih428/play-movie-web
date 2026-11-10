@@ -192,7 +192,8 @@ function toVsmTeam(team: IaTeam): IaTeam {
 export function buildVsm(session: InputAssistSession, options: BuildVsmOptions = {}): Record<string, unknown> {
   const newId = options.idFactory ?? createObjectId;
   const now = options.now ?? new Date();
-  const sets = [...session.sets].sort((left, right) => left.setIndex - right.setIndex);
+  // 「このセットは打たない」の印が付いたセットは書き出さない
+  const sets = [...session.sets].filter((set) => !set.skipped).sort((left, right) => left.setIndex - right.setIndex);
   const startDate = /^\d{4}-\d{2}-\d{2}$/.test(session.date)
     ? new Date(`${session.date}T00:00:00.000+09:00`).toISOString()
     : now.toISOString();

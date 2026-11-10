@@ -109,6 +109,8 @@ export type IaSet = {
   rallies: IaRally[];
   substitutions: IaSubstitution[];
   timeouts: IaTimeout[];
+  /** このセットは打たない(例:引退する4年生を入れた1セット目)。P0 の一覧・得点の確認・VSM の書き出しから外す。 */
+  skipped?: boolean;
 };
 
 export type IaPassName = "P0" | "P1";
