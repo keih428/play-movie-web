@@ -254,7 +254,13 @@ export function IaFlowPass({
             // サーブはチームとスキルを変えない(P0 のサーブの向きで決まる)。背番号を変えたら人が決めたものにする
             return patch.player !== undefined ? { ...play, player: patch.player, source: "manual" } : play;
           }
-          return { ...play, ...patch };
+          const next = { ...play, ...patch };
+          // P2 で入れた評価は、スキルかチームが変わったら決め直す
+          if ((next.skill !== play.skill || next.team !== play.team) && play.effectSource !== undefined) {
+            delete next.effect;
+            delete next.effectSource;
+          }
+          return next;
         }),
       );
     },

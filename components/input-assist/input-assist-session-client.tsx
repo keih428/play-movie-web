@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IaEffectPass } from "@/components/input-assist/ia-effect-pass";
 import { IaFlowPass } from "@/components/input-assist/ia-flow-pass";
 import { formatClock, formatDuration, isTypingTarget } from "@/components/input-assist/ia-utils";
 import { IaPlayer, type IaPlayerHandle } from "@/components/input-assist/ia-player";
@@ -17,6 +18,7 @@ import {
   roundTime,
   type IaSetCheck,
 } from "@/lib/domain/input-assist/session";
+import { applyAutoEffectsToSet, effectProgress } from "@/lib/domain/input-assist/effect";
 import { flowProgress } from "@/lib/domain/input-assist/flow";
 import { applySkeleton, parseSkeleton } from "@/lib/domain/input-assist/skeleton";
 import type {
@@ -30,7 +32,7 @@ import type {
 import { buildVsmFileName, buildVsmText } from "@/lib/domain/input-assist/vsm-writer";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
-type Tab = "setup" | "p0" | "p1";
+type Tab = "setup" | "p0" | "p1" | "p2";
 type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
 type InputAssistSessionClientProps = {
@@ -212,10 +214,10 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     [teamSlug],
   );
 
-  // P0 と P1 は同じ仕組みで、開いているパスの時間を数える
-  const passName = tab === "p1" ? "P1" : "P0";
+  // P0・P1・P2 は同じ仕組みで、開いているパスの時間を数える
+  const passName = tab === "p1" ? "P1" : tab === "p2" ? "P2" : "P0";
   const { pendingSeconds, markActivity } = usePassTimer({
-    active: (tab === "p0" || tab === "p1") && Boolean(activeSet),
+    active: (tab === "p0" || tab === "p1" || tab === "p2") && Boolean(activeSet),
     setIndex: activeSet?.setIndex ?? 1,
     pass: passName,
     onFlush: handlePassFlush,
@@ -225,6 +227,16 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
       .filter((log) => log.pass === passName && log.setIndex === activeSet?.setIndex)
       .reduce((total, log) => total + log.seconds, 0) + pendingSeconds;
   const progress = useMemo(() => flowProgress(session.sets), [session.sets]);
+  const effectProgressList = useMemo(() => (tab === "p2" ? effectProgress(session.sets) : []), [session.sets, tab]);
+
+  /** P2 を開くとき、迷わないタッチの評価を自動で入れて保存する(P1 で流れが変わっていれば入れ直す)。 */
+  const openEffectPass = useCallback(() => {
+    setTab("p2");
+    const current = sessionRef.current;
+    if (current.sets.some((set) => applyAutoEffectsToSet(set) !== set)) {
+      edit((latest) => ({ ...latest, sets: latest.sets.map(applyAutoEffectsToSet) }));
+    }
+  }, [edit]);
 
   // ---- 動画とラリーの区間 ----
 
@@ -534,6 +546,15 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
             >
               P1 流れ
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "p2"}
+              className={`tab-button ${tab === "p2" ? "tab-button-active" : ""}`}
+              onClick={openEffectPass}
+            >
+              P2 評価
+            </button>
           </div>
           {message ? (
             <p className="ia-message" role="status">
@@ -559,6 +580,27 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
           set={activeSet}
           setResult={setResult}
           progress={progress}
+          passSeconds={formatDuration(passSeconds)}
+          onSelectSet={(index) => {
+            setSetIndex(index);
+            setSelectedRallyId(null);
+            windowRef.current = null;
+          }}
+          onChangeRally={(rallyId, change) =>
+            editSet(activeSet.setIndex, (set) => ({
+              ...set,
+              rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
+            }))
+          }
+          onActivity={markActivity}
+        />
+      ) : tab === "p2" && activeSet && setResult ? (
+        <IaEffectPass
+          key={activeSet.setIndex}
+          session={session}
+          set={activeSet}
+          setResult={setResult}
+          progress={effectProgressList}
           passSeconds={formatDuration(passSeconds)}
           onSelectSet={(index) => {
             setSetIndex(index);
