@@ -1080,3 +1080,128 @@
     grid-column: 1 / -1;
   }
 }
+
+/* 担当の表(共同編集)。セット × パス */
+.ia-board > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.ia-board-scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+.ia-board-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+  font-size: 0.8rem;
+}
+
+.ia-board-table th,
+.ia-board-table td {
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.ia-board-table thead th {
+  background: var(--surface-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ia-board-table tbody th {
+  width: 3em;
+  text-align: center;
+}
+
+.ia-board-cell {
+  min-width: 112px;
+}
+
+.ia-board-cell > span {
+  display: block;
+}
+
+.ia-board-open {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ia-board-status {
+  font-weight: 600;
+}
+
+.ia-board-progress {
+  font-family: var(--font-num);
+  color: var(--muted);
+}
+
+.ia-board-working {
+  background: var(--accent-soft);
+}
+
+.ia-board-done {
+  background: color-mix(in srgb, var(--ia-ok) 14%, transparent);
+}
+
+.ia-board-done .ia-board-status {
+  color: var(--ia-ok);
+}
+
+.ia-board-active {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ia-board-wait .ia-board-status {
+  color: var(--muted);
+}
+
+.ia-board-holder {
+  color: var(--text);
+}
+
+.ia-board-stale {
+  color: var(--muted);
+}
+
+.ia-board-hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ia-board-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.ia-board-actions button {
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.ia-rates {
+  flex-wrap: wrap;
+}

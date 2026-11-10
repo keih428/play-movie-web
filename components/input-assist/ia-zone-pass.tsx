@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { IaPlayer, type IaPlayerHandle } from "@/components/input-assist/ia-player";
+import { IaRateButtons } from "@/components/input-assist/ia-rate-buttons";
+import { usePlaybackRate } from "@/components/input-assist/use-playback-rate";
 import { formatClock, isTypingTarget } from "@/components/input-assist/ia-utils";
 import { courtSideOf, getCountedRallies, type IaSetResult } from "@/lib/domain/input-assist/engine";
 import { SKILL_LABELS, sideOfCode, syncServePlay } from "@/lib/domain/input-assist/flow";
@@ -41,7 +43,6 @@ import {
 // P3 ゾーン:ボールが触られた位置を、1タッチ1クリックで入れる(前のタッチの終わり = 今のタッチの始まり)。
 // 最後のタッチのあとに、ボールが落ちた場所を1回押す。アタックの始まりは攻撃コンビから自動で入る。
 
-const RATES = [1, 0.75, 0.5];
 /** タッチの何秒前から何秒後まで流すか。 */
 const LEAD_SECONDS = 1.5;
 const TAIL_SECONDS = 1.5;
@@ -138,12 +139,12 @@ export function IaZonePass({
   });
   const [buffer, setBuffer] = useState("");
   const [currentTime, setCurrentTime] = useState(0);
-  const [rate, setRate] = useState(1);
   const [message, setMessage] = useState("");
   const [hover, setHover] = useState<HoverPosition | null>(null);
   const undoRef = useRef<UndoEntry[]>([]);
 
   const playerRef = useRef<IaPlayerHandle | null>(null);
+  const { rate, changeRate } = usePlaybackRate(playerRef);
   const windowRef = useRef<{ start: number; end: number; entered: boolean; startedAt: number } | null>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -215,10 +216,6 @@ export function IaZonePass({
     [onActivity],
   );
 
-  const changeRate = useCallback((next: number) => {
-    setRate(next);
-    playerRef.current?.setRate(next);
-  }, []);
 
   useEffect(() => {
     if (current) {
@@ -464,18 +461,7 @@ export function IaZonePass({
           <IaPlayer ref={playerRef} youtubeUrl={set.youtubeUrl} onTime={handleTime} />
           <div className="ia-now">
             <span className="mono">{formatClock(currentTime)}</span>
-            <span className="ia-rates" role="group" aria-label="再生の速さ">
-              {RATES.map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={`ia-rate ${rate === value ? "ia-rate-active" : ""}`}
-                  onClick={() => changeRate(value)}
-                >
-                  {value}倍
-                </button>
-              ))}
-            </span>
+            <IaRateButtons rate={rate} onChange={changeRate} />
             <span className="ia-rates" role="group" aria-label="押すステップ">
               <button
                 type="button"

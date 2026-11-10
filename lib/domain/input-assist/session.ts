@@ -283,6 +283,8 @@ export function normalizeSet(value: unknown, fallbackIndex: number): IaSet {
             team: normalizeTeamSide(entry.team),
           }))
       : [],
+    // 打たないセット(前は保存のときに落ちていた)
+    ...(input.skipped === true ? { skipped: true } : {}),
   };
 }
 

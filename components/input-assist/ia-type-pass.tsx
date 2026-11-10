@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IaPlayer, type IaPlayerHandle } from "@/components/input-assist/ia-player";
+import { IaRateButtons } from "@/components/input-assist/ia-rate-buttons";
+import { usePlaybackRate } from "@/components/input-assist/use-playback-rate";
 import { formatClock, isTypingTarget } from "@/components/input-assist/ia-utils";
 import { nextUndecided } from "@/lib/domain/input-assist/effect";
 import { courtSideOf, getCountedRallies, type IaSetResult } from "@/lib/domain/input-assist/engine";
@@ -31,7 +33,6 @@ import type { IaPlay, IaRally, IaSet, IaTeamCode, IaTypeField, InputAssistSessio
 // P4 種類:サーブ・トス・アタックの種類、コール・コンビ、打ち方、ブロックの人数を入れる。
 // 前後のタッチから写せる欄・95% 以上の欄は自動で入れ(薄く表示。編集できる)、迷う欄だけを順に動画で見て決める。
 
-const RATES = [1, 0.75, 0.5];
 /** タッチの何秒前から流すか・次のタッチの何秒後まで流すか。 */
 const LEAD_SECONDS = 1.5;
 const TAIL_SECONDS = 1.5;
@@ -150,10 +151,10 @@ export function IaTypePass({
   const [field, setField] = useState<IaTypeField | null>(() => (current ? firstField(current.playId) : null));
   const [pending, setPending] = useState<PendingAdvance | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [rate, setRate] = useState(1);
   const [message, setMessage] = useState("");
 
   const playerRef = useRef<IaPlayerHandle | null>(null);
+  const { rate, changeRate } = usePlaybackRate(playerRef);
   const windowRef = useRef<{ start: number; end: number; entered: boolean; startedAt: number } | null>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
 
@@ -225,10 +226,6 @@ export function IaTypePass({
     [onActivity],
   );
 
-  const changeRate = useCallback((next: number) => {
-    setRate(next);
-    playerRef.current?.setRate(next);
-  }, []);
 
   useEffect(() => {
     if (current) {
@@ -429,18 +426,7 @@ export function IaTypePass({
           <IaPlayer ref={playerRef} youtubeUrl={set.youtubeUrl} onTime={handleTime} />
           <div className="ia-now">
             <span className="mono">{formatClock(currentTime)}</span>
-            <span className="ia-rates" role="group" aria-label="再生の速さ">
-              {RATES.map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={`ia-rate ${rate === value ? "ia-rate-active" : ""}`}
-                  onClick={() => changeRate(value)}
-                >
-                  {value}倍
-                </button>
-              ))}
-            </span>
+            <IaRateButtons rate={rate} onChange={changeRate} />
             <span className="ia-rates" role="group" aria-label="見るタッチ">
               <button
                 type="button"
