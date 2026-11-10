@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  aiJobSetStates,
   buildAiJobSets,
+  decideSetApply,
   describeAiJob,
+  describeAiSetStates,
+  mergeSkeletonSets,
   formatClockInput,
   hasSkeletonApplied,
   parseClockInput,
@@ -88,6 +92,64 @@ describe("打ち込み補助:骨組みを入れる決まり", () => {
     expect(skeletonRallyId(JOB, 1, 0)).not.toBe(skeletonRallyId("6930a1b2c3d4e5f601234568", 1, 0));
     expect(hasSkeletonApplied(rallies, JOB, 1)).toBe(true);
     expect(hasSkeletonApplied(rallies, JOB, 2)).toBe(false);
+  });
+});
+
+describe("打ち込み補助:セットごとの途中の結果", () => {
+  const part1: IaSkeleton = { version: 1, rallies: [{ set: 1, serveTime: 30, side: "near" }, { set: 1, serveTime: 10, side: "far" }] };
+  const part1b: IaSkeleton = { version: 1, rallies: [{ set: 1, serveTime: 11, side: "far" }] };
+  const part2: IaSkeleton = { version: 1, rallies: [{ set: 2, serveTime: 1500, side: "near" }] };
+
+  it("届いたセットは入れ替え、ほかのセットは残す(セット・時刻の順)", () => {
+    const merged = mergeSkeletonSets(mergeSkeletonSets(null, part1), part2);
+    expect(merged.rallies.map((rally) => [rally.set, rally.serveTime])).toEqual([[1, 10], [1, 30], [2, 1500]]);
+    const replaced = mergeSkeletonSets(merged, part1b);
+    expect(replaced.rallies.map((rally) => [rally.set, rally.serveTime])).toEqual([[1, 11], [2, 1500]]);
+  });
+
+  it("同じ中身を入れてあれば二度は入れない。人の手が入っていない AI のラリーは入れ替える。人のラリーは聞く", () => {
+    const first = skeletonRalliesForSet(part1, 1, JOB);
+    const second = skeletonRalliesForSet(part1b, 1, JOB);
+    // キーの順が違っても同じ中身
+    const stored = first.map((rally) => Object.fromEntries(Object.entries(rally).reverse()));
+    expect(decideSetApply({ next: first, previous: first, previousOutcome: "applied", current: [], laterPassesEmpty: true })).toBe("skip");
+    expect(decideSetApply({ next: first, previous: null, previousOutcome: null, current: stored, laterPassesEmpty: true })).toBe("skip");
+    expect(decideSetApply({ next: first, previous: null, previousOutcome: null, current: [], laterPassesEmpty: true })).toBe("apply");
+    expect(decideSetApply({ next: second, previous: first, previousOutcome: "applied", current: stored, laterPassesEmpty: true })).toBe("apply");
+    // P1〜P4 に入れたものがあれば、入れ替えない
+    expect(decideSetApply({ next: second, previous: first, previousOutcome: "applied", current: stored, laterPassesEmpty: false })).toBe("ask");
+    // 人が時刻を動かしていれば、入れ替えない
+    const moved = [{ ...first[0], serveTime: 9 }, first[1]];
+    expect(decideSetApply({ next: second, previous: first, previousOutcome: "applied", current: moved, laterPassesEmpty: true })).toBe("ask");
+    expect(decideSetApply({ next: first, previous: first, previousOutcome: "waiting", current: [{ id: "manual" }], laterPassesEmpty: true })).toBe("ask");
+  });
+
+  it("セットごとの状態:届いたセットは 入れた/入れ替え待ち/できた、届いていない最初のセットが 解析中、残りは 待ち", () => {
+    const sets = [1, 2, 3].map((setIndex) => ({ setIndex }) as never);
+    const skeleton = mergeSkeletonSets(part1, part2);
+    expect(aiJobSetStates({ status: "pending", sets, skeleton: null, applied: null }).map((entry) => entry.state)).toEqual([
+      "pending",
+      "pending",
+      "pending",
+    ]);
+    const running = aiJobSetStates({ status: "running", sets, skeleton, applied: { applied: [1], waiting: [] } });
+    expect(running).toEqual([
+      { setIndex: 1, state: "applied", rallyCount: 2 },
+      { setIndex: 2, state: "done", rallyCount: 1 },
+      { setIndex: 3, state: "running", rallyCount: null },
+    ]);
+    expect(describeAiSetStates(running.slice(1))).toBe("2セット目 できた・3セット目 解析中");
+    expect(
+      aiJobSetStates({ status: "failed", sets, skeleton: part1, applied: { applied: [], waiting: [1] } }).map((entry) => entry.state),
+    ).toEqual(["waiting", "failed", "failed"]);
+    expect(
+      describeAiSetStates([
+        { setIndex: 1, state: "applied" },
+        { setIndex: 2, state: "applied" },
+        { setIndex: 3, state: "running" },
+        { setIndex: 4, state: "pending" },
+      ]),
+    ).toBe("1・2セット目 入れた・3セット目 解析中");
   });
 });
 

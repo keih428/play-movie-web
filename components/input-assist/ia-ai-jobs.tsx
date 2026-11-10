@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AI_SET_STATE_LABELS,
   describeAiJob,
+  describeAiSetStates,
   hasSkeletonApplied,
   type IaAiJobSummary,
+  type IaAiSetState,
 } from "@/lib/domain/input-assist/ai-job";
 import type { InputAssistSession } from "@/lib/domain/input-assist/types";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
 // 「AI に骨組みを頼む」:依頼の状態を見る(待ち・解析中のあいだは 5 秒ごと、それ以外は 30 秒ごと)。
-// できたら、ラリーが空のセットにはサーバーが自動で入れる(4 秒ごとの同期で、この画面にも入る)。
+// セットができるたびに(途中の結果)、ラリーが空のセットにはサーバーが自動で入れる(4 秒ごとの同期で、この画面にも入る)。
 // ラリーが入っていたセットは、ここで「入れ替える」を押したときだけ入れる。
 
 const ACTIVE_POLL_MS = 5 * 1000;
@@ -79,31 +82,62 @@ export function useAiJobs(sessionId: string, teamSlug: string) {
   return { jobs, latest, active, error, busy, request, refresh };
 }
 
-/** 骨組みのセットごとの状態:入れた・入れ替えられる・入れられる。 */
-export type SkeletonSetState = { setIndex: number; state: "applied" | "replace" | "insert"; rallyCount: number };
+/**
+ * セットごとの状態(画面に出す形):待ち / 解析中 / できた / 入れた / 入れ替え待ち / 失敗。
+ * サーバーの状態に、この画面の試合の中身を合わせる(「入れ替える」「入れる」を押したセットは 入れた)。
+ * action:入れ替える(ラリーが入っている)・入れる(ラリーが空)。押せないときは null。
+ */
+export type SkeletonSetState = {
+  setIndex: number;
+  state: IaAiSetState;
+  rallyCount: number | null;
+  action: "replace" | "insert" | null;
+};
 
 export function skeletonSetStates(
   job: IaAiJobSummary | null,
   session: Pick<InputAssistSession, "sets">,
 ): SkeletonSetState[] {
-  if (!job || job.status !== "done" || !job.skeleton) {
+  if (!job) {
     return [];
   }
-  const setIndexes = [...new Set(job.skeleton.rallies.map((rally) => rally.set))].sort((left, right) => left - right);
   const output: SkeletonSetState[] = [];
-  for (const setIndex of setIndexes) {
-    const set = session.sets.find((entry) => entry.setIndex === setIndex && !entry.skipped);
+  for (const entry of job.setStates ?? []) {
+    const set = session.sets.find((candidate) => candidate.setIndex === entry.setIndex && !candidate.skipped);
     if (!set) {
       continue;
     }
-    const rallyCount = job.skeleton.rallies.filter((rally) => rally.set === setIndex).length;
+    const hasSkeleton = Boolean(job.skeleton?.rallies.some((rally) => rally.set === entry.setIndex));
+    if (!hasSkeleton) {
+      output.push({ ...entry, action: null });
+      continue;
+    }
     const applied =
-      hasSkeletonApplied(set.rallies, job.id, setIndex) ||
+      hasSkeletonApplied(set.rallies, job.id, entry.setIndex) ||
       // サーバーが入れたが、この画面にはまだ届いていない(4 秒ごとの同期を待つ)
-      (Boolean(job.applied?.applied.includes(setIndex)) && set.rallies.length === 0);
-    output.push({ setIndex, state: applied ? "applied" : set.rallies.length > 0 ? "replace" : "insert", rallyCount });
+      (entry.state === "applied" && set.rallies.length === 0);
+    if (applied) {
+      output.push({ ...entry, state: "applied", action: null });
+    } else if (set.rallies.length > 0) {
+      output.push({ ...entry, state: "waiting", action: "replace" });
+    } else {
+      output.push({ ...entry, state: "done", action: "insert" });
+    }
   }
   return output;
+}
+
+/** 依頼の状態を一行に。セットごとの状態があれば「2セット目 できた・3セット目 解析中」、なければ「解析中 45%」など。 */
+export function describeAiJobLine(job: IaAiJobSummary, states: SkeletonSetState[]): string {
+  if (job.status === "pending" || job.status === "failed" || states.length === 0) {
+    return describeAiJob(job);
+  }
+  const text = describeAiSetStates(states);
+  if (!text) {
+    return describeAiJob(job);
+  }
+  const percent = job.status === "running" && typeof job.progressPercent === "number" ? `(全体 ${Math.round(job.progressPercent)}%)` : "";
+  return `${text}${percent}`;
 }
 
 /** 準備のタブに出す:「AI に骨組みを頼む」と状態。 */
@@ -120,16 +154,22 @@ export function IaAiJobPanel({
 }) {
   const { latest, active, error, busy } = jobs;
   const states = skeletonSetStates(latest, session);
-  const previous = useRef<{ id: string; status: string } | null>(null);
+  const previous = useRef<{ id: string; status: string; applied: number[] } | null>(null);
   const [notice, setNotice] = useState("");
 
-  // この画面を開いている間にできたら、一度だけ知らせる
+  // この画面を開いている間に、セットが入った・全部できたら、一度だけ知らせる
   useEffect(() => {
     const before = previous.current;
-    previous.current = latest ? { id: latest.id, status: latest.status } : null;
-    if (latest?.status === "done" && before?.id === latest.id && before.status !== "done") {
-      const applied = latest.applied?.applied ?? [];
+    const applied = latest?.applied?.applied ?? [];
+    previous.current = latest ? { id: latest.id, status: latest.status, applied } : null;
+    if (!latest || before?.id !== latest.id) {
+      return;
+    }
+    const added = applied.filter((setIndex) => !before.applied.includes(setIndex));
+    if (latest.status === "done" && before.status !== "done") {
       setNotice(applied.length > 0 ? `骨組みができました。${applied.join("・")}セット目に入れました。` : "骨組みができました。");
+    } else if (added.length > 0) {
+      setNotice(`${added.join("・")}セット目の骨組みができたので、入れました。打ち始められます。`);
     }
   }, [latest]);
 
@@ -157,15 +197,15 @@ export function IaAiJobPanel({
           {states.map((entry) => (
             <li key={entry.setIndex}>
               <span>
-                {entry.setIndex}セット目(骨組み {entry.rallyCount} 本)
+                {entry.setIndex}セット目
+                {entry.rallyCount !== null ? `(骨組み ${entry.rallyCount} 本)` : ""}
               </span>
-              {entry.state === "applied" ? (
-                <span className="ia-checked">入れました</span>
-              ) : (
+              <span className={`ia-ai-set-state ia-ai-set-state-${entry.state}`}>{AI_SET_STATE_LABELS[entry.state]}</span>
+              {entry.action ? (
                 <button type="button" className="button secondary" onClick={() => latest && onApply(latest, entry.setIndex)}>
-                  {entry.state === "replace" ? "入れ替える" : "入れる"}
+                  {entry.action === "replace" ? "入れ替える" : "入れる"}
                 </button>
-              )}
+              ) : null}
             </li>
           ))}
         </ul>
@@ -174,14 +214,22 @@ export function IaAiJobPanel({
   );
 }
 
-/** 担当の表の下に出す、短い状態。 */
-export function IaAiJobStatusLine({ job, onOpen }: { job: IaAiJobSummary | null; onOpen: () => void }) {
+/** 担当の表の下に出す、短い状態(「AI:2セット目 できた・3セット目 解析中」)。 */
+export function IaAiJobStatusLine({
+  job,
+  session,
+  onOpen,
+}: {
+  job: IaAiJobSummary | null;
+  session: Pick<InputAssistSession, "sets">;
+  onOpen: () => void;
+}) {
   if (!job) {
     return null;
   }
   return (
     <p className="muted ia-note ia-ai-line">
-      AI の骨組み:<span className={`ia-ai-status ia-ai-status-${job.status}`}>{describeAiJob(job)}</span>{" "}
+      AI:<span className={`ia-ai-status ia-ai-status-${job.status}`}>{describeAiJobLine(job, skeletonSetStates(job, session))}</span>{" "}
       <button type="button" className="ia-link-button" onClick={onOpen}>
         準備で見る
       </button>

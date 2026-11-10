@@ -641,6 +641,11 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX input_assist_ai_jobs_session ON input_assist_ai_jobs (session_id, created_at DESC)
     `,
   },
+  {
+    id: "033_input_assist_ai_job_partial",
+    // セットごとの途中の結果(2026-11-11 から)。係がセットを解析し終えるたびに送る骨組みを、セットごとにまとめて持つ。
+    sql: `ALTER TABLE input_assist_ai_jobs ADD COLUMN partial jsonb`,
+  },
 ];
 
 function getDatabaseUrl() {

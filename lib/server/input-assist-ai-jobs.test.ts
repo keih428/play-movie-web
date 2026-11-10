@@ -179,4 +179,119 @@ describe("AI の依頼(PGlite)", () => {
     expect("job" in (await jobs.createAiJob(TEAM, meta.id, STAFF))).toBe(true);
     await clearQueue();
   }, 60_000);
+
+  describe("セットごとの途中の結果", () => {
+    async function runningJob(sets: IaSet[]) {
+      const meta = await newSession(sets);
+      await jobs.createAiJob(TEAM, meta.id, STAFF);
+      const claim = (await jobs.claimAiJob())!;
+      expect(claim.sessionId).toBe(meta.id);
+      return { meta, jobId: claim.jobId };
+    }
+    async function p0(sessionId: string, setIndex: number) {
+      const bundle = await store.loadInputAssistBundle(TEAM, sessionId);
+      return bundle!.slices.find((slice) => slice.setIndex === setIndex && slice.pass === "P0");
+    }
+    const set1 = { version: 1, rallies: [{ set: 1, serveTime: 40, side: "near" }, { set: 1, serveTime: 12, side: "far", pSide: 0.7 }] };
+    const set2 = { version: 1, rallies: [{ set: 2, serveTime: 1600, side: "near" }] };
+
+    it("届いたセットだけ、ラリーが空なら AI として入れる。期限も延びる。セットごとの状態が見える", async () => {
+      const { meta, jobId } = await runningJob([readySet(1), readySet(2), readySet(3)]);
+      const later = new Date(Date.now() + 25 * 60 * 1000);
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: set1 }, later)).toEqual({
+        applied: { applied: [1], waiting: [] },
+        sets: [1],
+      });
+      const slice = (await p0(meta.id, 1))!;
+      expect((slice.data as IaP0Data).rallies.map((rally) => [rally.id, rally.serveTime, rally.source])).toEqual([
+        [skeletonRallyId(jobId, 1, 0), 12, "auto"],
+        [skeletonRallyId(jobId, 1, 1), 40, "auto"],
+      ]);
+      expect(slice.updatedByName).toBe("AI");
+      expect((await p0(meta.id, 2))?.data).toMatchObject({ rallies: [] });
+      // 期限が延びたので、受け取ってから 31 分では受け取り直せない
+      expect(await jobs.claimAiJob(new Date(Date.now() + 31 * 60 * 1000))).toBeNull();
+
+      const [job] = await jobs.listAiJobs(TEAM, meta.id);
+      expect(job.status).toBe("running");
+      expect(job.skeleton?.rallies).toHaveLength(2);
+      expect(job.setStates).toEqual([
+        { setIndex: 1, state: "applied", rallyCount: 2 },
+        { setIndex: 2, state: "running", rallyCount: null },
+        { setIndex: 3, state: "pending", rallyCount: null },
+      ]);
+      // 形が違う・ラリーがない・解析中でない依頼は受け取らない
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: { version: 2, rallies: [] } })).toMatchObject({ status: 400 });
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: { version: 1, rallies: [] } })).toMatchObject({ status: 400 });
+      expect(await jobs.reportAiJobPartial("ffffffffffffffffffffffff", { skeleton: set1 })).toMatchObject({ status: 404 });
+      await clearQueue();
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: set2 })).toMatchObject({ status: 409 });
+    }, 60_000);
+
+    it("同じ途中の結果をもう一度送っても、二重に入らず保存し直さない。違う中身なら、人の手が入っていない AI のラリーを入れ替える", async () => {
+      const { meta, jobId } = await runningJob([readySet(1), readySet(2)]);
+      await jobs.reportAiJobPartial(jobId, { skeleton: set1 });
+      const before = (await p0(meta.id, 1))!;
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: set1 })).toEqual({ applied: { applied: [1], waiting: [] }, sets: [1] });
+      const after = (await p0(meta.id, 1))!;
+      expect(after.version).toBe(before.version);
+      expect((after.data as IaP0Data).rallies).toHaveLength(2);
+
+      // あとから届いた同じセットで入れ替える(まだ人の手が入っていない)
+      const fixed = { version: 1, rallies: [{ set: 1, serveTime: 13, side: "far" }, { set: 1, serveTime: 41, side: "near" }, { set: 1, serveTime: 70, side: "near" }] };
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: fixed })).toMatchObject({ applied: { applied: [1], waiting: [] } });
+      expect(((await p0(meta.id, 1))!.data as IaP0Data).rallies.map((rally) => rally.serveTime)).toEqual([13, 41, 70]);
+      const [job] = await jobs.listAiJobs(TEAM, meta.id);
+      expect(job.skeleton?.rallies.map((rally) => rally.serveTime)).toEqual([13, 41, 70]);
+      await clearQueue();
+    }, 60_000);
+
+    it("ラリーが入っているセットの途中の結果は、入れずに入れ替え待ちにする", async () => {
+      const withRallies = readySet(1);
+      withRallies.rallies = [{ id: "manual1", serveTime: 5, side: "near", status: "rally", source: "manual" }];
+      const { meta, jobId } = await runningJob([withRallies, readySet(2)]);
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: set1 })).toEqual({ applied: { applied: [], waiting: [1] }, sets: [1] });
+      expect(((await p0(meta.id, 1))!.data as IaP0Data).rallies.map((rally) => rally.id)).toEqual(["manual1"]);
+      // もう一度送っても、入れ替え待ちのまま
+      expect(await jobs.reportAiJobPartial(jobId, { skeleton: set1 })).toMatchObject({ applied: { applied: [], waiting: [1] } });
+      const [job] = await jobs.listAiJobs(TEAM, meta.id);
+      expect(job.setStates.map((entry) => [entry.setIndex, entry.state])).toEqual([
+        [1, "waiting"],
+        [2, "running"],
+      ]);
+      await clearQueue();
+    }, 60_000);
+
+    it("途中の結果のあとに全部の結果が届いたら、入れたセットはそのまま、まだのセットだけ入れる", async () => {
+      const { meta, jobId } = await runningJob([readySet(1), readySet(2), readySet(3)]);
+      await jobs.reportAiJobPartial(jobId, { skeleton: set1 });
+      const before = (await p0(meta.id, 1))!;
+      // 1セット目は、人がもう打ち始めている(P1)。同じ中身なので触らない
+      const p1 = (await store.loadInputAssistBundle(TEAM, meta.id))!.slices.find((slice) => slice.setIndex === 1 && slice.pass === "P1");
+      const savedP1 = await store.saveInputAssistSlice(
+        TEAM, meta.id, 1, "P1", { rallies: { [skeletonRallyId(jobId, 1, 0)]: { flowDone: true } } }, p1?.version ?? 0, STAFF,
+      );
+      expect(savedP1?.ok).toBe(true);
+      const full = { version: 1, rallies: [...set1.rallies, ...set2.rallies, { set: 3, serveTime: 3000, side: "far" }] };
+      expect(await jobs.completeAiJob(jobId, { skeleton: full, meta: { seconds: 900 } })).toEqual({
+        applied: { applied: [1, 2, 3], waiting: [] },
+      });
+      const after = (await p0(meta.id, 1))!;
+      expect(after.version).toBe(before.version);
+      expect((after.data as IaP0Data).rallies).toHaveLength(2);
+      expect(((await p0(meta.id, 2))!.data as IaP0Data).rallies.map((rally) => rally.id)).toEqual([skeletonRallyId(jobId, 2, 0)]);
+      const [job] = await jobs.listAiJobs(TEAM, meta.id);
+      expect(job).toMatchObject({ status: "done", applied: { applied: [1, 2, 3], waiting: [] } });
+      expect(job.skeleton?.rallies).toHaveLength(4);
+      expect(job.setStates.map((entry) => entry.state)).toEqual(["applied", "applied", "applied"]);
+    }, 60_000);
+
+    it("全部の結果に、途中の結果にあったセットがなくても残す", async () => {
+      const { meta, jobId } = await runningJob([readySet(1), readySet(2)]);
+      await jobs.reportAiJobPartial(jobId, { skeleton: set1 });
+      expect(await jobs.completeAiJob(jobId, { skeleton: set2 })).toEqual({ applied: { applied: [1, 2], waiting: [] } });
+      const [job] = await jobs.listAiJobs(TEAM, meta.id);
+      expect(job.skeleton?.rallies.map((rally) => rally.set)).toEqual([1, 1, 2]);
+    }, 60_000);
+  });
 });

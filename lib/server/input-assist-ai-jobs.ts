@@ -1,15 +1,18 @@
 import {
   AI_JOB_LEASE_MS,
+  aiJobSetStates,
   buildAiJobSets,
-  planSkeletonApply,
+  decideSetApply,
+  mergeSkeletonSets,
   skeletonRalliesForSet,
+  skeletonSetIndexes,
   type IaAiJobApplied,
   type IaAiJobClaim,
   type IaAiJobSet,
   type IaAiJobStatus,
   type IaAiJobSummary,
 } from "@/lib/domain/input-assist/ai-job";
-import type { IaP0Data } from "@/lib/domain/input-assist/collab";
+import type { IaP0Data, IaP1Data, IaPlayFieldsData } from "@/lib/domain/input-assist/collab";
 import { createObjectId } from "@/lib/domain/input-assist/ids";
 import { parseSkeleton, SkeletonError } from "@/lib/domain/input-assist/skeleton";
 import type { IaSkeleton } from "@/lib/domain/input-assist/types";
@@ -21,7 +24,8 @@ import {
 import { query } from "@/lib/server/portal-db";
 
 // 「AI に骨組みを頼む」の依頼(データベースの input_assist_ai_jobs)。
-// スタッフが依頼を作り(createAiJob)、係が claim で受け取り、progress・result・fail を送る。
+// スタッフが依頼を作り(createAiJob)、係が claim で受け取り、progress・partial・result・fail を送る。
+// partial(セットごとの途中の結果)は partial の列に、セットごとにまとめて持つ。届いたセットから自動で入れる。
 
 /** 骨組みを自動で入れたときの、保存した人の名前。 */
 export const AI_MEMBER = { id: "ai-worker", displayName: "AI" };
@@ -38,6 +42,7 @@ type JobRow = {
   progress_message: string | null;
   progress_percent: number | string | null;
   result: unknown;
+  partial: unknown;
   result_meta: unknown;
   applied: unknown;
   error: string | null;
@@ -71,7 +76,7 @@ function parseJson<T>(value: unknown): T | null {
 
 function toSummary(row: JobRow): IaAiJobSummary {
   const percent = row.progress_percent === null ? null : Number(row.progress_percent);
-  return {
+  const summary: IaAiJobSummary = {
     id: row.id,
     status: row.status as IaAiJobStatus,
     sets: parseJson<IaAiJobSet[]>(row.sets) ?? [],
@@ -82,10 +87,14 @@ function toSummary(row: JobRow): IaAiJobSummary {
     createdByName: row.created_by_name,
     leasedAt: toIso(row.leased_at),
     finishedAt: toIso(row.finished_at),
-    skeleton: parseJson<IaSkeleton>(row.result),
+    // できたら result。解析中は、届いたセットぶん(partial)
+    skeleton: parseJson<IaSkeleton>(row.result) ?? parseJson<IaSkeleton>(row.partial),
     resultMeta: parseJson<Record<string, unknown>>(row.result_meta),
     applied: parseJson<IaAiJobApplied>(row.applied),
+    setStates: [],
   };
+  summary.setStates = aiJobSetStates(summary);
+  return summary;
 }
 
 export type AiJobError = { error: string; status: number };
@@ -206,9 +215,68 @@ export async function failAiJob(jobId: string, error: unknown): Promise<boolean>
   return rows.length > 0;
 }
 
+function parseSkeletonInput(value: unknown): { skeleton: IaSkeleton } | AiJobError {
+  try {
+    return { skeleton: parseSkeleton(JSON.stringify(value ?? null)) };
+  } catch (error) {
+    return { error: error instanceof SkeletonError ? error.message : "骨組みが読めません。", status: 400 };
+  }
+}
+
+async function notRunningError(jobId: string): Promise<AiJobError> {
+  const exists = await query<{ status: string }>("SELECT status FROM input_assist_ai_jobs WHERE id = $1", [jobId]);
+  return exists[0]
+    ? { error: `この依頼は、もう${exists[0].status === "done" ? "できています" : "受け取っていません"}。`, status: 409 }
+    : { error: "依頼が見つかりません。", status: 404 };
+}
+
 /**
- * 骨組みが届いた。形を確かめて保存し、ラリーが空のセットには自動で入れる(P0 のスライスとして保存。出どころは auto)。
+ * セットごとの途中の結果 {skeleton}(1セット以上の、解析し終えたセットのラリー)。解析中の依頼だけ。
+ * 形を確かめ、届いたセットを partial に入れ替えてまとめ、受け取った時刻を新しくする(30 分の期限を延ばす)。
+ * そのセットだけ、result と同じ決まりで自動で入れる。同じ中身をもう一度送っても、二重には入らない。
+ */
+export async function reportAiJobPartial(
+  jobId: string,
+  input: { skeleton?: unknown },
+  now: Date = new Date(),
+): Promise<{ applied: IaAiJobApplied; sets: number[] } | AiJobError> {
+  if (!isJobId(jobId)) {
+    return { error: "依頼が見つかりません。", status: 404 };
+  }
+  const parsed = parseSkeletonInput(input.skeleton);
+  if ("error" in parsed) {
+    return parsed;
+  }
+  const sets = skeletonSetIndexes(parsed.skeleton);
+  if (sets.length === 0) {
+    return { error: "ラリーがありません。", status: 400 };
+  }
+  const rows = await query<JobRow>(
+    `UPDATE input_assist_ai_jobs SET leased_at = $2::timestamptz, updated_at = now()
+     WHERE id = $1 AND status = 'running' RETURNING *`,
+    [jobId, now.toISOString()],
+  );
+  const row = rows[0];
+  if (!row) {
+    return notRunningError(jobId);
+  }
+  const previous = parseJson<IaSkeleton>(row.partial);
+  const applied = await applySkeletonSets(row.team_slug, row.session_id, jobId, parsed.skeleton, sets, {
+    skeleton: previous,
+    applied: parseJson<IaAiJobApplied>(row.applied),
+  });
+  await query(
+    `UPDATE input_assist_ai_jobs SET partial = $2::jsonb, applied = $3::jsonb, updated_at = now()
+     WHERE id = $1 AND status = 'running'`,
+    [jobId, JSON.stringify(mergeSkeletonSets(previous, parsed.skeleton)), JSON.stringify(applied)],
+  );
+  return { applied, sets };
+}
+
+/**
+ * 骨組みが届いた(全部のセット)。形を確かめて保存し、ラリーが空のセットには自動で入れる(P0 のスライスとして保存。出どころは auto)。
  * ラリーが入っているセットは入れない(画面で「入れ替える」)。
+ * 途中の結果(partial)で同じ中身を入れてあるセットは、もう一度は入れない。途中の結果にしかないセットも残す。
  */
 export async function completeAiJob(
   jobId: string,
@@ -217,79 +285,112 @@ export async function completeAiJob(
   if (!isJobId(jobId)) {
     return { error: "依頼が見つかりません。", status: 404 };
   }
-  let skeleton: IaSkeleton;
-  try {
-    skeleton = parseSkeleton(JSON.stringify(input.skeleton ?? null));
-  } catch (error) {
-    return { error: error instanceof SkeletonError ? error.message : "骨組みが読めません。", status: 400 };
+  const parsed = parseSkeletonInput(input.skeleton);
+  if ("error" in parsed) {
+    return parsed;
   }
   const meta = input.meta && typeof input.meta === "object" && !Array.isArray(input.meta) ? input.meta : {};
   const rows = await query<JobRow>(
-    `UPDATE input_assist_ai_jobs SET status = 'done', result = $2::jsonb, result_meta = $3::jsonb,
+    `UPDATE input_assist_ai_jobs SET status = 'done', result_meta = $2::jsonb,
        progress_percent = 100, finished_at = now(), updated_at = now()
      WHERE id = $1 AND status = 'running' RETURNING *`,
-    [jobId, JSON.stringify(skeleton), JSON.stringify(meta)],
+    [jobId, JSON.stringify(meta)],
   );
   const row = rows[0];
   if (!row) {
-    const exists = await query<{ status: string }>("SELECT status FROM input_assist_ai_jobs WHERE id = $1", [jobId]);
-    return exists[0]
-      ? { error: `この依頼は、もう${exists[0].status === "done" ? "できています" : "受け取っていません"}。`, status: 409 }
-      : { error: "依頼が見つかりません。", status: 404 };
+    return notRunningError(jobId);
   }
-  const applied = await applySkeletonToEmptySets(row.team_slug, row.session_id, jobId, skeleton);
-  await query("UPDATE input_assist_ai_jobs SET applied = $2::jsonb, updated_at = now() WHERE id = $1", [
+  const previous = parseJson<IaSkeleton>(row.partial);
+  const skeleton = mergeSkeletonSets(previous, parsed.skeleton);
+  const applied = await applySkeletonSets(
+    row.team_slug,
+    row.session_id,
     jobId,
+    parsed.skeleton,
+    skeletonSetIndexes(parsed.skeleton),
+    { skeleton: previous, applied: parseJson<IaAiJobApplied>(row.applied) },
+  );
+  await query("UPDATE input_assist_ai_jobs SET result = $2::jsonb, applied = $3::jsonb, updated_at = now() WHERE id = $1", [
+    jobId,
+    JSON.stringify(skeleton),
     JSON.stringify(applied),
   ]);
   return { applied };
 }
 
-/** ラリーが空のセットに、骨組みのラリーを入れる(交代・タイムアウトは残す)。 */
-export async function applySkeletonToEmptySets(
+function laterPassesEmpty(slices: Array<{ setIndex: number; pass: string; data: unknown }>, setIndex: number): boolean {
+  return slices
+    .filter((slice) => slice.setIndex === setIndex && slice.pass !== "P0")
+    .every((slice) => {
+      const data = (slice.data ?? {}) as Partial<IaP1Data> & Partial<IaPlayFieldsData>;
+      const entries = slice.pass === "P1" ? data.rallies : data.plays;
+      return !entries || Object.keys(entries).length === 0;
+    });
+}
+
+/**
+ * 骨組みの、指定したセットを入れる(交代・タイムアウトは残す)。返すのは、この依頼でこれまでに入れた・待たせたセットの全部。
+ * - 前に同じ中身を入れてある → そのまま(入れた)
+ * - ラリーが空、または前にこの依頼で入れたラリーが人の手が入らないまま残っている → 入れる
+ * - 人がラリーを入れている → 入れない(入れ替え待ち)
+ * - 試合にない・打たないセット → 入れない(どちらにも数えない)
+ */
+export async function applySkeletonSets(
   teamSlug: string,
   sessionId: string,
   jobId: string,
   skeleton: IaSkeleton,
+  setIndexes: number[],
+  previous: { skeleton: IaSkeleton | null; applied: IaAiJobApplied | null } = { skeleton: null, applied: null },
 ): Promise<IaAiJobApplied> {
+  const appliedSets = new Set(previous.applied?.applied ?? []);
+  const waitingSets = new Set(previous.applied?.waiting ?? []);
+  const finish = (): IaAiJobApplied => ({
+    applied: [...appliedSets].sort((left, right) => left - right),
+    waiting: [...waitingSets].sort((left, right) => left - right),
+  });
   const bundle = await loadInputAssistBundle(teamSlug, sessionId);
   if (!bundle) {
-    return { applied: [], waiting: [] };
+    return finish();
   }
-  const p0Of = (setIndex: number) =>
-    bundle.slices.find((slice) => slice.setIndex === setIndex && slice.pass === "P0");
-  const plan = planSkeletonApply(
-    skeleton,
-    bundle.meta.sets.map((set) => ({
-      setIndex: set.setIndex,
-      skipped: set.skipped,
-      rallyCount: ((p0Of(set.setIndex)?.data as IaP0Data | undefined)?.rallies ?? []).length,
-    })),
-  );
-  const result: IaAiJobApplied = { applied: [], waiting: [...plan.ask] };
-  for (const setIndex of plan.apply) {
-    const current = p0Of(setIndex);
+  const previousSets = new Set(skeletonSetIndexes(previous.skeleton));
+  for (const setIndex of setIndexes) {
+    const outcome = appliedSets.has(setIndex) ? "applied" : waitingSets.has(setIndex) ? "waiting" : null;
+    appliedSets.delete(setIndex);
+    waitingSets.delete(setIndex);
+    const set = bundle.meta.sets.find((entry) => entry.setIndex === setIndex);
+    if (!set || set.skipped) {
+      continue;
+    }
+    const current = bundle.slices.find((slice) => slice.setIndex === setIndex && slice.pass === "P0");
     const data = (current?.data as IaP0Data | undefined) ?? { rallies: [], substitutions: [], timeouts: [] };
+    const next = skeletonRalliesForSet(skeleton, setIndex, jobId);
+    const decision = decideSetApply({
+      next,
+      previous: previous.skeleton && previousSets.has(setIndex) ? skeletonRalliesForSet(previous.skeleton, setIndex, jobId) : null,
+      previousOutcome: outcome,
+      current: data.rallies ?? [],
+      laterPassesEmpty: laterPassesEmpty(bundle.slices, setIndex),
+    });
+    if (decision === "skip") {
+      appliedSets.add(setIndex);
+      continue;
+    }
+    if (decision === "ask") {
+      waitingSets.add(setIndex);
+      continue;
+    }
     const saved = await saveInputAssistSlice(
       teamSlug,
       sessionId,
       setIndex,
       "P0",
-      {
-        rallies: skeletonRalliesForSet(skeleton, setIndex, jobId),
-        substitutions: data.substitutions ?? [],
-        timeouts: data.timeouts ?? [],
-      },
+      { rallies: next, substitutions: data.substitutions ?? [], timeouts: data.timeouts ?? [] },
       current?.version ?? 0,
       AI_MEMBER,
     );
     // そのあいだに人がラリーを入れていたら、入れない(画面で「入れ替える」)
-    if (saved?.ok) {
-      result.applied.push(setIndex);
-    } else {
-      result.waiting.push(setIndex);
-    }
+    (saved?.ok ? appliedSets : waitingSets).add(setIndex);
   }
-  result.waiting.sort((left, right) => left - right);
-  return result;
+  return finish();
 }
