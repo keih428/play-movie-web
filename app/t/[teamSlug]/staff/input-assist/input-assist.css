@@ -1205,3 +1205,50 @@
 .ia-rates {
   flex-wrap: wrap;
 }
+
+/* AI の骨組み(準備・担当の表の下) */
+.ia-ai-status {
+  font-weight: 600;
+}
+
+.ia-ai-status-running,
+.ia-ai-status-pending {
+  color: var(--ia-warn);
+}
+
+.ia-ai-status-done {
+  color: var(--ia-ok);
+}
+
+.ia-ai-status-failed {
+  color: var(--ia-ng);
+}
+
+.ia-ai-line {
+  margin: 0;
+}
+
+.ia-ai-sets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ia-ai-sets li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ia-link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent-strong);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}

@@ -611,6 +611,36 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX input_assist_pass_logs_session ON input_assist_pass_logs (session_id)
     `,
   },
+  {
+    id: "032_input_assist_ai_jobs",
+    // 打ち込み補助の「AI に骨組みを頼む」(2026-11-10 から)。サイトに依頼をため、Mac の係が取りに行く。
+    // status:pending(待ち)→ running(解析中。leased_at に受け取った・最後に進み具合を送った時刻)→ done / failed。
+    // running のまま 30 分なにも送ってこなければ、次の係が受け取り直せる。
+    sql: `
+      CREATE TABLE input_assist_ai_jobs (
+        id text PRIMARY KEY,
+        session_id text NOT NULL,
+        team_slug text NOT NULL,
+        status text NOT NULL,
+        sets jsonb NOT NULL,
+        progress_message text,
+        progress_percent real,
+        result jsonb,
+        result_meta jsonb,
+        applied jsonb,
+        error text,
+        attempts integer NOT NULL DEFAULT 0,
+        created_by text,
+        created_by_name text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        leased_at timestamptz,
+        finished_at timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX input_assist_ai_jobs_queue ON input_assist_ai_jobs (status, created_at);
+      CREATE INDEX input_assist_ai_jobs_session ON input_assist_ai_jobs (session_id, created_at DESC)
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

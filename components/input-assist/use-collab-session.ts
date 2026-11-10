@@ -400,6 +400,32 @@ export function useCollabSession({
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasUnsaved]);
 
+  /** 今すぐ保存する(AI に頼む・試合ビューアに保存する前に)。保存し終えたら true。 */
+  const saveNow = useCallback(async () => {
+    for (let index = 0; index < 40 && savingRef.current; index += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+    if (needsSave()) {
+      await save();
+    }
+    return !needsSave() && !metaConflictRef.current;
+  }, [needsSave, save]);
+
+  /** サーバーが新しくしたメタ(試合ビューアに保存したときなど)を入れる。手元でメタを編集していれば、入れない(4 秒ごとに見たときに知らせる)。 */
+  const acceptMeta = useCallback(
+    (meta: InputAssistMeta) => {
+      const current = sessionRef.current;
+      if (metaJson(metaOf(current)) !== metaLocalRef.current || meta.updatedAt === metaUpdatedAtRef.current) {
+        return;
+      }
+      const { slices } = splitSession(current);
+      metaLocalRef.current = metaJson(meta);
+      metaUpdatedAtRef.current = meta.updatedAt;
+      commit(composeSession(meta, slices));
+    },
+    [commit],
+  );
+
   /** メタがぶつかったとき:サーバーの方を読み込む。 */
   const reloadMeta = useCallback(() => {
     if (!metaConflict) {
@@ -634,6 +660,8 @@ export function useCollabSession({
     metaConflict,
     reloadMeta,
     overwriteMeta,
+    saveNow,
+    acceptMeta,
     remoteNotice,
     acceptRemote,
     dismissRemote: () => setRemoteNotice((notice) => (notice ? { ...notice, hidden: true } : notice)),

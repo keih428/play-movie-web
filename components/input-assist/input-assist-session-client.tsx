@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IaAiJobPanel, IaAiJobStatusLine, useAiJobs } from "@/components/input-assist/ia-ai-jobs";
 import { IaAssignmentBoard } from "@/components/input-assist/ia-assignment-board";
 import { IaEffectPass } from "@/components/input-assist/ia-effect-pass";
 import { IaFlowPass } from "@/components/input-assist/ia-flow-pass";
@@ -15,7 +16,8 @@ import { useCollabSession, type SaveState } from "@/components/input-assist/use-
 import { usePassTimer, type PassTimerFlush } from "@/components/input-assist/use-pass-timer";
 import { usePlaybackRate } from "@/components/input-assist/use-playback-rate";
 import { PASS_LABELS, type InputAssistBundle } from "@/lib/domain/input-assist/board";
-import { sliceKey, type IaP0Data } from "@/lib/domain/input-assist/collab";
+import { skeletonRalliesForSet, type IaAiJobSummary } from "@/lib/domain/input-assist/ai-job";
+import { sliceKey, type IaP0Data, type InputAssistMeta } from "@/lib/domain/input-assist/collab";
 import { computeSet, formatRotation, servingTeamOf, sortRallies } from "@/lib/domain/input-assist/engine";
 import { createObjectId } from "@/lib/domain/input-assist/ids";
 import {
@@ -40,7 +42,7 @@ import type {
   InputAssistSession,
 } from "@/lib/domain/input-assist/types";
 import { buildVsmFileName, buildVsmText } from "@/lib/domain/input-assist/vsm-writer";
-import { buildTeamApiPath } from "@/lib/domain/team";
+import { buildTeamApiPath, buildWorkspacePath } from "@/lib/domain/team";
 
 type Tab = "setup" | "p0" | "p1" | "p2" | "p3" | "p4";
 
@@ -117,6 +119,8 @@ export function InputAssistSessionClient({
     metaConflict,
     reloadMeta,
     overwriteMeta,
+    saveNow,
+    acceptMeta,
     remoteNotice,
     acceptRemote,
     dismissRemote,
@@ -141,6 +145,8 @@ export function InputAssistSessionClient({
   const [continuous, setContinuous] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [message, setMessage] = useState("");
+  const [savingViewer, setSavingViewer] = useState(false);
+  const aiJobs = useAiJobs(initialBundle.meta.id, teamSlug);
 
   const playerRef = useRef<IaPlayerHandle | null>(null);
   const { rate, changeRate } = usePlaybackRate(playerRef);
@@ -497,6 +503,58 @@ export function InputAssistSessionClient({
     }
   }
 
+  /** AI の骨組みを、このセットに入れる(入っているラリーは入れ替える)。 */
+  function applyAiSkeleton(job: IaAiJobSummary, targetSetIndex: number) {
+    if (!job.skeleton) {
+      return;
+    }
+    const target = session.sets.find((set) => set.setIndex === targetSetIndex);
+    if (!target) {
+      return;
+    }
+    if (
+      target.rallies.length > 0 &&
+      !window.confirm(
+        `${targetSetIndex}セット目のラリー ${target.rallies.length} 本を、AI の骨組みで入れ替えます。P1〜P4 で入れたものも消えます。よいですか?`,
+      )
+    ) {
+      return;
+    }
+    const rallies: IaRally[] = skeletonRalliesForSet(job.skeleton, targetSetIndex, job.id);
+    editSet(targetSetIndex, (set) => ({ ...set, rallies }));
+    setSelectedRallyId(null);
+    setMessage(`${targetSetIndex}セット目に骨組みを入れました(${rallies.length}本)。`);
+  }
+
+  async function saveToMatchViewer() {
+    setSavingViewer(true);
+    setMessage("");
+    try {
+      if (!(await saveNow())) {
+        setMessage("保存できていない編集があります。保存してから、もう一度押してください。");
+        return;
+      }
+      const response = await fetch(buildTeamApiPath(`/api/input-assist/sessions/${session.id}/match-viewer`, teamSlug), {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { meta?: InputAssistMeta | null; created?: boolean; error?: string }
+        | null;
+      if (!response.ok) {
+        setMessage(payload?.error ?? "試合ビューアに保存できませんでした。");
+        return;
+      }
+      if (payload?.meta) {
+        acceptMeta(payload.meta);
+      }
+      setMessage(payload?.created ? "試合ビューアに保存しました。" : "試合ビューアの試合を新しくしました。");
+    } catch {
+      setMessage("試合ビューアに保存できませんでした。通信を確かめてください。");
+    } finally {
+      setSavingViewer(false);
+    }
+  }
+
   function exportVsm() {
     downloadText(buildVsmText(session), buildVsmFileName(session));
     const undecided = checks.reduce((total, check) => total + check.undecidedRallies, 0);
@@ -563,9 +621,21 @@ export function InputAssistSessionClient({
                   }}
                 />
               </label>
-              <button type="button" className="button" onClick={exportVsm}>
-                VSMを書き出す
+              <button type="button" className="button secondary" onClick={exportVsm}>
+                VSMをダウンロード
               </button>
+              <button type="button" className="button" onClick={() => void saveToMatchViewer()} disabled={savingViewer}>
+                {savingViewer ? "保存中…" : "試合ビューアに保存"}
+              </button>
+              {session.matchViewer ? (
+                <Link
+                  href={buildWorkspacePath({ teamSlug, workspaceId: session.matchViewer.workspaceId })}
+                  className="button secondary"
+                  target="_blank"
+                >
+                  試合ビューアで開く
+                </Link>
+              ) : null}
             </div>
           </div>
           <IaAssignmentBoard
@@ -578,6 +648,7 @@ export function InputAssistSessionClient({
             onOpen={openPass}
             onAction={(action, targetSetIndex, pass, force) => void assign(action, targetSetIndex, pass, force)}
           />
+          <IaAiJobStatusLine job={aiJobs.latest} onOpen={() => setTab("setup")} />
           {metaConflict ? (
             <div className="ia-banner">
               <span>ほかの画面で、試合の準備(名前・チーム・セット)が先に保存されました。</span>
@@ -665,10 +736,17 @@ export function InputAssistSessionClient({
 
       {tab === "setup" ? (
         <section className="panel">
-          <div className="panel-inner">
+          <div className="panel-inner stack">
+            <IaAiJobPanel
+              session={session}
+              jobs={aiJobs}
+              onRequest={() => void aiJobs.request(saveNow)}
+              onApply={applyAiSkeleton}
+            />
             <IaSetupEditor
               value={setupValue}
               onChange={(next) => edit((current) => ({ ...current, ...next }))}
+              teamSlug={teamSlug}
             />
           </div>
         </section>

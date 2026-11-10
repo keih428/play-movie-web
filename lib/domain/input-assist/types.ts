@@ -145,6 +145,8 @@ export type IaSet = {
   timeouts: IaTimeout[];
   /** このセットは打たない(例:引退する4年生を入れた1セット目)。P0 の一覧・得点の確認・VSM の書き出しから外す。 */
   skipped?: boolean;
+  /** セットの開始時刻(そのセットの動画の秒)。AI に骨組みを頼むときに使う。なければ動画の頭から。 */
+  startTime?: number | null;
 };
 
 export type IaPassName = "P0" | "P1" | "P2" | "P3" | "P4";
@@ -184,6 +186,14 @@ export type InputAssistSession = {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  /** 「試合ビューアに保存」で作ったもの(データライブラリの試合データと、試合ビューアのワークスペース)。 */
+  matchViewer?: IaMatchViewerLink;
+};
+
+export type IaMatchViewerLink = {
+  workspaceId: string;
+  scoutFileId: string;
+  savedAt: string;
 };
 
 export type InputAssistSessionSummary = Pick<

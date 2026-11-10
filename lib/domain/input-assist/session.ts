@@ -244,6 +244,12 @@ function normalizeTeamSide(value: unknown): IaTeamSide {
   return value === "away" ? "away" : "home";
 }
 
+/** セットの開始時刻(秒)。0 以上の数でなければ null。 */
+function normalizeStartTime(value: unknown): number | null {
+  const number = toNumberOrNull(value);
+  return number !== null && number >= 0 && number < 24 * 60 * 60 ? roundTime(number) : null;
+}
+
 export function normalizeSet(value: unknown, fallbackIndex: number): IaSet {
   const input = (value && typeof value === "object" ? value : {}) as Partial<IaSet>;
   const setIndex = Math.trunc(Number(input.setIndex));
@@ -285,6 +291,7 @@ export function normalizeSet(value: unknown, fallbackIndex: number): IaSet {
       : [],
     // 打たないセット(前は保存のときに落ちていた)
     ...(input.skipped === true ? { skipped: true } : {}),
+    ...(normalizeStartTime(input.startTime) !== null ? { startTime: normalizeStartTime(input.startTime) } : {}),
   };
 }
 
