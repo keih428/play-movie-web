@@ -1224,6 +1224,25 @@
   color: var(--ia-ng);
 }
 
+.ia-ai-set-state {
+  font-weight: 600;
+}
+
+.ia-ai-set-state-pending,
+.ia-ai-set-state-running,
+.ia-ai-set-state-waiting {
+  color: var(--ia-warn);
+}
+
+.ia-ai-set-state-done,
+.ia-ai-set-state-applied {
+  color: var(--ia-ok);
+}
+
+.ia-ai-set-state-failed {
+  color: var(--ia-ng);
+}
+
 .ia-ai-line {
   margin: 0;
 }

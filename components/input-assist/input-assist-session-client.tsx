@@ -648,7 +648,7 @@ export function InputAssistSessionClient({
             onOpen={openPass}
             onAction={(action, targetSetIndex, pass, force) => void assign(action, targetSetIndex, pass, force)}
           />
-          <IaAiJobStatusLine job={aiJobs.latest} onOpen={() => setTab("setup")} />
+          <IaAiJobStatusLine job={aiJobs.latest} session={session} onOpen={() => setTab("setup")} />
           {metaConflict ? (
             <div className="ia-banner">
               <span>ほかの画面で、試合の準備(名前・チーム・セット)が先に保存されました。</span>
