@@ -312,7 +312,7 @@ export function ServeCounter({
   return (
     <div className={canRecord ? "tp-counter tp-spike tp-counter-recording" : "tp-counter tp-spike"}>
       <div className="tp-counter-top">
-        <div className="tp-seg tp-serve-views" role="group" aria-label="入力・結果">
+        <div className="tp-seg tp-counter-views" role="group" aria-label="入力・結果">
           {(["input", "result"] as const).map((entry) => (
             <button key={entry} type="button" aria-pressed={entry === view} onClick={() => setView(entry)}>
               {entry === "input" ? "入力" : "結果"}

@@ -5140,8 +5140,8 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   grid-template-columns: 4.6em repeat(6, minmax(0, 1fr));
 }
 
-/* サーブ効果率の「入力|結果」(2026-11-10 から) */
-.tp-serve-views {
+/* 数える画面の「入力|結果」(2026-11-10 から。サーブ効果率・スパイク) */
+.tp-counter-views {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   width: 100%;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HalfTeamColumns } from "@/components/half-team-columns";
+import { SpikeDrillResult } from "@/components/spike-drill-result";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   FRONT_SPOTS,
@@ -69,6 +70,15 @@ const keyOf = (memberId: string, setterId: string, spot: SpikeSpot, level: Spike
 const viewKey = (drillId: string) => `spike-view:${drillId}`;
 const EMPTY: Cell = { kills: 0, attempts: 0 };
 
+/** 画面で持っている数を、表に渡す形(SpikeCount)に戻す。 */
+const toCounts = (cells: Record<string, Cell>): SpikeCount[] =>
+  Object.entries(cells)
+    .filter(([, cell]) => cell.attempts > 0)
+    .map(([key, cell]) => {
+      const [memberId, setterId, spot, level] = key.split("|");
+      return { memberId, setterId, spot: spot as SpikeSpot, level: Number(level) as SpikeLevel, ...cell };
+    });
+
 const toCells = (counts: SpikeCount[]): Record<string, Cell> =>
   Object.fromEntries(
     counts.map((entry) => [
@@ -84,7 +94,9 @@ const toCells = (counts: SpikeCount[]): Record<string, Cell> =>
  *   1人1行で、セッターごとに「決定」「ミス」の2つのボタン(押した数がボタンに出る)
  * - マネージャーが何人かで分担して同時に数えられるよう、2秒ごとにほかの人が数えた分と組み方を取りにいく
  *   (自分が送っている途中の分があるときは、取ってきたものを使わない。数がずれて見えないように)
- * - 下に固定した帯に、チーム戦(決定率)とセッター戦(決定本数)を出す。ペナルティは前衛だけ
+ * - 上の「入力|結果」で、このメニューの結果の表(チーム戦・スパイカー・セッター)に切り替えられる(2026-11-10 から)
+ * - 下に固定した帯に、チーム戦(決定率)とセッター戦(決定本数)を出す。ペナルティ(赤)は、選んでいる種目の中で比べる
+ *   (2026-11-06 は前衛だけ。2026-11-10 からパイプ・シャー・二段も。主将の依頼)
  */
 export function SpikeCounter({
   teamSlug,
@@ -105,6 +117,8 @@ export function SpikeCounter({
   );
   const setupSavedAt = useRef(initialSetupSavedAt);
   const [picking, setPicking] = useState(false);
+  // 「入力」(ボタンで数える)か「結果」(このメニューの表)か。数えない人(部員)は結果から(2026-11-10 から)。
+  const [view, setView] = useState<"input" | "result">(canRecord ? "input" : "result");
   const [mode, setMode] = useState<SpikeMode>("front");
   const [team, setTeam] = useState<SpikeTeam>("first");
   // 画面に並べるセッター(null は「組み方の最初の3人」)。
@@ -392,17 +406,15 @@ export function SpikeCounter({
   const first = teamCell("first");
   const second = teamCell("second");
   const rateOf = (cell: Cell) => (cell.attempts ? cell.kills / cell.attempts : null);
-  // ペナルティは前衛だけ(二段トス・バックアタックはなし)。
-  const penalty = mode === "front";
   const teamLoser =
-    penalty && first.attempts && second.attempts && rateOf(first) !== rateOf(second)
+    first.attempts && second.attempts && rateOf(first) !== rateOf(second)
       ? rateOf(first)! < rateOf(second)!
         ? "first"
         : "second"
       : null;
   const minKills = Math.min(...setterKills.map((entry) => entry.kills));
   const setterLosers =
-    penalty && setterKills.length > 1 && setterKills.some((entry) => entry.kills !== minKills)
+    setterKills.length > 1 && setterKills.some((entry) => entry.kills !== minKills)
       ? setterKills.filter((entry) => entry.kills === minKills).map((entry) => entry.id)
       : [];
   const lastTap = history[history.length - 1];
@@ -412,40 +424,51 @@ export function SpikeCounter({
   return (
     <div className={canRecord ? "tp-counter tp-spike tp-counter-recording" : "tp-counter tp-spike"}>
       <div className="tp-counter-top">
-        <div className="tp-counter-filters">
-          <div className="tp-counter-positions" role="group" aria-label="種目">
-            {SPIKE_MODES.map((entry) => (
-              <button key={entry} type="button" aria-pressed={entry === mode} onClick={() => setMode(entry)}>
-                {SPIKE_MODE_LABELS[entry]}
-              </button>
-            ))}
-          </div>
-          {canRecord ? (
-            <button type="button" className="tp-spike-edit" onClick={() => setPicking(true)}>
-              ✎ 人
-            </button>
-          ) : null}
-        </div>
-        <div className="tp-seg tp-spike-teams" role="group" aria-label="攻撃チーム">
-          {(["first", "second"] as const).map((entry) => (
-            <button key={entry} type="button" aria-pressed={entry === team} onClick={() => chooseTeam(entry)}>
-              {SPIKE_TEAM_LABELS[entry]}攻撃 <small>{teamSize(entry)}人</small>
+        <div className="tp-seg tp-counter-views" role="group" aria-label="入力・結果">
+          {(["input", "result"] as const).map((entry) => (
+            <button key={entry} type="button" aria-pressed={entry === view} onClick={() => setView(entry)}>
+              {entry === "input" ? "入力" : "結果"}
             </button>
           ))}
         </div>
-        <div className="tp-spike-setters" role="group" aria-label={`画面に並べるセッター(${SPIKE_MAX_SHOWN_SETTERS}人まで)`}>
-          <span className="tp-spike-label">
-            トス
-            <br />
-            {SPIKE_MAX_SHOWN_SETTERS}人まで
-          </span>
-          {setters.map((id) => (
-            <button key={id} type="button" aria-pressed={shownSetters.includes(id)} onClick={() => toggleShown(id)}>
-              {nameOf(id)}
-            </button>
-          ))}
-          {setters.length === 0 ? <span className="tp-small tp-muted">「✎ 人」でセッターを選んでください</span> : null}
-        </div>
+        {view === "input" ? (
+          <>
+            <div className="tp-counter-filters">
+              <div className="tp-counter-positions" role="group" aria-label="種目">
+                {SPIKE_MODES.map((entry) => (
+                  <button key={entry} type="button" aria-pressed={entry === mode} onClick={() => setMode(entry)}>
+                    {SPIKE_MODE_LABELS[entry]}
+                  </button>
+                ))}
+              </div>
+              {canRecord ? (
+                <button type="button" className="tp-spike-edit" onClick={() => setPicking(true)}>
+                  ✎ 人
+                </button>
+              ) : null}
+            </div>
+            <div className="tp-seg tp-spike-teams" role="group" aria-label="攻撃チーム">
+              {(["first", "second"] as const).map((entry) => (
+                <button key={entry} type="button" aria-pressed={entry === team} onClick={() => chooseTeam(entry)}>
+                  {SPIKE_TEAM_LABELS[entry]}攻撃 <small>{teamSize(entry)}人</small>
+                </button>
+              ))}
+            </div>
+            <div className="tp-spike-setters" role="group" aria-label={`画面に並べるセッター(${SPIKE_MAX_SHOWN_SETTERS}人まで)`}>
+              <span className="tp-spike-label">
+                トス
+                <br />
+                {SPIKE_MAX_SHOWN_SETTERS}人まで
+              </span>
+              {setters.map((id) => (
+                <button key={id} type="button" aria-pressed={shownSetters.includes(id)} onClick={() => toggleShown(id)}>
+                  {nameOf(id)}
+                </button>
+              ))}
+              {setters.length === 0 ? <span className="tp-small tp-muted">「✎ 人」でセッターを選んでください</span> : null}
+            </div>
+          </>
+        ) : null}
         <p className="tp-spike-round" aria-live="polite">
           <span className={online ? "tp-spike-sync" : "tp-spike-sync tp-spike-sync-off"}>
             {online ? "● ほかの人の入力も反映中" : "○ つながっていません"}
@@ -459,111 +482,115 @@ export function SpikeCounter({
         </p>
       ) : null}
 
-      {/* セッターの名前の見出し。下の行のボタンと同じ並び。スクロールしても上に残る */}
-      {shownSetters.length ? (
-        <div className="tp-spike-row tp-spike-legend" style={columns} aria-hidden="true">
-          <span className="tp-counter-legend-skill">{SPIKE_MODE_LABELS[mode]}</span>
-          {shownSetters.map((id) => (
-            <span key={id} className="tp-spike-legend-setter">
-              {nameOf(id)}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="tp-spike-list">
-        {shown.map((player) => {
-          const spot = spotOf(player)!;
-          const level = levelAt(player, spot);
-          const mine = sumWhere((m, _s, s) => m === player.id && s === spot);
-          return (
-            <div key={player.id} className="tp-spike-row" style={columns}>
-              <span className="tp-counter-name">
-                <b>{player.displayName}</b>
-                <small>
-                  {mode === "front" ? SPIKE_SPOT_LABELS[spot].replace("前衛", "") : player.position}
-                  {level ? (
-                    <span className="tp-spike-level" title={SERVE_LEVEL_LABELS[level]}>
-                      Lv{level}
-                    </span>
-                  ) : null}
-                </small>
-                <small>
-                  {mine.kills}/{mine.attempts} {formatSpikeRate(mine.kills, mine.attempts)}
-                </small>
-              </span>
-              {shownSetters.map((setterId) => {
-                const cell = sumWhere((m, s, sp, l) => m === player.id && s === setterId && sp === spot && l === level);
-                return (["kill", "miss"] as const).map((kind) => {
-                  const kill = kind === "kill";
-                  const value = kill ? cell.kills : cell.attempts - cell.kills;
-                  return (
-                    <button
-                      key={`${setterId}-${kind}`}
-                      type="button"
-                      className={[
-                        kill ? "tp-spike-kill" : "tp-spike-miss",
-                        flash === flashKey(player.id, setterId, kill) ? "tp-counter-flash" : "",
-                      ].join(" ")}
-                      disabled={!canRecord}
-                      aria-label={`${player.displayName} ${kill ? "決定" : "ミス"}(トス ${nameOf(setterId)}):${value}本`}
-                      onClick={() => press(player, setterId, kill)}
-                    >
-                      <b>{value}</b>
-                      <small>{kill ? "決定" : "ミス"}</small>
-                    </button>
-                  );
-                });
-              })}
-            </div>
-          );
-        })}
-        {shown.length === 0 ? (
-          <p className="tp-muted">
-            {SPIKE_TEAM_LABELS[team]}攻撃チームに、この種目で打つ人がいません。
-            {canRecord ? "「✎ 人」から選んでください。" : ""}
-          </p>
-        ) : null}
-        {shown.length > 0 && shownSetters.length === 0 ? (
-          <p className="tp-muted">上の「トス」で、画面に並べるセッターを選んでください。</p>
-        ) : null}
-      </div>
-
-      {/* 下に固定する帯:勝負の途中経過と「戻す」 */}
-      <div className="tp-counter-dock tp-spike-dock">
-        {canRecord ? (
-          <button type="button" className="tp-counter-undo" disabled={!lastTap} onClick={undo}>
-            ↶ 戻す
-          </button>
-        ) : null}
-        <div className="tp-spike-battle" aria-live="polite">
-          <div>
-            {(["first", "second"] as const).map((entry) => {
-              const cell = entry === "first" ? first : second;
-              return (
-                <span key={entry} className={teamLoser === entry ? "tp-spike-lose" : undefined}>
-                  {SPIKE_TEAM_LABELS[entry]} {cell.kills}/{cell.attempts}{" "}
-                  <small>{formatSpikeRate(cell.kills, cell.attempts)}</small>
+      {view === "input" ? (
+        <>
+          {/* セッターの名前の見出し。下の行のボタンと同じ並び。スクロールしても上に残る */}
+          {shownSetters.length ? (
+            <div className="tp-spike-row tp-spike-legend" style={columns} aria-hidden="true">
+              <span className="tp-counter-legend-skill">{SPIKE_MODE_LABELS[mode]}</span>
+              {shownSetters.map((id) => (
+                <span key={id} className="tp-spike-legend-setter">
+                  {nameOf(id)}
                 </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="tp-spike-list">
+            {shown.map((player) => {
+              const spot = spotOf(player)!;
+              const level = levelAt(player, spot);
+              const mine = sumWhere((m, _s, s) => m === player.id && s === spot);
+              return (
+                <div key={player.id} className="tp-spike-row" style={columns}>
+                  <span className="tp-counter-name">
+                    <b>{player.displayName}</b>
+                    <small>
+                      {mode === "front" ? SPIKE_SPOT_LABELS[spot].replace("前衛", "") : player.position}
+                      {level ? (
+                        <span className="tp-spike-level" title={SERVE_LEVEL_LABELS[level]}>
+                          Lv{level}
+                        </span>
+                      ) : null}
+                    </small>
+                    <small>
+                      {mine.kills}/{mine.attempts} {formatSpikeRate(mine.kills, mine.attempts)}
+                    </small>
+                  </span>
+                  {shownSetters.map((setterId) => {
+                    const cell = sumWhere((m, s, sp, l) => m === player.id && s === setterId && sp === spot && l === level);
+                    return (["kill", "miss"] as const).map((kind) => {
+                      const kill = kind === "kill";
+                      const value = kill ? cell.kills : cell.attempts - cell.kills;
+                      return (
+                        <button
+                          key={`${setterId}-${kind}`}
+                          type="button"
+                          className={[
+                            kill ? "tp-spike-kill" : "tp-spike-miss",
+                            flash === flashKey(player.id, setterId, kill) ? "tp-counter-flash" : "",
+                          ].join(" ")}
+                          disabled={!canRecord}
+                          aria-label={`${player.displayName} ${kill ? "決定" : "ミス"}(トス ${nameOf(setterId)}):${value}本`}
+                          onClick={() => press(player, setterId, kill)}
+                        >
+                          <b>{value}</b>
+                          <small>{kill ? "決定" : "ミス"}</small>
+                        </button>
+                      );
+                    });
+                  })}
+                </div>
               );
             })}
+            {shown.length === 0 ? (
+              <p className="tp-muted">
+                {SPIKE_TEAM_LABELS[team]}攻撃チームに、この種目で打つ人がいません。
+                {canRecord ? "「✎ 人」から選んでください。" : ""}
+              </p>
+            ) : null}
+            {shown.length > 0 && shownSetters.length === 0 ? (
+              <p className="tp-muted">上の「トス」で、画面に並べるセッターを選んでください。</p>
+            ) : null}
           </div>
-          <div>
-            {setterKills.map((entry) => (
-              <span key={entry.id} className={setterLosers.includes(entry.id) ? "tp-spike-lose" : undefined}>
-                {nameOf(entry.id)} {entry.kills}本
-              </span>
-            ))}
+
+          {/* 下に固定する帯:勝負の途中経過と「戻す」 */}
+          <div className="tp-counter-dock tp-spike-dock">
+            {canRecord ? (
+              <button type="button" className="tp-counter-undo" disabled={!lastTap} onClick={undo}>
+                ↶ 戻す
+              </button>
+            ) : null}
+            <div className="tp-spike-battle" aria-live="polite">
+              <div>
+                {(["first", "second"] as const).map((entry) => {
+                  const cell = entry === "first" ? first : second;
+                  return (
+                    <span key={entry} className={teamLoser === entry ? "tp-spike-lose" : undefined}>
+                      {SPIKE_TEAM_LABELS[entry]} {cell.kills}/{cell.attempts}{" "}
+                      <small>{formatSpikeRate(cell.kills, cell.attempts)}</small>
+                    </span>
+                  );
+                })}
+              </div>
+              <div>
+                {setterKills.map((entry) => (
+                  <span key={entry.id} className={setterLosers.includes(entry.id) ? "tp-spike-lose" : undefined}>
+                    {nameOf(entry.id)} {entry.kills}本
+                  </span>
+                ))}
+              </div>
+              <small className="tp-muted">
+                {lastTap
+                  ? `自分の最後:${nameOf(lastTap.memberId)} ${lastTap.kill ? "決定" : "ミス"}(トス ${nameOf(lastTap.setterId)})`
+                  : `赤がいまのペナルティ(${SPIKE_MODE_LABELS[mode]}。チームは決定率、セッターは決定本数)`}
+              </small>
+            </div>
           </div>
-          <small className="tp-muted">
-            {lastTap
-              ? `自分の最後:${nameOf(lastTap.memberId)} ${lastTap.kill ? "決定" : "ミス"}(トス ${nameOf(lastTap.setterId)})`
-              : penalty
-                ? "赤がいまのペナルティ(チームは決定率、セッターは決定本数)"
-                : "二段トス・バックアタックはペナルティなし"}
-          </small>
-        </div>
-      </div>
+        </>
+      ) : (
+        <SpikeDrillResult counts={toCounts(counts)} teams={setup.teams} nameOf={nameOf} />
+      )}
 
       {picking ? <button type="button" className="tp-counter-backdrop" aria-label="閉じる" onClick={closePicker} /> : null}
       {picking ? (

@@ -41,10 +41,6 @@ export function SpikeRankings({ basePath, month, group, counts, members }: Spike
   const inGroup = (id: string) => group === "all" || groupOf.get(id) === group;
   const spikerCounts = counts.filter((entry) => inGroup(entry.memberId));
   const setterCounts = counts.filter((entry) => inGroup(entry.setterId));
-  const tables = rankSpikers(spikerCounts);
-  const setters = rankSetters(setterCounts);
-  // スパイカーの表の列に出すセッター(この月にトスを上げた人)。
-  const setterColumns = [...new Set(spikerCounts.map((entry) => entry.setterId))];
   const hrefFor = (nextMonth: string, nextGroup: TrainingGroup | "all") =>
     `${basePath}&month=${nextMonth}${nextGroup === "all" ? "" : `&group=${nextGroup}`}#spike`;
   const [year, monthNumber] = month.split("-").map(Number);
@@ -75,7 +71,42 @@ export function SpikeRankings({ basePath, month, group, counts, members }: Spike
         規定打数は月{SPIKE_MIN_ATTEMPTS}打以上。サーブを受けてから打つ前衛 OH・OP は、サーブのレベル別に分けます。
       </p>
 
-      {tables.length === 0 ? <p className="tp-muted">この月のスパイクの記録はありません。</p> : null}
+      <SpikeRankingTables
+        spikerCounts={spikerCounts}
+        setterCounts={setterCounts}
+        nameOf={nameOf}
+        emptyText="この月のスパイクの記録はありません。"
+      />
+    </>
+  );
+}
+
+type SpikeRankingTablesProps = {
+  // スパイカーの表に使う数と、セッターの表に使う数(月の順位では AB/C の絞り方が違う)。
+  spikerCounts: SpikeCount[];
+  setterCounts: SpikeCount[];
+  nameOf: (id: string) => string;
+  // 規定打数。メニューごとの結果(2026-11-10 から)では 1(全員に順位)。
+  minAttempts?: number;
+  emptyText: string;
+};
+
+/** スパイカーの位置ごとの表と、セッターの表。月の順位と、メニューごとの結果の両方で使う。 */
+export function SpikeRankingTables({
+  spikerCounts,
+  setterCounts,
+  nameOf,
+  minAttempts = SPIKE_MIN_ATTEMPTS,
+  emptyText,
+}: SpikeRankingTablesProps) {
+  const tables = rankSpikers(spikerCounts, minAttempts);
+  const setters = rankSetters(setterCounts);
+  // スパイカーの表の列に出すセッター(トスを上げた人)。
+  const setterColumns = [...new Set(spikerCounts.map((entry) => entry.setterId))];
+
+  return (
+    <>
+      {tables.length === 0 ? <p className="tp-muted">{emptyText}</p> : null}
       {tables.map((table) => (
         <div key={`${table.spot}-${table.level}`}>
           <h3 className="tp-spike-rank-title">

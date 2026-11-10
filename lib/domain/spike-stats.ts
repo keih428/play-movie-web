@@ -18,7 +18,7 @@ export const SPIKE_SPOT_LABELS: Record<SpikeSpot, string> = {
   high_right: "二段トス・ライト",
 };
 
-/** 前衛の位置。選手のポジションで決まり、チーム戦・セッター戦(ペナルティ)はここだけで数える。 */
+/** 前衛の位置。選手のポジションで決まる。 */
 export const FRONT_SPOTS = ["OH", "OP", "MB"] as const satisfies readonly SpikeSpot[];
 export type FrontSpot = (typeof FRONT_SPOTS)[number];
 
