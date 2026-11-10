@@ -307,7 +307,14 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
 
   // 名簿で決まっている項目はそれを使う。まだ決まっていない項目だけ、画面で選べる。
   const canRecord = Boolean(current.position);
-  const selection = resolveMenuSelection(current, query);
+  const ownSelection = resolveMenuSelection(current, query);
+  // トレーニング担当は、ほかの段階のテンプレのメニューも見られる(2026-11-10 から。見るだけで、記録は自分の段階のまま)。
+  // 見ている間は、自分の推定1RMからの重さと個人の追加を入れない。
+  const viewTier =
+    canManage && current.tier && query.tier !== current.tier
+      ? MEMBER_TIERS.find((tier) => tier === query.tier)
+      : undefined;
+  const selection = viewTier ? { ...ownSelection, tier: viewTier } : ownSelection;
   const choices = [
     { key: "tier", label: "段階", values: MEMBER_TIERS, value: selection.tier, fixed: Boolean(current.tier) },
     { key: "slot", label: "枠", values: TRAINING_GROUPS, value: selection.slot, fixed: Boolean(toTrainingGroup(current.slot)) },
@@ -325,21 +332,22 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
       menu: program!.key,
       week: menu.weeks[weekIndex].k,
       ...Object.fromEntries(choices.map((choice) => [choice.key, choice.value])),
+      ...(viewTier ? { tier: viewTier } : {}),
       ...overrides,
     });
     return `${basePath}?${search.toString()}`;
   }
 
   const latest = canRecord ? await getLatestMeasurements(current.id) : {};
-  const estimated = toEstimated1rm(latest);
+  const estimated = viewTier ? {} : toEstimated1rm(latest);
   const resolved = resolveWeek(menu, weekIndex, selection, estimated);
   const { week } = resolved;
   // 日付ごとの記録(2026-10-20 から)。書く画面は 2026-11-08 に分けた(training/log)。ここには自分の記録の一覧を出す。
   const sessions = canRecord ? await listMemberSessions(current.id) : [];
   // 個人の追加メニュー(2026-10-26 から):トレーニング担当がその人に足した種目を、メニューとトレ録の欄に入れる。
-  const personalItems = canRecord ? await listPersonalItems(teamSlug, current.id) : [];
+  const personalItems = canRecord && !viewTier ? await listPersonalItems(teamSlug, current.id) : [];
   const days = resolved.days.map((day) => applyPersonalItems(day, personalItems));
-  const selectionQuery = buildSelectionQuery(current, selection);
+  const selectionQuery = buildSelectionQuery(current, ownSelection);
   const logHref = `${buildTeamTrainingLogPath(teamSlug)}${selectionQuery ? `?${selectionQuery}` : ""}`;
   const logNotice = isIsoDate(query.saved)
     ? `${formatNoteDate(query.saved)}の記録を保存しました。`
@@ -408,6 +416,30 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
             みんなの記録を見る
           </Link>
         </div>
+        {canManage && current.tier ? (
+          <div className="tp-pick">
+            <span>
+              <span className="tp-label">ほかの段階を見る</span>
+              <span className="tp-seg">
+                {MEMBER_TIERS.map((tier) => (
+                  <Link
+                    key={tier}
+                    href={buildHref({ tier })}
+                    aria-current={tier === selection.tier ? "true" : undefined}
+                    scroll={false}
+                  >
+                    {tier === current.tier ? `${tier}(自分)` : tier}
+                  </Link>
+                ))}
+              </span>
+            </span>
+          </div>
+        ) : null}
+        {viewTier ? (
+          <p className="tp-small tp-muted">
+            {viewTier} のメニューを見ています(トレーニング担当だけ)。重さの目安(kg)と個人の追加は入れていません。記録は自分の段階({current.tier})のメニューで書きます。
+          </p>
+        ) : null}
         {choices.length > 0 ? (
           <>
             <div className="tp-pick">

@@ -37,6 +37,7 @@ const DRAFTS_SHOWN = 3;
 /**
  * トレーニングのページの「トレ録」:記録を書く画面への入口と、自分の記録(新しい日付から順)。
  * 記録を書く画面は 2026-11-08 に分けた。保存していない記録(端末の下書き)があれば、まず「続きを書く」を出す。
+ * 自分の記録は、ふだんは畳んでおく(2026-11-10 から)。
  */
 export function TrainingLogHistory({
   teamSlug,
@@ -105,52 +106,60 @@ export function TrainingLogHistory({
           まだ記録はありません。筋トレをした日に、上のボタンから記録します。
         </p>
       ) : (
-        <ol className="tp-log-history">
-          {sessions.slice(0, shown).map((session) => (
-            <li key={session.date} className="tp-card">
-              <div className="tp-log-histhead">
-                <b>【{formatNoteDate(session.date)}】</b>
-                {/* 直せるのは1年前から明日まで。それより前の記録には「編集」を出さない。 */}
-                {isEditableLogDate(session.date, today) ? (
-                  <Link className="tp-log-edit" href={hrefFor(session.date)}>
-                    編集
-                  </Link>
-                ) : null}
-              </div>
-              <ul className="tp-log-lines">
-                {session.exercises.map((exercise, index) => (
-                  <li key={index}>
-                    {exercise.name}:
-                    {summarizeSets(
-                      exercise.sets,
-                      weightModeOf(exercise.name),
-                      exerciseUnit(exercise),
-                    )}
-                  </li>
-                ))}
-                {session.bodyWeightKg !== null ? (
-                  <li>体重:{session.bodyWeightKg}kg</li>
-                ) : null}
-              </ul>
-              {session.memo ? (
-                <p className="tp-small tp-muted">{session.memo}</p>
-              ) : null}
-              {session.request ? (
-                <p className="tp-small tp-request">{session.request}</p>
-              ) : null}
-            </li>
-          ))}
-        </ol>
+        // ふだんは畳んでおく(2026-11-10 から。月の後半には長くなり、下のメニューまでスクロールが大変だった)。
+        <details className="tp-ref tp-log-past">
+          <summary>
+            {sessions.length}日分(最新:{formatNoteDate(sessions[0].date)})
+          </summary>
+          <div className="tp-ref-body">
+            <ol className="tp-log-history">
+              {sessions.slice(0, shown).map((session) => (
+                <li key={session.date} className="tp-card">
+                  <div className="tp-log-histhead">
+                    <b>【{formatNoteDate(session.date)}】</b>
+                    {/* 直せるのは1年前から明日まで。それより前の記録には「編集」を出さない。 */}
+                    {isEditableLogDate(session.date, today) ? (
+                      <Link className="tp-log-edit" href={hrefFor(session.date)}>
+                        編集
+                      </Link>
+                    ) : null}
+                  </div>
+                  <ul className="tp-log-lines">
+                    {session.exercises.map((exercise, index) => (
+                      <li key={index}>
+                        {exercise.name}:
+                        {summarizeSets(
+                          exercise.sets,
+                          weightModeOf(exercise.name),
+                          exerciseUnit(exercise),
+                        )}
+                      </li>
+                    ))}
+                    {session.bodyWeightKg !== null ? (
+                      <li>体重:{session.bodyWeightKg}kg</li>
+                    ) : null}
+                  </ul>
+                  {session.memo ? (
+                    <p className="tp-small tp-muted">{session.memo}</p>
+                  ) : null}
+                  {session.request ? (
+                    <p className="tp-small tp-request">{session.request}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+            {sessions.length > shown ? (
+              <button
+                type="button"
+                className="tp-button tp-ghost"
+                onClick={() => setShown(shown + HISTORY_STEP)}
+              >
+                もっと見る
+              </button>
+            ) : null}
+          </div>
+        </details>
       )}
-      {sessions.length > shown ? (
-        <button
-          type="button"
-          className="tp-button tp-ghost"
-          onClick={() => setShown(shown + HISTORY_STEP)}
-        >
-          もっと見る
-        </button>
-      ) : null}
     </section>
   );
 }
