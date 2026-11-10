@@ -52,6 +52,39 @@ describe("打ち込み補助:VSM の書き出し", () => {
     });
   });
 
+  it("チーム・攻撃コンビ・セッターコールは読み込んだものをそのまま。交代・タイムアウト・プレーの欄も元のまま", () => {
+    const session = sessionFromSample();
+    const original = JSON.parse(sampleText);
+    const vsm = JSON.parse(buildVsmText(session, { idFactory })) as typeof original;
+    expect(vsm.team).toEqual(original.team);
+    expect(vsm.attackCombinations).toEqual(original.attackCombinations);
+    expect(vsm.setterCalls).toEqual(original.setterCalls);
+    expect(vsm.spectators).toBeNull();
+    expect(vsm.gameType).toBe("indoor");
+    expect(vsm.version).toBe(1);
+    vsm.scout.sets.forEach((set: { events: Array<Record<string, any>> }, setIndex: number) => {
+      const originalEvents = (original.scout.sets[setIndex].events as Array<Record<string, any>>).filter(
+        (event) => event.exchange || event.substitution || event.timeout,
+      );
+      const kinds = (events: Array<Record<string, any>>) =>
+        events.map((event) => (event.exchange ? "rally" : event.substitution ? "sub" : "timeout"));
+      expect(kinds(set.events)).toEqual(kinds(originalEvents));
+      set.events.forEach((event, index) => {
+        const source = originalEvents[index];
+        expect(event.lineup).toEqual(source.lineup);
+        expect(event.score).toEqual(source.score);
+        if (event.exchange) {
+          event.exchange.plays.forEach((play: Record<string, unknown>, playIndex: number) => {
+            const { originalTime: _drop, ...rest } = source.exchange.plays[playIndex];
+            void _drop;
+            // code のないプレー(元に1つある)には、書き出しで code を作る
+            expect(play).toEqual({ ...rest, code: rest.code ?? play.code, originalTime: play.time });
+          });
+        }
+      });
+    });
+  });
+
   it("scout.video.path はいつも入れる(空だとバレーステーションが読まない)", () => {
     const session = sessionFromSample();
     const vsm = buildVsm(session) as { scout: { video: { path: string } } };
@@ -74,28 +107,35 @@ describe("打ち込み補助:VSM の書き出し", () => {
         { id: "c".repeat(24), serveTime: 160, side: null, status: "rally" as const, source: "auto" as const },
       ],
       substitutions: [{ id: "d".repeat(24), time: 140, team: "away" as const, playerIn: 20, playerOut: 3 }],
+      timeouts: [{ id: "e".repeat(24), time: 140, team: "home" as const }],
     };
     const session: InputAssistSession = { ...sessionFromSample(), sets: [set] };
     const vsm = buildVsm(session, { idFactory }) as {
       scout: { sets: Array<{ events: Array<Record<string, any>>; score: unknown }> };
     };
     const events = vsm.scout.sets[0].events;
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(4);
     expect(events[0].exchange.plays[0]).toMatchObject({
       team: "*",
       player: "05",
       skill: "S",
       hitType: "M",
       effect: "-",
-      code: "5S",
+      code: "5SM.",
       time: 1319,
       originalTime: 1319,
     });
     expect(events[0].exchange.point).toBe("a");
-    expect(events[1].substitution).toEqual({ playerIn: 20, playerOut: 3, team: "a" });
-    // 交代のあと、アウェイがサーブ権を取ってローテーション:もとの 2 の位置(3 → 20)が 1 へ
-    expect(events[2].exchange.plays[0]).toMatchObject({ team: "a", player: "20", code: "a20S", time: 1492 });
-    expect(events[2].lineup.away.setterAt).toBe(6);
+    // 同じ時刻ならタイムアウトが先
+    expect(events[1]).toMatchObject({ timeout: { team: "*" }, score: { home: 0, away: 1 } });
+    // アウェイが点を取ってサーブ権を得たので、ラリーの間の並びはローテーションしたあと(もとの 2 の 3 が 1 へ)
+    expect(events[1].lineup.away.positions["1"]).toBe(3);
+    expect(events[1].lineup.away.setterAt).toBe(6);
+    expect(events[2].substitution).toEqual({ playerIn: 20, playerOut: 3, team: "a" });
+    expect(events[2].lineup.away.positions["1"]).toBe(20);
+    // 交代で入った 20 番がサーブ
+    expect(events[3].exchange.plays[0]).toMatchObject({ team: "a", player: "20", code: "a20SM.", time: 1492 });
+    expect(events[3].lineup.away.setterAt).toBe(6);
     expect(vsm.scout.sets[0].score).toEqual({ home: 0, away: 2 });
   });
 });

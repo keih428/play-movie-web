@@ -27,7 +27,12 @@ export function emptyLineup(): IaLineup {
 }
 
 export function emptyTeam(name: string): IaTeam {
-  return { name, players: [], libero: [] };
+  return { name, players: [], libero: [], staff: emptyStaff() };
+}
+
+/** VSM のチームの staff(田中の書き方では、5つとも空)。 */
+export function emptyStaff() {
+  return { coach: {}, assistantCoach: {}, assistantCoach2: {}, therapist: {}, medicalDoctor: {} };
 }
 
 export function createEmptySet(setIndex: number, previous?: IaSet): IaSet {
@@ -44,6 +49,7 @@ export function createEmptySet(setIndex: number, previous?: IaSet): IaSet {
     finalScore: { home: null, away: null },
     rallies: [],
     substitutions: [],
+    timeouts: [],
   };
 }
 
@@ -209,6 +215,15 @@ export function normalizeSet(value: unknown, fallbackIndex: number): IaSet {
           }))
           .filter((entry) => entry.playerIn > 0 && entry.playerOut > 0)
       : [],
+    timeouts: Array.isArray(input.timeouts)
+      ? input.timeouts
+          .filter((entry) => entry && typeof entry === "object" && Number.isFinite(Number(entry.time)))
+          .map((entry) => ({
+            id: typeof entry.id === "string" && entry.id ? entry.id : createObjectId(),
+            time: roundTime(Number(entry.time)),
+            team: normalizeTeamSide(entry.team),
+          }))
+      : [],
   };
 }
 
@@ -219,13 +234,15 @@ export function normalizeTeam(value: unknown, fallbackName: string): IaTeam {
         .filter((player) => player && typeof player === "object" && Number.isFinite(Number(player.shirtNumber)))
         .map((player) => ({ ...player, shirtNumber: Math.trunc(Number(player.shirtNumber)) }))
     : [];
+  // 読み込んだチームの欄(code・shortCode・staff・選手の _id など)は、並びも含めてそのまま残す。
   return {
     ...input,
-    name: typeof input.name === "string" && input.name.trim() ? input.name.trim() : fallbackName,
+    name: typeof input.name === "string" && input.name.trim() ? input.name : fallbackName,
     players,
     libero: Array.isArray(input.libero)
       ? input.libero.map((number) => Math.trunc(Number(number))).filter((number) => Number.isFinite(number))
       : [],
+    staff: input.staff ?? emptyStaff(),
   };
 }
 

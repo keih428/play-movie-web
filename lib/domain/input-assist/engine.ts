@@ -4,6 +4,7 @@
 // - サーブ権が移ったら、取ったチームがローテーションする(2の位置の選手が1へ)
 // - サーバーは、サーブするチームの1の位置の選手
 // - 選手交代は、交代した時刻より後のラリーから、入った選手が出た選手の位置に入る
+// - タイムアウトは並びを変えない(書き出すときにイベントとして入れるだけ)
 
 import {
   IA_POSITIONS,
@@ -13,6 +14,7 @@ import {
   type IaSet,
   type IaSubstitution,
   type IaTeamCode,
+  type IaTimeout,
   type IaTeamSide,
 } from "@/lib/domain/input-assist/types";
 
@@ -91,7 +93,8 @@ export type IaRallyResult = {
 
 export type IaTimelineEntry =
   | { kind: "rally"; result: IaRallyResult }
-  | { kind: "substitution"; substitution: IaSubstitution; lineup: Record<IaTeamSide, IaLineup>; score: IaScore };
+  | { kind: "substitution"; substitution: IaSubstitution; lineup: Record<IaTeamSide, IaLineup>; score: IaScore }
+  | { kind: "timeout"; timeout: IaTimeout; lineup: Record<IaTeamSide, IaLineup>; score: IaScore };
 
 export type IaSetResult = {
   rallies: IaRallyResult[];
@@ -120,7 +123,11 @@ export function getSetWinner(set: Pick<IaSet, "finalScore">): IaTeamSide | null 
 
 export function computeSet(set: IaSet): IaSetResult {
   const rallies = getCountedRallies(set);
-  const substitutions = [...set.substitutions].sort((left, right) => left.time - right.time);
+  // 交代とタイムアウトは時刻の順に。同じ時刻ならタイムアウトを先に。
+  const breaks = [
+    ...(set.timeouts ?? []).map((timeout) => ({ kind: "timeout" as const, time: timeout.time, timeout })),
+    ...set.substitutions.map((substitution) => ({ kind: "substitution" as const, time: substitution.time, substitution })),
+  ].sort((left, right) => left.time - right.time || (left.kind === right.kind ? 0 : left.kind === "timeout" ? -1 : 1));
   const setWinner = getSetWinner(set);
   const lineup: Record<IaTeamSide, IaLineup> = {
     home: cloneLineup(set.startingLineup.home),
@@ -129,11 +136,22 @@ export function computeSet(set: IaSet): IaSetResult {
   const score: IaScore = { home: 0, away: 0 };
   const results: IaRallyResult[] = [];
   const timeline: IaTimelineEntry[] = [];
-  let substitutionIndex = 0;
+  let breakIndex = 0;
 
   const applySubstitutionsBefore = (time: number) => {
-    while (substitutionIndex < substitutions.length && substitutions[substitutionIndex].time < time) {
-      const substitution = substitutions[substitutionIndex];
+    while (breakIndex < breaks.length && breaks[breakIndex].time < time) {
+      const entry = breaks[breakIndex];
+      breakIndex += 1;
+      if (entry.kind === "timeout") {
+        timeline.push({
+          kind: "timeout",
+          timeout: entry.timeout,
+          lineup: { home: cloneLineup(lineup.home), away: cloneLineup(lineup.away) },
+          score: { ...score },
+        });
+        continue;
+      }
+      const substitution = entry.substitution;
       lineup[substitution.team] = applySubstitution(lineup[substitution.team], substitution);
       timeline.push({
         kind: "substitution",
@@ -141,16 +159,12 @@ export function computeSet(set: IaSet): IaSetResult {
         lineup: { home: cloneLineup(lineup.home), away: cloneLineup(lineup.away) },
         score: { ...score },
       });
-      substitutionIndex += 1;
     }
   };
 
   rallies.forEach((rally, index) => {
     applySubstitutionsBefore(rally.serveTime);
     const servingTeam = servingTeamOf(set, rally.side as IaCourtSide);
-    if (index > 0 && results[index - 1].servingTeam !== servingTeam) {
-      lineup[servingTeam] = rotateLineup(lineup[servingTeam]);
-    }
 
     const next = rallies[index + 1];
     let pointWinner: IaTeamSide;
@@ -180,6 +194,11 @@ export function computeSet(set: IaSet): IaSetResult {
     };
     results.push(result);
     timeline.push({ kind: "rally", result });
+    // サイドアウトなら、点を取った(サーブ権を取った)チームがすぐにローテーションする。
+    // バレーステーションも同じで、ラリーの間の交代・タイムアウトの並びは、ローテーションしたあとのもの。
+    if (pointWinner !== servingTeam) {
+      lineup[pointWinner] = rotateLineup(lineup[pointWinner]);
+    }
   });
   applySubstitutionsBefore(Number.POSITIVE_INFINITY);
 

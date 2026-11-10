@@ -24,7 +24,8 @@ export type IaTeam = {
   shortCode?: string;
   libero?: number[];
   players: IaPlayer[];
-  staff?: unknown[];
+  /** VSM ではコーチなど5つの空のもの({ coach: {}, … })。 */
+  staff?: unknown;
   [key: string]: unknown;
 };
 
@@ -38,18 +39,33 @@ export type IaLineup = {
   setterAt: number;
 };
 
+export type IaSkill = "S" | "R" | "E" | "A" | "B" | "D" | "F";
+
 export type IaPlay = {
   id: string;
   team: IaTeamCode;
   player: number;
-  skill: "S" | "R" | "E" | "A" | "B" | "D" | "F";
+  skill: IaSkill;
   hitType?: string;
   effect?: string;
   /** 動画の時刻(秒)。 */
   time?: number;
   startZone?: number;
+  startSubZone?: string;
   endZone?: number;
+  endSubZone?: string;
+  /** トスのセッターコール(KA など)・アタックのコンビ(PV など)。 */
+  combination?: string;
+  /** ミスの種類など。 */
+  special?: string;
+  targetAttacker?: string;
+  /** ブロックの人数。 */
+  players?: number;
+  skillType?: string;
+  /** VSM から読み込んだときの code(書き換えずに戻す)。なければ書き出すときに作る。 */
   code?: string;
+  /** VSM にあった、ここで扱わない欄(そのまま戻す)。 */
+  extra?: Record<string, unknown>;
 };
 
 export type IaRally = {
@@ -76,6 +92,13 @@ export type IaSubstitution = {
   playerOut: number;
 };
 
+export type IaTimeout = {
+  id: string;
+  /** タイムアウトを取った時刻(動画の秒)。 */
+  time: number;
+  team: IaTeamSide;
+};
+
 export type IaSet = {
   setIndex: number;
   youtubeUrl: string;
@@ -85,6 +108,7 @@ export type IaSet = {
   finalScore: { home: number | null; away: number | null };
   rallies: IaRally[];
   substitutions: IaSubstitution[];
+  timeouts: IaTimeout[];
 };
 
 export type IaPassName = "P0" | "P1";
@@ -115,6 +139,8 @@ export type InputAssistSession = {
   /** 試合の日(YYYY-MM-DD)。 */
   date: string;
   opponent: string;
+  /** VSM の scout.video.path(動画のファイル名)。空なら日付と相手から作る。 */
+  videoPath?: string;
   teams: Record<IaTeamSide, IaTeam>;
   extras: IaMatchExtras;
   sets: IaSet[];

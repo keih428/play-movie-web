@@ -67,6 +67,7 @@ export type InputAssistSessionInput = {
   title?: unknown;
   date?: unknown;
   opponent?: unknown;
+  videoPath?: unknown;
   teams?: unknown;
   extras?: unknown;
   sets?: unknown;
@@ -117,6 +118,7 @@ export async function createInputAssistSession(
     title: normalizeText(input.title),
     date: isIsoDateString(input.date) ? input.date : now.slice(0, 10),
     opponent: normalizeText(input.opponent),
+    videoPath: normalizeText(input.videoPath, 260) || undefined,
     teams: normalizeTeams(input.teams),
     extras: normalizeExtras(input.extras),
     sets,
@@ -146,6 +148,7 @@ export async function updateInputAssistSession(
     title: input.title !== undefined ? normalizeText(input.title) : current.title,
     date: isIsoDateString(input.date) ? input.date : current.date,
     opponent: input.opponent !== undefined ? normalizeText(input.opponent) : current.opponent,
+    videoPath: input.videoPath !== undefined ? normalizeText(input.videoPath, 260) || undefined : current.videoPath,
     teams: input.teams !== undefined ? normalizeTeams(input.teams, current.teams) : current.teams,
     extras: input.extras !== undefined ? normalizeExtras(input.extras) : current.extras,
     sets: input.sets !== undefined ? normalizeSets(input.sets) : current.sets,

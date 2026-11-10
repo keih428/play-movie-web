@@ -13,6 +13,7 @@ import {
   type IaSet,
   type IaSubstitution,
   type IaTeam,
+  type IaTimeout,
   type IaTeamSide,
 } from "@/lib/domain/input-assist/types";
 
@@ -119,6 +120,30 @@ export function readScoutRosterFile(text: string, fileName: string): ScoutRoster
 
 const VSM_TIME_SCALE = 10;
 
+const KNOWN_PLAY_KEYS = new Set([
+  "_id",
+  "team",
+  "player",
+  "skill",
+  "hitType",
+  "effect",
+  "time",
+  "originalTime",
+  "startZone",
+  "startSubZone",
+  "endZone",
+  "endSubZone",
+  "combination",
+  "special",
+  "targetAttacker",
+  "players",
+  "skillType",
+  "code",
+]);
+
+const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+const number = (value: unknown) => (typeof value === "number" ? value : undefined);
+
 function readPlay(value: unknown): IaPlay | null {
   const play = asRecord(value);
   const player = Number(play.player);
@@ -126,17 +151,27 @@ function readPlay(value: unknown): IaPlay | null {
   if (!Number.isFinite(player) || !["S", "R", "E", "A", "B", "D", "F"].includes(skill)) {
     return null;
   }
+  const extra = Object.fromEntries(Object.entries(play).filter(([key]) => !KNOWN_PLAY_KEYS.has(key)));
+  const startSubZone = play.startSubZone;
   return {
     id: typeof play._id === "string" ? play._id : createObjectId(),
     team: play.team === "a" ? "a" : "*",
     player,
     skill: skill as IaPlay["skill"],
-    hitType: typeof play.hitType === "string" ? play.hitType : undefined,
-    effect: typeof play.effect === "string" ? play.effect : undefined,
+    hitType: text(play.hitType),
+    effect: text(play.effect),
     time: typeof play.time === "number" ? play.time / VSM_TIME_SCALE : undefined,
-    startZone: typeof play.startZone === "number" ? play.startZone : undefined,
-    endZone: typeof play.endZone === "number" ? play.endZone : undefined,
-    code: typeof play.code === "string" ? play.code : undefined,
+    startZone: number(play.startZone),
+    startSubZone: typeof startSubZone === "string" || typeof startSubZone === "number" ? String(startSubZone) : undefined,
+    endZone: number(play.endZone),
+    endSubZone: text(play.endSubZone),
+    combination: text(play.combination),
+    special: text(play.special),
+    targetAttacker: text(play.targetAttacker),
+    players: number(play.players),
+    skillType: text(play.skillType),
+    code: text(play.code),
+    extra: Object.keys(extra).length > 0 ? extra : undefined,
   };
 }
 
@@ -153,18 +188,32 @@ export function setsFromVsmMatch(raw: Record<string, unknown>): IaSet[] {
     const score = asRecord(set.score);
     const events = Array.isArray(set.events) ? set.events.map(asRecord) : [];
     const rallies: IaRally[] = [];
-    const pendingSubstitutions: Array<Omit<IaSubstitution, "time">> = [];
+    // 交代・タイムアウトには時刻がないので、前後のラリーの間に置く(並びは VSM の順のまま)。
+    const pending: Array<Omit<IaSubstitution, "time"> | Omit<IaTimeout, "time">> = [];
     const substitutions: IaSubstitution[] = [];
+    const timeouts: IaTimeout[] = [];
+    const place = (entry: (typeof pending)[number], time: number) => {
+      if ("playerIn" in entry) {
+        substitutions.push({ ...entry, time });
+      } else {
+        timeouts.push({ ...entry, time });
+      }
+    };
 
     for (const event of events) {
-      const substitution = asRecord(event.substitution);
+      const id = typeof event._id === "string" ? event._id : createObjectId();
       if (event.substitution) {
-        pendingSubstitutions.push({
-          id: typeof event._id === "string" ? event._id : createObjectId(),
+        const substitution = asRecord(event.substitution);
+        pending.push({
+          id,
           team: teamFromCode(String(substitution.team)),
           playerIn: Number(substitution.playerIn),
           playerOut: Number(substitution.playerOut),
         });
+        continue;
+      }
+      if (event.timeout) {
+        pending.push({ id, team: teamFromCode(String(asRecord(event.timeout).team)) });
         continue;
       }
       const exchange = asRecord(event.exchange);
@@ -177,10 +226,10 @@ export function setsFromVsmMatch(raw: Record<string, unknown>): IaSet[] {
       const serve = plays.find((play) => play.skill === "S");
       const previous = rallies.at(-1);
       const serveTime = serve?.time ?? (previous ? previous.serveTime + 30 : 0);
-      for (const pending of pendingSubstitutions) {
-        substitutions.push({ ...pending, time: roundTime(previous ? (previous.serveTime + serveTime) / 2 : serveTime - 1) });
+      for (const entry of pending) {
+        place(entry, roundTime(previous ? (previous.serveTime + serveTime) / 2 : serveTime - 1));
       }
-      pendingSubstitutions.length = 0;
+      pending.length = 0;
       rallies.push({
         id: typeof event._id === "string" ? event._id : createObjectId(),
         serveTime: roundTime(serveTime),
@@ -192,8 +241,8 @@ export function setsFromVsmMatch(raw: Record<string, unknown>): IaSet[] {
       });
     }
     const last = rallies.at(-1);
-    for (const pending of pendingSubstitutions) {
-      substitutions.push({ ...pending, time: roundTime((last?.serveTime ?? 0) + 1) });
+    for (const entry of pending) {
+      place(entry, roundTime((last?.serveTime ?? 0) + 1));
     }
 
     return {
@@ -210,6 +259,7 @@ export function setsFromVsmMatch(raw: Record<string, unknown>): IaSet[] {
       },
       rallies,
       substitutions,
+      timeouts,
     };
   });
 }

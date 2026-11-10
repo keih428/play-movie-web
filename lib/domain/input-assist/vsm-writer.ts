@@ -1,17 +1,22 @@
 // 打ち込み補助のセッションから、VSM(バレーステーションの試合ファイル、JSON)を作る。
+// 田中の書き方に合わせる(02_Projects/スカウティングAI/設計_VSMの書き方.md)。
 // 途中まででも書き出せる:サーブの向きが決まっていないラリーと、ラリーでないものは入れない。
 
 import { computeSet, teamCode, type IaRallyResult } from "@/lib/domain/input-assist/engine";
 import { createObjectId, type IdFactory } from "@/lib/domain/input-assist/ids";
+import { buildPlayCode } from "@/lib/domain/input-assist/play-code";
+import { emptyStaff } from "@/lib/domain/input-assist/session";
 import type {
   IaLineup,
   IaPlay,
   IaRally,
   IaSet,
+  IaTeam,
   IaTeamCode,
   IaTeamSide,
   InputAssistSession,
 } from "@/lib/domain/input-assist/types";
+import { DEFAULT_ATTACK_COMBINATIONS, DEFAULT_SETTER_CALLS } from "@/lib/domain/input-assist/vsm-defaults";
 
 const VSM_TIME_SCALE = 10;
 
@@ -23,10 +28,11 @@ export type BuildVsmOptions = {
   /** 書き出した時刻(createdAt)。テストで固定するため。 */
   now?: Date;
   idFactory?: IdFactory;
-  /** scout.video.path。空だとバレーステーションが読まないので、なければファイル名を作る。 */
+  /** scout.video.path。なければセッションの videoPath、それもなければ日付と相手から作る。 */
   videoPath?: string;
 };
 
+/** 動画の秒 → VSM の time(10 倍の整数)。originalTime も同じ値にする。 */
 export function toVsmTime(seconds: number): number {
   return Math.round(seconds * VSM_TIME_SCALE);
 }
@@ -39,10 +45,11 @@ function toVsmLineups(lineup: Record<IaTeamSide, IaLineup>) {
   return { home: toVsmLineup(lineup.home), away: toVsmLineup(lineup.away) };
 }
 
-function playCode(team: IaTeamCode, player: number, skill: string, effect?: string): string {
-  return `${team === "a" ? "a" : ""}${player}${skill}${effect && effect !== "-" ? effect : ""}`;
+function twoDigits(player: number | null): string {
+  return String(player ?? 0).padStart(2, "0");
 }
 
+/** 骨組みだけのラリーのサーブ(種類 M・評価 -。code は `a2SM.` の形)。 */
 export function buildServePlay(
   team: IaTeamCode,
   player: number | null,
@@ -50,46 +57,57 @@ export function buildServePlay(
   newId: IdFactory,
 ): VsmPlay {
   const time = toVsmTime(serveTime);
-  const number = player ?? 0;
   return {
     _id: newId(),
     team,
-    player: String(number).padStart(2, "0"),
+    player: twoDigits(player),
     skill: "S",
     hitType: "M",
     effect: "-",
-    code: playCode(team, number, "S"),
+    code: buildPlayCode({ team, player: player ?? 0, skill: "S", hitType: "M", effect: "-" }),
     time,
     originalTime: time,
   };
 }
 
-function toVsmPlay(play: IaPlay, fallbackTime: number, newId: IdFactory): VsmPlay {
+/** 田中の書き方の欄の順で並べる(ない欄は書かない)。 */
+function toVsmPlay(play: IaPlay, previous: IaPlay | undefined, fallbackTime: number): VsmPlay {
   const time = toVsmTime(play.time ?? fallbackTime);
   const output: VsmPlay = {
-    _id: play.id || newId(),
+    _id: play.id,
     team: play.team,
-    player: String(play.player).padStart(2, "0"),
+    player: twoDigits(play.player),
     skill: play.skill,
     hitType: play.hitType ?? "M",
     effect: play.effect ?? "-",
-    code: play.code ?? playCode(play.team, play.player, play.skill, play.effect),
-    time,
-    originalTime: time,
   };
-  if (typeof play.startZone === "number") {
-    output.startZone = play.startZone;
+  const optional: Array<[string, unknown]> = [
+    ["combination", play.combination],
+    ["startZone", play.startZone],
+    ["startSubZone", play.startSubZone],
+    ["endZone", play.endZone],
+    ["endSubZone", play.endSubZone],
+    ["targetAttacker", play.targetAttacker],
+    ["skillType", play.skillType],
+    ["players", play.players],
+    ["special", play.special],
+  ];
+  for (const [key, value] of optional) {
+    if (value !== undefined) {
+      output[key] = value;
+    }
   }
-  if (typeof play.endZone === "number") {
-    output.endZone = play.endZone;
-  }
+  Object.assign(output, play.extra ?? {});
+  output.code = play.code ?? buildPlayCode(play, previous);
+  output.time = time;
+  output.originalTime = time;
   return output;
 }
 
 function buildRallyPlays(rally: IaRally, result: IaRallyResult, newId: IdFactory): VsmPlay[] {
   // 入れたプレーは入れた順のまま。サーブがなければ、サーバーのサーブを先頭に足す。
   const entered = rally.plays ?? [];
-  const plays = entered.map((play) => toVsmPlay(play, rally.serveTime, newId));
+  const plays = entered.map((play, index) => toVsmPlay(play, entered[index - 1], rally.serveTime));
   if (!entered.some((play) => play.skill === "S")) {
     plays.unshift(buildServePlay(teamCode(result.servingTeam), result.server, rally.serveTime, newId));
   }
@@ -110,6 +128,14 @@ export function buildVsmSet(set: IaSet, newId: IdFactory = createObjectId): Reco
           playerOut: entry.substitution.playerOut,
           team: teamCode(entry.substitution.team),
         },
+      };
+    }
+    if (entry.kind === "timeout") {
+      return {
+        _id: entry.timeout.id || newId(),
+        lineup: toVsmLineups(entry.lineup),
+        score: { ...entry.score },
+        timeout: { team: teamCode(entry.timeout.team) },
       };
     }
     const rally = ralliesById.get(entry.result.rallyId) as IaRally;
@@ -136,7 +162,7 @@ function compactDate(date: string): string {
   return date.replaceAll("-", "");
 }
 
-/** 書き出すファイルの名前(scout.video.path にも使う)。 */
+/** 書き出すファイルの名前の元(日付_相手)。 */
 export function buildVsmBaseName(session: Pick<InputAssistSession, "date" | "opponent" | "title">): string {
   const label = (session.opponent || session.title || "試合").replace(/[\\/:*?"<>|\s]+/g, "_");
   return `${compactDate(session.date) || "00000000"}_${label}`;
@@ -146,10 +172,26 @@ export function buildVsmFileName(session: Pick<InputAssistSession, "date" | "opp
   return `${buildVsmBaseName(session)}.vsm`;
 }
 
+/** scout.video.path(空だとバレーステーションが読まないので、必ず入れる)。 */
+export function resolveVideoPath(
+  session: Pick<InputAssistSession, "date" | "opponent" | "title" | "videoPath">,
+  override?: string,
+): string {
+  return override?.trim() || session.videoPath?.trim() || `${buildVsmBaseName(session)}.mp4`;
+}
+
+/** チームは読み込んだものをそのまま。読み込んでいないときも、田中の書き方の欄はそろえる。 */
+function toVsmTeam(team: IaTeam): IaTeam {
+  return {
+    ...team,
+    libero: team.libero ?? [],
+    staff: team.staff ?? emptyStaff(),
+  };
+}
+
 export function buildVsm(session: InputAssistSession, options: BuildVsmOptions = {}): Record<string, unknown> {
   const newId = options.idFactory ?? createObjectId;
   const now = options.now ?? new Date();
-  const videoPath = options.videoPath?.trim() || `${buildVsmBaseName(session)}.mp4`;
   const sets = [...session.sets].sort((left, right) => left.setIndex - right.setIndex);
   const startDate = /^\d{4}-\d{2}-\d{2}$/.test(session.date)
     ? new Date(`${session.date}T00:00:00.000+09:00`).toISOString()
@@ -161,14 +203,14 @@ export function buildVsm(session: InputAssistSession, options: BuildVsmOptions =
     startDate,
     scout: {
       sets: sets.map((set) => buildVsmSet(set, newId)),
-      video: { path: videoPath },
+      video: { path: resolveVideoPath(session, options.videoPath) },
     },
     team: {
-      home: session.teams.home,
-      away: session.teams.away,
+      home: toVsmTeam(session.teams.home),
+      away: toVsmTeam(session.teams.away),
     },
-    attackCombinations: session.extras.attackCombinations ?? [],
-    setterCalls: session.extras.setterCalls ?? [],
+    attackCombinations: session.extras.attackCombinations ?? DEFAULT_ATTACK_COMBINATIONS,
+    setterCalls: session.extras.setterCalls ?? DEFAULT_SETTER_CALLS,
     spectators: null,
     createdAt: now.toISOString(),
   };
