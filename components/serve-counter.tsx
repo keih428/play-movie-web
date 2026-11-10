@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HalfTeamColumns } from "@/components/half-team-columns";
+import { ServeGradeGuide } from "@/components/serve-grade-guide";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
-  SERVE_EFFECT_RULE,
   SERVE_RESULTS,
   SERVE_RESULT_LABELS,
   SERVE_RESULT_SHORT,
@@ -323,11 +323,12 @@ export function ServeCounter({
           ) : null}
         </div>
         <p className="tp-spike-round" aria-live="polite">
-          <span className="tp-small tp-muted">{SERVE_EFFECT_RULE}</span>
+          <span className="tp-small tp-muted">効果は + と /</span>
           <span className={online ? "tp-spike-sync" : "tp-spike-sync tp-spike-sync-off"}>
             {online ? "● 反映中" : "○ つながっていません"}
           </span>
         </p>
+        <ServeGradeGuide />
       </div>
 
       {error ? (

@@ -24,8 +24,15 @@ export const SERVE_RESULT_SHORT: Record<ServeResult, string> = {
   "=": "ミス",
 };
 
-export const SERVE_EFFECT_RULE =
-  "# エース / + 崩した(Cパス以下) / ! Bパス / - Aパス / / 直接返ってきた / = ミス。効果は + と /";
+/** 記号の意味と、効果率での扱いの表(2026-11-10 から。数える画面と順位のところで開ける)。 */
+export const SERVE_GRADE_GUIDE: { grade: ServeResult; meaning: string; counted: string }[] = [
+  { grade: "#", meaning: "サービスエース", counted: "エース(×100)" },
+  { grade: "+", meaning: "相手を崩した(Cパス相当。速攻やコンビが使えない)", counted: "効果(×25)" },
+  { grade: "/", meaning: "相手のレセプションがそのまま返ってきた", counted: "効果(×25)" },
+  { grade: "!", meaning: "Bパス相当(攻撃はできる)", counted: "入った(0)" },
+  { grade: "-", meaning: "Aパス相当(完璧に返された)", counted: "入った(0)" },
+  { grade: "=", meaning: "サーブミス", counted: "ミス(−25)" },
+];
 
 /** 月の順位に載る打数(月20本以上。スパイク・レセプションにそろえた)。 */
 export const SERVE_MIN_ATTEMPTS = 20;
