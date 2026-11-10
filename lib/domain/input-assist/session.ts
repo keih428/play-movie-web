@@ -6,6 +6,7 @@ import { createObjectId } from "@/lib/domain/input-assist/ids";
 import {
   IA_POSITIONS,
   IA_SKILLS,
+  IA_TYPE_FIELDS,
   type IaLineup,
   type IaPlay,
   type IaRally,
@@ -162,6 +163,21 @@ function normalizeLineup(value: unknown): IaLineup {
   return { positions, setterAt: setterAt >= 1 && setterAt <= 6 ? setterAt : 1 };
 }
 
+function normalizeTypeSource(value: unknown): IaPlay["typeSource"] {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const input = value as Record<string, unknown>;
+  const output: NonNullable<IaPlay["typeSource"]> = {};
+  for (const field of IA_TYPE_FIELDS) {
+    const source = input[field];
+    if (source === "auto" || source === "manual" || source === "cleared") {
+      output[field] = source;
+    }
+  }
+  return Object.keys(output).length > 0 ? output : undefined;
+}
+
 function normalizePlay(value: unknown): IaPlay | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -187,11 +203,12 @@ function normalizePlay(value: unknown): IaPlay | null {
         : undefined,
     startZoneSource: input.startZoneSource === "auto" || input.startZoneSource === "manual" ? input.startZoneSource : undefined,
     endZoneSource: input.endZoneSource === "auto" || input.endZoneSource === "manual" ? input.endZoneSource : undefined,
+    typeSource: normalizeTypeSource(input.typeSource),
   };
   if (play.time === undefined) {
     delete play.time;
   }
-  for (const key of ["source", "effect", "effectSource", "startZoneSource", "endZoneSource"] as const) {
+  for (const key of ["source", "effect", "effectSource", "startZoneSource", "endZoneSource", "typeSource"] as const) {
     if (play[key] === undefined) {
       delete play[key];
     }

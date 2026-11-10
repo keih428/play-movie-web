@@ -7,7 +7,7 @@ import { applyAutoEffects } from "@/lib/domain/input-assist/effect";
 import { isFlowEntered, syncServePlay, withPlaceholders } from "@/lib/domain/input-assist/flow";
 import { createObjectId, type IdFactory } from "@/lib/domain/input-assist/ids";
 import { buildPlayCode } from "@/lib/domain/input-assist/play-code";
-import { applyZoneChain } from "@/lib/domain/input-assist/zone";
+import { applyTypesAndZones, buildTypeHistory, type TypeHistory } from "@/lib/domain/input-assist/type";
 import { emptyStaff } from "@/lib/domain/input-assist/session";
 import type {
   IaLineup,
@@ -86,19 +86,28 @@ function toVsmPlay(play: IaPlay, previous: IaPlay | undefined, fallbackTime: num
   return output;
 }
 
-function buildRallyPlays(rally: IaRally, result: IaRallyResult): VsmPlay[] {
+function buildRallyPlays(rally: IaRally, result: IaRallyResult, history: TypeHistory): VsmPlay[] {
   // 先頭はいつもサーブ(P0 とエンジンから決まる)。そのあとは P1 で入れた順のまま。
   // P2 の評価:人が決めたものはそのまま。迷わないタッチは、今の流れから自動の評価を入れ直す(effect.ts)。
   // それでも評価・種類の決まっていないタッチ(P1 で入れたもの)には、仮のものを入れる(flow.ts)。
   const pointWinner = teamCode(result.pointWinner);
   const entered = isFlowEntered(rally);
+  // P4 の種類:人が決めたものはそのまま。迷わない欄(前後のタッチから写せるものなど)は、今の流れから入れ直す(type.ts)。
   // P3 のゾーン:人が押したものはそのまま。攻撃コンビ・前後のタッチから分かるゾーンは、今の流れから入れ直す(zone.ts)。
-  const synced = applyZoneChain(syncServePlay(rally, result.servingTeam, result.server));
+  const served = syncServePlay(rally, result.servingTeam, result.server);
+  const synced = applyTypesAndZones(served, { lineup: result.lineup, history });
   const plays = withPlaceholders(entered ? applyAutoEffects(synced, pointWinner) : synced, pointWinner, entered);
   return plays.map((play, index) => toVsmPlay(play, plays[index - 1], rally.serveTime));
 }
 
-export function buildVsmSet(set: IaSet, newId: IdFactory = createObjectId): Record<string, unknown> {
+/**
+ * @param history P4 のサーブの種類・ブロックの人数の、このセッションでのこれまで(なければこのセットだけから数える)
+ */
+export function buildVsmSet(
+  set: IaSet,
+  newId: IdFactory = createObjectId,
+  history: TypeHistory = buildTypeHistory([set]),
+): Record<string, unknown> {
   const result = computeSet(set);
   const ralliesById = new Map(set.rallies.map((rally) => [rally.id, rally]));
   const events: VsmEvent[] = result.timeline.map((entry) => {
@@ -127,7 +136,7 @@ export function buildVsmSet(set: IaSet, newId: IdFactory = createObjectId): Reco
       _id: rally.id || newId(),
       lineup: toVsmLineups(entry.result.lineup),
       exchange: {
-        plays: buildRallyPlays(rally, entry.result),
+        plays: buildRallyPlays(rally, entry.result, history),
         point: teamCode(entry.result.pointWinner),
       },
       score: { ...entry.result.scoreAfter },
@@ -178,6 +187,7 @@ export function buildVsm(session: InputAssistSession, options: BuildVsmOptions =
   const now = options.now ?? new Date();
   // 「このセットは打たない」の印が付いたセットは書き出さない
   const sets = [...session.sets].filter((set) => !set.skipped).sort((left, right) => left.setIndex - right.setIndex);
+  const history = buildTypeHistory(sets);
   const startDate = /^\d{4}-\d{2}-\d{2}$/.test(session.date)
     ? new Date(`${session.date}T00:00:00.000+09:00`).toISOString()
     : now.toISOString();
@@ -187,7 +197,7 @@ export function buildVsm(session: InputAssistSession, options: BuildVsmOptions =
     version: 1,
     startDate,
     scout: {
-      sets: sets.map((set) => buildVsmSet(set, newId)),
+      sets: sets.map((set) => buildVsmSet(set, newId, history)),
       video: { path: resolveVideoPath(session, options.videoPath) },
     },
     team: {
