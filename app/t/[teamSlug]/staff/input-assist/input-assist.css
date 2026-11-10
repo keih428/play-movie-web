@@ -451,3 +451,201 @@
   gap: 8px;
   font-size: 14px;
 }
+
+/* P1 流れ */
+.ia-team-near {
+  --ia-team: var(--ia-near);
+}
+
+.ia-team-far {
+  --ia-team: var(--ia-far);
+}
+
+.ia-rates {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ia-rate {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.ia-rate-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.ia-flow-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ia-next {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--ia-team, var(--accent));
+  background: var(--surface-soft);
+}
+
+.ia-next-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ia-next-team {
+  color: var(--ia-team, inherit);
+  font-size: 1.3rem;
+}
+
+.ia-next-skill {
+  font-size: 1.6rem;
+}
+
+.ia-next-buffer {
+  margin-left: auto;
+  min-width: 4.5em;
+  padding: 2px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.ia-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ia-candidate {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.ia-candidate strong {
+  font-family: var(--font-num);
+  font-size: 1.3rem;
+}
+
+.ia-candidate-libero {
+  border-style: dashed;
+}
+
+.ia-candidate:hover {
+  border-color: var(--ia-team, var(--accent));
+}
+
+.ia-plays {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ia-play {
+  display: grid;
+  grid-template-columns: 1.6em minmax(4em, 8em) 2.4em minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ia-team, var(--border));
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ia-play-active .ia-play {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ia-play-team {
+  overflow: hidden;
+  color: var(--ia-team, inherit);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ia-play-editor {
+  padding: 8px 4px 4px;
+}
+
+.ia-warnings {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 12px 8px 28px;
+  border-radius: 8px;
+  border: 1px solid var(--ia-warn);
+  color: var(--ia-warn);
+  font-size: 0.88rem;
+}
+
+.ia-key-help {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+
+.ia-flow-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ia-flow-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  font-family: var(--font-num);
+  font-size: 0.85rem;
+}
+
+.ia-flow-summary > span {
+  color: var(--ia-team, inherit);
+}
+
+@media (max-width: 640px) {
+  .ia-play {
+    grid-template-columns: 1.4em minmax(3em, 6em) 2.2em minmax(0, 1fr);
+  }
+
+  .ia-next-buffer {
+    margin-left: 0;
+  }
+}

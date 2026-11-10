@@ -11,7 +11,16 @@ export type IaPlayerHandle = {
   playFrom: (seconds: number) => void;
   pause: () => void;
   getTime: () => number | undefined;
+  /** 再生中なら止め、止まっていれば流す。 */
+  togglePlay: () => void;
+  /** 再生・停止はそのままで、この秒へ動かす。 */
+  seek: (seconds: number) => void;
+  /** 再生の速さ(1・0.75・0.5 など)。 */
+  setRate: (rate: number) => void;
 };
+
+/** YouTube の再生中の状態(YT.PlayerState.PLAYING)。 */
+const YT_PLAYING = 1;
 
 type YouTubePlayer = NonNullable<Window["YT"]> extends { Player: new (...args: never[]) => infer P } ? P : never;
 
@@ -31,6 +40,7 @@ export function IaPlayer({ youtubeUrl, onTime, ref }: IaPlayerProps) {
   const readyRef = useRef(false);
   const pendingSeekRef = useRef<number | null>(null);
   const onTimeRef = useRef(onTime);
+  const rateRef = useRef(1);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -67,6 +77,40 @@ export function IaPlayer({ youtubeUrl, onTime, ref }: IaPlayerProps) {
           return undefined;
         }
       },
+      togglePlay() {
+        const player = playerRef.current;
+        if (!player || !readyRef.current) {
+          return;
+        }
+        try {
+          if (player.getPlayerState?.() === YT_PLAYING) {
+            player.pauseVideo();
+          } else {
+            player.playVideo();
+          }
+        } catch {
+          // 準備ができていなければ何もしない
+        }
+      },
+      seek(seconds: number) {
+        try {
+          if (readyRef.current) {
+            playerRef.current?.seekTo(Math.max(0, seconds), true);
+          }
+        } catch {
+          // 準備ができていなければ何もしない
+        }
+      },
+      setRate(rate: number) {
+        rateRef.current = rate;
+        try {
+          if (readyRef.current) {
+            playerRef.current?.setPlaybackRate?.(rate);
+          }
+        } catch {
+          // 準備ができていなければ、準備ができたときに合わせる
+        }
+      },
     }),
     [],
   );
@@ -97,6 +141,9 @@ export function IaPlayer({ youtubeUrl, onTime, ref }: IaPlayerProps) {
           events: {
             onReady: () => {
               readyRef.current = true;
+              if (rateRef.current !== 1) {
+                playerRef.current?.setPlaybackRate?.(rateRef.current);
+              }
               const pending = pendingSeekRef.current;
               pendingSeekRef.current = null;
               if (pending !== null) {
