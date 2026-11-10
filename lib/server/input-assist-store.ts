@@ -185,7 +185,7 @@ export async function appendInputAssistPassLog(
   const log: IaPassLog = {
     id: createObjectId(),
     setIndex,
-    pass: input.pass === "P1" || input.pass === "P2" ? input.pass : "P0",
+    pass: input.pass === "P1" || input.pass === "P2" || input.pass === "P3" ? input.pass : "P0",
     startedAt: typeof input.startedAt === "string" ? input.startedAt : now,
     endedAt: typeof input.endedAt === "string" ? input.endedAt : now,
     seconds,

@@ -68,6 +68,12 @@ export type IaPlay = {
   startSubZone?: string;
   endZone?: number;
   endSubZone?: string;
+  /**
+   * P3 のゾーンの出どころ(始まり・終わりそれぞれ)。auto = 攻撃コンビや前後のタッチから自動で入れた(流れが変われば入れ直す)、
+   * manual = 人がコートを押して決めた。VSM から読み込んだものにはない(人が決めたものと同じに扱う)。
+   */
+  startZoneSource?: "auto" | "manual";
+  endZoneSource?: "auto" | "manual";
   /** トスのセッターコール(KA など)・アタックのコンビ(PV など)。 */
   combination?: string;
   /** ミスの種類など。 */
@@ -129,7 +135,7 @@ export type IaSet = {
   skipped?: boolean;
 };
 
-export type IaPassName = "P0" | "P1" | "P2";
+export type IaPassName = "P0" | "P1" | "P2" | "P3";
 
 export type IaPassLog = {
   id: string;
