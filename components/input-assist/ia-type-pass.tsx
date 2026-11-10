@@ -613,6 +613,7 @@ export function IaTypePass({
                 <kbd>Space</kbd> もう一度流す / <kbd>←</kbd>
                 <kbd>→</kbd> 前・次のタッチ
               </li>
+              <li>トスのすぐあとのアタックは、トスより先に出ます(コンビが決まると、コールを当てやすい)</li>
             </ul>
           </details>
         </div>

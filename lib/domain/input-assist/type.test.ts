@@ -9,6 +9,7 @@ import {
   buildTypeHistory,
   buildTypeQueue,
   combinationLabel,
+  typeReviewOrder,
   emptyTypeHistory,
   fieldsToReview,
   isTypeDecided,
@@ -288,6 +289,21 @@ describe("P4:セットの並びと進み具合", () => {
     expect(after[0].plays[1]).toMatchObject({ hitType: "Q", typeSource: { hitType: "auto" } });
     expect(buildTypeQueue(after, "unsure").map((item) => item.playId)).not.toContain("1".repeat(24));
     expect(buildTypeQueue(after, "all").length).toBeGreaterThan(buildTypeQueue(after, "unsure").length);
+  });
+
+  it("トスのすぐあとに同じチームのアタックがあれば、アタックを先に見る(ほかはタッチの順)", () => {
+    expect(typeReviewOrder(plays("*5S", "a11R", "a13E", "a8A", "*7D", "*12E", "*24A", "a9B"))).toEqual([0, 1, 3, 2, 4, 6, 5, 7]);
+    // 相手のアタック・トスで終わるときは、そのまま
+    expect(typeReviewOrder(plays("*5S", "a11R", "a13E", "*7A"))).toEqual([0, 1, 2, 3]);
+    expect(typeReviewOrder(plays("*5S", "a11R", "a13E"))).toEqual([0, 1, 2]);
+    const all = buildTypeQueue(typeRallies(p1Set()), "all");
+    expect(all.slice(0, 5).map((item) => item.playId)).toEqual([
+      expect.any(String),
+      "1".repeat(24),
+      "3".repeat(24),
+      "2".repeat(24),
+      "4".repeat(24),
+    ]);
   });
 
   it("セッションのこれまで(ほかのセットも)を数え、進み具合を出す", () => {
