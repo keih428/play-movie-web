@@ -40,12 +40,20 @@ export type IaLineup = {
 };
 
 export type IaSkill = "S" | "R" | "E" | "A" | "B" | "D" | "F";
+export const IA_SKILLS: IaSkill[] = ["S", "R", "E", "A", "B", "D", "F"];
 
+/**
+ * 1つのタッチ。team は VSM の値("*" = ホーム、"a" = アウェイ)、player は背番号。
+ * P1(流れ)で入れたものは team・player・skill・time だけで、hitType・effect はない。
+ * effect がない = 評価はまだ決まっていない(P2 で入れる)。書き出すときは仮の評価を入れる(flow.ts)。
+ */
 export type IaPlay = {
   id: string;
   team: IaTeamCode;
   player: number;
   skill: IaSkill;
+  /** P1 で入れたプレーの出どころ。auto = P0 とエンジンから自動で作ったサーブ、manual = 人が入れた。VSM から読み込んだものにはない。 */
+  source?: "auto" | "manual";
   hitType?: string;
   effect?: string;
   /** 動画の時刻(秒)。 */
@@ -81,6 +89,8 @@ export type IaRally = {
   /** 人が確かめた(N/F/X を押した)か。 */
   checked?: boolean;
   plays?: IaPlay[];
+  /** P1(流れ)で、このラリーのタッチを入れ終えた(Enter で次へ進んだ)か。サーブだけのラリー(エース・サーブミス)もこれで分かる。 */
+  flowDone?: boolean;
 };
 
 export type IaSubstitution = {

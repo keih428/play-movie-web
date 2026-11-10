@@ -5,7 +5,9 @@ import { computeSet, sortRallies } from "@/lib/domain/input-assist/engine";
 import { createObjectId } from "@/lib/domain/input-assist/ids";
 import {
   IA_POSITIONS,
+  IA_SKILLS,
   type IaLineup,
+  type IaPlay,
   type IaRally,
   type IaSet,
   type IaTeam,
@@ -160,6 +162,35 @@ function normalizeLineup(value: unknown): IaLineup {
   return { positions, setterAt: setterAt >= 1 && setterAt <= 6 ? setterAt : 1 };
 }
 
+function normalizePlay(value: unknown): IaPlay | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const input = value as Partial<IaPlay>;
+  const player = Math.trunc(Number(input.player));
+  if (typeof input.id !== "string" || !input.id || !Number.isFinite(player) || !IA_SKILLS.includes(input.skill as IaPlay["skill"])) {
+    return null;
+  }
+  const time = Number(input.time);
+  // 読み込んだ VSM の欄(ゾーン・code・extra など)はそのまま残す
+  const play: IaPlay = {
+    ...input,
+    id: input.id,
+    team: input.team === "a" ? "a" : "*",
+    player,
+    skill: input.skill as IaPlay["skill"],
+    time: input.time !== undefined && input.time !== null && Number.isFinite(time) ? roundTime(time) : undefined,
+    source: input.source === "auto" || input.source === "manual" ? input.source : undefined,
+  };
+  if (play.time === undefined) {
+    delete play.time;
+  }
+  if (play.source === undefined) {
+    delete play.source;
+  }
+  return play;
+}
+
 function normalizeRally(value: unknown): IaRally | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -177,7 +208,10 @@ function normalizeRally(value: unknown): IaRally | null {
     status: input.status === "not_rally" ? "not_rally" : "rally",
     source: input.source === "auto" ? "auto" : "manual",
     checked: input.checked === true ? true : undefined,
-    plays: Array.isArray(input.plays) ? input.plays : undefined,
+    plays: Array.isArray(input.plays)
+      ? input.plays.map(normalizePlay).filter((play): play is IaPlay => play !== null)
+      : undefined,
+    flowDone: input.flowDone === true ? true : undefined,
   };
 }
 
