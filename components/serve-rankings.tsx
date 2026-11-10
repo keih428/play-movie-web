@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { ServeGradeGuide } from "@/components/serve-grade-guide";
 import { TRAINING_GROUPS, type TrainingGroup } from "@/lib/domain/portal";
 import {
-  SERVE_EFFECT_RULE,
   SERVE_MIN_ATTEMPTS,
   SERVE_RESULTS,
   formatServeEfficiency,
@@ -52,8 +52,9 @@ export function ServeRankings({ basePath, month, counts, members }: ServeRanking
         </nav>
       </div>
       <p className="tp-small tp-muted">
-        サーブ効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数。規定の打数は月{SERVE_MIN_ATTEMPTS}本以上です。{SERVE_EFFECT_RULE}。
+        サーブ効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数。規定の打数は月{SERVE_MIN_ATTEMPTS}本以上です。
       </p>
+      <ServeGradeGuide />
       {tables.every((table) => table.rows.length === 0) ? (
         <p className="tp-muted">この月のサーブの記録はありません。</p>
       ) : null}
