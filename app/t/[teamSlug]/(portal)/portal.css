@@ -5045,6 +5045,22 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   grid-template-columns: 5.2em minmax(0, 1fr) minmax(0, 1fr);
 }
 
+/* サーブ効果率(2026-11-10 から):名前 + エース・効果・入った・ミス */
+.tp-serve-row {
+  grid-template-columns: 5.2em repeat(4, minmax(0, 1fr));
+}
+
+.tp-spike-kill.tp-serve-effect {
+  border-color: var(--tp-ok);
+  background: var(--tp-surface);
+  color: var(--tp-ok);
+}
+
+.tp-spike-miss.tp-serve-miss b,
+.tp-spike-miss.tp-serve-miss small {
+  color: var(--tp-danger-fg);
+}
+
 /* 出欠:曜日でまとめて出す(2026-11-06 から)。ふだんは畳んでおく */
 .tp-bulk {
   display: block;

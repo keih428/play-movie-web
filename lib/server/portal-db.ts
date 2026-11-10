@@ -517,6 +517,27 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // 全員 Lv1 から始め、名簿で 2・3 に編集する。それ以外のポジションでは使わない。
     sql: `ALTER TABLE members ADD COLUMN serve_level integer NOT NULL DEFAULT 1`,
   },
+  {
+    id: "029_serve_stats",
+    // サーブ効果率の集計(2026-11-10 から。主将の依頼)。メニューの種類 'serving' で、部員ごとに
+    // エース・効果・入った・ミスの数を持つ(打数はその合計)。前半・後半の組み方(共有)は serve_setup(JSON)。
+    // メニューを消すと一緒に消える。
+    sql: `
+      ALTER TABLE drill_stat_drills ADD COLUMN serve_setup text;
+      ALTER TABLE drill_stat_drills ADD COLUMN serve_setup_at timestamptz;
+
+      CREATE TABLE serve_stat_counts (
+        drill_id text NOT NULL REFERENCES drill_stat_drills (id) ON DELETE CASCADE,
+        member_id text NOT NULL REFERENCES members (id),
+        aces integer NOT NULL DEFAULT 0,
+        effects integer NOT NULL DEFAULT 0,
+        ins integer NOT NULL DEFAULT 0,
+        misses integer NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (drill_id, member_id)
+      )
+    `,
+  },
 ];
 
 function getDatabaseUrl() {

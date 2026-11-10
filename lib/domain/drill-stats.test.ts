@@ -50,5 +50,7 @@ describe("集計のタブ", () => {
     expect(drillKindOfTab("reception")).toBe("reception");
     expect(drillKindOfTab("dig")).toBe("serve_dig");
     expect(drillKindOfTab("spike")).toBe("spike");
+    expect(drillKindOfTab("serving")).toBe("serving");
+    expect(drillKindOfTab("serve")).toBe("serve_dig");
   });
 });

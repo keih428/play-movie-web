@@ -37,13 +37,15 @@ export const DRILL_GRADE_LABELS: Record<DrillSkill, Record<DrillGrade, string>> 
 export const DRILL_NAME_MAX = 40;
 
 // メニューの種類(2026-11-06 から)。サーブ・ディグを評価ごとに数えるか、スパイクの決定と打数を数えるか。
-export const DRILL_KINDS = ["serve_dig", "spike", "reception"] as const;
+// serving はサーブ効果率(2026-11-10 から。lib/domain/serve-stats.ts)。
+export const DRILL_KINDS = ["serve_dig", "spike", "reception", "serving"] as const;
 export type DrillKind = (typeof DRILL_KINDS)[number];
 
 export const DRILL_KIND_LABELS: Record<DrillKind, string> = {
   serve_dig: "サーブ・ディグ",
   spike: "スパイク",
   reception: "レセプション",
+  serving: "サーブ",
 };
 
 export function isDrillKind(value: unknown): value is DrillKind {
@@ -130,13 +132,14 @@ export function getErrorRate(counts: GradeCounts): number | null {
 
 // ---------- 集計のページのタブ(2026-11-06 から。サーブ・ディグ・スパイクを別のタブに) ----------
 
-export const STATS_TABS = ["spike", "reception", "serve", "dig"] as const;
+export const STATS_TABS = ["spike", "reception", "serving", "serve", "dig"] as const;
 export type StatsTab = (typeof STATS_TABS)[number];
 
 export const STATS_TAB_LABELS: Record<StatsTab, string> = {
   spike: "スパイク",
   reception: "レセプション",
-  serve: "サーブ",
+  serving: "サーブ",
+  serve: "サーブ(旧)",
   dig: "ディグ",
 };
 
@@ -144,7 +147,8 @@ export const STATS_TAB_LABELS: Record<StatsTab, string> = {
  * 集計のページに出すタブ。サーブ・ディグは集計を取らなくなったのでアーカイブ(主将の依頼、2026-11-06)。
  * タブには出さないが、?tab=serve / ?tab=dig で開けば、これまでの記録を見られる(コードとデータは残す)。
  */
-export const VISIBLE_STATS_TABS = ["spike", "reception"] as const satisfies readonly StatsTab[];
+// サーブ効果率(serving)は 2026-11-10 から。旧サーブ(serve。# + ! - / = で数えていたもの)とは別。
+export const VISIBLE_STATS_TABS = ["spike", "reception", "serving"] as const satisfies readonly StatsTab[];
 
 export function isArchivedStatsTab(tab: StatsTab): boolean {
   return !(VISIBLE_STATS_TABS as readonly StatsTab[]).includes(tab);
@@ -160,5 +164,5 @@ export function parseStatsTab(tab: unknown, skill?: unknown): StatsTab {
 
 /** タブで作るメニューの種類(サーブ・ディグは同じメニューで両方数えられる)。 */
 export function drillKindOfTab(tab: StatsTab): DrillKind {
-  return tab === "spike" || tab === "reception" ? tab : "serve_dig";
+  return tab === "spike" || tab === "reception" || tab === "serving" ? tab : "serve_dig";
 }
