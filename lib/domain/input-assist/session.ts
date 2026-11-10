@@ -185,11 +185,13 @@ function normalizePlay(value: unknown): IaPlay | null {
     effectSource: input.effectSource === "auto" || input.effectSource === "manual" || input.effectSource === "cleared"
         ? input.effectSource
         : undefined,
+    startZoneSource: input.startZoneSource === "auto" || input.startZoneSource === "manual" ? input.startZoneSource : undefined,
+    endZoneSource: input.endZoneSource === "auto" || input.endZoneSource === "manual" ? input.endZoneSource : undefined,
   };
   if (play.time === undefined) {
     delete play.time;
   }
-  for (const key of ["source", "effect", "effectSource"] as const) {
+  for (const key of ["source", "effect", "effectSource", "startZoneSource", "endZoneSource"] as const) {
     if (play[key] === undefined) {
       delete play[key];
     }

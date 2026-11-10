@@ -7,6 +7,7 @@ import { applyAutoEffects } from "@/lib/domain/input-assist/effect";
 import { isFlowEntered, syncServePlay, withPlaceholders } from "@/lib/domain/input-assist/flow";
 import { createObjectId, type IdFactory } from "@/lib/domain/input-assist/ids";
 import { buildPlayCode } from "@/lib/domain/input-assist/play-code";
+import { applyZoneChain } from "@/lib/domain/input-assist/zone";
 import { emptyStaff } from "@/lib/domain/input-assist/session";
 import type {
   IaLineup,
@@ -91,7 +92,8 @@ function buildRallyPlays(rally: IaRally, result: IaRallyResult): VsmPlay[] {
   // それでも評価・種類の決まっていないタッチ(P1 で入れたもの)には、仮のものを入れる(flow.ts)。
   const pointWinner = teamCode(result.pointWinner);
   const entered = isFlowEntered(rally);
-  const synced = syncServePlay(rally, result.servingTeam, result.server);
+  // P3 のゾーン:人が押したものはそのまま。攻撃コンビ・前後のタッチから分かるゾーンは、今の流れから入れ直す(zone.ts)。
+  const synced = applyZoneChain(syncServePlay(rally, result.servingTeam, result.server));
   const plays = withPlaceholders(entered ? applyAutoEffects(synced, pointWinner) : synced, pointWinner, entered);
   return plays.map((play, index) => toVsmPlay(play, plays[index - 1], rally.serveTime));
 }

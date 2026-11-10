@@ -798,3 +798,169 @@
     display: none;
   }
 }
+
+/* P3 ゾーン */
+.ia-play-zone {
+  grid-template-columns: 1.6em minmax(4em, 8em) 2.4em minmax(0, 1fr) auto 2.6em;
+}
+
+.ia-zone-badge {
+  justify-self: center;
+  font-weight: 700;
+}
+
+.ia-zone-figure {
+  margin: 0;
+}
+
+.ia-zone-court {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  margin: 0 auto;
+  cursor: crosshair;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.ia-zone-surface {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.ia-zone-expected .ia-zone-surface {
+  fill: var(--accent-soft);
+}
+
+.ia-zone-cell {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.2;
+}
+
+.ia-zone-sub {
+  fill: transparent;
+  stroke: var(--border);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 3;
+}
+
+.ia-zone-label {
+  fill: var(--muted);
+  opacity: 0.45;
+  font-family: var(--font-num);
+  font-size: 26px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.ia-zone-sub-label {
+  fill: var(--muted);
+  opacity: 0.6;
+  font-family: var(--font-num);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.ia-zone-serve rect {
+  fill: transparent;
+  stroke: var(--border);
+  stroke-dasharray: 4 3;
+}
+
+.ia-zone-serve text {
+  fill: var(--muted);
+  font-family: var(--font-num);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.ia-zone-serve-active rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.ia-zone-serve-active text {
+  fill: var(--accent-strong);
+  font-weight: 700;
+}
+
+.ia-zone-net {
+  stroke: var(--text);
+  stroke-width: 4;
+}
+
+.ia-zone-team {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ia-zone-team-near {
+  fill: var(--ia-near);
+}
+
+.ia-zone-team-far {
+  fill: var(--ia-far);
+}
+
+.ia-zone-hover {
+  fill: var(--accent);
+  fill-opacity: 0.18;
+  stroke: var(--accent);
+  pointer-events: none;
+}
+
+.ia-zone-typed {
+  fill: var(--ia-warn);
+  fill-opacity: 0.25;
+  stroke: var(--ia-warn);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.ia-zone-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.ia-zone-mark {
+  pointer-events: none;
+}
+
+.ia-zone-mark circle {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.ia-zone-mark text {
+  fill: #fff;
+  font-family: var(--font-num);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ia-zone-mark-auto circle {
+  fill-opacity: 0.45;
+}
+
+.ia-zone-mark-current circle {
+  fill: var(--ia-warn);
+  r: 14;
+}
+
+@media (max-width: 640px) {
+  .ia-play-zone {
+    grid-template-columns: 1.4em minmax(3em, 6em) 2.2em minmax(0, 1fr) 2.6em;
+  }
+
+  .ia-play-zone > .mono.muted {
+    display: none;
+  }
+}

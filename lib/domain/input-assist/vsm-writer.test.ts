@@ -5,6 +5,7 @@ import { readScoutRosterFile, setsFromVsmMatch } from "@/lib/domain/input-assist
 import { createEmptySet } from "@/lib/domain/input-assist/session";
 import type { InputAssistSession } from "@/lib/domain/input-assist/types";
 import { buildVsm, buildVsmFileName, buildVsmText } from "@/lib/domain/input-assist/vsm-writer";
+import { applyBallPosition } from "@/lib/domain/input-assist/zone";
 import { parseVsmText } from "@/lib/parsers/vsm";
 
 const SAMPLE_PATH = path.resolve(__dirname, "../../../vsm/2026-06-24 UTVB-TIT.vsm");
@@ -329,5 +330,83 @@ describe("P1 のタッチの書き出し", () => {
     const vsm = buildVsm({ ...session, sets: [{ ...set, rallies: cleared }] }, { idFactory }) as typeof auto;
     // 仮の評価(R は #)
     expect(vsm.scout.sets[0].events[0].exchange.plays[1]).toMatchObject({ skill: "R", effect: "#", code: ".11#" });
+  });
+  function p3Session(): InputAssistSession {
+    const session = p1Session();
+    const [set] = session.sets;
+    const rallies = set.rallies.map((rally, index) => {
+      if (index !== 0) {
+        return rally;
+      }
+      // P3:サーブを打った位置、レセプション・トス・アタック・ディグで触った位置、落ちた場所を押した
+      let plays = [
+        { id: "5".repeat(24), team: "*" as const, player: 5, skill: "S" as const, time: 131.8, source: "auto" as const },
+        ...(rally.plays ?? []),
+      ];
+      plays = applyBallPosition(plays, 0, { zone: 9 });
+      plays = applyBallPosition(plays, 1, { zone: 6, subZone: "A" });
+      plays = applyBallPosition(plays, 2, { zone: 3, subZone: "C" });
+      plays = applyBallPosition(plays, 3, { zone: 4, subZone: "C" });
+      plays = applyBallPosition(plays, 4, { zone: 1, subZone: "D" });
+      return { ...rally, plays };
+    });
+    return { ...session, sets: [{ ...set, rallies }] };
+  }
+
+  it("P3 のゾーンを書き出し、サーブ・アタックの code にゾーンを入れる", () => {
+    const vsm = buildVsm(p3Session(), { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    const [first] = vsm.scout.sets[0].events;
+    expect(
+      first.exchange.plays.map((play: Record<string, unknown>) => [
+        play.skill,
+        play.startZone,
+        play.startSubZone,
+        play.endZone,
+        play.endSubZone,
+        play.code,
+      ]),
+    ).toEqual([
+      ["S", 9, undefined, 6, "A", "5SM96A."],
+      ["R", 6, "A", 3, "C", ".11#"],
+      ["E", 3, "C", 4, "C", "a13E"],
+      ["A", 4, "C", 1, "D", "a8A1D#"],
+      ["D", 1, "D", undefined, undefined, ".7D="],
+    ]);
+    // ゾーンの出どころは VSM に書かない
+    expect(first.exchange.plays[1]).not.toHaveProperty("startZoneSource");
+    expect(first.exchange.plays[1]).not.toHaveProperty("endZoneSource");
+    // 田中の欄の順(combination の次に startZone…、code の前)
+    expect(Object.keys(first.exchange.plays[3])).toEqual([
+      "_id", "team", "player", "skill", "hitType", "effect", "startZone", "startSubZone", "endZone", "endSubZone", "code", "time", "originalTime",
+    ]);
+  });
+
+  it("アタックの攻撃コンビが分かれば、書き出しで始まりのゾーン(とトスの終わり)を入れる", () => {
+    const session = p1Session();
+    const [set] = session.sets;
+    const rallies = set.rallies.map((rally, index) =>
+      index === 0
+        ? { ...rally, plays: rally.plays?.map((play) => (play.skill === "A" ? { ...play, combination: "PZ" } : play)) }
+        : rally,
+    );
+    const vsm = buildVsm({ ...session, sets: [{ ...set, rallies }] }, { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    const plays = vsm.scout.sets[0].events[0].exchange.plays;
+    expect(plays[2]).toMatchObject({ skill: "E", endZone: 2, endSubZone: "B" });
+    expect(plays[3]).toMatchObject({ skill: "A", combination: "PZ", startZone: 2, startSubZone: "B", code: "a8APZ." });
+  });
+
+  it("P3 のゾーンを入れた VSM を今のパーサーで読むと、ゾーンがそろう", () => {
+    const session = p3Session();
+    const parsed = parseVsmText(buildVsmText(session, { idFactory }), buildVsmFileName(session)).matches[0];
+    const rallies = parsed.sets[0].events.filter((event) => event.plays.length > 0);
+    expect(
+      rallies[0].plays.map((play) => `${play.skill}${play.startZone ?? ""}${play.startSubZone ?? ""}>${play.endZone ?? ""}${play.endSubZone ?? ""}`),
+    ).toEqual(["S9>6A", "R6A>3C", "E3C>4C", "A4C>1D", "D1D>"]);
+    expect(rallies[0].plays[0].code).toBe("5SM96A.");
+    expect(parsed.sets[0].score).toEqual({ home: 0, away: 2 });
   });
 });

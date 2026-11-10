@@ -33,7 +33,7 @@ export type ParsedPlay = {
   time?: number;
   originalTime?: number;
   startZone?: number;
-  startSubZone?: number;
+  startSubZone?: string;
   endZone?: number;
   endSubZone?: string;
 };
