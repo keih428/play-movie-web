@@ -33,6 +33,7 @@ import {
 } from "@/lib/domain/input-assist/session";
 import type {
   IaMatchExtras,
+  IaMatchViewerLink,
   IaPassLog,
   IaPassName,
   IaSet,
@@ -518,6 +519,30 @@ export async function updateInputAssistMeta(
   if (moved.length === 0) {
     throw new InputAssistConflictError(current);
   }
+  await writeDocument(sessionKey(teamSlug, id), next);
+  await writeIndexEntry(next);
+  return next;
+}
+
+/**
+ * 「試合ビューアに保存」で作ったものを、メタに覚える。サーバーの今のメタに足すだけなので、版は確かめない
+ * (画面は 4 秒ごとに見たときに、新しいメタを受け取る)。
+ */
+export async function setInputAssistMatchViewer(
+  teamSlug: string,
+  id: string,
+  link: IaMatchViewerLink,
+): Promise<InputAssistMeta | null> {
+  const current = await ensureInputAssistMigrated(teamSlug, id);
+  if (!current) {
+    return null;
+  }
+  const next = metaOf({ ...current, matchViewer: link, updatedAt: new Date().toISOString() });
+  await query("UPDATE input_assist_sessions SET meta_updated_at = $3 WHERE session_id = $1 AND team_slug = $2", [
+    id,
+    teamSlug,
+    next.updatedAt,
+  ]);
   await writeDocument(sessionKey(teamSlug, id), next);
   await writeIndexEntry(next);
   return next;

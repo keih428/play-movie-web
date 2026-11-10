@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { readScoutRosterFile, type ScoutRosterFile } from "@/lib/domain/input-assist/roster";
+import { useEffect, useState } from "react";
+import { formatClockInput, parseClockInput } from "@/lib/domain/input-assist/ai-job";
+import {
+  addMissingPlayers,
+  readScoutRosterFile,
+  toRosterView,
+  type ScoutRosterView,
+} from "@/lib/domain/input-assist/roster";
 import { createEmptySet } from "@/lib/domain/input-assist/session";
 import {
   IA_POSITIONS,
   type IaLineup,
   type IaMatchExtras,
+  type IaPlayer,
   type IaSet,
   type IaTeam,
   type IaTeamSide,
 } from "@/lib/domain/input-assist/types";
+import { buildTeamApiPath } from "@/lib/domain/team";
 
 export type IaSetupValue = {
   title: string;
@@ -25,7 +33,10 @@ export type IaSetupValue = {
 type IaSetupEditorProps = {
   value: IaSetupValue;
   onChange: (next: IaSetupValue) => void;
+  teamSlug: string;
 };
+
+type RosterFileChoice = { fileId: string; name: string; folder: string; extension: ".vsm" | ".vsdb" };
 
 const TEAM_LABELS: Record<IaTeamSide, string> = { home: "ホーム", away: "アウェイ" };
 const MAX_SETS = 5;
@@ -42,10 +53,18 @@ function rosterLabel(team: IaTeam): string {
   return team.players.length ? `${team.name}(${team.players.length}人)` : team.name;
 }
 
-/** 試合の準備:名簿(vsdb / vsm から)、セットごとの動画・スタメン・最終スコア。 */
-export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
-  const [roster, setRoster] = useState<ScoutRosterFile | null>(null);
+async function readJson<T>(response: Response): Promise<T & { error?: string }> {
+  return ((await response.json().catch(() => null)) ?? {}) as T & { error?: string };
+}
+
+/** 試合の準備:名簿(データライブラリの vsdb / vsm から)、セットごとの動画・開始時刻・スタメン・最終スコア。 */
+export function IaSetupEditor({ value, onChange, teamSlug }: IaSetupEditorProps) {
+  const [roster, setRoster] = useState<ScoutRosterView | null>(null);
   const [rosterError, setRosterError] = useState("");
+  const [rosterNote, setRosterNote] = useState("");
+  const [libraryFiles, setLibraryFiles] = useState<RosterFileChoice[] | null>(null);
+  const [libraryFileId, setLibraryFileId] = useState("");
+  const [loadingRoster, setLoadingRoster] = useState(false);
   const [matchIndex, setMatchIndex] = useState(0);
   const [useLineups, setUseLineups] = useState(true);
   const [homeTeamIndex, setHomeTeamIndex] = useState(0);
@@ -57,20 +76,96 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
   const updateLineup = (set: IaSet, team: IaTeamSide, lineup: IaLineup) =>
     updateSet(set.setIndex, { startingLineup: { ...set.startingLineup, [team]: lineup } });
 
+  // データライブラリの vsdb・vsm の一覧(開いたときに1回)
+  useEffect(() => {
+    let stopped = false;
+    void (async () => {
+      try {
+        const response = await fetch(buildTeamApiPath("/api/input-assist/roster", teamSlug), { cache: "no-store" });
+        const payload = await readJson<{ files?: RosterFileChoice[] }>(response);
+        if (!stopped) {
+          setLibraryFiles(response.ok ? (payload.files ?? []) : []);
+          // 今シーズンの vsdb(一覧の先頭)を選んでおく
+          setLibraryFileId((current) => current || payload.files?.[0]?.fileId || "");
+        }
+      } catch {
+        if (!stopped) {
+          setLibraryFiles([]);
+        }
+      }
+    })();
+    return () => {
+      stopped = true;
+    };
+  }, [teamSlug]);
+
+  function showRoster(parsed: ScoutRosterView) {
+    setRoster(parsed);
+    setMatchIndex(Math.max(0, parsed.matches.length - 1));
+    setHomeTeamIndex(0);
+    setAwayTeamIndex(parsed.teams.length > 1 ? 1 : 0);
+  }
+
+  async function loadLibraryRoster() {
+    setRosterError("");
+    setRosterNote("");
+    setRoster(null);
+    if (!libraryFileId) {
+      return;
+    }
+    setLoadingRoster(true);
+    try {
+      const response = await fetch(
+        buildTeamApiPath(`/api/input-assist/roster?fileId=${encodeURIComponent(libraryFileId)}`, teamSlug),
+        { cache: "no-store" },
+      );
+      const payload = await readJson<{ roster?: ScoutRosterView }>(response);
+      if (!response.ok || !payload.roster) {
+        throw new Error(payload.error ?? "名簿を読めませんでした。");
+      }
+      showRoster(payload.roster);
+    } catch (error) {
+      setRosterError(error instanceof Error ? error.message : "名簿を読めませんでした。");
+    } finally {
+      setLoadingRoster(false);
+    }
+  }
+
   async function handleRosterFile(file: File | undefined) {
     setRosterError("");
+    setRosterNote("");
     setRoster(null);
     if (!file) {
       return;
     }
     try {
-      const parsed = readScoutRosterFile(await file.text(), file.name);
-      setRoster(parsed);
-      setMatchIndex(Math.max(0, parsed.matches.length - 1));
-      setHomeTeamIndex(0);
-      setAwayTeamIndex(parsed.teams.length > 1 ? 1 : 0);
+      showRoster(toRosterView(readScoutRosterFile(await file.text(), file.name)));
     } catch (error) {
       setRosterError(error instanceof Error ? error.message : "ファイルを読めませんでした。");
+    }
+  }
+
+  /** 部内ポータルの名簿(背番号・名前)から、ホームにいない選手を足す。 */
+  async function addPortalPlayers() {
+    setRosterError("");
+    setRosterNote("");
+    try {
+      const response = await fetch(buildTeamApiPath("/api/input-assist/roster?source=portal", teamSlug), {
+        cache: "no-store",
+      });
+      const payload = await readJson<{ players?: IaPlayer[] }>(response);
+      if (!response.ok || !payload.players) {
+        throw new Error(payload.error ?? "部内の名簿を読めませんでした。");
+      }
+      const { team, added } = addMissingPlayers(value.teams.home, payload.players);
+      if (added.length === 0) {
+        setRosterNote("足す選手はいません(部内の名簿の背番号は、みんなホームにいます)。");
+        return;
+      }
+      update({ teams: { ...value.teams, home: team } });
+      setRosterNote(`ホームに背番号 ${added.join("・")} を足しました。`);
+    } catch (error) {
+      setRosterError(error instanceof Error ? error.message : "部内の名簿を読めませんでした。");
     }
   }
 
@@ -167,16 +262,51 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
         <p className="muted ia-note">
           ホーム:{rosterLabel(value.teams.home)} / アウェイ:{rosterLabel(value.teams.away)}
         </p>
-        <div className="field">
-          <label htmlFor="ia-roster-file">vsdb か vsm から読み込む</label>
-          <input
-            id="ia-roster-file"
-            type="file"
-            accept=".vsdb,.vsm,application/json"
-            onChange={(event) => void handleRosterFile(event.target.files?.[0])}
-          />
+        <div className="ia-inline-form">
+          <div className="field">
+            <label htmlFor="ia-roster-library">データライブラリから</label>
+            <select
+              id="ia-roster-library"
+              value={libraryFileId}
+              disabled={!libraryFiles || libraryFiles.length === 0}
+              onChange={(event) => setLibraryFileId(event.target.value)}
+            >
+              {libraryFiles === null ? <option value="">読み込み中…</option> : null}
+              {libraryFiles?.length === 0 ? <option value="">vsdb・vsm がありません</option> : null}
+              {libraryFiles?.map((file) => (
+                <option key={file.fileId} value={file.fileId}>
+                  {file.folder ? `${file.folder} / ` : ""}
+                  {file.name}({file.extension.slice(1)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => void loadLibraryRoster()}
+            disabled={!libraryFileId || loadingRoster}
+          >
+            {loadingRoster ? "読み込み中…" : "読み込む"}
+          </button>
+          <button type="button" className="button secondary" onClick={() => void addPortalPlayers()}>
+            部内の名簿からホームに足す
+          </button>
         </div>
+        <details>
+          <summary className="muted">手元のファイルから読み込む</summary>
+          <div className="field">
+            <label htmlFor="ia-roster-file">vsdb か vsm</label>
+            <input
+              id="ia-roster-file"
+              type="file"
+              accept=".vsdb,.vsm,application/json"
+              onChange={(event) => void handleRosterFile(event.target.files?.[0])}
+            />
+          </div>
+        </details>
         {rosterError ? <p className="ia-error">{rosterError}</p> : null}
+        {rosterNote ? <p className="muted ia-note">{rosterNote}</p> : null}
         {roster && roster.matches.length > 0 ? (
           <div className="ia-inline-form">
             <div className="field">
@@ -250,6 +380,11 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
                 onChange={(event) => updateSet(set.setIndex, { youtubeUrl: event.target.value })}
               />
             </div>
+            <StartTimeField
+              set={set}
+              nextSet={value.sets.find((entry) => entry.setIndex === set.setIndex + 1)}
+              onChange={(startTime) => updateSet(set.setIndex, { startTime })}
+            />
             <div className="field">
               <label htmlFor={`ia-near-${set.setIndex}`}>手前のチーム</label>
               <select
@@ -306,6 +441,53 @@ export function IaSetupEditor({ value, onChange }: IaSetupEditorProps) {
           最後のセットを消す
         </button>
       </div>
+    </div>
+  );
+}
+
+/** セットの開始時刻(そのセットの動画の何分何秒から)。終わりは、次のセットが同じ動画なら、その開始時刻。 */
+function StartTimeField({
+  set,
+  nextSet,
+  onChange,
+}: {
+  set: IaSet;
+  nextSet?: IaSet;
+  onChange: (startTime: number | null) => void;
+}) {
+  const saved = formatClockInput(set.startTime);
+  const [text, setText] = useState(saved);
+  const [editing, setEditing] = useState(false);
+  const shown = editing ? text : saved;
+  const invalid = editing && text.trim() !== "" && parseClockInput(text) === null;
+  const sameVideo = nextSet && nextSet.youtubeUrl.trim() && nextSet.youtubeUrl.trim() === set.youtubeUrl.trim();
+  const end = sameVideo && typeof nextSet?.startTime === "number" ? formatClockInput(nextSet.startTime) : "";
+  const id = `ia-start-${set.setIndex}`;
+  return (
+    <div className="field">
+      <label htmlFor={id}>セットの開始時刻</label>
+      <input
+        id={id}
+        value={shown}
+        inputMode="numeric"
+        placeholder="例:24:18"
+        aria-invalid={invalid}
+        onFocus={() => {
+          setText(saved);
+          setEditing(true);
+        }}
+        onChange={(event) => {
+          setText(event.target.value);
+          const seconds = parseClockInput(event.target.value);
+          if (event.target.value.trim() === "" || seconds !== null) {
+            onChange(seconds);
+          }
+        }}
+        onBlur={() => setEditing(false)}
+      />
+      <span className="muted ia-note">
+        {invalid ? "「分:秒」か秒で入れてください" : end ? `終わり:${end}(次のセットの開始)` : "終わり:動画の最後"}
+      </span>
     </div>
   );
 }

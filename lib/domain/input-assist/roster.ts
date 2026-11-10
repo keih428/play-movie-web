@@ -9,6 +9,7 @@ import {
   type IaLineup,
   type IaMatchExtras,
   type IaPlay,
+  type IaPlayer,
   type IaRally,
   type IaSet,
   type IaSubstitution,
@@ -38,6 +39,24 @@ export type ScoutRosterFile = {
   /** vsdb の teams(試合のないチームも選べるように)。 */
   teams: IaTeam[];
 };
+
+/** 画面に渡す名簿(試合の中身 raw は重いので落としたもの)。 */
+export type ScoutRosterView = Omit<ScoutRosterFile, "matches"> & {
+  matches: Array<Omit<ScoutMatchChoice, "raw">>;
+};
+
+/** 名簿から、試合の中身(raw)を落とす。 */
+export function toRosterView(roster: ScoutRosterFile): ScoutRosterView {
+  return {
+    kind: roster.kind,
+    teams: roster.teams,
+    matches: roster.matches.map((match) => {
+      const view: Partial<ScoutMatchChoice> = { ...match };
+      delete view.raw;
+      return view as Omit<ScoutMatchChoice, "raw">;
+    }),
+  };
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -266,4 +285,29 @@ export function setsFromVsmMatch(raw: Record<string, unknown>): IaSet[] {
 
 function emptyPositions(): IaLineup["positions"] {
   return { "1": null, "2": null, "3": null, "4": null, "5": null, "6": null };
+}
+
+// ---- 部内ポータルの名簿から、ホームの選手を足す ----
+
+/**
+ * 部内ポータルの名簿(背番号・名前)のうち、チームにいない背番号の選手を足す(vsdb にいない選手がいたとき用)。
+ * もういる選手は書き換えない。足した背番号を返す。
+ */
+export function addMissingPlayers(team: IaTeam, players: IaPlayer[]): { team: IaTeam; added: number[] } {
+  const known = new Set(team.players.map((player) => player.shirtNumber));
+  const missing = players.filter((player) => Number.isFinite(player.shirtNumber) && !known.has(player.shirtNumber));
+  const seen = new Set<number>();
+  const unique = missing.filter((player) => (seen.has(player.shirtNumber) ? false : (seen.add(player.shirtNumber), true)));
+  if (unique.length === 0) {
+    return { team, added: [] };
+  }
+  return {
+    team: {
+      ...team,
+      players: [...team.players, ...unique.map((player) => ({ ...player }))].sort(
+        (left, right) => left.shirtNumber - right.shirtNumber,
+      ),
+    },
+    added: unique.map((player) => player.shirtNumber).sort((left, right) => left - right),
+  };
 }

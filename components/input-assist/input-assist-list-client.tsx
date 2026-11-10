@@ -100,7 +100,7 @@ export function InputAssistListClient({ initialSessions, teamSlug, homeTeamName 
         <section className="panel">
           <div className="panel-inner stack">
             <h2>新しい試合</h2>
-            <IaSetupEditor value={value} onChange={setValue} />
+            <IaSetupEditor value={value} onChange={setValue} teamSlug={teamSlug} />
             {error ? <p className="ia-error">{error}</p> : null}
             <div className="button-row">
               <button type="button" className="button" onClick={() => void create()} disabled={busy || !value.title.trim()}>
