@@ -79,6 +79,11 @@ export function buildTeamStaffSettingsPath(teamSlug: string): string {
   return `/t/${teamSlug}/staff/settings`;
 }
 
+/** 打ち込み補助(スタッフとシステム担当だけ。2026-11-10 から)。sessionId があればその試合。 */
+export function buildTeamInputAssistPath(teamSlug: string, sessionId?: string): string {
+  return `/t/${teamSlug}/staff/input-assist${sessionId ? `/${sessionId}` : ""}`;
+}
+
 export function buildTeamWorkspacesPath(teamSlug: string): string {
   return `/t/${teamSlug}/workspaces`;
 }
