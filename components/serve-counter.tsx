@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
+  SERVE_EFFECT_RULE,
   SERVE_RESULTS,
   SERVE_RESULT_LABELS,
   SERVE_TEAM_LABELS,
@@ -331,7 +332,7 @@ export function ServeCounter({
           ) : null}
         </div>
         <p className="tp-spike-round" aria-live="polite">
-          <span className="tp-small tp-muted">効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数</span>
+          <span className="tp-small tp-muted">{SERVE_EFFECT_RULE}</span>
           <span className={online ? "tp-spike-sync" : "tp-spike-sync tp-spike-sync-off"}>
             {online ? "● 反映中" : "○ つながっていません"}
           </span>
@@ -399,7 +400,7 @@ export function ServeCounter({
           <small className="tp-muted">
             {lastTap
               ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${SERVE_RESULT_LABELS[lastTap.result]}`
-              : "効果 = 相手を崩した。入った = それ以外で入ったサーブ"}
+              : "効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数"}
           </small>
         </div>
       </div>
