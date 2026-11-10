@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCandidates,
   contactsInPossession,
+  editFlowPlay,
   flowProgress,
   flowWarnings,
   isShirtUnambiguous,
@@ -190,5 +191,27 @@ describe("P1:進み具合", () => {
     };
     const skipped = { ...createEmptySet(2), skipped: true };
     expect(flowProgress([set, skipped])).toEqual([{ setIndex: 1, entered: 1, total: 2 }]);
+  });
+});
+
+describe("P1:タッチの編集", () => {
+  it("スキルかチームを変えたら、読み込んだ code を捨てる。P2 の評価は決め直す", () => {
+    const imported: IaPlay = { id: "p", team: "a", player: 8, skill: "A", effect: "#", code: "a8A5#" };
+    const skillChanged = editFlowPlay(imported, { skill: "D" });
+    expect(skillChanged).toMatchObject({ skill: "D", effect: "#" });
+    expect(skillChanged).not.toHaveProperty("code");
+    expect(editFlowPlay(imported, { team: "*" })).not.toHaveProperty("code");
+    // 背番号・時刻だけなら code は残す
+    expect(editFlowPlay(imported, { player: 9 })).toMatchObject({ player: 9, code: "a8A5#" });
+    const p2: IaPlay = { id: "q", team: "a", player: 8, skill: "A", effect: "-", effectSource: "manual" };
+    const changed = editFlowPlay(p2, { skill: "B" });
+    expect(changed).not.toHaveProperty("effect");
+    expect(changed).not.toHaveProperty("effectSource");
+  });
+
+  it("自動のサーブは背番号だけ変えられる", () => {
+    const serve: IaPlay = { id: "s", team: "*", player: 5, skill: "S", source: "auto" };
+    expect(editFlowPlay(serve, { skill: "A" })).toBe(serve);
+    expect(editFlowPlay(serve, { player: 7 })).toMatchObject({ player: 7, source: "manual", skill: "S" });
   });
 });

@@ -300,4 +300,34 @@ describe("P1 のタッチの書き出し", () => {
     ]);
     expect(parsed.sets[0].score).toEqual({ home: 0, away: 2 });
   });
+
+  it("人が消した評価は自動で入れ直さず、仮の評価で書き出す", () => {
+    const session = p1Session();
+    const [set] = session.sets;
+    const rallies = set.rallies.map((rally, index) =>
+      index === 0
+        ? {
+            ...rally,
+            // 相手のレセプションがそのまま返り、サーブした側がアタックしてミス(R → 相手の A は自動なら "/")
+            plays: [
+              { id: "1".repeat(24), team: "a" as const, player: 11, skill: "R" as const, time: 133.2, source: "manual" as const },
+              { id: "3".repeat(24), team: "*" as const, player: 14, skill: "A" as const, time: 135.1, source: "manual" as const },
+            ],
+          }
+        : rally,
+    );
+    const auto = buildVsm({ ...session, sets: [{ ...set, rallies }] }, { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    expect(auto.scout.sets[0].events[0].exchange.plays[1]).toMatchObject({ skill: "R", effect: "/", code: ".11/" });
+
+    const cleared = rallies.map((rally, index) =>
+      index === 0
+        ? { ...rally, plays: rally.plays?.map((play) => (play.skill === "R" ? { ...play, effectSource: "cleared" as const } : play)) }
+        : rally,
+    );
+    const vsm = buildVsm({ ...session, sets: [{ ...set, rallies: cleared }] }, { idFactory }) as typeof auto;
+    // 仮の評価(R は #)
+    expect(vsm.scout.sets[0].events[0].exchange.plays[1]).toMatchObject({ skill: "R", effect: "#", code: ".11#" });
+  });
 });

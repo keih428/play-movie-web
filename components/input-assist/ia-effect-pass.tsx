@@ -377,6 +377,7 @@ export function IaEffectPass({
                 <p className="muted ia-note">
                   {suggestion.fromContext ? `田中のデータ ${suggestion.sample} プレーから` : "前後が珍しいので、スキルだけの割合"}
                   {currentPlay.effectSource === "auto" ? "。自動で入れました(編集できます)" : ""}
+                  {currentPlay.effectSource === "cleared" ? "。消しました(自動では入れません)" : ""}
                   {currentPlay.effect !== undefined && currentPlay.effectSource === undefined ? "。読み込んだ評価" : ""}
                 </p>
                 <div className="ia-effects">
@@ -404,7 +405,7 @@ export function IaEffectPass({
 
               <ol className="ia-plays">
                 {currentEntry.plays.map((play, index) => {
-                  const unsure = !currentEntry.suggestions[index].isConfident;
+                  const unsure = !currentEntry.suggestions[index].isConfident || play.effectSource === "cleared";
                   return (
                     <li key={play.id} className={play.id === currentPlay.id ? "ia-play-active" : ""}>
                       <button
@@ -463,7 +464,7 @@ export function IaEffectPass({
                 <kbd>1</kbd> # / <kbd>2</kbd> + / <kbd>3</kbd> ! / <kbd>4</kbd> - / <kbd>5</kbd> / / <kbd>6</kbd> = で決めて、次のタッチへ(記号のキーでも入ります)
               </li>
               <li>
-                <kbd>Enter</kbd> 今の評価(なければ一番の候補)で決める / <kbd>Backspace</kbd> 評価を消す(迷わないものは自動に戻る)
+                <kbd>Enter</kbd> 今の評価(なければ一番の候補)で決める / <kbd>Backspace</kbd> 評価を消す(自動でも入れ直さない)
               </li>
               <li>
                 <kbd>Space</kbd> もう一度流す / <kbd>←</kbd>
@@ -519,7 +520,7 @@ export function IaEffectPass({
                   <span className="ia-rally-no">{entry.number}</span>
                   <span className="ia-effect-chips">
                     {entry.plays.map((play, index) => {
-                      const unsure = !entry.suggestions[index].isConfident;
+                      const unsure = !entry.suggestions[index].isConfident || play.effectSource === "cleared";
                       const classes = [
                         "ia-chip",
                         teamClass(play.team),

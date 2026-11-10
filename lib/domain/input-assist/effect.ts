@@ -123,16 +123,21 @@ export function isManualEffect(play: Pick<IaPlay, "effect" | "effectSource">): b
   return play.effect !== undefined && play.effectSource !== "auto";
 }
 
+/** 人が評価を消したタッチか(自動で入れ直さない)。 */
+export function isClearedEffect(play: Pick<IaPlay, "effectSource">): boolean {
+  return play.effectSource === "cleared";
+}
+
 /**
  * 迷わないタッチに、自動で評価を入れる(effectSource "auto")。
- * - 人が決めた評価(manual・読み込んだもの)は変えない
+ * - 人が決めた評価(manual・読み込んだもの)と、人が消した評価(cleared)は変えない
  * - 自動で入れた評価は、流れが変わったら入れ直す。迷うようになったら消す
  * 変わらなければ、元の配列をそのまま返す。
  */
 export function applyAutoEffects(plays: IaPlay[], pointWinner: IaTeamCode, suggestions = suggestEffects(plays, pointWinner)): IaPlay[] {
   let changed = false;
   const next = plays.map((play, index) => {
-    if (isManualEffect(play)) {
+    if (isManualEffect(play) || isClearedEffect(play)) {
       return play;
     }
     const suggestion = suggestions[index];
@@ -160,11 +165,12 @@ function withoutEffect(play: IaPlay): IaPlay {
 }
 
 /**
- * 人が評価を決める(effect = null で消す)。評価が変わったら、読み込んだときの code は捨てる(書き出すときに作り直す)。
+ * 人が評価を決める。effect = null で消す(cleared の印を付け、自動でも入れ直さない。書き出すときは仮の評価)。
+ * 評価が変わったら、読み込んだときの code は捨てる(書き出すときに作り直す)。
  */
 export function setPlayEffect(play: IaPlay, effect: IaEffect | null): IaPlay {
   if (effect === null) {
-    const cleared = withoutEffect(play);
+    const cleared: IaPlay = { ...withoutEffect(play), effectSource: "cleared" };
     if (play.effect !== undefined) {
       delete cleared.code;
     }
@@ -238,11 +244,11 @@ export function applyAutoEffectsToSet(set: IaSet): IaSet {
 export type EffectQueueMode = "unsure" | "all";
 export type EffectQueueItem = { rallyId: string; playId: string };
 
-/** 人が見るタッチの並び(ラリーの順、ラリーの中はタッチの順)。unsure = 迷うタッチだけ、all = 全部。 */
+/** 人が見るタッチの並び(ラリーの順、ラリーの中はタッチの順)。unsure = 迷うタッチと人が消したタッチ、all = 全部。 */
 export function buildEffectQueue(entries: EffectRallyEntry[], mode: EffectQueueMode): EffectQueueItem[] {
   return entries.flatMap((entry) =>
     entry.plays
-      .filter((_, index) => mode === "all" || !entry.suggestions[index].isConfident)
+      .filter((play, index) => mode === "all" || !entry.suggestions[index].isConfident || isClearedEffect(play))
       .map((play) => ({ rallyId: entry.rally.id, playId: play.id })),
   );
 }
@@ -270,7 +276,7 @@ export type IaEffectProgress = {
   /** 評価の決まったタッチ(自動を含む)。 */
   decided: number;
   total: number;
-  /** 人が決める(迷う)タッチのうち、まだ決まっていないもの。 */
+  /** 人が決める(迷う・人が消した)タッチのうち、まだ決まっていないもの。 */
   remaining: number;
   /** P1 を入れ終えたラリーの数。 */
   rallies: number;
@@ -289,7 +295,7 @@ export function effectProgress(sets: IaSet[]): IaEffectProgress[] {
           total += 1;
           if (play.effect !== undefined) {
             decided += 1;
-          } else if (!entry.suggestions[index].isConfident) {
+          } else if (!entry.suggestions[index].isConfident || isClearedEffect(play)) {
             remaining += 1;
           }
         });

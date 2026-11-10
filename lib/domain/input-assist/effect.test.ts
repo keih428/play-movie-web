@@ -121,7 +121,19 @@ describe("P2:自動の評価と人の評価", () => {
     expect(changed).not.toHaveProperty("code");
     const cleared = setPlayEffect({ ...play, effectSource: "manual" }, null);
     expect(cleared).not.toHaveProperty("effect");
-    expect(cleared).not.toHaveProperty("effectSource");
+    expect(cleared).toMatchObject({ effectSource: "cleared" });
+    expect(cleared).not.toHaveProperty("code");
+  });
+
+  it("迷わないタッチでも、人が消したら自動で入れ直さない。迷うものの並び・残りに入る", () => {
+    const filled = applyAutoEffects(plays("*5S", "a11R", "a13E", "a8A"), "a");
+    expect(filled[2]).toMatchObject({ effect: "+", effectSource: "auto" });
+    const cleared = filled.map((play, index) => (index === 2 ? setPlayEffect(play, null) : play));
+    const again = applyAutoEffects(cleared, "*");
+    expect(again[2].effect).toBeUndefined();
+    expect(again[2].effectSource).toBe("cleared");
+    // もう一度決めれば manual
+    expect(setPlayEffect(again[2], "-")).toMatchObject({ effect: "-", effectSource: "manual" });
   });
 });
 
@@ -194,6 +206,19 @@ describe("P2:人が決めるタッチの並び・進み具合", () => {
     const set = p2Set();
     expect(effectProgress([set])).toEqual([{ setIndex: 1, decided: 3, total: 6, remaining: 3, rallies: 2 }]);
     expect(effectProgress([{ ...set, skipped: true }])).toEqual([]);
+  });
+
+  it("人が消した迷わないタッチは、迷うものの並びと残りに入る", () => {
+    const set = applyAutoEffectsToSet(p2Set());
+    const cleared = {
+      ...set,
+      rallies: set.rallies.map((rally) =>
+        rally.id === "r1" ? { ...rally, plays: rally.plays?.map((play) => (play.id === "r1-1" ? setPlayEffect(play, null) : play)) } : rally,
+      ),
+    };
+    expect(buildEffectQueue(effectRallies(cleared), "unsure").map((item) => item.playId)).toEqual(["r1-s", "r1-0", "r1-1", "r1-2"]);
+    expect(effectProgress([cleared])).toEqual([{ setIndex: 1, decided: 2, total: 6, remaining: 4, rallies: 2 }]);
+    expect(applyAutoEffectsToSet(cleared)).toBe(cleared);
   });
 
   it("セットに自動の評価を保存する(変わらなければ同じセット)", () => {

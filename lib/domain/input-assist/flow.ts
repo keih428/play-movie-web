@@ -115,6 +115,28 @@ export function predictNextPlay(plays: FlowPlay[], servingTeam: IaTeamCode = "*"
   return prediction;
 }
 
+// ---- タッチの編集 ----
+
+/**
+ * P1 でタッチを編集する。
+ * - サーブ(P0 とエンジンから決まるもの)はチームとスキルを変えない。背番号を変えたら人が決めたものにする
+ * - スキルかチームが変わったら、読み込んだ code は捨てる(書き出すときに作り直す)。P2 で入れた評価は決め直す
+ */
+export function editFlowPlay(play: IaPlay, patch: Partial<Pick<IaPlay, "player" | "skill" | "team" | "time">>): IaPlay {
+  if (play.skill === "S" && play.source !== undefined) {
+    return patch.player !== undefined ? { ...play, player: patch.player, source: "manual" } : play;
+  }
+  const next = { ...play, ...patch };
+  if (next.skill !== play.skill || next.team !== play.team) {
+    delete next.code;
+    if (play.effectSource !== undefined) {
+      delete next.effect;
+      delete next.effectSource;
+    }
+  }
+  return next;
+}
+
 // ---- 選手の候補 ----
 
 export type IaCandidateRow = "front" | "back" | "libero";

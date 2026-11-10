@@ -46,7 +46,7 @@ export const IA_SKILLS: IaSkill[] = ["S", "R", "E", "A", "B", "D", "F"];
  * 1つのタッチ。team は VSM の値("*" = ホーム、"a" = アウェイ)、player は背番号。
  * P1(流れ)で入れたものは team・player・skill・time だけで、hitType・effect はない。
  * effect がない = 評価はまだ決まっていない(P2 で入れる)。書き出すときは仮の評価を入れる(flow.ts)。
- * P2 では、迷わない評価は自動で入れ(effectSource auto)、迷う評価は人が決める(effectSource manual)。
+ * P2 では、迷わない評価は自動で入れ(effectSource auto)、迷う評価は人が決める(effectSource manual)。人が消したら cleared。
  */
 export type IaPlay = {
   id: string;
@@ -57,8 +57,11 @@ export type IaPlay = {
   source?: "auto" | "manual";
   hitType?: string;
   effect?: string;
-  /** P2 の評価の出どころ。auto = 前後のタッチから自動で入れた、manual = 人が決めた。VSM から読み込んだものにはない(人が決めたものと同じに扱う)。 */
-  effectSource?: "auto" | "manual";
+  /**
+   * P2 の評価の出どころ。auto = 前後のタッチから自動で入れた、manual = 人が決めた、
+   * cleared = 人が消した(自動で入れ直さない。書き出すときは仮の評価)。VSM から読み込んだものにはない(人が決めたものと同じに扱う)。
+   */
+  effectSource?: "auto" | "manual" | "cleared";
   /** 動画の時刻(秒)。 */
   time?: number;
   startZone?: number;

@@ -182,7 +182,9 @@ function normalizePlay(value: unknown): IaPlay | null {
     time: input.time !== undefined && input.time !== null && Number.isFinite(time) ? roundTime(time) : undefined,
     source: input.source === "auto" || input.source === "manual" ? input.source : undefined,
     effect: typeof input.effect === "string" && input.effect ? input.effect : undefined,
-    effectSource: input.effectSource === "auto" || input.effectSource === "manual" ? input.effectSource : undefined,
+    effectSource: input.effectSource === "auto" || input.effectSource === "manual" || input.effectSource === "cleared"
+        ? input.effectSource
+        : undefined,
   };
   if (play.time === undefined) {
     delete play.time;
