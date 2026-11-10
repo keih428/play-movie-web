@@ -1,16 +1,19 @@
-// 攻撃コンビ(32)とセッターコール(18)の、いつもの一覧(vsm/2026-06-24 UTVB-TIT.vsm から写したもの)。
-// 名簿を vsdb / vsm から読み込んだときはそちらを使う。読み込んでいないときだけ、書き出しでこれを使う。
+// 攻撃コンビ(32)とセッターコール(18)の一覧。昨シーズン('26秋季リーグ.vsdb)の 2026-10-24 國學院大學戦で
+// 田中が手直しした版(P1・P5・PA に始まりのサブゾーンを足したもの)を写した。
+// 今シーズンの vsdb(2027上半期)は選手の名前だけ登録されていて、攻撃コンビ・セッターコールは手直しの前のままなので、
+// 書き出しではいつもこの一覧を使う(林の指示、2026-11-10)。
 
 export const DEFAULT_ATTACK_COMBINATIONS: unknown[] = [
   {
-    "_id": "5fe17c0f1a073d29e4f96ef9",
+    "_id": "6ab205c053bff724cc21194c",
     "code": "P1",
     "name": "Highset zone4",
     "hitType": "H",
     "targetAttacker": "F",
     "notes": "",
     "start": {
-      "zone": 4
+      "zone": 4,
+      "subZone": "C"
     }
   },
   {
@@ -44,13 +47,14 @@ export const DEFAULT_ATTACK_COMBINATIONS: unknown[] = [
     }
   },
   {
-    "_id": "5fe17cb21a073d29e4f96eff",
+    "_id": "6ab205cc53bff724cc21194d",
     "code": "P5",
     "name": "Highset zone2",
     "hitType": "H",
     "targetAttacker": "F",
     "start": {
-      "zone": 2
+      "zone": 2,
+      "subZone": "B"
     }
   },
   {
@@ -84,13 +88,14 @@ export const DEFAULT_ATTACK_COMBINATIONS: unknown[] = [
     }
   },
   {
-    "_id": "5fe17d911a073d29e4f96f09",
+    "_id": "6ab205d453bff724cc21194e",
     "code": "PA",
     "name": "A",
     "hitType": "Q",
     "targetAttacker": "C",
     "start": {
-      "zone": 3
+      "zone": 3,
+      "subZone": "C"
     }
   },
   {

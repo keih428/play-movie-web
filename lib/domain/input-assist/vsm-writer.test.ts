@@ -57,8 +57,11 @@ describe("打ち込み補助:VSM の書き出し", () => {
     const original = JSON.parse(sampleText);
     const vsm = JSON.parse(buildVsmText(session, { idFactory })) as typeof original;
     expect(vsm.team).toEqual(original.team);
-    expect(vsm.attackCombinations).toEqual(original.attackCombinations);
-    expect(vsm.setterCalls).toEqual(original.setterCalls);
+    // 攻撃コンビは元のファイルではなく、昨シーズンの手直し版(P1・P5・PA にサブゾーン)。コードの並びは同じ
+    expect((vsm.attackCombinations as { code: string }[]).map((c) => c.code)).toEqual(
+      (original.attackCombinations as { code: string }[]).map((c) => c.code),
+    );
+    expect(vsm.setterCalls).toHaveLength(18);
     expect(vsm.spectators).toBeNull();
     expect(vsm.gameType).toBe("indoor");
     expect(vsm.version).toBe(1);
@@ -137,5 +140,15 @@ describe("打ち込み補助:VSM の書き出し", () => {
     expect(events[3].exchange.plays[0]).toMatchObject({ team: "a", player: "20", code: "a20SM.", time: 1492 });
     expect(events[3].lineup.away.setterAt).toBe(6);
     expect(vsm.scout.sets[0].score).toEqual({ home: 0, away: 2 });
+  });
+});
+
+describe("攻撃コンビ・セッターコール", () => {
+  it("いつも昨シーズンの手直し版(P1 はゾーン4のサブゾーン C)を使う", async () => {
+    const { DEFAULT_ATTACK_COMBINATIONS, DEFAULT_SETTER_CALLS } = await import("@/lib/domain/input-assist/vsm-defaults");
+    const p1 = (DEFAULT_ATTACK_COMBINATIONS as { code: string; start: { zone: number; subZone?: string } }[]).find((c) => c.code === "P1");
+    expect(p1?.start).toEqual({ zone: 4, subZone: "C" });
+    expect(DEFAULT_ATTACK_COMBINATIONS).toHaveLength(32);
+    expect(DEFAULT_SETTER_CALLS).toHaveLength(18);
   });
 });
