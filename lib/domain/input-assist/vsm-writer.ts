@@ -3,6 +3,7 @@
 // 途中まででも書き出せる:サーブの向きが決まっていないラリーと、ラリーでないものは入れない。
 
 import { computeSet, teamCode, type IaRallyResult } from "@/lib/domain/input-assist/engine";
+import { applyAutoEffects } from "@/lib/domain/input-assist/effect";
 import { isFlowEntered, syncServePlay, withPlaceholders } from "@/lib/domain/input-assist/flow";
 import { createObjectId, type IdFactory } from "@/lib/domain/input-assist/ids";
 import { buildPlayCode } from "@/lib/domain/input-assist/play-code";
@@ -86,12 +87,12 @@ function toVsmPlay(play: IaPlay, previous: IaPlay | undefined, fallbackTime: num
 
 function buildRallyPlays(rally: IaRally, result: IaRallyResult): VsmPlay[] {
   // 先頭はいつもサーブ(P0 とエンジンから決まる)。そのあとは P1 で入れた順のまま。
-  // 評価・種類の決まっていないタッチ(P1 で入れたもの)には、仮のものを入れる(flow.ts)。
-  const plays = withPlaceholders(
-    syncServePlay(rally, result.servingTeam, result.server),
-    teamCode(result.pointWinner),
-    isFlowEntered(rally),
-  );
+  // P2 の評価:人が決めたものはそのまま。迷わないタッチは、今の流れから自動の評価を入れ直す(effect.ts)。
+  // それでも評価・種類の決まっていないタッチ(P1 で入れたもの)には、仮のものを入れる(flow.ts)。
+  const pointWinner = teamCode(result.pointWinner);
+  const entered = isFlowEntered(rally);
+  const synced = syncServePlay(rally, result.servingTeam, result.server);
+  const plays = withPlaceholders(entered ? applyAutoEffects(synced, pointWinner) : synced, pointWinner, entered);
   return plays.map((play, index) => toVsmPlay(play, plays[index - 1], rally.serveTime));
 }
 

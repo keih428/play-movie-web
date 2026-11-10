@@ -7,6 +7,7 @@ import { courtSideOf, type IaRallyResult, type IaSetResult } from "@/lib/domain/
 import {
   SKILL_LABELS,
   buildCandidates,
+  editFlowPlay,
   flowWarnings,
   isFlowEntered,
   isShirtUnambiguous,
@@ -250,11 +251,7 @@ export function IaFlowPass({
           if (play.id !== playId) {
             return play;
           }
-          if (play.skill === "S" && play.source !== undefined) {
-            // サーブはチームとスキルを変えない(P0 のサーブの向きで決まる)。背番号を変えたら人が決めたものにする
-            return patch.player !== undefined ? { ...play, player: patch.player, source: "manual" } : play;
-          }
-          return { ...play, ...patch };
+          return editFlowPlay(play, patch);
         }),
       );
     },

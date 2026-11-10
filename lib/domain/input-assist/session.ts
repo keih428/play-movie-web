@@ -181,12 +181,18 @@ function normalizePlay(value: unknown): IaPlay | null {
     skill: input.skill as IaPlay["skill"],
     time: input.time !== undefined && input.time !== null && Number.isFinite(time) ? roundTime(time) : undefined,
     source: input.source === "auto" || input.source === "manual" ? input.source : undefined,
+    effect: typeof input.effect === "string" && input.effect ? input.effect : undefined,
+    effectSource: input.effectSource === "auto" || input.effectSource === "manual" || input.effectSource === "cleared"
+        ? input.effectSource
+        : undefined,
   };
   if (play.time === undefined) {
     delete play.time;
   }
-  if (play.source === undefined) {
-    delete play.source;
+  for (const key of ["source", "effect", "effectSource"] as const) {
+    if (play[key] === undefined) {
+      delete play[key];
+    }
   }
   return play;
 }

@@ -248,4 +248,86 @@ describe("P1 のタッチの書き出し", () => {
     expect(plays[0]).toMatchObject({ team: "a", player: "13", skill: "S" });
     expect(plays).toHaveLength(5);
   });
+
+  function p2Session(): InputAssistSession {
+    const session = p1Session();
+    const [set] = session.sets;
+    const effects: Record<string, string> = { "1": "-", "2": "/", "3": "-", "4": "/" };
+    const rallies = set.rallies.map((rally, index) => {
+      if (index === 0) {
+        // P2 で人が決めた評価(サーブは P1 で保存したもの)
+        return {
+          ...rally,
+          plays: [
+            { id: "5".repeat(24), team: "*" as const, player: 5, skill: "S" as const, time: 131.8, source: "auto" as const, effect: "!", effectSource: "manual" as const },
+            ...(rally.plays ?? []).map((play) => ({ ...play, effect: effects[play.id[0]], effectSource: "manual" as const })),
+          ],
+        };
+      }
+      // 自動で入れたが古くなった評価(サーブだけのラリーは、点を取ったのでエース)
+      return {
+        ...rally,
+        plays: [{ id: "6".repeat(24), team: "a" as const, player: 3, skill: "S" as const, time: 149.2, source: "auto" as const, effect: "-", effectSource: "auto" as const }],
+      };
+    });
+    return { ...session, sets: [{ ...set, rallies }] };
+  }
+
+  it("P2 で決めた評価で書き出し、code も評価から作る。自動の評価は今の流れで入れ直す", () => {
+    const vsm = buildVsm(p2Session(), { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    const [first, second] = vsm.scout.sets[0].events;
+    expect(first.exchange.plays.map((play: Record<string, unknown>) => [play.skill, play.effect, play.code])).toEqual([
+      ["S", "!", "5SM."],
+      ["R", "-", ".11-"],
+      ["E", "/", "a13E/"],
+      ["A", "-", "a8A."],
+      ["D", "/", ".7D/"],
+    ]);
+    // effectSource・source は VSM に書かない
+    expect(first.exchange.plays[1]).not.toHaveProperty("effectSource");
+    expect(second.exchange.plays[0]).toMatchObject({ effect: "#", code: "a3SM." });
+  });
+
+  it("P2 の評価を入れた VSM を今のパーサーで読むと、評価がそろう", () => {
+    const session = p2Session();
+    const parsed = parseVsmText(buildVsmText(session, { idFactory }), buildVsmFileName(session)).matches[0];
+    const rallies = parsed.sets[0].events.filter((event) => event.plays.length > 0);
+    expect(rallies.map((event) => event.plays.map((play) => `${play.team}${play.player}${play.skill}${play.effect}`))).toEqual([
+      ["*05S!", "a11R-", "a13E/", "a08A-", "*07D/"],
+      ["a03S#"],
+    ]);
+    expect(parsed.sets[0].score).toEqual({ home: 0, away: 2 });
+  });
+
+  it("人が消した評価は自動で入れ直さず、仮の評価で書き出す", () => {
+    const session = p1Session();
+    const [set] = session.sets;
+    const rallies = set.rallies.map((rally, index) =>
+      index === 0
+        ? {
+            ...rally,
+            // 相手のレセプションがそのまま返り、サーブした側がアタックしてミス(R → 相手の A は自動なら "/")
+            plays: [
+              { id: "1".repeat(24), team: "a" as const, player: 11, skill: "R" as const, time: 133.2, source: "manual" as const },
+              { id: "3".repeat(24), team: "*" as const, player: 14, skill: "A" as const, time: 135.1, source: "manual" as const },
+            ],
+          }
+        : rally,
+    );
+    const auto = buildVsm({ ...session, sets: [{ ...set, rallies }] }, { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    expect(auto.scout.sets[0].events[0].exchange.plays[1]).toMatchObject({ skill: "R", effect: "/", code: ".11/" });
+
+    const cleared = rallies.map((rally, index) =>
+      index === 0
+        ? { ...rally, plays: rally.plays?.map((play) => (play.skill === "R" ? { ...play, effectSource: "cleared" as const } : play)) }
+        : rally,
+    );
+    const vsm = buildVsm({ ...session, sets: [{ ...set, rallies: cleared }] }, { idFactory }) as typeof auto;
+    // 仮の評価(R は #)
+    expect(vsm.scout.sets[0].events[0].exchange.plays[1]).toMatchObject({ skill: "R", effect: "#", code: ".11#" });
+  });
 });
