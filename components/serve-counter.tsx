@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HalfTeamColumns } from "@/components/half-team-columns";
+import { ServeDrillResult } from "@/components/serve-drill-result";
 import { ServeGradeGuide } from "@/components/serve-grade-guide";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
@@ -67,6 +68,7 @@ const BUTTON_CLASS: Record<ServeResult, string> = {
  * サーブ効果率の集計の画面(2026-11-10 から。主将の依頼)。1人1行で # + ! - / = の6つのボタン(DataVolley の評価)。
  * - 打つのはリベロ以外のプレイヤー。前半・後半に分かれて打つので、上で前半・後半を切り替える(端末ごとに覚える)
  * - 「✎ 人」で前半・後半を2列に並べて分ける(スパイクと同じ)。組み方はメニューごとに共有する
+ * - 上の「入力|結果」で、このメニューの結果の表(全員・前半/後半・全体)に切り替えられる(2026-11-10 から)
  * - マネージャーが何人かで同時に数えられるよう、2秒ごとにほかの人が数えた分と組み方を取りにいく
  */
 export function ServeCounter({
@@ -84,6 +86,8 @@ export function ServeCounter({
   const [setup, setSetup] = useState<ServeSetup>(() => initialSetup ?? defaultSetup(servers, initialCounts));
   const setupSavedAt = useRef(initialSetupSavedAt);
   const [picking, setPicking] = useState(false);
+  // 「入力」(ボタンで数える)か「結果」(このメニューの表)か。数えない人(部員)は結果から(2026-11-10 から)。
+  const [view, setView] = useState<"input" | "result">(canRecord ? "input" : "result");
   const [team, setTeam] = useState<ServeTeam>("first");
   const [history, setHistory] = useState<Tap[]>([]);
   const [error, setError] = useState("");
@@ -308,20 +312,29 @@ export function ServeCounter({
   return (
     <div className={canRecord ? "tp-counter tp-spike tp-counter-recording" : "tp-counter tp-spike"}>
       <div className="tp-counter-top">
-        <div className="tp-counter-filters">
-          <div className="tp-seg tp-spike-teams" role="group" aria-label="前半・後半">
-            {(["first", "second"] as const).map((entry) => (
-              <button key={entry} type="button" aria-pressed={entry === team} onClick={() => chooseTeam(entry)}>
-                {SERVE_TEAM_LABELS[entry]} <small>{teamSize(entry)}人</small>
-              </button>
-            ))}
-          </div>
-          {canRecord ? (
-            <button type="button" className="tp-spike-edit" onClick={() => setPicking(true)}>
-              ✎ 人
+        <div className="tp-seg tp-serve-views" role="group" aria-label="入力・結果">
+          {(["input", "result"] as const).map((entry) => (
+            <button key={entry} type="button" aria-pressed={entry === view} onClick={() => setView(entry)}>
+              {entry === "input" ? "入力" : "結果"}
             </button>
-          ) : null}
+          ))}
         </div>
+        {view === "input" ? (
+          <div className="tp-counter-filters">
+            <div className="tp-seg tp-spike-teams" role="group" aria-label="前半・後半">
+              {(["first", "second"] as const).map((entry) => (
+                <button key={entry} type="button" aria-pressed={entry === team} onClick={() => chooseTeam(entry)}>
+                  {SERVE_TEAM_LABELS[entry]} <small>{teamSize(entry)}人</small>
+                </button>
+              ))}
+            </div>
+            {canRecord ? (
+              <button type="button" className="tp-spike-edit" onClick={() => setPicking(true)}>
+                ✎ 人
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <p className="tp-spike-round" aria-live="polite">
           <span className="tp-small tp-muted">効果は + と /</span>
           <span className={online ? "tp-spike-sync" : "tp-spike-sync tp-spike-sync-off"}>
@@ -337,67 +350,75 @@ export function ServeCounter({
         </p>
       ) : null}
 
-      <div className="tp-spike-list">
-        {shown.map((player) => {
-          const tally = counts[player.id] ?? emptyServeTally();
-          return (
-            <div key={player.id} className="tp-spike-row tp-serve-row">
-              <span className="tp-counter-name">
-                <b>{player.displayName}</b>
-                <small>{player.position}</small>
-                <small>
-                  {serveAttempts(tally)}本 {formatServeEfficiency(tally)}
-                </small>
-              </span>
-              {SERVE_RESULTS.map((result) => (
-                <button
-                  key={result}
-                  type="button"
-                  className={[BUTTON_CLASS[result], flash === `${player.id}|${result}` ? "tp-counter-flash" : ""].join(" ")}
-                  disabled={!canRecord}
-                  aria-label={`${player.displayName} ${SERVE_RESULT_LABELS[result]}:${tally[result]}本`}
-                  onClick={() => press(player.id, result)}
-                >
-                  <b>{tally[result]}</b>
-                  <small>
-                    {result} {SERVE_RESULT_SHORT[result]}
-                  </small>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-        {shown.length === 0 ? (
-          <p className="tp-muted">
-            {SERVE_TEAM_LABELS[team]}に打つ人がいません。{canRecord ? "「✎ 人」から選んでください。" : ""}
-          </p>
-        ) : null}
-      </div>
+      {view === "result" ? (
+        <ServeDrillResult players={servers} counts={counts} teams={setup.teams} />
+      ) : null}
 
-      <div className="tp-counter-dock tp-spike-dock">
-        {canRecord ? (
-          <button type="button" className="tp-counter-undo" disabled={!lastTap} onClick={undo}>
-            ↶ 戻す
-          </button>
-        ) : null}
-        <div className="tp-spike-battle" aria-live="polite">
-          <div>
-            {(["first", "second"] as const).map((entry) => {
-              const tally = teamTally(entry);
-              return (
-                <span key={entry}>
-                  {SERVE_TEAM_LABELS[entry]} {serveAttempts(tally)}本 <small>{formatServeEfficiency(tally)}</small>
+      {view === "input" ? (
+        <div className="tp-spike-list">
+          {shown.map((player) => {
+            const tally = counts[player.id] ?? emptyServeTally();
+            return (
+              <div key={player.id} className="tp-spike-row tp-serve-row">
+                <span className="tp-counter-name">
+                  <b>{player.displayName}</b>
+                  <small>{player.position}</small>
+                  <small>
+                    {serveAttempts(tally)}本 {formatServeEfficiency(tally)}
+                  </small>
                 </span>
-              );
-            })}
-          </div>
-          <small className="tp-muted">
-            {lastTap
-              ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${SERVE_RESULT_LABELS[lastTap.result]}`
-              : "効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数"}
-          </small>
+                {SERVE_RESULTS.map((result) => (
+                  <button
+                    key={result}
+                    type="button"
+                    className={[BUTTON_CLASS[result], flash === `${player.id}|${result}` ? "tp-counter-flash" : ""].join(" ")}
+                    disabled={!canRecord}
+                    aria-label={`${player.displayName} ${SERVE_RESULT_LABELS[result]}:${tally[result]}本`}
+                    onClick={() => press(player.id, result)}
+                  >
+                    <b>{tally[result]}</b>
+                    <small>
+                      {result} {SERVE_RESULT_SHORT[result]}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+          {shown.length === 0 ? (
+            <p className="tp-muted">
+              {SERVE_TEAM_LABELS[team]}に打つ人がいません。{canRecord ? "「✎ 人」から選んでください。" : ""}
+            </p>
+          ) : null}
         </div>
-      </div>
+      ) : null}
+
+      {view === "input" ? (
+        <div className="tp-counter-dock tp-spike-dock">
+          {canRecord ? (
+            <button type="button" className="tp-counter-undo" disabled={!lastTap} onClick={undo}>
+              ↶ 戻す
+            </button>
+          ) : null}
+          <div className="tp-spike-battle" aria-live="polite">
+            <div>
+              {(["first", "second"] as const).map((entry) => {
+                const tally = teamTally(entry);
+                return (
+                  <span key={entry}>
+                    {SERVE_TEAM_LABELS[entry]} {serveAttempts(tally)}本 <small>{formatServeEfficiency(tally)}</small>
+                  </span>
+                );
+              })}
+            </div>
+            <small className="tp-muted">
+              {lastTap
+                ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${SERVE_RESULT_LABELS[lastTap.result]}`
+                : "効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数"}
+            </small>
+          </div>
+        </div>
+      ) : null}
 
       {picking ? <button type="button" className="tp-counter-backdrop" aria-label="閉じる" onClick={closePicker} /> : null}
       {picking ? (
