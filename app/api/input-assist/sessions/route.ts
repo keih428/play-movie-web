@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: problem }, { status: 400 });
   }
   try {
-    const session = await createInputAssistSession(teamSlug, payload ?? {}, auth.member.id);
+    const session = await createInputAssistSession(teamSlug, payload ?? {}, auth.member);
     return NextResponse.json({ session });
   } catch (error) {
     console.error("[api/input-assist] create failed", error);

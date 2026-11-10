@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IaAssignmentBoard } from "@/components/input-assist/ia-assignment-board";
 import { IaEffectPass } from "@/components/input-assist/ia-effect-pass";
 import { IaFlowPass } from "@/components/input-assist/ia-flow-pass";
 import { IaTypePass } from "@/components/input-assist/ia-type-pass";
 import { IaZonePass } from "@/components/input-assist/ia-zone-pass";
 import { formatClock, formatDuration, isTypingTarget } from "@/components/input-assist/ia-utils";
 import { IaPlayer, type IaPlayerHandle } from "@/components/input-assist/ia-player";
+import { IaRateButtons } from "@/components/input-assist/ia-rate-buttons";
 import { IaSetupEditor, type IaSetupValue } from "@/components/input-assist/ia-setup-editor";
+import { useCollabSession, type SaveState } from "@/components/input-assist/use-collab-session";
 import { usePassTimer, type PassTimerFlush } from "@/components/input-assist/use-pass-timer";
+import { usePlaybackRate } from "@/components/input-assist/use-playback-rate";
+import { PASS_LABELS, type InputAssistBundle } from "@/lib/domain/input-assist/board";
+import { sliceKey, type IaP0Data } from "@/lib/domain/input-assist/collab";
 import { computeSet, formatRotation, servingTeamOf, sortRallies } from "@/lib/domain/input-assist/engine";
 import { createObjectId } from "@/lib/domain/input-assist/ids";
 import {
@@ -27,7 +33,7 @@ import { applyAutoTypesToSet, buildTypeHistory, typeProgress } from "@/lib/domai
 import { applySkeleton, parseSkeleton } from "@/lib/domain/input-assist/skeleton";
 import type {
   IaCourtSide,
-  IaPassLog,
+  IaPassName,
   IaRally,
   IaSet,
   IaTeamSide,
@@ -37,16 +43,17 @@ import { buildVsmFileName, buildVsmText } from "@/lib/domain/input-assist/vsm-wr
 import { buildTeamApiPath } from "@/lib/domain/team";
 
 type Tab = "setup" | "p0" | "p1" | "p2" | "p3" | "p4";
-type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
 type InputAssistSessionClientProps = {
-  initialSession: InputAssistSession;
+  initialBundle: InputAssistBundle;
+  currentMember: { id: string; name: string };
   teamSlug: string;
   listHref: string;
 };
 
 const NUDGE_SECONDS = 0.5;
-const SAVE_DELAY_MS = 1200;
+/** 通して流しているときに ← → で動かす秒数。 */
+const SEEK_SECONDS = 5;
 
 const SAVE_LABELS: Record<SaveState, string> = {
   saved: "保存済み",
@@ -55,6 +62,9 @@ const SAVE_LABELS: Record<SaveState, string> = {
   error: "保存できませんでした",
   conflict: "ほかの画面と重なりました",
 };
+
+const TAB_OF_PASS: Record<IaPassName, Tab> = { P0: "p0", P1: "p1", P2: "p2", P3: "p3", P4: "p4" };
+const PASS_OF_TAB: Partial<Record<Tab, IaPassName>> = { p0: "P0", p1: "P1", p2: "P2", p3: "P3", p4: "P4" };
 
 function downloadText(text: string, fileName: string) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -67,56 +77,114 @@ function downloadText(text: string, fileName: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function InputAssistSessionClient({ initialSession, teamSlug, listHref }: InputAssistSessionClientProps) {
-  const [session, setSession] = useState(initialSession);
-  const [tab, setTab] = useState<Tab>(initialSession.sets.some((set) => set.rallies.length > 0) ? "p0" : "setup");
-  const [setIndex, setSetIndex] = useState(initialSession.sets.find((set) => !set.skipped)?.setIndex ?? 1);
+export function InputAssistSessionClient({
+  initialBundle,
+  currentMember,
+  teamSlug,
+  listHref,
+}: InputAssistSessionClientProps) {
+  // 最初に開くところ:自分が担当しているマス(止まっていないもの)があればそこ、なければラリーがあれば P0、なければ準備
+  const [initialPlace] = useState(() => {
+    const held = initialBundle.assignments
+      .filter((entry) => entry.holderId === currentMember.id && !entry.done && entry.heartbeatAt)
+      .sort((left, right) => (right.heartbeatAt ?? "").localeCompare(left.heartbeatAt ?? ""))[0];
+    const firstSet = initialBundle.meta.sets.find((set) => !set.skipped)?.setIndex ?? 1;
+    if (held && initialBundle.meta.sets.some((set) => set.setIndex === held.setIndex && !set.skipped)) {
+      return { tab: TAB_OF_PASS[held.pass], setIndex: held.setIndex, resumed: true };
+    }
+    const hasRallies = initialBundle.slices.some(
+      (record) => record.pass === "P0" && ((record.data as IaP0Data).rallies ?? []).length > 0,
+    );
+    return { tab: (hasRallies ? "p0" : "setup") as Tab, setIndex: firstSet, resumed: false };
+  });
+  const [tab, setTabState] = useState<Tab>(initialPlace.tab);
+  const [setIndex, setSetIndex] = useState(initialPlace.setIndex);
+  // 自分でタブかセットを選ぶまでは、開いただけで担当にはしない(P1 を打ちに来た人が、最初の P0 を取らないように)
+  const [chosen, setChosen] = useState(initialPlace.resumed);
+  const setTab = useCallback((next: Tab) => {
+    setTabState(next);
+    setChosen(true);
+  }, []);
+  const passName: IaPassName | null = PASS_OF_TAB[tab] ?? null;
+  const activeKey = passName ? sliceKey(setIndex, passName) : null;
+
+  const {
+    session,
+    sessionRef,
+    edit,
+    saveState,
+    errorMessage,
+    metaConflict,
+    reloadMeta,
+    overwriteMeta,
+    remoteNotice,
+    acceptRemote,
+    dismissRemote,
+    mergeNotice,
+    clearMergeNotice,
+    assignments,
+    passSeconds: passSecondsList,
+    addPassSeconds,
+    assign,
+    takeover,
+    dismissTakeover,
+    markActivity: markPresence,
+  } = useCollabSession({
+    initialBundle,
+    teamSlug,
+    member: currentMember,
+    activeKey,
+    autoClaim: chosen,
+  });
+
   const [selectedRallyId, setSelectedRallyId] = useState<string | null>(null);
   const [continuous, setContinuous] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [message, setMessage] = useState("");
-  const [editVersion, setEditVersion] = useState(0);
-  const [savedVersion, setSavedVersion] = useState(0);
-  const [saveState, setSaveState] = useState<SaveState>("saved");
-  const [conflict, setConflict] = useState<InputAssistSession | null>(null);
 
   const playerRef = useRef<IaPlayerHandle | null>(null);
-  const sessionRef = useRef(session);
+  const { rate, changeRate } = usePlaybackRate(playerRef);
   const windowRef = useRef<{ rallyId: string; start: number; end: number; entered: boolean; startedAt: number } | null>(
     null,
   );
   const continuousRef = useRef(continuous);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
-  const savingRef = useRef(false);
 
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
   useEffect(() => {
     continuousRef.current = continuous;
   }, [continuous]);
 
   const activeSet: IaSet | undefined =
     session.sets.find((set) => set.setIndex === setIndex && !set.skipped) ?? session.sets.find((set) => !set.skipped);
+  const activeSetIndex = activeSet?.setIndex;
+  // 選んでいたセットが打たないセットになったなど:実際に開いているセットに合わせる(担当もそのセットにする)
+  useEffect(() => {
+    if (activeSetIndex !== undefined && activeSetIndex !== setIndex) {
+      setSetIndex(activeSetIndex);
+    }
+  }, [activeSetIndex, setIndex]);
+
   const sortedRallies = useMemo(() => (activeSet ? sortRallies(activeSet.rallies) : []), [activeSet]);
   const setResult = useMemo(() => (activeSet ? computeSet(activeSet) : null), [activeSet]);
   const checks = useMemo(() => checkSets(session), [session]);
   const selectedRally = sortedRallies.find((rally) => rally.id === selectedRallyId);
 
-  // ---- 編集と保存 ----
-
-  const edit = useCallback((change: (current: InputAssistSession) => InputAssistSession) => {
-    setSession((current) => change(current));
-    setEditVersion((version) => version + 1);
-    setSaveState((state) => (state === "conflict" ? state : "dirty"));
-  }, []);
+  // ---- 編集 ----
 
   const editSet = useCallback(
     (targetSetIndex: number, change: (set: IaSet) => IaSet) =>
-      edit((current) => ({
-        ...current,
-        sets: current.sets.map((set) => (set.setIndex === targetSetIndex ? change(set) : set)),
-      })),
+      edit((current) => {
+        let changed = false;
+        const sets = current.sets.map((set) => {
+          if (set.setIndex !== targetSetIndex) {
+            return set;
+          }
+          const next = change(set);
+          changed ||= next !== set;
+          return next;
+        });
+        return changed ? { ...current, sets } : current;
+      }),
     [edit],
   );
 
@@ -129,73 +197,12 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     [editSet, setIndex],
   );
 
-  const save = useCallback(
-    async (versionToSave: number, overwrite = false) => {
-      if (savingRef.current) {
-        return;
-      }
-      savingRef.current = true;
-      setSaveState("saving");
-      const current = sessionRef.current;
-      try {
-        const response = await fetch(buildTeamApiPath(`/api/input-assist/sessions/${current.id}`, teamSlug), {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            expectedUpdatedAt: overwrite ? undefined : current.updatedAt,
-            title: current.title,
-            date: current.date,
-            opponent: current.opponent,
-            videoPath: current.videoPath ?? "",
-            teams: current.teams,
-            extras: current.extras,
-            sets: current.sets,
-          }),
-        });
-        const payload = (await response.json().catch(() => null)) as
-          | { session?: InputAssistSession; error?: string }
-          | null;
-        if (response.status === 409 && payload?.session) {
-          setConflict(payload.session);
-          setSaveState("conflict");
-          return;
-        }
-        if (!response.ok || !payload?.session) {
-          setSaveState("error");
-          setMessage(payload?.error ?? "保存できませんでした。");
-          return;
-        }
-        const saved = payload.session;
-        setSession((latest) => ({ ...latest, updatedAt: saved.updatedAt }));
-        setSavedVersion(versionToSave);
-        setConflict(null);
-        setSaveState("saved");
-      } catch {
-        setSaveState("error");
-      } finally {
-        savingRef.current = false;
-      }
-    },
-    [teamSlug],
-  );
-
-  useEffect(() => {
-    if (editVersion === savedVersion || saveState === "conflict" || saveState === "saving") {
-      return;
-    }
-    const timer = window.setTimeout(() => void save(editVersion), SAVE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [editVersion, savedVersion, saveState, save]);
-
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (editVersion !== savedVersion) {
-        event.preventDefault();
-      }
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [editVersion, savedVersion]);
+  const selectSet = useCallback((index: number) => {
+    setSetIndex(index);
+    setChosen(true);
+    setSelectedRallyId(null);
+    windowRef.current = null;
+  }, []);
 
   // ---- パスの時間 ----
 
@@ -207,29 +214,32 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
         body: JSON.stringify(entry),
         keepalive: true,
       })
-        .then((response) => (response.ok ? (response.json() as Promise<{ log: IaPassLog }>) : null))
-        .then((payload) => {
-          if (payload?.log) {
-            setSession((latest) => ({ ...latest, passLogs: [...latest.passLogs, payload.log] }));
+        .then((response) => {
+          if (response.ok) {
+            addPassSeconds({ setIndex: entry.setIndex, pass: entry.pass, seconds: entry.seconds });
           }
         })
         .catch(() => undefined);
     },
-    [teamSlug],
+    [addPassSeconds, sessionRef, teamSlug],
   );
 
   // P0〜P4 は同じ仕組みで、開いているパスの時間を数える
-  const passName = tab === "p1" ? "P1" : tab === "p2" ? "P2" : tab === "p3" ? "P3" : tab === "p4" ? "P4" : "P0";
-  const { pendingSeconds, markActivity } = usePassTimer({
+  const timerPass = passName ?? "P0";
+  const { pendingSeconds, markActivity: markTimer } = usePassTimer({
     active: tab !== "setup" && Boolean(activeSet),
     setIndex: activeSet?.setIndex ?? 1,
-    pass: passName,
+    pass: timerPass,
     onFlush: handlePassFlush,
   });
+  const markActivity = useCallback(() => {
+    markTimer();
+    markPresence();
+  }, [markPresence, markTimer]);
   const passSeconds =
-    session.passLogs
-      .filter((log) => log.pass === passName && log.setIndex === activeSet?.setIndex)
-      .reduce((total, log) => total + log.seconds, 0) + pendingSeconds;
+    passSecondsList
+      .filter((entry) => entry.pass === timerPass && entry.setIndex === activeSet?.setIndex)
+      .reduce((total, entry) => total + entry.seconds, 0) + pendingSeconds;
   const progress = useMemo(() => flowProgress(session.sets), [session.sets]);
   const effectProgressList = useMemo(() => (tab === "p2" ? effectProgress(session.sets) : []), [session.sets, tab]);
   const zoneProgressList = useMemo(() => (tab === "p3" ? zoneProgress(session.sets) : []), [session.sets, tab]);
@@ -237,36 +247,32 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
   const typeHistory = useMemo(() => buildTypeHistory(session.sets), [session.sets]);
   const typeProgressList = useMemo(() => (tab === "p4" ? typeProgress(session.sets) : []), [session.sets, tab]);
 
-  /** P2 を開くとき、迷わないタッチの評価を自動で入れて保存する(P1 で流れが変わっていれば入れ直す)。 */
-  const openEffectPass = useCallback(() => {
-    setTab("p2");
-    const current = sessionRef.current;
-    if (current.sets.some((set) => applyAutoEffectsToSet(set) !== set)) {
-      edit((latest) => ({ ...latest, sets: latest.sets.map(applyAutoEffectsToSet) }));
+  // P2・P3・P4 を開くとき(セットを替えたときも)、そのセットに、迷わない評価・ゾーン・種類を自動で入れて保存する
+  // (P1 で流れが変わっていれば入れ直す)。ほかのセットはほかの人が打っているかもしれないので、触らない。
+  useEffect(() => {
+    if (activeSetIndex === undefined) {
+      return;
     }
-  }, [edit]);
-
-  /** P3 を開くとき、攻撃コンビ・前後のタッチから分かるゾーンを自動で入れて保存する(P1 で流れが変わっていれば入れ直す)。 */
-  const openZonePass = useCallback(() => {
-    setTab("p3");
-    const current = sessionRef.current;
-    if (current.sets.some((set) => applyZoneChainToSet(set) !== set)) {
-      edit((latest) => ({ ...latest, sets: latest.sets.map((set) => applyZoneChainToSet(set)) }));
-    }
-  }, [edit]);
-
-  /** P4 を開くとき、前後のタッチから写せる種類・迷わない種類を自動で入れて保存する(P1〜P3 で流れが変わっていれば入れ直す)。 */
-  const openTypePass = useCallback(() => {
-    setTab("p4");
-    const current = sessionRef.current;
-    const history = buildTypeHistory(current.sets);
-    if (current.sets.some((set) => applyAutoTypesToSet(set, { history }) !== set)) {
+    if (tab === "p2") {
+      editSet(activeSetIndex, applyAutoEffectsToSet);
+    } else if (tab === "p3") {
+      editSet(activeSetIndex, (set) => applyZoneChainToSet(set));
+    } else if (tab === "p4") {
       edit((latest) => {
-        const latestHistory = buildTypeHistory(latest.sets);
-        return { ...latest, sets: latest.sets.map((set) => applyAutoTypesToSet(set, { history: latestHistory })) };
+        const history = buildTypeHistory(latest.sets);
+        let changed = false;
+        const sets = latest.sets.map((set) => {
+          if (set.setIndex !== activeSetIndex) {
+            return set;
+          }
+          const next = applyAutoTypesToSet(set, { history });
+          changed ||= next !== set;
+          return next;
+        });
+        return changed ? { ...latest, sets } : latest;
       });
     }
-  }, [edit]);
+  }, [activeSetIndex, edit, editSet, tab]);
 
   // ---- 動画とラリーの区間 ----
 
@@ -296,13 +302,18 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
       const next = rallies[nextIndex];
       if (!next) {
         windowRef.current = null;
+        if (delta > 0 && continuousRef.current) {
+          // 続けて流しているときは、最後のラリーのあとも止めずに流す(骨組みがなければ、I で足しながら進める)
+          setMessage("このセットの最後のラリーです。このまま流すので、次のサーブで I を押してください。");
+          return;
+        }
         playerRef.current?.pause();
         setMessage(delta > 0 ? "このセットの最後のラリーです。" : "このセットの最初のラリーです。");
         return;
       }
       playRally(next.id, rallies);
     },
-    [playRally, selectedRallyId, setIndex],
+    [playRally, selectedRallyId, sessionRef, setIndex],
   );
 
   const handleTime = useCallback(
@@ -357,9 +368,16 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
           ? { ...rally, status: "not_rally", checked: true }
           : { ...rally, status: "rally", side: kind, checked: true },
       );
+      const rallies = sortRallies(sessionRef.current.sets.find((set) => set.setIndex === setIndex)?.rallies ?? []);
+      const isLast = rallies.at(-1)?.id === selectedRallyId;
+      if (isLast && continuousRef.current) {
+        // I で足したばかりのラリー(骨組みなしで打っているとき):動画は止めず、そのまま流す
+        windowRef.current = null;
+        return;
+      }
       moveBy(1, selectedRallyId);
     },
-    [editRally, moveBy, selectedRallyId],
+    [editRally, moveBy, selectedRallyId, sessionRef, setIndex],
   );
 
   const insertRally = useCallback(() => {
@@ -405,6 +423,20 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     [editSet, selectedRallyId, setIndex],
   );
 
+  /** 再生・一時停止(ラリーの区間は外して、そのまま流す)。 */
+  const togglePlay = useCallback(() => {
+    windowRef.current = null;
+    playerRef.current?.togglePlay();
+  }, []);
+
+  const seekBy = useCallback(
+    (delta: number) => {
+      windowRef.current = null;
+      playerRef.current?.seek((playerRef.current?.getTime() ?? currentTime) + delta);
+    },
+    [currentTime],
+  );
+
   useEffect(() => {
     if (tab !== "p0") {
       return;
@@ -414,13 +446,15 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
         return;
       }
       const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      const noRallies = sortedRallies.length === 0;
       const actions: Record<string, () => void> = {
         n: () => label("near"),
         f: () => label("far"),
         x: () => label("not_rally"),
-        " ": () => (selectedRallyId ? playRally(selectedRallyId, sortedRallies) : moveBy(1)),
-        ArrowLeft: () => moveBy(-1),
-        ArrowRight: () => moveBy(1),
+        " ": () => (selectedRallyId ? playRally(selectedRallyId, sortedRallies) : noRallies ? togglePlay() : moveBy(1)),
+        k: togglePlay,
+        ArrowLeft: () => (noRallies ? seekBy(-SEEK_SECONDS) : moveBy(-1)),
+        ArrowRight: () => (noRallies ? seekBy(SEEK_SECONDS) : moveBy(1)),
         i: insertRally,
         ",": () => nudge(-NUDGE_SECONDS),
         ".": () => nudge(NUDGE_SECONDS),
@@ -433,7 +467,7 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [insertRally, label, moveBy, nudge, playRally, selectedRallyId, sortedRallies, tab]);
+  }, [insertRally, label, moveBy, nudge, playRally, seekBy, selectedRallyId, sortedRallies, tab, togglePlay]);
 
   // ---- 骨組み・書き出し ----
 
@@ -473,6 +507,11 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     );
   }
 
+  function openPass(targetSetIndex: number, pass: IaPassName) {
+    selectSet(targetSetIndex);
+    setTab(TAB_OF_PASS[pass]);
+  }
+
   const setupValue: IaSetupValue = {
     title: session.title,
     date: session.date,
@@ -482,6 +521,20 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
     extras: session.extras,
     sets: session.sets,
   };
+
+  const passTabs: Array<{ tab: Tab; label: string }> = [
+    { tab: "p0", label: "P0 ラリー" },
+    { tab: "p1", label: "P1 流れ" },
+    { tab: "p2", label: "P2 評価" },
+    { tab: "p3", label: "P3 ゾーン" },
+    { tab: "p4", label: "P4 種類" },
+  ];
+
+  const changeRally = (rallyId: string, change: (rally: IaRally) => IaRally) =>
+    editSet(activeSet?.setIndex ?? setIndex, (set) => ({
+      ...set,
+      rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
+    }));
 
   return (
     <main className="page-shell stack ia-page">
@@ -515,39 +568,70 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
               </button>
             </div>
           </div>
-          {conflict ? (
+          <IaAssignmentBoard
+            session={session}
+            assignments={assignments}
+            passSeconds={passSecondsList}
+            memberId={currentMember.id}
+            activeSetIndex={activeSet?.setIndex}
+            activePass={passName}
+            onOpen={openPass}
+            onAction={(action, targetSetIndex, pass, force) => void assign(action, targetSetIndex, pass, force)}
+          />
+          {metaConflict ? (
             <div className="ia-banner">
-              <span>ほかの画面で先に保存されました。</span>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => {
-                  setSession(conflict);
-                  setConflict(null);
-                  setSavedVersion(editVersion);
-                  setSaveState("saved");
-                }}
-              >
+              <span>ほかの画面で、試合の準備(名前・チーム・セット)が先に保存されました。</span>
+              <button type="button" className="button secondary" onClick={reloadMeta}>
                 読み込み直す
               </button>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => {
-                  setConflict(null);
-                  setSaveState("dirty");
-                  void save(editVersion, true);
-                }}
-              >
+              <button type="button" className="button secondary" onClick={overwriteMeta}>
                 この画面の内容で保存する
               </button>
             </div>
           ) : null}
-          <SetChecks checks={checks} activeSetIndex={activeSet?.setIndex} onSelect={(index) => {
-            setSetIndex(index);
-            setSelectedRallyId(null);
-            windowRef.current = null;
-          }} />
+          {takeover && passName && takeover.setIndex === activeSet?.setIndex && takeover.pass === passName ? (
+            <div className="ia-banner">
+              <span>
+                {takeover.lost
+                  ? `${takeover.holderName}さんが、${takeover.setIndex}セット目の ${takeover.pass} を引き継ぎました。`
+                  : `${takeover.setIndex}セット目の ${takeover.pass} は、${takeover.holderName}さんが打っています。`}
+              </span>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => void assign("claim", takeover.setIndex, takeover.pass, true)}
+              >
+                引き継ぐ
+              </button>
+              <button type="button" className="button secondary" onClick={dismissTakeover}>
+                このまま見る
+              </button>
+            </div>
+          ) : null}
+          {remoteNotice && remoteNotice.key === activeKey && !remoteNotice.hidden ? (
+            <div className="ia-banner">
+              <span>
+                {remoteNotice.record.updatedByName ?? "ほかの人"}さんが、このセットの {remoteNotice.record.pass}{" "}
+                を保存しました。
+              </span>
+              <button type="button" className="button secondary" onClick={acceptRemote}>
+                読み込む
+              </button>
+              <button type="button" className="button secondary" onClick={dismissRemote}>
+                あとで
+              </button>
+            </div>
+          ) : null}
+          {mergeNotice ? (
+            <div className="ia-banner">
+              <span>{mergeNotice}</span>
+              <button type="button" className="button secondary" onClick={clearMergeNotice}>
+                閉じる
+              </button>
+            </div>
+          ) : null}
+          {errorMessage ? <p className="ia-error">{errorMessage}</p> : null}
+          <SetChecks checks={checks} activeSetIndex={activeSet?.setIndex} onSelect={selectSet} />
           <div className="tab-row" role="tablist">
             <button
               type="button"
@@ -558,51 +642,18 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
             >
               準備
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "p0"}
-              className={`tab-button ${tab === "p0" ? "tab-button-active" : ""}`}
-              onClick={() => setTab("p0")}
-            >
-              P0 ラリー
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "p1"}
-              className={`tab-button ${tab === "p1" ? "tab-button-active" : ""}`}
-              onClick={() => setTab("p1")}
-            >
-              P1 流れ
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "p2"}
-              className={`tab-button ${tab === "p2" ? "tab-button-active" : ""}`}
-              onClick={openEffectPass}
-            >
-              P2 評価
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "p3"}
-              className={`tab-button ${tab === "p3" ? "tab-button-active" : ""}`}
-              onClick={openZonePass}
-            >
-              P3 ゾーン
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "p4"}
-              className={`tab-button ${tab === "p4" ? "tab-button-active" : ""}`}
-              onClick={openTypePass}
-            >
-              P4 種類
-            </button>
+            {passTabs.map((entry) => (
+              <button
+                type="button"
+                role="tab"
+                key={entry.tab}
+                aria-selected={tab === entry.tab}
+                className={`tab-button ${tab === entry.tab ? "tab-button-active" : ""}`}
+                onClick={() => setTab(entry.tab)}
+              >
+                {entry.label}
+              </button>
+            ))}
           </div>
           {message ? (
             <p className="ia-message" role="status">
@@ -629,17 +680,8 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
           setResult={setResult}
           progress={progress}
           passSeconds={formatDuration(passSeconds)}
-          onSelectSet={(index) => {
-            setSetIndex(index);
-            setSelectedRallyId(null);
-            windowRef.current = null;
-          }}
-          onChangeRally={(rallyId, change) =>
-            editSet(activeSet.setIndex, (set) => ({
-              ...set,
-              rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
-            }))
-          }
+          onSelectSet={selectSet}
+          onChangeRally={changeRally}
           onActivity={markActivity}
         />
       ) : tab === "p2" && activeSet && setResult ? (
@@ -650,17 +692,8 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
           setResult={setResult}
           progress={effectProgressList}
           passSeconds={formatDuration(passSeconds)}
-          onSelectSet={(index) => {
-            setSetIndex(index);
-            setSelectedRallyId(null);
-            windowRef.current = null;
-          }}
-          onChangeRally={(rallyId, change) =>
-            editSet(activeSet.setIndex, (set) => ({
-              ...set,
-              rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
-            }))
-          }
+          onSelectSet={selectSet}
+          onChangeRally={changeRally}
           onActivity={markActivity}
         />
       ) : tab === "p3" && activeSet && setResult ? (
@@ -671,17 +704,8 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
           setResult={setResult}
           progress={zoneProgressList}
           passSeconds={formatDuration(passSeconds)}
-          onSelectSet={(index) => {
-            setSetIndex(index);
-            setSelectedRallyId(null);
-            windowRef.current = null;
-          }}
-          onChangeRally={(rallyId, change) =>
-            editSet(activeSet.setIndex, (set) => ({
-              ...set,
-              rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
-            }))
-          }
+          onSelectSet={selectSet}
+          onChangeRally={changeRally}
           onActivity={markActivity}
         />
       ) : tab === "p4" && activeSet && setResult ? (
@@ -693,17 +717,8 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
           history={typeHistory}
           progress={typeProgressList}
           passSeconds={formatDuration(passSeconds)}
-          onSelectSet={(index) => {
-            setSetIndex(index);
-            setSelectedRallyId(null);
-            windowRef.current = null;
-          }}
-          onChangeRally={(rallyId, change) =>
-            editSet(activeSet.setIndex, (set) => ({
-              ...set,
-              rallies: set.rallies.map((rally) => (rally.id === rallyId ? change(rally) : rally)),
-            }))
-          }
+          onSelectSet={selectSet}
+          onChangeRally={changeRally}
           onActivity={markActivity}
         />
       ) : activeSet && setResult ? (
@@ -717,8 +732,9 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
                   <input type="checkbox" checked={continuous} onChange={(event) => setContinuous(event.target.checked)} />
                   続けて流す
                 </label>
+                <IaRateButtons rate={rate} onChange={changeRate} />
                 <span className="muted">
-                  P0 の時間:{formatDuration(passSeconds)}
+                  {PASS_LABELS.P0}の時間:{formatDuration(passSeconds)}
                 </span>
               </div>
               <SelectedRallyInfo
@@ -740,9 +756,18 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
                 <button
                   type="button"
                   className="button secondary"
-                  onClick={() => (selectedRallyId ? playRally(selectedRallyId, sortedRallies) : moveBy(1))}
+                  onClick={() =>
+                    selectedRallyId
+                      ? playRally(selectedRallyId, sortedRallies)
+                      : sortedRallies.length === 0
+                        ? togglePlay()
+                        : moveBy(1)
+                  }
                 >
                   <kbd>Space</kbd> もう一度
+                </button>
+                <button type="button" className="button secondary" onClick={togglePlay}>
+                  <kbd>K</kbd> 流す・止める
                 </button>
                 <button type="button" className="button secondary" onClick={() => moveBy(-1)}>
                   <kbd>←</kbd> 前
@@ -778,7 +803,8 @@ export function InputAssistSessionClient({ initialSession, teamSlug, listHref }:
               </div>
               {sortedRallies.length === 0 ? (
                 <p className="muted">
-                  ラリーがありません。骨組みを読み込むか、動画を流して <kbd>I</kbd> で足してください。
+                  ラリーがありません。骨組みを読み込むか、<kbd>K</kbd> で動画を流し、サーブのたびに <kbd>I</kbd>{" "}
+                  で足して <kbd>N</kbd>・<kbd>F</kbd> で向きを決めてください(続けて流すなら、動画は止まりません)。
                 </p>
               ) : (
                 <ol className="ia-rally-list">

@@ -3,7 +3,7 @@ import { InputAssistSessionClient } from "@/components/input-assist/input-assist
 import { canUseInputAssist } from "@/lib/domain/input-assist/session";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamInputAssistPath } from "@/lib/domain/team";
-import { getInputAssistSession } from "@/lib/server/input-assist-store";
+import { loadInputAssistBundle } from "@/lib/server/input-assist-store";
 import { requireMember } from "@/lib/server/portal-session";
 
 type PageProps = {
@@ -35,13 +35,15 @@ export default async function InputAssistSessionPage({ params }: PageProps) {
     );
   }
 
-  const session = await getInputAssistSession(teamSlug, sessionId);
-  if (!session) {
+  // 前の形(1試合 = 1つの文書)の試合は、ここではじめて開いたときにセット × パスのスライスに分ける
+  const bundle = await loadInputAssistBundle(teamSlug, sessionId);
+  if (!bundle) {
     notFound();
   }
   return (
     <InputAssistSessionClient
-      initialSession={session}
+      initialBundle={bundle}
+      currentMember={{ id: current.id, name: current.displayName }}
       teamSlug={teamSlug}
       listHref={buildTeamInputAssistPath(teamSlug)}
     />

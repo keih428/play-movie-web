@@ -552,6 +552,64 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ON CONFLICT (drill_id, member_id, skill, grade) DO UPDATE SET
         count = drill_stat_counts.count + EXCLUDED.count, updated_at = now()
     `,
+  },  {
+    id: "031_input_assist_collab",
+    // 打ち込み補助の共同編集(2026-11-10 から)。試合のメタ(名前・チーム・セットの準備)は今までどおり文書に置き、
+    // セット × パス(P0〜P4)ごとの中身(スライス)・担当・パスの時間をここに置く。
+    // input_assist_sessions は、その試合をスライスに分け終えた印(と、メタを保存した時刻)。
+    sql: `
+      CREATE TABLE input_assist_sessions (
+        session_id text PRIMARY KEY,
+        team_slug text NOT NULL,
+        meta_updated_at text,
+        migrated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE input_assist_slices (
+        session_id text NOT NULL,
+        team_slug text NOT NULL,
+        set_index integer NOT NULL,
+        pass text NOT NULL,
+        version integer NOT NULL,
+        data jsonb NOT NULL,
+        rally_count integer NOT NULL DEFAULT 0,
+        updated_by text,
+        updated_by_name text,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (session_id, set_index, pass)
+      );
+      CREATE INDEX input_assist_slices_team ON input_assist_slices (team_slug);
+
+      CREATE TABLE input_assist_assignments (
+        session_id text NOT NULL,
+        team_slug text NOT NULL,
+        set_index integer NOT NULL,
+        pass text NOT NULL,
+        holder_id text,
+        holder_name text,
+        heartbeat_at timestamptz,
+        done boolean NOT NULL DEFAULT false,
+        done_by_name text,
+        done_at timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (session_id, set_index, pass)
+      );
+
+      CREATE TABLE input_assist_pass_logs (
+        id text PRIMARY KEY,
+        session_id text NOT NULL,
+        team_slug text NOT NULL,
+        set_index integer NOT NULL,
+        pass text NOT NULL,
+        started_at text NOT NULL,
+        ended_at text NOT NULL,
+        seconds integer NOT NULL,
+        member_id text,
+        member_name text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX input_assist_pass_logs_session ON input_assist_pass_logs (session_id)
+    `,
   },
 ];
 

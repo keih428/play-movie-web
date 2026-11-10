@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IaPlayer, type IaPlayerHandle } from "@/components/input-assist/ia-player";
+import { IaRateButtons } from "@/components/input-assist/ia-rate-buttons";
+import { usePlaybackRate } from "@/components/input-assist/use-playback-rate";
 import { formatClock, isTypingTarget } from "@/components/input-assist/ia-utils";
 import { courtSideOf, type IaRallyResult, type IaSetResult } from "@/lib/domain/input-assist/engine";
 import {
@@ -37,7 +39,6 @@ const COMMIT_DELAY_MS = 600;
 /** 背番号を決めた直後にスキルのキー・Tab を押したら、そのタッチを編集する(それより後は次のタッチ)。 */
 const LAST_PLAY_WINDOW_MS = 1200;
 const JUMP_SECONDS = 2;
-const RATES = [1, 0.75, 0.5];
 const SKILL_KEYS: Record<string, IaSkill> = { s: "S", r: "R", e: "E", a: "A", b: "B", d: "D", f: "F" };
 
 type FlowInput = {
@@ -89,10 +90,10 @@ export function IaFlowPass({
   const [input, setInputState] = useState<FlowInput>(EMPTY_INPUT);
   const [selectedPlayId, setSelectedPlayId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [rate, setRate] = useState(1);
   const [message, setMessage] = useState("");
 
   const playerRef = useRef<IaPlayerHandle | null>(null);
+  const { rate, changeRate } = usePlaybackRate(playerRef);
   const currentTimeRef = useRef(0);
   const inputRef = useRef(input);
   const timerRef = useRef<number | null>(null);
@@ -194,10 +195,6 @@ export function IaFlowPass({
     [getTime],
   );
 
-  const changeRate = useCallback((next: number) => {
-    setRate(next);
-    playerRef.current?.setRate(next);
-  }, []);
 
   useEffect(() => {
     if (selectedRallyId) {
@@ -452,18 +449,7 @@ export function IaFlowPass({
           <IaPlayer ref={playerRef} youtubeUrl={set.youtubeUrl} onTime={handleTime} />
           <div className="ia-now">
             <span className="mono">{formatClock(currentTime)}</span>
-            <span className="ia-rates" role="group" aria-label="再生の速さ">
-              {RATES.map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={`ia-rate ${rate === value ? "ia-rate-active" : ""}`}
-                  onClick={() => changeRate(value)}
-                >
-                  {value}倍
-                </button>
-              ))}
-            </span>
+            <IaRateButtons rate={rate} onChange={changeRate} />
             <span className="muted">P1 の時間:{passSeconds}</span>
           </div>
 
