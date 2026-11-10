@@ -133,6 +133,13 @@ export function editFlowPlay(play: IaPlay, patch: Partial<Pick<IaPlay, "player" 
       delete next.effect;
       delete next.effectSource;
     }
+    // P4 で入れた種類も決め直す(スキルが変われば、入れる欄も変わる)
+    if (play.typeSource !== undefined) {
+      for (const field of Object.keys(play.typeSource) as Array<keyof NonNullable<IaPlay["typeSource"]>>) {
+        delete next[field];
+      }
+      delete next.typeSource;
+    }
   }
   return next;
 }

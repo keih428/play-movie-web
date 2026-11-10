@@ -5,6 +5,7 @@ import { readScoutRosterFile, setsFromVsmMatch } from "@/lib/domain/input-assist
 import { createEmptySet } from "@/lib/domain/input-assist/session";
 import type { InputAssistSession } from "@/lib/domain/input-assist/types";
 import { buildVsm, buildVsmFileName, buildVsmText } from "@/lib/domain/input-assist/vsm-writer";
+import { setPlayType } from "@/lib/domain/input-assist/type";
 import { applyBallPosition } from "@/lib/domain/input-assist/zone";
 import { parseVsmText } from "@/lib/parsers/vsm";
 
@@ -408,5 +409,100 @@ describe("P1 のタッチの書き出し", () => {
     ).toEqual(["S9>6A", "R6A>3C", "E3C>4C", "A4C>1D", "D1D>"]);
     expect(rallies[0].plays[0].code).toBe("5SM96A.");
     expect(parsed.sets[0].score).toEqual({ home: 0, away: 2 });
+  });
+
+  function p4Session(): InputAssistSession {
+    const session = p1Session();
+    const [set] = session.sets;
+    const rallies = set.rallies.map((rally, index) => {
+      if (index !== 0) {
+        return rally;
+      }
+      // P4:サーブはジャンプサーブ、トスは KA、アタックはレフト平行・フェイント・ブロック1人
+      let plays = [
+        { id: "5".repeat(24), team: "*" as const, player: 5, skill: "S" as const, time: 131.8, source: "auto" as const },
+        ...(rally.plays ?? []),
+      ];
+      plays = plays.map((play) => {
+        if (play.skill === "S") {
+          return setPlayType(play, "hitType", "Q");
+        }
+        if (play.skill === "E") {
+          return setPlayType(play, "combination", "KA");
+        }
+        if (play.skill === "A") {
+          return setPlayType(setPlayType(setPlayType(play, "combination", "PV"), "skillType", "T"), "players", "1");
+        }
+        return play;
+      });
+      return { ...rally, plays };
+    });
+    return { ...session, sets: [{ ...set, rallies }] };
+  }
+
+  it("P4 の種類を書き出し、トスの code はコール、アタックの code にコンビを入れる", () => {
+    const vsm = buildVsm(p4Session(), { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    const plays = vsm.scout.sets[0].events[0].exchange.plays as Array<Record<string, unknown>>;
+    expect(plays.map((play) => [play.skill, play.hitType, play.combination, play.targetAttacker, play.skillType, play.players, play.code])).toEqual([
+      ["S", "Q", undefined, undefined, undefined, undefined, "5SQ."],
+      // R はサーブの種類、E はアタックの種類・コンビの先、D はアタックの種類を写す
+      ["R", "Q", undefined, undefined, undefined, undefined, ".11#"],
+      ["E", "M", "KA", "F", undefined, undefined, "KA"],
+      ["A", "M", "PV", undefined, "T", 1, "a8APV."],
+      ["D", "M", undefined, undefined, undefined, undefined, ".7D="],
+    ]);
+    // P4 の印は書き出さない。コンビから分かるアタックの始まり(P3)も入る
+    expect(plays[3]).not.toHaveProperty("typeSource");
+    expect(plays[3]).toMatchObject({ startZone: 4, startSubZone: "C" });
+    expect(plays[2]).toMatchObject({ endZone: 4, endSubZone: "C" });
+  });
+
+  it("P4 の種類を入れた VSM を今のパーサーで読むと、種類・コンビ・code がそろう", () => {
+    const session = p4Session();
+    const parsed = parseVsmText(buildVsmText(session, { idFactory }), buildVsmFileName(session)).matches[0];
+    const rallies = parsed.sets[0].events.filter((event) => event.plays.length > 0);
+    expect(rallies[0].plays.map((play) => `${play.skill}:${play.hitType}:${play.combination ?? ""}:${play.code}`)).toEqual([
+      "S:Q::5SQ.",
+      "R:Q::.11#",
+      "E:M:KA:KA",
+      "A:M:PV:a8APV.",
+      "D:M::.7D=",
+    ]);
+    expect(parsed.sets[0].score).toEqual({ home: 0, away: 2 });
+  });
+
+  it("P4 のサーブの種類は、ほかのセットのこれまでも数える(同じ選手が Q を 7 本なら、8 本目も Q)", () => {
+    const session = p1Session();
+    const [set] = session.sets;
+    const serve = (index: number) => ({
+      id: index.toString(16).padStart(24, "0"),
+      team: "*" as const,
+      player: 5,
+      skill: "S" as const,
+      source: "auto" as const,
+      hitType: "Q",
+      typeSource: { hitType: "manual" as const },
+    });
+    // 2セット目:5番のサーブ 7 本(人が決めた Q)
+    const second = {
+      ...set,
+      setIndex: 2,
+      rallies: Array.from({ length: 7 }, (_, index) => ({
+        id: (index + 100).toString(16).padStart(24, "0"),
+        serveTime: 10 + index * 20,
+        side: "near" as const,
+        status: "rally" as const,
+        source: "auto" as const,
+        flowDone: true,
+        plays: [serve(index + 200)],
+      })),
+      finalScore: { home: null, away: null },
+    };
+    const vsm = buildVsm({ ...session, sets: [set, second] }, { idFactory }) as {
+      scout: { sets: Array<{ events: Array<Record<string, any>> }> };
+    };
+    expect(vsm.scout.sets[0].events[0].exchange.plays[0]).toMatchObject({ hitType: "Q", code: "5SQ." });
   });
 });

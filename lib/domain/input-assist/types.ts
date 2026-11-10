@@ -42,6 +42,11 @@ export type IaLineup = {
 export type IaSkill = "S" | "R" | "E" | "A" | "B" | "D" | "F";
 export const IA_SKILLS: IaSkill[] = ["S", "R", "E", "A", "B", "D", "F"];
 
+/** P4(種類)で入れる欄。 */
+export type IaTypeField = "hitType" | "combination" | "targetAttacker" | "skillType" | "players";
+export const IA_TYPE_FIELDS: IaTypeField[] = ["hitType", "combination", "targetAttacker", "skillType", "players"];
+export type IaTypeSource = "auto" | "manual" | "cleared";
+
 /**
  * 1つのタッチ。team は VSM の値("*" = ホーム、"a" = アウェイ)、player は背番号。
  * P1(流れ)で入れたものは team・player・skill・time だけで、hitType・effect はない。
@@ -82,6 +87,13 @@ export type IaPlay = {
   /** ブロックの人数。 */
   players?: number;
   skillType?: string;
+  /**
+   * P4 の種類の欄(hitType・combination・targetAttacker・skillType・players)ごとの出どころ。
+   * auto = 田中のデータの表や前後のタッチから自動で入れた(流れが変われば入れ直す)、manual = 人が決めた、
+   * cleared = 人が消した(自動で入れ直さない)。欄の値がなく auto・manual なら「なし」(コンビ・コールを入れない)と決めたもの。
+   * VSM から読み込んだものにはない(人が決めたものと同じに扱う)。
+   */
+  typeSource?: Partial<Record<IaTypeField, IaTypeSource>>;
   /** VSM から読み込んだときの code(書き換えずに戻す)。なければ書き出すときに作る。 */
   code?: string;
   /** VSM にあった、ここで扱わない欄(そのまま戻す)。 */
@@ -135,7 +147,7 @@ export type IaSet = {
   skipped?: boolean;
 };
 
-export type IaPassName = "P0" | "P1" | "P2" | "P3";
+export type IaPassName = "P0" | "P1" | "P2" | "P3" | "P4";
 
 export type IaPassLog = {
   id: string;
