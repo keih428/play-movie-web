@@ -5,6 +5,8 @@ import { FormEvent, useState } from "react";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import {
   LIFT_LABELS,
+  LOG_MAX_PAST_DAYS,
+  addDays,
   estimate1rm,
   formatMonthDay,
   roundToPlate,
@@ -16,6 +18,8 @@ import {
 type TrainingMeasurementFormProps = {
   latest: Partial<Record<MeasurementItem, Measurement>>;
   teamSlug: string;
+  // 今日(日本時間)。測った日の初期値と、選べるいちばん先の日。
+  today: string;
 };
 
 const LIFTS: LiftKind[] = ["sq", "dl", "bp"];
@@ -34,7 +38,7 @@ function describeRatio(ratio: number, bodyWeight: number, squat: number) {
   return `${ratio.toFixed(2)} 倍 ・ ${level} ・ ${rest}`;
 }
 
-export function TrainingMeasurementForm({ latest, teamSlug }: TrainingMeasurementFormProps) {
+export function TrainingMeasurementForm({ latest, teamSlug, today }: TrainingMeasurementFormProps) {
   const router = useRouter();
   const [values, setValues] = useState<Record<MeasurementItem, string>>({
     bw: "",
@@ -42,6 +46,8 @@ export function TrainingMeasurementForm({ latest, teamSlug }: TrainingMeasuremen
     dl: "",
     bp: "",
   });
+  // 測った日(2026-11-12 から。max を更新した日に入れそびれても、あとからその日で入れられる)。
+  const [date, setDate] = useState(today);
   const [rms, setRms] = useState<Record<LiftKind, string>>({ sq: "3", dl: "3", bp: "3" });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -65,6 +71,7 @@ export function TrainingMeasurementForm({ latest, teamSlug }: TrainingMeasuremen
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          date,
           items: {
             bw: { value: values.bw },
             sq: { value: values.sq, rm: rms.sq },
@@ -78,7 +85,11 @@ export function TrainingMeasurementForm({ latest, teamSlug }: TrainingMeasuremen
         throw new Error(payload.error ?? "保存できませんでした。");
       }
       setValues({ bw: "", sq: "", dl: "", bp: "" });
-      setMessage("保存しました。メニューの重さの目安に反映しました。");
+      setMessage(
+        date === today
+          ? "保存しました。メニューの重さの目安と、下の推移に反映しました。"
+          : `${formatMonthDay(date)}の記録として保存しました。下の推移に反映しました。`,
+      );
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "保存できませんでした。");
@@ -138,6 +149,17 @@ export function TrainingMeasurementForm({ latest, teamSlug }: TrainingMeasuremen
       </div>
 
       <div className="tp-inputs">
+        <div className="tp-field">
+          <label htmlFor="measure-date">測った日</label>
+          <input
+            id="measure-date"
+            type="date"
+            min={addDays(today, -LOG_MAX_PAST_DAYS)}
+            max={today}
+            value={date}
+            onChange={(event) => setDate(event.target.value || today)}
+          />
+        </div>
         <div className="tp-field">
           <label htmlFor="measure-bw">体重(kg)</label>
           <input

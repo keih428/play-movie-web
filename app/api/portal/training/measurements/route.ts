@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isPortalTeam } from "@/lib/domain/portal";
-import { MEASUREMENT_ITEMS, type MeasurementItem } from "@/lib/domain/training";
+import { MEASUREMENT_ITEMS, isEditableLogDate, type MeasurementItem } from "@/lib/domain/training";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { getTodayInJapan, saveMeasurements } from "@/lib/server/portal-training-store";
 
@@ -23,7 +23,14 @@ export async function POST(request: NextRequest) {
 
   const payload = (await request.json()) as {
     items?: Partial<Record<MeasurementItem, { value?: unknown; rm?: unknown }>>;
+    // 測った日(2026-11-12 から。あとから入れられるように)。なければ今日。先の日付は入れられない。
+    date?: unknown;
   };
+  const today = getTodayInJapan();
+  const date = payload.date === undefined || payload.date === "" ? today : payload.date;
+  if (!isEditableLogDate(typeof date === "string" ? date : null, today) || (date as string) > today) {
+    return NextResponse.json({ error: "測った日は、1年前から今日までで選んでください。" }, { status: 400 });
+  }
 
   const items = [];
   for (const item of MEASUREMENT_ITEMS) {
@@ -42,6 +49,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "数字を1つ以上入れてください。" }, { status: 400 });
   }
 
-  await saveMeasurements(current.id, getTodayInJapan(), items);
+  await saveMeasurements(current.id, date as string, items);
   return NextResponse.json({ ok: true });
 }

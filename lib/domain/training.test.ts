@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDefaultExercises,
+  buildLiftHistory,
   compactExercises,
   findVideoLink,
   splitT0,
@@ -263,5 +264,24 @@ describe("トレ録を記録・直せる日付(2026-11-08 から)", () => {
     expect(isEditableLogDate("2026-11-10", today)).toBe(false);
     expect(isEditableLogDate("2026-11-8", today)).toBe(false);
     expect(isEditableLogDate(undefined, today)).toBe(false);
+  });
+});
+
+describe("buildLiftHistory", () => {
+  it("種目ごとに古い順に並べ、推定1RM を更新した日に印を付ける", () => {
+    const history = buildLiftHistory([
+      { item: "sq", value: 100, rm: 3, measuredOn: "2026-11-20" },
+      { item: "sq", value: 100, rm: 3, measuredOn: "2026-10-01" },
+      { item: "sq", value: 105, rm: 1, measuredOn: "2026-11-01" },
+      { item: "bw", value: 70, rm: null, measuredOn: "2026-10-01" },
+      { item: "bp", value: 60, rm: 1, measuredOn: "2026-10-05" },
+    ]);
+    expect(history.sq.map((point) => [point.date, point.estimated, point.isBest])).toEqual([
+      ["2026-10-01", 110.00000000000001, true],
+      ["2026-11-01", 105, false],
+      ["2026-11-20", 110.00000000000001, false],
+    ]);
+    expect(history.bp).toHaveLength(1);
+    expect(history.dl).toEqual([]);
   });
 });

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { LiftHistory } from "@/components/lift-history";
 import { formatNoteDate } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamMemberTrainingPath, buildTeamTrainingPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
-import { TRAINING_REQUEST_LABEL, exerciseUnit, summarizeSets, weightModeOf } from "@/lib/domain/training";
+import { TRAINING_REQUEST_LABEL, buildLiftHistory, exerciseUnit, summarizeSets, weightModeOf } from "@/lib/domain/training";
 import { getMember, listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
-import { listMemberSessions } from "@/lib/server/portal-training-store";
+import { listMemberMeasurements, listMemberSessions } from "@/lib/server/portal-training-store";
 
 type PageProps = {
   params: Promise<{ teamSlug: string }>;
@@ -39,7 +40,11 @@ export default async function MemberTrainingPage({ params, searchParams }: PageP
 
   const parsed = Number.parseInt(more ?? "", 10);
   const shown = Number.isFinite(parsed) ? Math.min(240, Math.max(STEP, parsed)) : STEP;
-  const [sessions, members] = await Promise.all([listMemberSessions(target.id, shown + 1), listMembers(teamSlug)]);
+  const [sessions, members, measurements] = await Promise.all([
+    listMemberSessions(target.id, shown + 1),
+    listMembers(teamSlug),
+    listMemberMeasurements(target.id),
+  ]);
   const players = members.filter((member) => member.position && member.id !== current.id);
 
   return (
@@ -76,6 +81,12 @@ export default async function MemberTrainingPage({ params, searchParams }: PageP
           </button>
         </div>
       </form>
+
+      {/* Big3 の推移(2026-11-12 から。重さの記録は全員に見える決まりなので、ほかの部員の分も見られる) */}
+      <section className="tp-section">
+        <h2>Big3 の推移(推定1RM)</h2>
+        <LiftHistory history={buildLiftHistory(measurements)} />
+      </section>
 
       <section className="tp-section">
         {sessions.length === 0 ? (

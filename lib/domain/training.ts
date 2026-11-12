@@ -222,6 +222,42 @@ export function estimate1rm(measurement: Pick<Measurement, "value" | "rm">): num
   return measurement.rm === 1 ? measurement.value : measurement.value * 1.1;
 }
 
+// ---------- Big3 の推移(2026-11-12 から。けーいちの依頼) ----------
+// 部員は max を更新したら「測定の記録」で入れる(日付は選べる)。入れた測定を時系列で並べ、あとで伸びを追えるようにする。
+
+export type LiftHistoryPoint = {
+  date: string;
+  value: number;
+  rm: number | null;
+  // 推定1RM(3RM は 1.1 倍)。
+  estimated: number;
+  // その日までで、推定1RM がいちばん高い(更新した)か。
+  isBest: boolean;
+};
+
+/** 測定の一覧から、種目ごとの推移(古い順)を作る。同じ日は1つ(後に来たものを使う)。 */
+export function buildLiftHistory(measurements: Measurement[]): Record<LiftKind, LiftHistoryPoint[]> {
+  const history: Record<LiftKind, LiftHistoryPoint[]> = { sq: [], dl: [], bp: [] };
+  for (const lift of ["sq", "dl", "bp"] as const) {
+    const byDate = new Map<string, Measurement>();
+    for (const measurement of measurements) {
+      if (measurement.item === lift) {
+        byDate.set(measurement.measuredOn, measurement);
+      }
+    }
+    let best = -Infinity;
+    history[lift] = [...byDate.values()]
+      .sort((a, b) => a.measuredOn.localeCompare(b.measuredOn))
+      .map((measurement) => {
+        const estimated = estimate1rm(measurement);
+        const isBest = estimated > best;
+        best = Math.max(best, estimated);
+        return { date: measurement.measuredOn, value: measurement.value, rm: measurement.rm, estimated, isBest };
+      });
+  }
+  return history;
+}
+
 export function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
