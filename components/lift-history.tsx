@@ -1,10 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type PointerEvent } from "react";
-import { LIFT_LABELS, formatMonthDay, type LiftHistoryPoint, type LiftKind } from "@/lib/domain/training";
+import { buildTeamApiPath } from "@/lib/domain/team";
+import {
+  LIFT_LABELS,
+  LOG_MAX_PAST_DAYS,
+  addDays,
+  formatMonthDay,
+  type LiftHistoryPoint,
+  type LiftKind,
+} from "@/lib/domain/training";
 
 type LiftHistoryProps = {
   history: Record<LiftKind, LiftHistoryPoint[]>;
+  // 自分の記録のときだけ渡す:記録の一覧で「編集」「削除」ができる(2026-11-12 から)。
+  edit?: { teamSlug: string; today: string };
 };
 
 const LIFTS: LiftKind[] = ["sq", "dl", "bp"];
@@ -31,8 +42,9 @@ function dayNumber(isoDate: string) {
 /**
  * Big3 の推移(2026-11-12 から。けーいちの依頼)。種目ごとに1つずつ、推定1RM の折れ線を並べる。
  * 点を押す(なぞる)と、その日の記録が出る。更新した日の点は塗りつぶし、それ以外は白抜き。下に記録の一覧の表。
+ * 自分の記録なら、一覧の「編集」で日付・重さ・RM を直し、「削除」で消せる(日付を選べるようになる前の記録は保存した日で入っているため)。
  */
-export function LiftHistory({ history }: LiftHistoryProps) {
+export function LiftHistory({ history, edit }: LiftHistoryProps) {
   const total = LIFTS.reduce((sum, lift) => sum + history[lift].length, 0);
   if (total === 0) {
     return <p className="tp-small tp-muted">まだ記録はありません。トレ録の「測定の記録」で入れると、ここに推移が出ます。</p>;
@@ -44,36 +56,170 @@ export function LiftHistory({ history }: LiftHistoryProps) {
           <LiftChart key={lift} lift={lift} points={history[lift]} />
         ))}
       </div>
-      <details className="tp-card tp-scroll">
-        <summary className="tp-small">記録の一覧(表)</summary>
-        <table className="tp-roster tp-stat-table">
-          <thead>
-            <tr>
-              <th>日付</th>
-              <th>種目</th>
-              <th>記録</th>
-              <th>推定1RM</th>
-            </tr>
-          </thead>
-          <tbody>
+      <details className="tp-card">
+        <summary className="tp-small">記録の一覧{edit ? "(編集・削除はここから)" : ""}</summary>
+        {/* スマホの幅で横にはみ出さないよう、表ではなく1件1行の一覧にした(編集の欄もその下に開く) */}
+        <ol className="tp-lift-records">
             {LIFTS.flatMap((lift) => history[lift].map((point) => ({ lift, point })))
               .sort((a, b) => b.point.date.localeCompare(a.point.date) || LIFTS.indexOf(a.lift) - LIFTS.indexOf(b.lift))
               .map(({ lift, point }) => (
-                <tr key={`${lift}-${point.date}`}>
-                  <td className="tp-nowrap">{formatDate(point.date)}</td>
-                  <td className="tp-nowrap">{LIFT_LABELS[lift]}</td>
-                  <td className="tp-num tp-nowrap">
-                    {point.rm === 1 ? "1RM" : "3RM"} {point.value} kg
-                  </td>
-                  <td className="tp-num tp-nowrap">
-                    {round1(point.estimated)} kg{point.isBest ? " ・ 更新" : ""}
-                  </td>
-                </tr>
+                <RecordRow key={`${lift}-${point.date}`} lift={lift} point={point} edit={edit} />
               ))}
-          </tbody>
-        </table>
+        </ol>
       </details>
     </div>
+  );
+}
+
+function RecordRow({
+  lift,
+  point,
+  edit,
+}: {
+  lift: LiftKind;
+  point: LiftHistoryPoint;
+  edit?: { teamSlug: string; today: string };
+}) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
+  const [date, setDate] = useState(point.date);
+  const [value, setValue] = useState(String(point.value));
+  const [rm, setRm] = useState(point.rm === 1 ? "1" : "3");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  function open(next: "edit" | "delete") {
+    setDate(point.date);
+    setValue(String(point.value));
+    setRm(point.rm === 1 ? "1" : "3");
+    setError("");
+    setMode(next);
+  }
+
+  async function send(method: "PATCH" | "DELETE") {
+    if (!edit) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(buildTeamApiPath("/api/portal/training/measurements", edit.teamSlug), {
+        method,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          method === "PATCH"
+            ? { item: lift, date: point.date, newDate: date, value, rm }
+            : { item: lift, date: point.date },
+        ),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "保存できませんでした。");
+      }
+      setMode("view");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "保存できませんでした。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li>
+      <div className="tp-lift-record">
+        <span>
+          <b>{formatDate(point.date)}</b> {LIFT_LABELS[lift]}
+        </span>
+        <span className="tp-num">
+          {point.rm === 1 ? "1RM" : "3RM"} {point.value} kg
+          <small className="tp-muted">
+            {" "}
+            → 推定 {round1(point.estimated)} kg{point.isBest ? " ・ 更新" : ""}
+          </small>
+        </span>
+        {edit ? (
+          <span className="tp-lift-record-actions">
+            <button type="button" className="tp-link-button" onClick={() => open("edit")}>
+              編集
+            </button>
+            <button type="button" className="tp-link-button tp-danger-text" onClick={() => open("delete")}>
+              削除
+            </button>
+          </span>
+        ) : null}
+      </div>
+      {edit && mode !== "view" ? (
+        <div className="tp-lift-edit">
+            {mode === "edit" ? (
+              <div className="tp-lift-edit">
+                <div className="tp-inputs">
+                  <div className="tp-field">
+                    <label htmlFor={`lift-date-${lift}-${point.date}`}>測った日</label>
+                    <input
+                      id={`lift-date-${lift}-${point.date}`}
+                      type="date"
+                      min={addDays(edit.today, -LOG_MAX_PAST_DAYS)}
+                      max={edit.today}
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                    />
+                  </div>
+                  <div className="tp-field">
+                    <label htmlFor={`lift-value-${lift}-${point.date}`}>{LIFT_LABELS[lift]}(kg)</label>
+                    <div className="tp-rm">
+                      <input
+                        id={`lift-value-${lift}-${point.date}`}
+                        type="number"
+                        inputMode="decimal"
+                        step="0.5"
+                        value={value}
+                        onChange={(event) => setValue(event.target.value)}
+                      />
+                      <select aria-label="何回挙げた重さか" value={rm} onChange={(event) => setRm(event.target.value)}>
+                        <option value="3">3RM</option>
+                        <option value="1">1RM</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="tp-actions">
+                  <button
+                    type="button"
+                    className="tp-button"
+                    disabled={busy || !date || !value.trim()}
+                    onClick={() => void send("PATCH")}
+                  >
+                    {busy ? "保存中…" : "保存"}
+                  </button>
+                  <button type="button" className="tp-button tp-ghost" disabled={busy} onClick={() => setMode("view")}>
+                    やめる
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="tp-lift-edit">
+                <p className="tp-small">
+                  {formatDate(point.date)} の{LIFT_LABELS[lift]}({point.rm === 1 ? "1RM" : "3RM"} {point.value} kg)を削除します。元に戻せません。
+                </p>
+                <div className="tp-actions">
+                  <button type="button" className="tp-button tp-danger" disabled={busy} onClick={() => void send("DELETE")}>
+                    {busy ? "削除中…" : "削除する"}
+                  </button>
+                  <button type="button" className="tp-button tp-ghost" disabled={busy} onClick={() => setMode("view")}>
+                    やめる
+                  </button>
+                </div>
+              </div>
+            )}
+            {error ? (
+              <p className="tp-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+        </div>
+      ) : null}
+    </li>
   );
 }
 

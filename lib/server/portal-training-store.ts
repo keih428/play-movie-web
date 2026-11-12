@@ -214,6 +214,40 @@ export async function listMemberMeasurements(memberId: string): Promise<Measurem
   return rows.map((row) => ({ item: row.item, value: Number(row.value), rm: row.rm, measuredOn: row.measured_on }));
 }
 
+/** 1つの測定(人・日付・項目)があるか。 */
+export async function hasMeasurement(memberId: string, measuredOn: string, item: MeasurementItem): Promise<boolean> {
+  const rows = await query<{ found: number }>(
+    `SELECT 1 AS found FROM measurements WHERE member_id = $1 AND measured_on = $2 AND item = $3`,
+    [memberId, measuredOn, item],
+  );
+  return rows.length > 0;
+}
+
+/** 1つの測定の日付・重さ・RM を変える(2026-11-12 から。記録の一覧の「編集」)。変えた行がなければ false。 */
+export async function updateMeasurement(
+  memberId: string,
+  item: MeasurementItem,
+  from: string,
+  next: { measuredOn: string; value: number; rm: number | null },
+): Promise<boolean> {
+  const rows = await query<{ item: string }>(
+    `UPDATE measurements SET measured_on = $4, value = $5, rm = $6, updated_at = now()
+     WHERE member_id = $1 AND item = $2 AND measured_on = $3
+     RETURNING item`,
+    [memberId, item, from, next.measuredOn, next.value, next.rm],
+  );
+  return rows.length > 0;
+}
+
+/** 1つの測定を消す(2026-11-12 から。記録の一覧の「削除」)。消した行がなければ false。 */
+export async function deleteMeasurement(memberId: string, item: MeasurementItem, measuredOn: string): Promise<boolean> {
+  const rows = await query<{ item: string }>(
+    `DELETE FROM measurements WHERE member_id = $1 AND item = $2 AND measured_on = $3 RETURNING item`,
+    [memberId, item, measuredOn],
+  );
+  return rows.length > 0;
+}
+
 export function toEstimated1rm(
   latest: Partial<Record<MeasurementItem, Measurement>>,
 ): Estimated1rm {

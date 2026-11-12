@@ -5229,3 +5229,58 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   min-height: 1.5em;
   margin: 0;
 }
+
+/* Big3 の記録の一覧:自分の記録の「編集」「削除」(2026-11-12 から) */
+.tp-link-button {
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--tp-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tp-link-button + .tp-link-button {
+  margin-left: 6px;
+}
+
+.tp-danger-text {
+  color: var(--tp-danger-fg);
+}
+
+.tp-lift-records {
+  display: grid;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-lift-records > li {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--tp-line);
+}
+
+.tp-lift-record {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: 14px;
+}
+
+.tp-lift-record-actions {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.tp-lift-edit {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--tp-accent-soft);
+}
