@@ -557,7 +557,7 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
           </p>
           <TrainingMeasurementForm latest={latest} teamSlug={teamSlug} today={today} />
           <h3 className="tp-small">Big3 の推移(推定1RM)</h3>
-          <LiftHistory history={buildLiftHistory(measurements)} />
+          <LiftHistory history={buildLiftHistory(measurements)} edit={{ teamSlug, today }} />
         </section>
       ) : null}
 
