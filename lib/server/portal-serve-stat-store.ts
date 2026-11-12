@@ -70,7 +70,7 @@ export async function sumServeCounts(teamSlug: string, from: string, to: string)
   return toCounts(rows);
 }
 
-/** 前半・後半の組み方(共有)。まだ組んでいなければ setup は null。 */
+/** 打つ人(共有)。まだ選んでいなければ setup は null。 */
 export async function getServeSetup(drillId: string): Promise<{ setup: ServeSetup | null; savedAt: string | null }> {
   const rows = await query<{ serve_setup: string | null; serve_setup_at: Date | string | null }>(
     "SELECT serve_setup, serve_setup_at FROM drill_stat_drills WHERE id = $1",

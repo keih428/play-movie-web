@@ -5,7 +5,7 @@ import {
   parseServeSetup,
   rankServes,
   serveEfficiency,
-  splitServeTeams,
+  serveSetupOf,
   type ServeCount,
 } from "@/lib/domain/serve-stats";
 
@@ -73,22 +73,14 @@ describe("isServer", () => {
   });
 });
 
-describe("splitServeTeams", () => {
-  it("ポジションごとに前半・後半へ交互に分け、リベロは入れない", () => {
-    const teams = splitServeTeams([
-      { id: "oh1", position: "OH" },
-      { id: "oh2", position: "OH" },
-      { id: "mb1", position: "MB" },
-      { id: "s1", position: "S" },
-      { id: "s2", position: "S" },
-      { id: "li", position: "Li" },
-    ]);
-    expect(teams).toEqual({ oh1: "first", oh2: "second", mb1: "first", s1: "second", s2: "first" });
+describe("serveSetupOf", () => {
+  it("渡した人を全員、打つ人に入れる(前半・後半には分けない)", () => {
+    expect(serveSetupOf([{ id: "oh1" }, { id: "mb1" }])).toEqual({ teams: { oh1: "first", mb1: "first" } });
   });
 });
 
 describe("parseServeSetup", () => {
-  it("前半・後半以外は捨てる", () => {
+  it("前の前半・後半の値は読み、それ以外は捨てる", () => {
     expect(parseServeSetup({ teams: { a: "first", b: "second", c: "x" } })).toEqual({
       teams: { a: "first", b: "second" },
     });
