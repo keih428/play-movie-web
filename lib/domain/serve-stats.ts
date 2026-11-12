@@ -3,7 +3,7 @@ import type { MemberPosition } from "@/lib/domain/portal";
 
 // ---------- サーブ効果率の集計(2026-11-10 から。主将の依頼) ----------
 // サーブを打つたびに、DataVolley の6段階(# + ! - / =)のどれかを数え、
-// 月ごとに AB・C に分けてサーブ効果率の順位を出す。打つのはリベロ以外のプレイヤーで、前半・後半に分かれて打つ。
+// 月ごとに AB・C に分けてサーブ効果率の順位を出す。打つのはリベロ以外のプレイヤー。
 // サーブ効果率 =(エース × 100 + 効果 × 25 − ミス × 25)÷ 打数
 // エースは #、効果は + (相手のレセプションが Cパス以下)と / (直接返ってきた)、ミスは =。! と - は数に入れない
 // (Vリーグの「サーブ効果」に合わせた。けーいちの決定、2026-11-10)。
@@ -123,35 +123,19 @@ export function rankServes(counts: ServeCount[], minAttempts = SERVE_MIN_ATTEMPT
   return rows;
 }
 
-// ---------- 数える画面:前半・後半 ----------
+// ---------- 数える画面:打つ人 ----------
+// 2026-11-12 から前半・後半には分けない(けーいちの依頼)。保存の形は前のまま(teams に入っている人が打つ人)で、
+// 前に "second" で保存したメニューも、そのまま打つ人として読む。
 
 export type ServeTeam = "first" | "second";
 
-export const SERVE_TEAM_LABELS: Record<ServeTeam, string> = {
-  first: "前半",
-  second: "後半",
-};
-
-// 前半・後半に分けるときのポジションの順(リベロは打たない)。
-const SPLIT_POSITIONS = ["OH", "OP", "MB", "S"] as const satisfies readonly MemberPosition[];
-
-/** 前半・後半を、ポジションごとに交互に分ける(どちらにも OH・OP・MB・S が入るように)。選手は渡した順に振り分ける。 */
-export function splitServeTeams(players: { id: string; position: MemberPosition | null }[]): Record<string, ServeTeam> {
-  const teams: Record<string, ServeTeam> = {};
-  const sizes: Record<ServeTeam, number> = { first: 0, second: 0 };
-  for (const position of SPLIT_POSITIONS) {
-    let next: ServeTeam = sizes.first <= sizes.second ? "first" : "second";
-    for (const player of players.filter((entry) => entry.position === position)) {
-      teams[player.id] = next;
-      sizes[next] += 1;
-      next = next === "first" ? "second" : "first";
-    }
-  }
-  return teams;
+/** 打つ人の選び方を作る(渡した人を全員入れる)。 */
+export function serveSetupOf(players: { id: string }[]): ServeSetup {
+  return { teams: Object.fromEntries(players.map((player) => [player.id, "first" as const])) };
 }
 
 export type ServeSetup = {
-  // 打つ人と、前半・後半。入っていない人は出ない。
+  // 打つ人(値は前の前半・後半の名残で、見ない)。入っていない人は出ない。
   teams: Record<string, ServeTeam>;
 };
 

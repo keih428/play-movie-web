@@ -38,7 +38,7 @@ async function getContext(request: NextRequest, context: RouteContext, record: b
   return { teamSlug, drill };
 }
 
-// いまの数と前半・後半(何人かで同時に数えるので、画面が2秒ごとに取りにくる。見るのは全員)。
+// いまの数と打つ人(何人かで同時に数えるので、画面が2秒ごとに取りにくる。見るのは全員)。
 export async function GET(request: NextRequest, context: RouteContext) {
   const found = await getContext(request, context, false);
   if ("error" in found) {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   return NextResponse.json({ counts, setup, setupSavedAt: savedAt }, { headers: { "cache-control": "no-store" } });
 }
 
-// 前半・後半の組み方を保存する(あとから保存したものが勝つ)。
+// 打つ人を保存する(あとから保存したものが勝つ)。
 export async function PUT(request: NextRequest, context: RouteContext) {
   const found = await getContext(request, context, true);
   if ("error" in found) {
@@ -59,7 +59,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   }
   const setup = parseServeSetup(await request.json().catch(() => null));
   if (!setup) {
-    return NextResponse.json({ error: "前半・後半の組み方が正しくありません。" }, { status: 400 });
+    return NextResponse.json({ error: "打つ人の選び方が正しくありません。" }, { status: 400 });
   }
   const savedAt = await saveServeSetup(found.drill.id, setup);
   return NextResponse.json({ setup, setupSavedAt: savedAt });

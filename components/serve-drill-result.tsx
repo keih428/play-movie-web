@@ -1,13 +1,11 @@
 import {
   SERVE_RESULTS,
-  SERVE_TEAM_LABELS,
   addServeTally,
   emptyServeTally,
   formatServeEfficiency,
   rankServes,
   serveAttempts,
   type ServeTally,
-  type ServeTeam,
 } from "@/lib/domain/serve-stats";
 
 type ResultPlayer = { id: string; displayName: string; position: string | null };
@@ -16,13 +14,14 @@ type ServeDrillResultProps = {
   // 打つ人(リベロ以外のプレイヤー)。
   players: ResultPlayer[];
   counts: Record<string, ServeTally>;
-  teams: Record<string, ServeTeam>;
+  // 打つ人(入っていて、まだ打っていない人を下に出す)。
+  teams: Record<string, unknown>;
 };
 
 /**
  * 1つのメニューの結果(2026-11-10 から。けーいちの依頼)。数える画面の「結果」で出す。
- * 打った人を効果率の高い順に並べ(このメニューだけなので規定の打数はなし)、前半・後半・全体の合計を下に出す。
- * 組み方に入っていてまだ打っていない人は、いちばん下に「—」で出す。
+ * 打った人を効果率の高い順に並べ(このメニューだけなので規定の打数はなし)、全体の合計を下に出す。
+ * 打つ人に入っていてまだ打っていない人は、いちばん下に「—」で出す。
  */
 export function ServeDrillResult({ players, counts, teams }: ServeDrillResultProps) {
   const byId = new Map(players.map((player) => [player.id, player]));
@@ -36,13 +35,7 @@ export function ServeDrillResult({ players, counts, teams }: ServeDrillResultPro
   const waiting = players.filter((player) => teams[player.id] && !served.has(player.id));
   const sumOf = (ids: string[]) =>
     ids.reduce((sum, id) => addServeTally(sum, counts[id] ?? emptyServeTally()), emptyServeTally());
-  const totals: { label: string; tally: ServeTally }[] = [
-    ...(["first", "second"] as const).map((team) => ({
-      label: `${SERVE_TEAM_LABELS[team]}の合計`,
-      tally: sumOf(players.filter((player) => teams[player.id] === team).map((player) => player.id)),
-    })),
-    { label: "全体", tally: sumOf(players.map((player) => player.id)) },
-  ];
+  const totals: { label: string; tally: ServeTally }[] = [{ label: "全体", tally: sumOf(players.map((player) => player.id)) }];
 
   if (ranked.length === 0 && waiting.length === 0) {
     return <p className="tp-muted">このメニューのサーブの記録はまだありません。</p>;
@@ -65,16 +58,12 @@ export function ServeDrillResult({ players, counts, teams }: ServeDrillResultPro
         <tbody>
           {ranked.map((row) => {
             const player = byId.get(row.memberId)!;
-            const team = teams[row.memberId];
             return (
               <tr key={row.memberId} className={row.rank === 1 ? "tp-spike-top" : undefined}>
                 <td className="tp-num">{row.rank}</td>
                 <td>
                   <span className="tp-nowrap">{player.displayName}</span>
-                  <span className="tp-sub">
-                    {player.position}
-                    {team ? ` ・ ${SERVE_TEAM_LABELS[team]}` : ""}
-                  </span>
+                  <span className="tp-sub">{player.position}</span>
                 </td>
                 <td className="tp-num">{row.attempts}</td>
                 {SERVE_RESULTS.map((result) => (
@@ -91,9 +80,7 @@ export function ServeDrillResult({ players, counts, teams }: ServeDrillResultPro
               <td className="tp-num">—</td>
               <td>
                 <span className="tp-nowrap">{player.displayName}</span>
-                <span className="tp-sub">
-                  {player.position} ・ {SERVE_TEAM_LABELS[teams[player.id]]}
-                </span>
+                <span className="tp-sub">{player.position}</span>
               </td>
               <td className="tp-num">0</td>
               {SERVE_RESULTS.map((result) => (
