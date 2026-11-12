@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { HalfTeamColumns } from "@/components/half-team-columns";
 import { ServeDrillResult } from "@/components/serve-drill-result";
 import { ServeGradeGuide } from "@/components/serve-grade-guide";
+import { useMinusOnce } from "@/components/use-minus-once";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   SERVE_RESULTS,
@@ -90,6 +91,7 @@ export function ServeCounter({
   const [view, setView] = useState<"input" | "result">(canRecord ? "input" : "result");
   const [team, setTeam] = useState<ServeTeam>("first");
   const [history, setHistory] = useState<Tap[]>([]);
+  const { minus, toggleMinus, consumeMinus } = useMinusOnce();
   const [error, setError] = useState("");
   const [online, setOnline] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
@@ -257,7 +259,11 @@ export function ServeCounter({
   }
 
   function press(memberId: string, result: ServeResult) {
-    const tap: Tap = { memberId, result, delta: 1 };
+    const delta: 1 | -1 = consumeMinus() ? -1 : 1;
+    if (delta === -1 && (counts[memberId]?.[result] ?? 0) === 0) {
+      return;
+    }
+    const tap: Tap = { memberId, result, delta };
     feedback(`${memberId}|${result}`);
     setHistory((previous) => [...previous, tap]);
     void send(tap);
@@ -270,7 +276,7 @@ export function ServeCounter({
     }
     setHistory((previous) => previous.slice(0, -1));
     feedback(`${last.memberId}|${last.result}`);
-    void send({ ...last, delta: -1 });
+    void send({ ...last, delta: last.delta === 1 ? -1 : 1 });
   }
 
   // ---- 人を選ぶ ----
@@ -372,7 +378,7 @@ export function ServeCounter({
                     key={result}
                     type="button"
                     className={[BUTTON_CLASS[result], flash === `${player.id}|${result}` ? "tp-counter-flash" : ""].join(" ")}
-                    disabled={!canRecord}
+                    disabled={!canRecord || (minus && tally[result] === 0)}
                     aria-label={`${player.displayName} ${SERVE_RESULT_LABELS[result]}:${tally[result]}本`}
                     onClick={() => press(player.id, result)}
                   >
@@ -412,11 +418,24 @@ export function ServeCounter({
               })}
             </div>
             <small className="tp-muted">
-              {lastTap
-                ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${SERVE_RESULT_LABELS[lastTap.result]}`
-                : "効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数"}
+              {minus
+                ? "減らすマスを押してください(1回だけ)"
+                : lastTap
+                  ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${SERVE_RESULT_LABELS[lastTap.result]}${lastTap.delta === -1 ? " −1" : ""}`
+                  : "効果率 =(エース×100 + 効果×25 − ミス×25)÷ 打数"}
             </small>
           </div>
+          {canRecord ? (
+            <button
+              type="button"
+              className="tp-counter-minus"
+              aria-pressed={minus}
+              aria-label="次に押したマスを1減らす"
+              onClick={toggleMinus}
+            >
+              −1
+            </button>
+          ) : null}
         </div>
       ) : null}
 

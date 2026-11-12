@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HalfTeamColumns } from "@/components/half-team-columns";
 import { SpikeDrillResult } from "@/components/spike-drill-result";
+import { useMinusOnce } from "@/components/use-minus-once";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   FRONT_SPOTS,
@@ -124,6 +125,7 @@ export function SpikeCounter({
   // 画面に並べるセッター(null は「組み方の最初の3人」)。
   const [shownChoice, setShownChoice] = useState<string[] | null>(null);
   const [history, setHistory] = useState<Tap[]>([]);
+  const { minus, toggleMinus, consumeMinus } = useMinusOnce();
   const [error, setError] = useState("");
   const [online, setOnline] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
@@ -260,6 +262,13 @@ export function SpikeCounter({
     }
     return { kills, attempts };
   };
+
+  // 1つのマス(この人・このセッター・位置・レベルの、決定かミス)の本数。
+  const cellValue = (memberId: string, setterId: string, spot: SpikeSpot, level: number, kill: boolean) => {
+    const cell = sumWhere((m, s, sp, l) => m === memberId && s === setterId && sp === spot && l === level);
+    return kill ? cell.kills : cell.attempts - cell.kills;
+  };
+
   const modeSpots = (spot: SpikeSpot) =>
     mode === "front" ? (FRONT_SPOTS as readonly SpikeSpot[]).includes(spot) : spot === mode;
 
@@ -335,7 +344,13 @@ export function SpikeCounter({
     if (!spot) {
       return;
     }
-    const tap: Tap = { memberId: player.id, setterId, spot, level: levelAt(player, spot), kill, delta: 1 };
+    const level = levelAt(player, spot);
+    const delta: 1 | -1 = consumeMinus() ? -1 : 1;
+    // ミスを減らすのは打数だけを減らすので、ミスが0のマスで減らすと決定まで減ってしまう。0のマスは減らさない。
+    if (delta === -1 && cellValue(player.id, setterId, spot, level, kill) === 0) {
+      return;
+    }
+    const tap: Tap = { memberId: player.id, setterId, spot, level, kill, delta };
     feedback(flashKey(player.id, setterId, kill));
     setHistory((previous) => [...previous, tap]);
     void send(tap);
@@ -348,7 +363,7 @@ export function SpikeCounter({
     }
     setHistory((previous) => previous.slice(0, -1));
     feedback(flashKey(last.memberId, last.setterId, last.kill));
-    void send({ ...last, delta: -1 });
+    void send({ ...last, delta: last.delta === 1 ? -1 : 1 });
   }
 
   function chooseTeam(next: SpikeTeam) {
@@ -518,10 +533,9 @@ export function SpikeCounter({
                     </small>
                   </span>
                   {shownSetters.map((setterId) => {
-                    const cell = sumWhere((m, s, sp, l) => m === player.id && s === setterId && sp === spot && l === level);
                     return (["kill", "miss"] as const).map((kind) => {
                       const kill = kind === "kill";
-                      const value = kill ? cell.kills : cell.attempts - cell.kills;
+                      const value = cellValue(player.id, setterId, spot, level, kill);
                       return (
                         <button
                           key={`${setterId}-${kind}`}
@@ -530,7 +544,7 @@ export function SpikeCounter({
                             kill ? "tp-spike-kill" : "tp-spike-miss",
                             flash === flashKey(player.id, setterId, kill) ? "tp-counter-flash" : "",
                           ].join(" ")}
-                          disabled={!canRecord}
+                          disabled={!canRecord || (minus && value === 0)}
                           aria-label={`${player.displayName} ${kill ? "決定" : "ミス"}(トス ${nameOf(setterId)}):${value}本`}
                           onClick={() => press(player, setterId, kill)}
                         >
@@ -581,11 +595,24 @@ export function SpikeCounter({
                 ))}
               </div>
               <small className="tp-muted">
-                {lastTap
-                  ? `自分の最後:${nameOf(lastTap.memberId)} ${lastTap.kill ? "決定" : "ミス"}(トス ${nameOf(lastTap.setterId)})`
-                  : `赤がいまのペナルティ(${SPIKE_MODE_LABELS[mode]}。チームは決定率、セッターは決定本数)`}
+                {minus
+                  ? "減らすマスを押してください(1回だけ)"
+                  : lastTap
+                    ? `自分の最後:${nameOf(lastTap.memberId)} ${lastTap.kill ? "決定" : "ミス"}(トス ${nameOf(lastTap.setterId)})${lastTap.delta === -1 ? " −1" : ""}`
+                    : `赤がいまのペナルティ(${SPIKE_MODE_LABELS[mode]}。チームは決定率、セッターは決定本数)`}
               </small>
             </div>
+            {canRecord ? (
+              <button
+                type="button"
+                className="tp-counter-minus"
+                aria-pressed={minus}
+                aria-label="次に押したマスを1減らす"
+                onClick={toggleMinus}
+              >
+                −1
+              </button>
+            ) : null}
           </div>
         </>
       ) : (

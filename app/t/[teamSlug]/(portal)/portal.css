@@ -4968,6 +4968,16 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
+/* 「−1」のある帯(集計の数える画面。2026-11-12 から):戻す・途中経過・−1 */
+.tp-spike-dock:has(.tp-counter-minus) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* −1 が入っている間は、マスの枠を赤い点線にして、次に押すと減ることが分かるようにする */
+.tp-counter:has(.tp-counter-minus[aria-pressed="true"]) :is(.tp-spike-kill, .tp-spike-miss):not(:disabled) {
+  border: 2px dashed var(--tp-danger-fg);
+}
+
 .tp-spike-battle {
   display: grid;
   gap: 1px;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMinusOnce } from "@/components/use-minus-once";
 import {
   DRILL_GRADES,
   DRILL_GRADE_LABELS,
@@ -70,7 +71,7 @@ export function DrillCounter({
   const [counts, setCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(initialCounts.map((entry) => [keyOf(entry.memberId, entry.skill, entry.grade), entry.count])),
   );
-  const [minus, setMinus] = useState(false);
+  const { minus, toggleMinus, consumeMinus } = useMinusOnce();
   const [history, setHistory] = useState<Tap[]>([]);
   const [error, setError] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
@@ -139,15 +140,14 @@ export function DrillCounter({
   }
 
   function press(memberId: string, grade: DrillGrade) {
-    const delta: 1 | -1 = minus ? -1 : 1;
+    // −1 は1回ごとに戻す(入れっぱなしで数え続けてしまわないように)。
+    const delta: 1 | -1 = consumeMinus() ? -1 : 1;
     if (delta === -1 && countOf(memberId, grade) === 0) {
       return;
     }
     const tap: Tap = { memberId, skill, grade, delta };
     feedback(keyOf(memberId, skill, grade));
     setHistory((previous) => [...previous, tap]);
-    // −1 は1回ごとに戻す(入れっぱなしで数え続けてしまわないように)。
-    setMinus(false);
     void send(tap);
   }
 
@@ -384,7 +384,7 @@ export function DrillCounter({
               type="button"
               className="tp-counter-minus"
               aria-pressed={minus}
-              onClick={() => setMinus((previous) => !previous)}
+              onClick={toggleMinus}
             >
               −1
             </button>
