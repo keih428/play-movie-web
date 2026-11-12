@@ -9,6 +9,7 @@ type ReplyRow = {
   session_date: string;
   author_id: string;
   author_name: string;
+  author_number: string | null;
   body: string;
   created_at: Date;
 };
@@ -20,12 +21,13 @@ function toReply(row: ReplyRow): TrainingRequestReply {
     sessionDate: row.session_date,
     authorId: row.author_id,
     authorName: row.author_name,
+    authorNumber: row.author_number,
     body: row.body,
     createdAt: new Date(row.created_at).toISOString(),
   };
 }
 
-const REPLY_COLUMNS = `r.id, r.member_id, r.session_date, r.author_id, ${MEMBER_DISPLAY_NAME_SQL} AS author_name, r.body, r.created_at`;
+const REPLY_COLUMNS = `r.id, r.member_id, r.session_date, r.author_id, ${MEMBER_DISPLAY_NAME_SQL} AS author_name, m.number AS author_number, r.body, r.created_at`;
 
 /** from〜to の記録に付いた返信(チームの部員の分)を、古い順に。 */
 export async function listRangeReplies(teamSlug: string, from: string, to: string): Promise<TrainingRequestReply[]> {

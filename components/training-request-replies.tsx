@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { MemberAvatar } from "@/components/member-avatar";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import { TRAINING_REPLY_MAX, type TrainingRequestReply } from "@/lib/domain/training";
 
@@ -13,6 +14,9 @@ type TrainingRequestRepliesProps = {
   teamSlug: string;
 };
 
+// 並べるアイコンの数(バレーノートと同じ)。
+const AVATAR_LIMIT = 5;
+
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("ja-JP", {
     timeZone: "Asia/Tokyo",
@@ -23,7 +27,11 @@ function formatDateTime(value: string) {
   });
 }
 
-/** 「トレーニング担当へ」の下に出す返信のやりとり。書けるのはトレーニング担当と、書いた本人。 */
+/**
+ * 「トレーニング担当へ」の下に出す返信のやりとり。書けるのはトレーニング担当と、書いた本人。
+ * 見た目はバレーノートのコメントにそろえた(2026-11-12 から。けーいちの依頼):下の「返信 N件 ▼」でその場で開き、
+ * 返信した人を背番号のアイコンで並べる。Slack の知らせから来たとき(#req-…)は、開いた状態で出す。
+ */
 export function TrainingRequestReplies({
   canReply,
   initialReplies,
@@ -32,10 +40,17 @@ export function TrainingRequestReplies({
   teamSlug,
 }: TrainingRequestRepliesProps) {
   const [replies, setReplies] = useState(initialReplies);
+  const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const fieldId = `reply-${memberId}-${sessionDate}`;
+
+  useEffect(() => {
+    if (window.location.hash === `#req-${memberId}-${sessionDate}`) {
+      setOpen(true);
+    }
+  }, [memberId, sessionDate]);
 
   async function send(event: FormEvent) {
     event.preventDefault();
@@ -64,47 +79,75 @@ export function TrainingRequestReplies({
     return null;
   }
 
+  // 返信した人(同じ人は1つ)。
+  const authors = [...new Map(replies.map((reply) => [reply.authorId, reply])).values()];
+
   return (
-    <div className="tp-replies">
-      {replies.length > 0 ? (
-        <ol className="tp-comments">
-          {replies.map((reply) => (
-            <li key={reply.id}>
-              <div className="tp-comment-head">
-                <b>{reply.authorName}</b>
-                <span suppressHydrationWarning>{formatDateTime(reply.createdAt)}</span>
-              </div>
-              <p>{reply.body}</p>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      {canReply ? (
-        <form onSubmit={send} className="tp-reply-form">
-          <div className="tp-field">
-            <label htmlFor={fieldId}>返信する</label>
-            <textarea
-              id={fieldId}
-              rows={2}
-              maxLength={TRAINING_REPLY_MAX}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              required
-            />
-            <p className="tp-small tp-muted">書いた本人とトレーニング担当に Slack で知らせます。</p>
-          </div>
-          {error ? (
-            <p className="tp-error" role="alert">
-              {error}
-            </p>
+    <>
+      <div className="tp-note-foot">
+        <button type="button" className="tp-note-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {authors.length > 0 ? (
+            <span className="tp-avatars" aria-hidden="true">
+              {authors.slice(0, AVATAR_LIMIT).map((reply) => (
+                <MemberAvatar key={reply.authorId} name={reply.authorName} number={reply.authorNumber} />
+              ))}
+              {authors.length > AVATAR_LIMIT ? (
+                <span className="tp-avatar tp-avatar-more">+{authors.length - AVATAR_LIMIT}</span>
+              ) : null}
+            </span>
           ) : null}
-          <div>
-            <button className="tp-button" type="submit" disabled={busy || !body.trim()}>
-              {busy ? "送信中…" : "返信する"}
-            </button>
-          </div>
-        </form>
+          <span>{replies.length > 0 ? `返信 ${replies.length}件` : "返信する"}</span>
+          <span className="tp-note-chevron" aria-hidden="true">
+            {open ? "▲" : "▼"}
+          </span>
+        </button>
+      </div>
+      {open ? (
+        <section className="tp-comments-inline">
+          {replies.length === 0 ? (
+            <p className="tp-small tp-muted">まだ返信はありません。</p>
+          ) : (
+            <ol className="tp-comments">
+              {replies.map((reply) => (
+                <li key={reply.id}>
+                  <div className="tp-comment-head">
+                    <MemberAvatar name={reply.authorName} number={reply.authorNumber} />
+                    <b>{reply.authorName}</b>
+                    <span suppressHydrationWarning>{formatDateTime(reply.createdAt)}</span>
+                  </div>
+                  <p>{reply.body}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+          {canReply ? (
+            <form className="tp-comment-form" onSubmit={send}>
+              <div className="tp-field">
+                <label htmlFor={fieldId}>返信を書く</label>
+                <textarea
+                  id={fieldId}
+                  rows={2}
+                  maxLength={TRAINING_REPLY_MAX}
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  required
+                />
+                <p className="tp-small tp-muted">書いた本人とトレーニング担当、ここに返信した人に Slack で知らせます。</p>
+              </div>
+              {error ? (
+                <p className="tp-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              <div>
+                <button className="tp-button" type="submit" disabled={busy || !body.trim()}>
+                  {busy ? "送信中…" : "返信する"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </section>
       ) : null}
-    </div>
+    </>
   );
 }
