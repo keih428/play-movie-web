@@ -43,24 +43,26 @@ export async function notifyMembers(members: Member[], text: string) {
 }
 
 /**
- * 遅刻・欠席のチャンネルに流す。`SLACK_ATTENDANCE_CHANNEL`(チャンネルの ID、C で始まる)が未設定なら何もしない。
+ * 決まったチャンネルに流す。`channelEnv` の環境変数(チャンネルの ID、C で始まる)が未設定なら何もしない。
  * ボットをそのチャンネルに招待しておく必要がある。うまくいったかどうかと、Slack が返した理由を返す。
  */
-export async function postToAttendanceChannel(text: string): Promise<{ ok: boolean; detail: string }> {
+async function postToChannel(
+  channelEnv: string,
+  channelLabel: string,
+  text: string,
+): Promise<{ ok: boolean; detail: string }> {
   const token = process.env.SLACK_BOT_TOKEN?.trim();
-  const channel = process.env.SLACK_ATTENDANCE_CHANNEL?.trim();
+  const channel = process.env[channelEnv]?.trim();
   if (!token || !channel) {
     return {
       ok: false,
-      detail: !token
-        ? "SLACK_BOT_TOKEN が入っていません。"
-        : "SLACK_ATTENDANCE_CHANNEL(遅刻・欠席のチャンネルの ID)が入っていません。",
+      detail: !token ? "SLACK_BOT_TOKEN が入っていません。" : `${channelEnv}(${channelLabel}の ID)が入っていません。`,
     };
   }
 
   const result = await callSlack("chat.postMessage", token, { channel, text, unfurl_links: false });
   if (!result.ok) {
-    console.error("[portal-slack] attendance channel failed", result.error);
+    console.error(`[portal-slack] ${channelEnv} failed`, result.error);
     return {
       ok: false,
       detail:
@@ -70,6 +72,16 @@ export async function postToAttendanceChannel(text: string): Promise<{ ok: boole
     };
   }
   return { ok: true, detail: "チャンネルに流しました。" };
+}
+
+/** 遅刻・欠席のチャンネル(`SLACK_ATTENDANCE_CHANNEL`)に流す。 */
+export function postToAttendanceChannel(text: string): Promise<{ ok: boolean; detail: string }> {
+  return postToChannel("SLACK_ATTENDANCE_CHANNEL", "遅刻・欠席のチャンネル", text);
+}
+
+/** 試合を追加したことを、試合のチャンネル(`SLACK_MATCH_CHANNEL`)に流す(2026-11-12 から)。 */
+export function postToMatchChannel(text: string): Promise<{ ok: boolean; detail: string }> {
+  return postToChannel("SLACK_MATCH_CHANNEL", "試合のチャンネル", text);
 }
 
 export type SlackCheck = {

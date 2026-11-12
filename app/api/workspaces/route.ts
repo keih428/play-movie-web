@@ -4,7 +4,11 @@ import {
   listSavedWorkspaces,
   saveWorkspace,
 } from "@/lib/server/workspace-store";
+import { formatMatchAddedMessage } from "@/lib/domain/match-notice";
+import { isPortalTeam } from "@/lib/domain/portal";
+import { buildWorkspacePath } from "@/lib/domain/team";
 import type { PersistedWorkspace } from "@/lib/domain/types";
+import { getBaseUrl, postToMatchChannel } from "@/lib/server/portal-slack";
 
 export async function GET() {
   try {
@@ -57,6 +61,25 @@ export async function POST(request: NextRequest) {
       name: record.name,
       matchCount: record.collection.matches.length,
     });
+
+    // 新しく登録した部の試合(動画つき)は、Slack の試合のチャンネルに流す(2026-11-12 から)。
+    // id があるのは保存し直し。流せなくても登録は止めない。
+    const hasVideo = [record.settings.youtubeUrl, ...(record.settings.setVideos ?? []).map((entry) => entry.youtubeUrl)].some(
+      (url) => url?.trim(),
+    );
+    if (!payload.id && isPortalTeam(record.teamSlug) && hasVideo) {
+      const url = `${getBaseUrl(request)}${buildWorkspacePath({ teamSlug: record.teamSlug, workspaceId: record.id })}`;
+      const slack = await postToMatchChannel(
+        formatMatchAddedMessage({
+          name: record.name,
+          match: record.collection.matches[record.selectedMatchIndex] ?? record.collection.matches[0],
+          url,
+        }),
+      );
+      if (!slack.ok) {
+        console.log("[api/workspaces] match channel", slack.detail);
+      }
+    }
     return NextResponse.json({ provider, workspace: record });
   } catch (error) {
     return NextResponse.json(
