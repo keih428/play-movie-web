@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMinusOnce } from "@/components/use-minus-once";
 import { MEMBER_POSITIONS, toTrainingGroup, type MemberPosition, type TrainingGroup } from "@/lib/domain/portal";
 import {
   formatPassRate,
@@ -63,6 +64,7 @@ export function ReceptionCounter({
   const setupSavedAt = useRef(initialSetupSavedAt);
   const [picking, setPicking] = useState(false);
   const [history, setHistory] = useState<Tap[]>([]);
+  const { minus, toggleMinus, consumeMinus } = useMinusOnce();
   const [error, setError] = useState("");
   const [online, setOnline] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
@@ -215,7 +217,12 @@ export function ReceptionCounter({
   }
 
   function press(memberId: string, pass: boolean) {
-    const tap: Tap = { memberId, pass, delta: 1 };
+    const delta: 1 | -1 = consumeMinus() ? -1 : 1;
+    const cell = counts[memberId] ?? EMPTY;
+    if (delta === -1 && (pass ? cell.passes : cell.attempts - cell.passes) === 0) {
+      return;
+    }
+    const tap: Tap = { memberId, pass, delta };
     feedback(`${memberId}|${pass ? "pass" : "other"}`);
     setHistory((previous) => [...previous, tap]);
     void send(tap);
@@ -228,7 +235,7 @@ export function ReceptionCounter({
     }
     setHistory((previous) => previous.slice(0, -1));
     feedback(`${last.memberId}|${last.pass ? "pass" : "other"}`);
-    void send({ ...last, delta: -1 });
+    void send({ ...last, delta: last.delta === 1 ? -1 : 1 });
   }
 
   // ---- 人を選ぶ ----
@@ -312,7 +319,7 @@ export function ReceptionCounter({
                     pass ? "tp-spike-kill" : "tp-spike-miss",
                     flash === `${player.id}|${pass ? "pass" : "other"}` ? "tp-counter-flash" : "",
                   ].join(" ")}
-                  disabled={!canRecord}
+                  disabled={!canRecord || (minus && (pass ? cell.passes : cell.attempts - cell.passes) === 0)}
                   aria-label={`${player.displayName} ${pass ? "ABパス" : "それ以外"}:${pass ? cell.passes : cell.attempts - cell.passes}本`}
                   onClick={() => press(player.id, pass)}
                 >
@@ -341,11 +348,24 @@ export function ReceptionCounter({
             </span>
           </div>
           <small className="tp-muted">
-            {lastTap
-              ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${lastTap.pass ? "ABパス" : "それ以外"}`
-              : "押すと1本数えます"}
+            {minus
+              ? "減らすマスを押してください(1回だけ)"
+              : lastTap
+                ? `自分の最後:${byId.get(lastTap.memberId)?.displayName ?? "?"} ${lastTap.pass ? "ABパス" : "それ以外"}${lastTap.delta === -1 ? " −1" : ""}`
+                : "押すと1本数えます"}
           </small>
         </div>
+        {canRecord ? (
+            <button
+              type="button"
+              className="tp-counter-minus"
+              aria-pressed={minus}
+              aria-label="次に押したマスを1減らす"
+              onClick={toggleMinus}
+            >
+              −1
+            </button>
+        ) : null}
       </div>
 
       {picking ? <button type="button" className="tp-counter-backdrop" aria-label="閉じる" onClick={closePicker} /> : null}
