@@ -202,6 +202,18 @@ export async function getTeamLatestMeasurements(teamSlug: string) {
   return toLatest(rows);
 }
 
+/** 1人の測定を、すべて古い順に(Big3 の推移に使う。2026-11-12 から)。 */
+export async function listMemberMeasurements(memberId: string): Promise<Measurement[]> {
+  const rows = await query<MeasurementRow>(
+    `SELECT ms.member_id, ms.item, ms.value, ms.rm, ms.measured_on
+     FROM measurements ms
+     WHERE ms.member_id = $1
+     ORDER BY ms.measured_on, ms.item`,
+    [memberId],
+  );
+  return rows.map((row) => ({ item: row.item, value: Number(row.value), rm: row.rm, measuredOn: row.measured_on }));
+}
+
 export function toEstimated1rm(
   latest: Partial<Record<MeasurementItem, Measurement>>,
 ): Estimated1rm {

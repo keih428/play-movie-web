@@ -5151,3 +5151,81 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   grid-template-columns: repeat(2, 1fr);
   width: 100%;
 }
+
+/* ---------- Big3 の推移(2026-11-12 から) ---------- */
+.tp-lift-history {
+  display: grid;
+  gap: 12px;
+}
+
+.tp-lift-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+}
+
+.tp-lift-chart {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.tp-lift-chart figcaption {
+  display: grid;
+  gap: 2px;
+}
+
+.tp-lift-now {
+  font-family: var(--tp-num);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.tp-lift-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+
+.tp-lift-grid line {
+  stroke: var(--tp-line);
+  stroke-width: 1;
+}
+
+.tp-lift-grid text,
+.tp-lift-axis {
+  fill: var(--tp-muted);
+  font-family: var(--tp-num);
+  font-size: 10px;
+}
+
+.tp-lift-cross {
+  stroke: var(--tp-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tp-lift-line {
+  fill: none;
+  stroke: var(--tp-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.tp-lift-dot {
+  fill: var(--tp-surface);
+  stroke: var(--tp-accent);
+  stroke-width: 2;
+}
+
+.tp-lift-best {
+  fill: var(--tp-accent);
+  stroke: var(--tp-surface);
+}
+
+.tp-lift-tip {
+  min-height: 1.5em;
+  margin: 0;
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RichText } from "@/components/rich-text";
+import { LiftHistory } from "@/components/lift-history";
 import { TrainingMeasurementForm } from "@/components/training-measurement-form";
 import { TrainingGlossary as Glossary } from "@/components/training-glossary";
 import { TrainingLogHistory } from "@/components/training-log-history";
@@ -23,6 +24,7 @@ import {
   buildTeamTrainingRecordsPath,
 } from "@/lib/domain/team";
 import {
+  buildLiftHistory,
   findPlanBlock,
   findWeekIndex,
   formatMonthDay,
@@ -42,6 +44,7 @@ import { listMustItems } from "@/lib/server/portal-training-must-store";
 import {
   getLatestMeasurements,
   getTodayInJapan,
+  listMemberMeasurements,
   getTrainingPlan,
   listMemberSessions,
   listTrainingPrograms,
@@ -338,7 +341,9 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
     return `${basePath}?${search.toString()}`;
   }
 
-  const latest = canRecord ? await getLatestMeasurements(current.id) : {};
+  const [latest, measurements] = canRecord
+    ? await Promise.all([getLatestMeasurements(current.id), listMemberMeasurements(current.id)])
+    : [{}, []];
   const estimated = viewTier ? {} : toEstimated1rm(latest);
   const resolved = resolveWeek(menu, weekIndex, selection, estimated);
   const { week } = resolved;
@@ -547,10 +552,12 @@ export default async function TeamTrainingPage({ params, searchParams }: PagePro
         <section className="tp-section">
           <SectionHead no={2} title="測定の記録" tangoTitle="重さを割り出す" />
           <p className="tp-small tp-muted">
-            3RMと体重を測ったら、測った項目だけ入れます(今日の日付で記録)。推定1RM(3RM ×
+            3RMと体重を測ったら、測った項目だけ入れます。max を更新したら、その日の日付で入れておくと、下の推移で伸びを追えます。推定1RM(3RM ×
             1.1)から、メイン種目の重さの目安が出ます。
           </p>
-          <TrainingMeasurementForm latest={latest} teamSlug={teamSlug} />
+          <TrainingMeasurementForm latest={latest} teamSlug={teamSlug} today={today} />
+          <h3 className="tp-small">Big3 の推移(推定1RM)</h3>
+          <LiftHistory history={buildLiftHistory(measurements)} />
         </section>
       ) : null}
 
