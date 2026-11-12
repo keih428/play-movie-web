@@ -764,6 +764,8 @@ export type TrainingRequestReply = {
   sessionDate: string;
   authorId: string;
   authorName: string;
+  // 返信した人の背番号(アイコンに出す。2026-11-12 から)。
+  authorNumber: string | null;
   body: string;
   createdAt: string;
 };
