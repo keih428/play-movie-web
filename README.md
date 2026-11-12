@@ -361,4 +361,5 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 | `SLACK_BOT_TOKEN` | 部員に DM を送る Slack アプリのトークン(`xoxb-…`、権限は `chat:write`)。なくても動く |
 | `SLACK_ATTENDANCE_CHANNEL` | 遅刻・欠席の連絡を流すチャンネルの ID(`C` で始まる)。なくても動く |
 | `PRACTICE_CALENDAR_ICS_URL` | 部の Google カレンダーの「iCal 形式の非公開 URL」。練習日をここから取る。なくても動く(日・火・木・土の決め打ちになる) |
+| `SLACK_MATCH_CHANNEL` | 試合ビューアに試合を登録したとき(スタッフの設定で .vsm と YouTube を結び付けて新しく登録したとき)に知らせを流すチャンネルの ID(`C` で始まる。ボットを招待しておく)。保存し直し・打ち込み補助からの保存では流さない。なくても動く |
 | `INPUT_ASSIST_WORKER_TOKEN` | 打ち込み補助の「AI に骨組みを頼む」の係(scouting-ai の `tools/ai_worker.py`)の合言葉。係は `Authorization: Bearer <これ>` で `/api/input-assist/ai-jobs/*` を呼ぶ(ポータルのログインは要らない)。`openssl rand -base64 32` で作り、係の Mac にも同じ値を入れる。なければ係の API は 503 |
