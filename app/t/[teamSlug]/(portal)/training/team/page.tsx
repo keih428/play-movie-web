@@ -5,11 +5,13 @@ import {
   MEMBER_GROUPS,
   MEMBER_GROUP_LABELS,
   canAdminister,
+  canReplyTrainingRequest,
   getMemberGroup,
   isPortalTeam,
   type MemberGroup,
 } from "@/lib/domain/portal";
 import { buildTeamMemberTrainingPath, buildTeamTrainingPath, buildTeamTrainingRecordsPath } from "@/lib/domain/team";
+import { listThreadParticipantIds } from "@/lib/domain/mentions";
 import { formatNoteDate } from "@/lib/domain/notes";
 import {
   TRAINING_REQUEST_LABEL,
@@ -117,6 +119,9 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
   const players = members.filter((member) => member.position && inGroup(member.id));
   const names = new Map(members.map((member) => [member.id, member.displayName]));
   const recordedIds = new Set(sessions.filter((session) => inGroup(session.memberId)).map((session) => session.memberId));
+  // 1つの「トレーニング担当へ」に付いた返信。
+  const threadOf = (memberId: string, date: string) =>
+    replies.filter((reply) => reply.memberId === memberId && reply.sessionDate === date);
   const comments = sessions.filter((session) => (session.memo || session.request) && inGroup(session.memberId));
   // この週の記録(新しい日から。同じ日は名簿の順)。
   const order = new Map(members.map((member, index) => [member.id, index]));
@@ -344,10 +349,11 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
                   {comment.request}
                 </p>
                 <TrainingRequestReplies
-                  canReply={isTrainingLead || comment.memberId === current.id}
-                  initialReplies={replies.filter(
-                    (reply) => reply.memberId === comment.memberId && reply.sessionDate === comment.date,
-                  )}
+                  canReply={canReplyTrainingRequest(current, {
+                    ownerId: comment.memberId,
+                    participantIds: listThreadParticipantIds(threadOf(comment.memberId, comment.date), members),
+                  })}
+                  initialReplies={threadOf(comment.memberId, comment.date)}
                   memberId={comment.memberId}
                   sessionDate={comment.date}
                   teamSlug={teamSlug}

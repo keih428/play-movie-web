@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
+import { MentionText, MentionTextarea } from "@/components/mentions";
 import { buildTeamApiPath } from "@/lib/domain/team";
 import { TRAINING_REPLY_MAX, type TrainingRequestReply } from "@/lib/domain/training";
 
@@ -28,7 +29,7 @@ function formatDateTime(value: string) {
 }
 
 /**
- * 「トレーニング担当へ」の下に出す返信のやりとり。書けるのはトレーニング担当と、書いた本人。
+ * 「トレーニング担当へ」の下に出す返信のやりとり。書けるのはトレーニング担当と、書いた本人と、@ で呼ばれた人(2026-11-13 から)。
  * 見た目はバレーノートのコメントにそろえた(2026-11-12 から。けーいちの依頼):下の「返信 N件 ▼」でその場で開き、
  * 返信した人を背番号のアイコンで並べる。Slack の知らせから来たとき(#req-…)は、開いた状態で出す。
  */
@@ -115,7 +116,9 @@ export function TrainingRequestReplies({
                     <b>{reply.authorName}</b>
                     <span suppressHydrationWarning>{formatDateTime(reply.createdAt)}</span>
                   </div>
-                  <p>{reply.body}</p>
+                  <p>
+                    <MentionText text={reply.body} />
+                  </p>
                 </li>
               ))}
             </ol>
@@ -124,15 +127,16 @@ export function TrainingRequestReplies({
             <form className="tp-comment-form" onSubmit={send}>
               <div className="tp-field">
                 <label htmlFor={fieldId}>返信を書く</label>
-                <textarea
+                <MentionTextarea
                   id={fieldId}
                   rows={2}
                   maxLength={TRAINING_REPLY_MAX}
                   value={body}
-                  onChange={(event) => setBody(event.target.value)}
-                  required
+                  onChange={setBody}
                 />
-                <p className="tp-small tp-muted">書いた本人とトレーニング担当、ここに返信した人に Slack で知らせます。</p>
+                <p className="tp-small tp-muted">
+                  書いた本人とトレーニング担当、ここに返信した人、@ で呼んだ人に Slack で知らせます。呼ばれた人もここに返信できます。
+                </p>
               </div>
               {error ? (
                 <p className="tp-error" role="alert">
