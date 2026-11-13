@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LinkedText } from "@/components/linked-text";
 import { useEffect, useState } from "react";
 import {
   browserDraftStorage,
@@ -140,10 +141,10 @@ export function TrainingLogHistory({
                     ) : null}
                   </ul>
                   {session.memo ? (
-                    <p className="tp-small tp-muted">{session.memo}</p>
+                    <p className="tp-small tp-muted"><LinkedText text={session.memo} /></p>
                   ) : null}
                   {session.request ? (
-                    <p className="tp-small tp-request">{session.request}</p>
+                    <p className="tp-small tp-request"><LinkedText text={session.request} /></p>
                   ) : null}
                 </li>
               ))}

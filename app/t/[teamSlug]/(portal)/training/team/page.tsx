@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkedText } from "@/components/linked-text";
 import { notFound } from "next/navigation";
 import { TrainingRequestReplies } from "@/components/training-request-replies";
 import {
@@ -341,12 +342,12 @@ export default async function TeamTrainingRecordsPage({ params, searchParams }: 
                 </ul>
               </details>
             ) : null}
-            {comment.memo ? <p>{comment.memo}</p> : null}
+            {comment.memo ? <p><LinkedText text={comment.memo} /></p> : null}
             {comment.request ? (
               <>
                 <p className="tp-request">
                   <b>{TRAINING_REQUEST_LABEL}</b>
-                  {comment.request}
+                  <LinkedText text={comment.request} />
                 </p>
                 <TrainingRequestReplies
                   canReply={canReplyTrainingRequest(current, {

@@ -16,6 +16,7 @@ import {
 } from "@/lib/domain/notes";
 import { buildTeamApiPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { JaText } from "@/components/ja-text";
+import { LinkedText } from "@/components/linked-text";
 
 type NoteCardProps = {
   note: Note;
@@ -56,7 +57,9 @@ export function NoteCard({
   const [comments, setComments] = useState(initialComments);
   const [unreadLeft, setUnreadLeft] = useState(unread);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mode, setMode] = useState<"view" | "edit" | "delete" | "deleted">("view");
+  const [mode, setMode] = useState<"view" | "edit" | "delete" | "deleted">(
+    "view",
+  );
   const [body, setBody] = useState(note.body);
   const [request, setRequest] = useState(note.request);
   const [teamMessage, setTeamMessage] = useState(note.teamMessage);
@@ -90,7 +93,9 @@ export function NoteCard({
 
   // コメントした人(重なりなし、最初にコメントした順)。
   const commenters = comments.filter(
-    (comment, index) => comments.findIndex((entry) => entry.memberId === comment.memberId) === index,
+    (comment, index) =>
+      comments.findIndex((entry) => entry.memberId === comment.memberId) ===
+      index,
   );
   const hasMenu = isMine || canDelete;
 
@@ -100,9 +105,10 @@ export function NoteCard({
     // 自分のノートの新着を開いたら、読んだことにして、上のメニューの新着の数も消す。
     if (next && isMine && unreadLeft > 0) {
       setUnreadLeft(0);
-      void fetch(buildTeamApiPath(`/api/portal/notes/${note.id}/seen`, teamSlug), { method: "POST" }).then(() =>
-        router.refresh(),
-      );
+      void fetch(
+        buildTeamApiPath(`/api/portal/notes/${note.id}/seen`, teamSlug),
+        { method: "POST" },
+      ).then(() => router.refresh());
     }
   }
 
@@ -110,20 +116,39 @@ export function NoteCard({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(buildTeamApiPath("/api/portal/notes", teamSlug), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ date: note.practiceDate, body, request, teamMessage }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const response = await fetch(
+        buildTeamApiPath("/api/portal/notes", teamSlug),
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            date: note.practiceDate,
+            body,
+            request,
+            teamMessage,
+          }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
       if (!response.ok) {
-        throw new Error(payload.error ?? "保存できませんでした。もう一度試してください。");
+        throw new Error(
+          payload.error ?? "保存できませんでした。もう一度試してください。",
+        );
       }
-      setNote({ ...note, body: body.trim(), request: request.trim(), teamMessage: teamMessage.trim() });
+      setNote({
+        ...note,
+        body: body.trim(),
+        request: request.trim(),
+        teamMessage: teamMessage.trim(),
+      });
       setMode("view");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存できませんでした。");
+      setError(
+        caught instanceof Error ? caught.message : "保存できませんでした。",
+      );
     } finally {
       setBusy(false);
     }
@@ -133,22 +158,35 @@ export function NoteCard({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(buildTeamApiPath(`/api/portal/notes/${note.id}`, teamSlug), { method: "DELETE" });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const response = await fetch(
+        buildTeamApiPath(`/api/portal/notes/${note.id}`, teamSlug),
+        { method: "DELETE" },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
       if (!response.ok) {
-        throw new Error(payload.error ?? "削除できませんでした。もう一度試してください。");
+        throw new Error(
+          payload.error ?? "削除できませんでした。もう一度試してください。",
+        );
       }
       setMode("deleted");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "削除できませんでした。");
+      setError(
+        caught instanceof Error ? caught.message : "削除できませんでした。",
+      );
     } finally {
       setBusy(false);
     }
   }
 
   if (mode === "deleted") {
-    return <p className="tp-message">{formatNoteDate(note.practiceDate)}のノートを削除しました。</p>;
+    return (
+      <p className="tp-message">
+        {formatNoteDate(note.practiceDate)}のノートを削除しました。
+      </p>
+    );
   }
 
   return (
@@ -156,12 +194,18 @@ export function NoteCard({
       <div className="tp-dayhead">
         <span className="tp-when">{formatNoteDate(note.practiceDate)}</span>
         {/* 名前を押すと、その人のノート(書いていない日にもコメントできる)へ */}
-        <Link className="tp-what" href={`${buildTeamNotesPath(teamSlug)}/member?id=${note.memberId}`}>
+        <Link
+          className="tp-what"
+          href={`${buildTeamNotesPath(teamSlug)}/member?id=${note.memberId}`}
+        >
           {note.memberName}
         </Link>
         <span className="tp-time">{note.position ?? ""}</span>
         {milestone ? (
-          <span className="tp-milestone-chip" title={`${note.memberName}さんの今月のマイルストーン:${milestone}`}>
+          <span
+            className="tp-milestone-chip"
+            title={`${note.memberName}さんの今月のマイルストーン:${milestone}`}
+          >
             <b>目標</b>
             <JaText>{milestone}</JaText>
           </span>
@@ -216,7 +260,9 @@ export function NoteCard({
       {mode === "edit" ? (
         <div className="tp-note-edit">
           <div className="tp-field">
-            <label htmlFor={`note-body-${note.id}`}>練習で気付いたこと・次にやること</label>
+            <label htmlFor={`note-body-${note.id}`}>
+              練習で気付いたこと・次にやること
+            </label>
             <textarea
               id={`note-body-${note.id}`}
               rows={6}
@@ -226,7 +272,9 @@ export function NoteCard({
             />
           </div>
           <div className="tp-field">
-            <label htmlFor={`note-request-${note.id}`}>リーダーへ(反応してほしいこと。なければ空のまま)</label>
+            <label htmlFor={`note-request-${note.id}`}>
+              リーダーへ(反応してほしいこと。なければ空のまま)
+            </label>
             <textarea
               id={`note-request-${note.id}`}
               rows={2}
@@ -236,7 +284,9 @@ export function NoteCard({
             />
           </div>
           <div className="tp-field">
-            <label htmlFor={`note-team-${note.id}`}>チームへ(チーム全体への振り返り。なければ空のまま)</label>
+            <label htmlFor={`note-team-${note.id}`}>
+              チームへ(チーム全体への振り返り。なければ空のまま)
+            </label>
             <textarea
               id={`note-team-${note.id}`}
               rows={2}
@@ -246,34 +296,57 @@ export function NoteCard({
             />
           </div>
           <div className="tp-actions">
-            <button type="button" className="tp-button" disabled={busy || !body.trim()} onClick={save}>
+            <button
+              type="button"
+              className="tp-button"
+              disabled={busy || !body.trim()}
+              onClick={save}
+            >
               {busy ? "保存中…" : "保存"}
             </button>
-            <button type="button" className="tp-button tp-ghost" disabled={busy} onClick={() => setMode("view")}>
+            <button
+              type="button"
+              className="tp-button tp-ghost"
+              disabled={busy}
+              onClick={() => setMode("view")}
+            >
               やめる
             </button>
           </div>
         </div>
       ) : (
         <>
-          <p ref={bodyRef} className={`tp-note-body${expanded ? "" : " tp-note-clamp"}`}>
-            {note.body || <span className="tp-muted">(まだ書いていません。コメントだけ付いています)</span>}
+          <p
+            ref={bodyRef}
+            className={`tp-note-body${expanded ? "" : " tp-note-clamp"}`}
+          >
+            {note.body ? (
+              <LinkedText text={note.body} />
+            ) : (
+              <span className="tp-muted">
+                (まだ書いていません。コメントだけ付いています)
+              </span>
+            )}
           </p>
           {isLong ? (
-            <button type="button" className="tp-note-expand" onClick={() => setExpanded(!expanded)}>
+            <button
+              type="button"
+              className="tp-note-expand"
+              onClick={() => setExpanded(!expanded)}
+            >
               {expanded ? "たたむ" : "全文を表示"}
             </button>
           ) : null}
           {note.request ? (
             <p className="tp-request">
               <b>リーダーへ</b>
-              {note.request}
+              <LinkedText text={note.request} />
             </p>
           ) : null}
           {note.teamMessage ? (
             <p className="tp-request tp-team-message">
               <b>{NOTE_TEAM_MESSAGE_LABEL}</b>
-              {note.teamMessage}
+              <LinkedText text={note.teamMessage} />
             </p>
           ) : null}
         </>
@@ -281,12 +354,24 @@ export function NoteCard({
 
       {mode === "delete" ? (
         <div className="tp-note-delete">
-          <p className="tp-small">このノートを削除します。付いているコメントも消えて、元に戻せません。</p>
+          <p className="tp-small">
+            このノートを削除します。付いているコメントも消えて、元に戻せません。
+          </p>
           <div className="tp-actions">
-            <button type="button" className="tp-button tp-danger" disabled={busy} onClick={remove}>
+            <button
+              type="button"
+              className="tp-button tp-danger"
+              disabled={busy}
+              onClick={remove}
+            >
               {busy ? "削除中…" : "削除する"}
             </button>
-            <button type="button" className="tp-button tp-ghost" disabled={busy} onClick={() => setMode("view")}>
+            <button
+              type="button"
+              className="tp-button tp-ghost"
+              disabled={busy}
+              onClick={() => setMode("view")}
+            >
               やめる
             </button>
           </div>
@@ -301,19 +386,36 @@ export function NoteCard({
 
       {mode === "view" ? (
         <div className="tp-note-foot">
-          <button type="button" className="tp-note-toggle" aria-expanded={open} onClick={toggleComments}>
+          <button
+            type="button"
+            className="tp-note-toggle"
+            aria-expanded={open}
+            onClick={toggleComments}
+          >
             {commenters.length > 0 ? (
               <span className="tp-avatars" aria-hidden="true">
                 {commenters.slice(0, AVATAR_LIMIT).map((comment) => (
-                  <MemberAvatar key={comment.memberId} name={comment.memberName} number={comment.memberNumber} />
+                  <MemberAvatar
+                    key={comment.memberId}
+                    name={comment.memberName}
+                    number={comment.memberNumber}
+                  />
                 ))}
                 {commenters.length > AVATAR_LIMIT ? (
-                  <span className="tp-avatar tp-avatar-more">+{commenters.length - AVATAR_LIMIT}</span>
+                  <span className="tp-avatar tp-avatar-more">
+                    +{commenters.length - AVATAR_LIMIT}
+                  </span>
                 ) : null}
               </span>
             ) : null}
-            <span>{comments.length > 0 ? `コメント ${comments.length}件` : "コメントする"}</span>
-            {unreadLeft > 0 ? <span className="tp-unread">新着 {unreadLeft}</span> : null}
+            <span>
+              {comments.length > 0
+                ? `コメント ${comments.length}件`
+                : "コメントする"}
+            </span>
+            {unreadLeft > 0 ? (
+              <span className="tp-unread">新着 {unreadLeft}</span>
+            ) : null}
             <span className="tp-note-chevron" aria-hidden="true">
               {open ? "▲" : "▼"}
             </span>

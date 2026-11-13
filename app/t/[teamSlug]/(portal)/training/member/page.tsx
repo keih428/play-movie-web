@@ -8,6 +8,7 @@ import { TRAINING_REQUEST_LABEL, buildLiftHistory, exerciseUnit, summarizeSets, 
 import { getMember, listMembers } from "@/lib/server/portal-member-store";
 import { requireMember } from "@/lib/server/portal-session";
 import { listMemberMeasurements, listMemberSessions } from "@/lib/server/portal-training-store";
+import { LinkedText } from "@/components/linked-text";
 
 type PageProps = {
   params: Promise<{ teamSlug: string }>;
@@ -107,10 +108,10 @@ export default async function MemberTrainingPage({ params, searchParams }: PageP
                   ))}
                   {session.bodyWeightKg !== null ? <li>体重:{session.bodyWeightKg}kg</li> : null}
                 </ul>
-                {session.memo ? <p className="tp-small tp-muted">{session.memo}</p> : null}
+                {session.memo ? <p className="tp-small tp-muted"><LinkedText text={session.memo} /></p> : null}
                 {session.request ? (
                   <p className="tp-small tp-request">
-                    {TRAINING_REQUEST_LABEL}:{session.request}
+                    {TRAINING_REQUEST_LABEL}:<LinkedText text={session.request} />
                   </p>
                 ) : null}
               </li>
