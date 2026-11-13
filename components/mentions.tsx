@@ -3,6 +3,7 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
 import { filterMentionCandidates, findMentionQuery, splitMentions, type MentionMember } from "@/lib/domain/mentions";
+import { LinkedText } from "@/components/linked-text";
 
 /**
  * @ で部員を呼ぶ(メンション。2026-11-13 から)。名簿は部内ページの枠(layout.tsx)で1回読み、ここから配る。
@@ -36,7 +37,7 @@ export function MentionText({ text }: { text: string }) {
             {segment.text}
           </span>
         ) : (
-          segment.text
+          <LinkedText key={index} text={segment.text} />
         ),
       )}
     </>

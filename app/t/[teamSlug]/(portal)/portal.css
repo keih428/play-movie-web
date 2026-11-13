@@ -5343,3 +5343,10 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   font-weight: 700;
   cursor: pointer;
 }
+
+/* 本文に書いた URL(ノート・トレ録・コメント)。長い URL でも画面からはみ出さないように折り返す。 */
+.tp-link {
+  color: var(--tp-accent);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}

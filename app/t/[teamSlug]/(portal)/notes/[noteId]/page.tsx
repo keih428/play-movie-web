@@ -10,6 +10,7 @@ import { buildTeamMilestonesPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { getMilestone } from "@/lib/server/portal-milestone-store";
 import { getNote, getUnreadCounts, listComments, markNoteSeen } from "@/lib/server/portal-note-store";
 import { requireMember } from "@/lib/server/portal-session";
+import { LinkedText } from "@/components/linked-text";
 
 type PageProps = {
   params: Promise<{
@@ -90,18 +91,18 @@ export default async function TeamNotePage({ params }: PageProps) {
 
       <article className="tp-card tp-notecard">
         <p className="tp-note-body">
-          {note.body || <span className="tp-muted">(まだ書いていません。コメントだけ付いています)</span>}
+          {note.body ? <LinkedText text={note.body} /> : <span className="tp-muted">(まだ書いていません。コメントだけ付いています)</span>}
         </p>
         {note.request ? (
           <p className="tp-request">
             <b>リーダーへ</b>
-            {note.request}
+            <LinkedText text={note.request} />
           </p>
         ) : null}
         {note.teamMessage ? (
           <p className="tp-request tp-team-message">
             <b>チームへ</b>
-            {note.teamMessage}
+            <LinkedText text={note.teamMessage} />
           </p>
         ) : null}
       </article>
