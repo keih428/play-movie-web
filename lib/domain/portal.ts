@@ -194,6 +194,18 @@ export function canAdminister(member: Pick<Member, "isTrainingLead">): boolean {
 }
 
 /**
+ * 「トレーニング担当へ」に返信できる人:トレーニング担当、書いた本人、そのやりとりで @ で呼ばれた人
+ * (呼ばれた人は 2026-11-13 から。けーいちの依頼:後輩の質問を、同じポジションの上級生にも聞きたい)。
+ * participantIds は、これまでに返信した人と、返信の中で呼ばれた人。
+ */
+export function canReplyTrainingRequest(
+  member: Pick<Member, "id" | "isTrainingLead">,
+  thread: { ownerId: string; participantIds: Iterable<string> },
+): boolean {
+  return canAdminister(member) || member.id === thread.ownerId || new Set(thread.participantIds).has(member.id);
+}
+
+/**
  * ほかの人のノートを消す・今週のコメント当番の組み合わせを見る:システム担当
  * (2026-11-01 にトレーニング担当から移した)。
  */

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
+import { MentionText, MentionTextarea } from "@/components/mentions";
 import { NOTE_COMMENT_MAX, type NoteComment } from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
@@ -90,7 +91,9 @@ export function NoteComments({
                 <b>{comment.memberName}</b>
                 <span suppressHydrationWarning>{formatDateTime(comment.createdAt)}</span>
               </div>
-              <p>{comment.body}</p>
+              <p>
+                <MentionText text={comment.body} />
+              </p>
             </li>
           ))}
         </ol>
@@ -99,16 +102,15 @@ export function NoteComments({
       <form className={compact ? "tp-comment-form" : "tp-card"} onSubmit={send}>
         <div className="tp-field">
           <label htmlFor={`comment-body-${noteId}`}>コメントを書く</label>
-          <textarea
+          <MentionTextarea
             id={`comment-body-${noteId}`}
             rows={compact ? 2 : 3}
             maxLength={NOTE_COMMENT_MAX}
             value={body}
-            onChange={(event) => setBody(event.target.value)}
-            required
+            onChange={setBody}
           />
           <p className="tp-small tp-muted">
-            ノートを書いた人と、ここにコメントした人みんなに Slack で知らせます。
+            ノートを書いた人と、ここにコメントした人、@ で呼んだ人に Slack で知らせます。
           </p>
         </div>
         {error ? (
