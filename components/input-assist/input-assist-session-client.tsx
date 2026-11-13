@@ -143,6 +143,9 @@ export function InputAssistSessionClient({
 
   const [selectedRallyId, setSelectedRallyId] = useState<string | null>(null);
   const [continuous, setContinuous] = useState(true);
+  // 「手で打つ」:AI の骨組みなしで、流しながらサーブの瞬間に N・F でラリーを足す(2026-11-14、システム担当の依頼:
+  // 係の Mac が動いていなくても、アナリストだけで最初から打てるように)。決めていなければ、AI のラリーがないセットでオン
+  const [manualPref, setManualPref] = useState<boolean | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [message, setMessage] = useState("");
   const [savingViewer, setSavingViewer] = useState(false);
@@ -154,6 +157,10 @@ export function InputAssistSessionClient({
     null,
   );
   const continuousRef = useRef(continuous);
+  // 見直しているラリー(一覧で押した・←→ で移った)。手で打つときも、見直し中の N・F はそのラリーの向きを決める
+  const reviewRef = useRef<string | null>(null);
+  // 手で打つときに最後に足したラリー(Backspace で消す)
+  const lastAddedRef = useRef<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
 
   useEffect(() => {
@@ -174,6 +181,7 @@ export function InputAssistSessionClient({
   const setResult = useMemo(() => (activeSet ? computeSet(activeSet) : null), [activeSet]);
   const checks = useMemo(() => checkSets(session), [session]);
   const selectedRally = sortedRallies.find((rally) => rally.id === selectedRallyId);
+  const manual = manualPref ?? sortedRallies.every((rally) => rally.source !== "auto");
 
   // ---- 編集 ----
 
@@ -207,7 +215,10 @@ export function InputAssistSessionClient({
     setSetIndex(index);
     setChosen(true);
     setSelectedRallyId(null);
+    setManualPref(null);
     windowRef.current = null;
+    reviewRef.current = null;
+    lastAddedRef.current = null;
   }, []);
 
   // ---- パスの時間 ----
@@ -286,6 +297,7 @@ export function InputAssistSessionClient({
     (rallyId: string, rallies: IaRally[]) => {
       const range = getRallyWindow(rallies, rallyId);
       setSelectedRallyId(rallyId);
+      reviewRef.current = rallyId;
       if (!range) {
         return;
       }
@@ -308,6 +320,7 @@ export function InputAssistSessionClient({
       const next = rallies[nextIndex];
       if (!next) {
         windowRef.current = null;
+        reviewRef.current = null;
         if (delta > 0 && continuousRef.current) {
           // 続けて流しているときは、最後のラリーのあとも止めずに流す(骨組みがなければ、I で足しながら進める)
           setMessage("このセットの最後のラリーです。このまま流すので、次のサーブで I を押してください。");
@@ -363,8 +376,47 @@ export function InputAssistSessionClient({
 
   // ---- P0 の操作 ----
 
+  /** 手で打つ:今の時刻に、向きを決めたラリーを足す。動画は止めない。 */
+  const addRallyNow = useCallback(
+    (side: IaCourtSide) => {
+      if (!activeSet) {
+        return;
+      }
+      const time = playerRef.current?.getTime() ?? currentTime;
+      const rally = createRally(time, { source: "manual", side, checked: true });
+      editSet(activeSet.setIndex, (set) => ({ ...set, rallies: [...set.rallies, rally] }));
+      windowRef.current = null;
+      reviewRef.current = null;
+      lastAddedRef.current = rally.id;
+      setSelectedRallyId(rally.id);
+      setMessage(
+        `${formatClock(rally.serveTime)} に${side === "near" ? "手前" : "奥"}のサーブを足しました。間違えたら Backspace で消せます。`,
+      );
+    },
+    [activeSet, currentTime, editSet],
+  );
+
+  /** 手で打つ:最後に足したラリーを消す(確かめずに消す。押し間違えをすぐ戻すため)。 */
+  const undoLastAdded = useCallback(() => {
+    const rallyId = lastAddedRef.current;
+    if (!rallyId || !activeSet?.rallies.some((rally) => rally.id === rallyId)) {
+      setMessage("消せるラリーがありません(消すのは、手で打って最後に足したものだけです)。");
+      return;
+    }
+    editSet(activeSet.setIndex, (set) => ({ ...set, rallies: set.rallies.filter((rally) => rally.id !== rallyId) }));
+    lastAddedRef.current = null;
+    if (selectedRallyId === rallyId) {
+      setSelectedRallyId(null);
+    }
+    setMessage("最後に足したラリーを消しました。");
+  }, [activeSet, editSet, selectedRallyId]);
+
   const label = useCallback(
     (kind: IaCourtSide | "not_rally") => {
+      if (manual && kind !== "not_rally" && !reviewRef.current) {
+        addRallyNow(kind);
+        return;
+      }
       if (!selectedRallyId) {
         moveBy(1);
         return;
@@ -383,7 +435,7 @@ export function InputAssistSessionClient({
       }
       moveBy(1, selectedRallyId);
     },
-    [editRally, moveBy, selectedRallyId, sessionRef, setIndex],
+    [addRallyNow, editRally, manual, moveBy, selectedRallyId, sessionRef, setIndex],
   );
 
   const insertRally = useCallback(() => {
@@ -394,6 +446,7 @@ export function InputAssistSessionClient({
     const rally = createRally(time, { source: "manual" });
     editSet(activeSet.setIndex, (set) => ({ ...set, rallies: [...set.rallies, rally] }));
     windowRef.current = null;
+    reviewRef.current = null;
     setSelectedRallyId(rally.id);
     setMessage(`${formatClock(rally.serveTime)} にラリーを足しました。N か F で向きを決めてください。`);
   }, [activeSet, currentTime, editSet]);
@@ -432,12 +485,14 @@ export function InputAssistSessionClient({
   /** 再生・一時停止(ラリーの区間は外して、そのまま流す)。 */
   const togglePlay = useCallback(() => {
     windowRef.current = null;
+    reviewRef.current = null;
     playerRef.current?.togglePlay();
   }, []);
 
   const seekBy = useCallback(
     (delta: number) => {
       windowRef.current = null;
+      reviewRef.current = null;
       playerRef.current?.seek((playerRef.current?.getTime() ?? currentTime) + delta);
     },
     [currentTime],
@@ -464,6 +519,7 @@ export function InputAssistSessionClient({
         i: insertRally,
         ",": () => nudge(-NUDGE_SECONDS),
         ".": () => nudge(NUDGE_SECONDS),
+        ...(manual ? { Backspace: undoLastAdded } : {}),
       };
       const action = actions[key];
       if (action) {
@@ -473,7 +529,7 @@ export function InputAssistSessionClient({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [insertRally, label, moveBy, nudge, playRally, seekBy, selectedRallyId, sortedRallies, tab, togglePlay]);
+  }, [insertRally, label, manual, moveBy, nudge, playRally, seekBy, selectedRallyId, sortedRallies, tab, togglePlay, undoLastAdded]);
 
   // ---- 骨組み・書き出し ----
 
@@ -810,6 +866,10 @@ export function InputAssistSessionClient({
                   <input type="checkbox" checked={continuous} onChange={(event) => setContinuous(event.target.checked)} />
                   続けて流す
                 </label>
+                <label className="ia-check">
+                  <input type="checkbox" checked={manual} onChange={(event) => setManualPref(event.target.checked)} />
+                  手で打つ
+                </label>
                 <IaRateButtons rate={rate} onChange={changeRate} />
                 <span className="muted">
                   {PASS_LABELS.P0}の時間:{formatDuration(passSeconds)}
@@ -821,12 +881,19 @@ export function InputAssistSessionClient({
                 rally={selectedRally}
                 result={selectedRally ? setResult.byRallyId.get(selectedRally.id) : undefined}
               />
+              {manual ? (
+                <p className="muted ia-note">
+                  手で打つ:<kbd>K</kbd> で流し、サーブを打った瞬間に <kbd>N</kbd>(手前)か <kbd>F</kbd>(奥)。動画は止まりません。
+                  押し間違えたら <kbd>Backspace</kbd>。一覧のラリーを押すと見直せて、そのときの <kbd>N</kbd>・<kbd>F</kbd>{" "}
+                  はそのラリーの向きを変えます。<kbd>K</kbd> で続きから打てます。
+                </p>
+              ) : null}
               <div className="ia-keys">
                 <button type="button" className="button secondary" onClick={() => label("near")}>
-                  <kbd>N</kbd> 手前のサーブ
+                  <kbd>N</kbd> {manual ? "手前のサーブを足す" : "手前のサーブ"}
                 </button>
                 <button type="button" className="button secondary" onClick={() => label("far")}>
-                  <kbd>F</kbd> 奥のサーブ
+                  <kbd>F</kbd> {manual ? "奥のサーブを足す" : "奥のサーブ"}
                 </button>
                 <button type="button" className="button secondary" onClick={() => label("not_rally")}>
                   <kbd>X</kbd> ラリーでない
@@ -856,6 +923,11 @@ export function InputAssistSessionClient({
                 <button type="button" className="button secondary" onClick={insertRally}>
                   <kbd>I</kbd> 今の時刻に足す
                 </button>
+                {manual ? (
+                  <button type="button" className="button secondary" onClick={undoLastAdded}>
+                    <kbd>Backspace</kbd> 今足したのを消す
+                  </button>
+                ) : null}
                 <button type="button" className="button secondary" onClick={() => nudge(-NUDGE_SECONDS)} disabled={!selectedRally}>
                   <kbd>,</kbd> 0.5秒前へ
                 </button>
@@ -881,8 +953,8 @@ export function InputAssistSessionClient({
               </div>
               {sortedRallies.length === 0 ? (
                 <p className="muted">
-                  ラリーがありません。骨組みを読み込むか、<kbd>K</kbd> で動画を流し、サーブのたびに <kbd>I</kbd>{" "}
-                  で足して <kbd>N</kbd>・<kbd>F</kbd> で向きを決めてください(続けて流すなら、動画は止まりません)。
+                  ラリーがありません。AI を待たずに打つなら、「手で打つ」のまま <kbd>K</kbd> で動画を流し、サーブのたびに{" "}
+                  <kbd>N</kbd>(手前)か <kbd>F</kbd>(奥)を押してください。AI の骨組みができれば、それを入れることもできます。
                 </p>
               ) : (
                 <ol className="ia-rally-list">
