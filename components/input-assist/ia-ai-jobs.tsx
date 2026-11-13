@@ -179,6 +179,7 @@ export function IaAiJobPanel({
       <p className="muted ia-note">
         セットごとの YouTube の URL・開始時刻・最終スコアから、AI がラリーの区切りとサーブの向きを作ります(30 分〜1 時間ほど)。
         ラリーが空のセットには、できたら自動で入ります。
+        AI を待たなくても、P0 の「手で打つ」で最初から打てます(AI の係が動いていないときも)。
       </p>
       <div className="ia-inline-form">
         <button type="button" className="button" onClick={onRequest} disabled={busy || active}>
