@@ -120,6 +120,14 @@ textarea {
   font: inherit;
 }
 
+/*
+ * セレクトの中で隠れた文字がページを広げないようにする(2026-11-12 から)。
+ * iOS の WebKit では、グリッドの中のセレクトのはみ出しがページの幅に入り、画面が縮小されていた。
+ */
+select {
+  overflow: clip;
+}
+
 .page-shell {
   width: min(1440px, calc(100vw - 32px));
   margin: 0 auto;
