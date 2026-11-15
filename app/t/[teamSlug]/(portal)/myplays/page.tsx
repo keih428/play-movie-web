@@ -189,11 +189,9 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
         noteHref={noteHref}
         linkBase={linkBase}
         isSelf={isSelf}
-      />
-      <MatchTeamSummaryView
-        key={`summary-${selected.workspaceId}`}
-        summary={teamSummary}
-        names={namesByNumber}
+        teamSummary={
+          <MatchTeamSummaryView summary={teamSummary} names={namesByNumber} />
+        }
       />
       {noteDate && target.position ? (
         <section

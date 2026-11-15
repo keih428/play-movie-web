@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MyStatsPanel, type MyStats } from "@/components/my-stats-panel";
 import { VideoPlayer } from "@/components/video-player";
 import { getSkillLabel } from "@/lib/domain/display";
@@ -33,6 +33,8 @@ type MyPlaysClientProps = {
   // 試合を選ぶリンクの頭(「/t/utvb/myplays?」か、ほかの部員を見ているときは「…?member=ID&」)。
   linkBase: string;
   isSelf: boolean;
+  // その試合のチームのまとめ(ローテ別・サーブ)。個人の成績の上に出す(2026-11-15 から)。
+  teamSummary?: ReactNode;
 };
 
 const MODE_LABELS: Record<MyPlaysMode, string> = { skill: "スキルだけ", rally: "ラリー全体" };
@@ -56,6 +58,7 @@ export function MyPlaysClient({
   noteHref,
   linkBase,
   isSelf,
+  teamSummary,
 }: MyPlaysClientProps) {
   const router = useRouter();
   const [mode, setMode] = useState<MyPlaysMode>("skill");
@@ -261,6 +264,8 @@ export function MyPlaysClient({
         onPlayerTimeChange={onPlayerTimeChange}
       />
       </div>
+
+      {teamSummary}
 
       <MyStatsPanel stats={stats} linkBase={linkBase} isSelf={isSelf} focusKey={focus?.key ?? null} onFocus={focusOn} />
 
