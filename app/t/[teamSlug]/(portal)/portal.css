@@ -5350,3 +5350,15 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   text-decoration: underline;
   overflow-wrap: anywhere;
 }
+
+/* 「試合」のチームのまとめ(2026-11-15 から)。合計・チーム全体の行は太字にして、上に線を引く。 */
+.tp-match-summary th[scope="row"] {
+  font-weight: 700;
+  text-align: left;
+}
+
+.tp-match-total th,
+.tp-match-total td {
+  font-weight: 700;
+  border-top: 2px solid var(--tp-line);
+}

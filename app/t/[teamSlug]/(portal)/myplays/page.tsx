@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MatchTeamSummaryView } from "@/components/match-team-summary";
 import { MyPlaysClient } from "@/components/my-plays-client";
 import { NoteComments } from "@/components/note-comments";
+import { buildMatchTeamSummary } from "@/lib/domain/match-team-summary";
 import { normalizeShirtNumber } from "@/lib/domain/my-plays";
 import { buildMyStats, buildMyTrend } from "@/lib/domain/my-stats";
 import {
@@ -150,6 +152,15 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
     label: `${entry.date ? formatNoteDate(entry.date.slice(0, 10)) : "日付なし"} vs ${entry.opponent}(${entry.setScore.own}-${entry.setScore.opponent})`,
   }));
 
+  // その試合のチームのまとめ(ローテ別のサイドアウト率・ブレイク率、サーブの成績)。表の名前は名簿の表示名。
+  const teamSummary = buildMatchTeamSummary(selected.match, selected.side);
+  const namesByNumber = Object.fromEntries(
+    players.map((member) => [
+      normalizeShirtNumber(member.number) ?? "",
+      member.displayName,
+    ]),
+  );
+
   // 選んだ部員の、その試合の日のノート(なければ、書いていない日としてコメントできる)。
   const noteDate = selected.date?.slice(0, 10) ?? null;
   const note =
@@ -178,6 +189,11 @@ export default async function MyPlaysPage({ params, searchParams }: PageProps) {
         noteHref={noteHref}
         linkBase={linkBase}
         isSelf={isSelf}
+      />
+      <MatchTeamSummaryView
+        key={`summary-${selected.workspaceId}`}
+        summary={teamSummary}
+        names={namesByNumber}
       />
       {noteDate && target.position ? (
         <section
