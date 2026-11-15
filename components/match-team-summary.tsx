@@ -51,7 +51,7 @@ function ServeRow({ row, name }: { row: ServeSummaryRow; name: string }) {
 export function MatchTeamSummaryView({ summary, names }: Props) {
   return (
     <section
-      className="tp-section tp-match-summary"
+      className="tp-mystats tp-match-summary"
       aria-label="この試合のチームのまとめ"
     >
       <h2>チームのまとめ</h2>
@@ -60,7 +60,7 @@ export function MatchTeamSummaryView({ summary, names }: Props) {
       {summary.rotations.length === 0 ? (
         <p className="tp-small tp-muted">ローテの記録がありません。</p>
       ) : (
-        <div className="tp-card tp-scroll">
+        <div className="tp-scroll">
           <table className="tp-roster tp-stat-table">
             <thead>
               <tr>
@@ -87,7 +87,7 @@ export function MatchTeamSummaryView({ summary, names }: Props) {
       {summary.serveTeam.attempts === 0 ? (
         <p className="tp-small tp-muted">サーブの記録がありません。</p>
       ) : (
-        <div className="tp-card tp-scroll">
+        <div className="tp-scroll">
           <table className="tp-roster tp-stat-table">
             <thead>
               <tr>
