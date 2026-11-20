@@ -16,9 +16,11 @@ export async function postNoteComment(input: {
   note: Note;
   current: Member;
   body: string;
+  photoIds?: string[];
   baseUrl: string;
 }) {
   const { teamSlug, note, current, body, baseUrl } = input;
+  const photoIds = input.photoIds ?? [];
   // 名簿から外れた人には送らない(listMembers は名簿に載っている人だけを返す)。
   const members = await listMembers(teamSlug);
   // 知らせる相手は、このコメントが入る前の顔ぶれで決める。
@@ -34,12 +36,12 @@ export async function postNoteComment(input: {
   // 呼ばれた人は「呼ばれた」の知らせだけにする(本人・参加者と2通にならないように)。
   const mentionedIds = findMentionedIds(body, members).filter((memberId) => memberId !== current.id);
 
-  await addComment(note.id, current.id, body);
+  await addComment(note.id, current.id, body, photoIds);
 
   const noteDate = formatNoteDate(note.practiceDate);
   // 書いた本人が返したときは「佐藤 が、あなたがコメントした 佐藤 の…」とならないようにする。
   const owner = note.memberId === current.id ? "自分の" : `${note.memberName} の`;
-  const tail = `\n> ${excerpt(body)}\n${baseUrl}${buildTeamNotesPath(teamSlug)}/${note.id}`;
+  const tail = `\n> ${body ? excerpt(body) : "(写真)"}${body && photoIds.length > 0 ? "(写真つき)" : ""}\n${baseUrl}${buildTeamNotesPath(teamSlug)}/${note.id}`;
   // まだ書いていない日へのコメントは、本人にそう伝える。
   const authorText = note.body.trim()
     ? `${current.displayName} が ${noteDate} のノートにコメントしました${tail}`

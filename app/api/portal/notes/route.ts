@@ -11,7 +11,9 @@ import { getMemberGroup, isPortalTeam } from "@/lib/domain/portal";
 import { buildTeamNotesPath } from "@/lib/domain/team";
 import { getWeekDuties } from "@/lib/server/portal-comment-duty-store";
 import { listMembers } from "@/lib/server/portal-member-store";
-import { saveNote } from "@/lib/server/portal-note-store";
+import { readPhotoIds } from "@/lib/domain/note-media";
+import { getNoteByDate, saveNote } from "@/lib/server/portal-note-store";
+import { keepAllowedPhotoIds } from "@/lib/server/portal-photo-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { excerpt, getBaseUrl, notifyMembers } from "@/lib/server/portal-slack";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
     body?: unknown;
     request?: unknown;
     teamMessage?: unknown;
+    photoIds?: unknown;
   };
   if (!isIsoDate(payload.date) || payload.date > getLastNoteDate(getTodayInJapan())) {
     return NextResponse.json({ error: "日付が正しくありません(書けるのは明日の分までです)。" }, { status: 400 });
@@ -45,12 +48,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "本文を書いてください。" }, { status: 400 });
   }
 
+  // 写真(2026-11-20 から)。photoIds を送らなければ、今付いている写真のまま。
+  const existingPhotoIds = (await getNoteByDate(current.id, payload.date))?.photoIds ?? [];
+  const sentPhotoIds = readPhotoIds(payload.photoIds);
+  const photoIds = sentPhotoIds
+    ? await keepAllowedPhotoIds(teamSlug, current.id, sentPhotoIds, existingPhotoIds)
+    : existingPhotoIds;
+
   const { note, requestChanged, created } = await saveNote({
     member: current,
     practiceDate: payload.date,
     body,
     request: readText(payload.request, NOTE_REQUEST_MAX),
     teamMessage: readText(payload.teamMessage, NOTE_TEAM_MESSAGE_MAX),
+    photoIds,
   });
 
   // 「リーダーへ」が書かれたら、書いた人のまとまりのリーダーに知らせる(OP は OH のリーダー)。

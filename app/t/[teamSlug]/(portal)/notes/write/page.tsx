@@ -107,6 +107,7 @@ export default async function TeamNoteWritePage({ params, searchParams }: PagePr
         initialBody={existing?.body.trim() ? existing.body : matchDraft}
         initialRequest={existing?.request ?? ""}
         initialTeamMessage={existing?.teamMessage ?? ""}
+        initialPhotoIds={existing?.photoIds ?? []}
         savedNote={
           existing
             ? { body: existing.body, request: existing.request ?? "", teamMessage: existing.teamMessage ?? "" }

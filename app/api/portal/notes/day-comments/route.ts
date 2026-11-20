@@ -4,6 +4,8 @@ import { isPortalTeam } from "@/lib/domain/portal";
 import { getMember } from "@/lib/server/portal-member-store";
 import { postNoteComment } from "@/lib/server/portal-note-comment";
 import { ensureNote, listComments } from "@/lib/server/portal-note-store";
+import { readPhotoIds } from "@/lib/domain/note-media";
+import { keepAllowedPhotoIds } from "@/lib/server/portal-photo-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { getBaseUrl } from "@/lib/server/portal-slack";
 import { getTodayInJapan } from "@/lib/server/portal-training-store";
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
   }
 
-  const payload = (await request.json().catch(() => ({}))) as { memberId?: unknown; date?: unknown; body?: unknown };
+  const payload = (await request.json().catch(() => ({}))) as { memberId?: unknown; date?: unknown; body?: unknown; photoIds?: unknown };
   const target = typeof payload.memberId === "string" ? await getMember(payload.memberId) : null;
   // ノートを書くのは、ポジションのある部員だけ(スタッフのノートはない)。
   if (!target || target.teamSlug !== teamSlug || !target.active || !target.position) {
@@ -27,11 +29,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "日付が正しくありません。" }, { status: 400 });
   }
   const body = typeof payload.body === "string" ? payload.body.trim().slice(0, NOTE_COMMENT_MAX) : "";
-  if (!body) {
-    return NextResponse.json({ error: "コメントを書いてください。" }, { status: 400 });
+  // 写真だけのコメントもよい(2026-11-20 から)。
+  const photoIds = await keepAllowedPhotoIds(teamSlug, current.id, readPhotoIds(payload.photoIds) ?? []);
+  if (!body && photoIds.length === 0) {
+    return NextResponse.json({ error: "コメントを書くか、写真を付けてください。" }, { status: 400 });
   }
 
   const note = await ensureNote(target, payload.date);
-  await postNoteComment({ teamSlug, note, current, body, baseUrl: getBaseUrl(request) });
+  await postNoteComment({ teamSlug, note, current, body, photoIds, baseUrl: getBaseUrl(request) });
   return NextResponse.json({ noteId: note.id, comments: await listComments([note.id]) });
 }

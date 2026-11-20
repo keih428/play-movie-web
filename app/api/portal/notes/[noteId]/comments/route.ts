@@ -3,6 +3,8 @@ import { NOTE_COMMENT_MAX } from "@/lib/domain/notes";
 import { isPortalTeam } from "@/lib/domain/portal";
 import { postNoteComment } from "@/lib/server/portal-note-comment";
 import { getNote, listComments } from "@/lib/server/portal-note-store";
+import { readPhotoIds } from "@/lib/domain/note-media";
+import { keepAllowedPhotoIds } from "@/lib/server/portal-photo-store";
 import { getCurrentMember } from "@/lib/server/portal-session";
 import { getBaseUrl } from "@/lib/server/portal-slack";
 
@@ -27,13 +29,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "ノートが見つかりません。" }, { status: 404 });
   }
 
-  const payload = (await request.json()) as { body?: unknown };
+  const payload = (await request.json()) as { body?: unknown; photoIds?: unknown };
   const body = typeof payload.body === "string" ? payload.body.trim().slice(0, NOTE_COMMENT_MAX) : "";
-  if (!body) {
-    return NextResponse.json({ error: "コメントを書いてください。" }, { status: 400 });
+  // 写真だけのコメントもよい(2026-11-20 から)。
+  const photoIds = await keepAllowedPhotoIds(teamSlug, current.id, readPhotoIds(payload.photoIds) ?? []);
+  if (!body && photoIds.length === 0) {
+    return NextResponse.json({ error: "コメントを書くか、写真を付けてください。" }, { status: 400 });
   }
 
-  await postNoteComment({ teamSlug, note, current, body, baseUrl: getBaseUrl(request) });
+  await postNoteComment({ teamSlug, note, current, body, photoIds, baseUrl: getBaseUrl(request) });
 
   return NextResponse.json({ comments: await listComments([note.id]) });
 }

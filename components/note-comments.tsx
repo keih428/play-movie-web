@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
 import { MentionText, MentionTextarea } from "@/components/mentions";
+import { NoteMedia, PhotoPicker } from "@/components/note-media";
 import { NOTE_COMMENT_MAX, type NoteComment } from "@/lib/domain/notes";
 import { buildTeamApiPath } from "@/lib/domain/team";
 
@@ -38,6 +39,8 @@ export function NoteComments({
   const [noteId, setNoteId] = useState(initialNoteId);
   const [comments, setComments] = useState(initialComments);
   const [body, setBody] = useState("");
+  const [photoIds, setPhotoIds] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -53,7 +56,9 @@ export function NoteComments({
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(noteId ? { body } : { body, memberId: day?.memberId, date: day?.date }),
+          body: JSON.stringify(
+            noteId ? { body, photoIds } : { body, photoIds, memberId: day?.memberId, date: day?.date },
+          ),
         },
       );
       const payload = (await response.json()) as { error?: string; comments?: NoteComment[]; noteId?: string };
@@ -66,6 +71,7 @@ export function NoteComments({
       setComments(payload.comments);
       onChange?.(payload.comments);
       setBody("");
+      setPhotoIds([]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "送れませんでした。");
     } finally {
@@ -91,9 +97,12 @@ export function NoteComments({
                 <b>{comment.memberName}</b>
                 <span suppressHydrationWarning>{formatDateTime(comment.createdAt)}</span>
               </div>
-              <p>
-                <MentionText text={comment.body} />
-              </p>
+              {comment.body ? (
+                <p>
+                  <MentionText text={comment.body} />
+                </p>
+              ) : null}
+              <NoteMedia photoIds={comment.photoIds} texts={[comment.body]} teamSlug={teamSlug} />
             </li>
           ))}
         </ol>
@@ -109,8 +118,9 @@ export function NoteComments({
             value={body}
             onChange={setBody}
           />
+          <PhotoPicker photoIds={photoIds} onChange={setPhotoIds} teamSlug={teamSlug} onBusyChange={setUploading} />
           <p className="tp-small tp-muted">
-            ノートを書いた人と、ここにコメントした人、@ で呼んだ人に Slack で知らせます。
+            動画は YouTube(限定公開)の URL を貼ると、その場で再生できます。ノートを書いた人と、ここにコメントした人、@ で呼んだ人に Slack で知らせます。
           </p>
         </div>
         {error ? (
@@ -119,7 +129,7 @@ export function NoteComments({
           </p>
         ) : null}
         <div>
-          <button className="tp-button" type="submit" disabled={busy || !body.trim()}>
+          <button className="tp-button" type="submit" disabled={busy || uploading || (!body.trim() && photoIds.length === 0)}>
             {busy ? "送信中…" : "コメントする"}
           </button>
         </div>

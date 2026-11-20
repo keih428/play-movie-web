@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NoteComments } from "@/components/note-comments";
 import { NoteDeleteButton } from "@/components/note-delete-button";
+import { NoteMedia } from "@/components/note-media";
 import { RefreshOnMount } from "@/components/refresh-on-mount";
 import { formatMilestoneMonth, monthOf } from "@/lib/domain/milestones";
 import { formatNoteDate } from "@/lib/domain/notes";
@@ -105,6 +106,11 @@ export default async function TeamNotePage({ params }: PageProps) {
             <LinkedText text={note.teamMessage} />
           </p>
         ) : null}
+        <NoteMedia
+          photoIds={note.photoIds}
+          texts={[note.body, note.request, note.teamMessage]}
+          teamSlug={teamSlug}
+        />
       </article>
 
       <NoteComments initialComments={comments} noteId={note.id} teamSlug={teamSlug} />

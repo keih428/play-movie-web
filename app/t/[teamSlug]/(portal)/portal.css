@@ -5362,3 +5362,72 @@ body:has(.tp-spike) .tp-hero-compact .tp-link {
   font-weight: 700;
   border-top: 2px solid var(--tp-line);
 }
+
+/* ノート・コメントの写真と動画(2026-11-20 から) */
+.tp-media {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tp-media-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.tp-media-photos a,
+.tp-photopicker-item {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--tp-line);
+  border-radius: 8px;
+  background: var(--tp-off-soft);
+}
+.tp-media-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tp-media-video {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+.tp-media-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.tp-photopicker {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.tp-photopicker .tp-media-photos {
+  width: 100%;
+}
+.tp-photopicker-item button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 15px;
+  line-height: 26px;
+  cursor: pointer;
+}
+.tp-photopicker-add {
+  cursor: pointer;
+}

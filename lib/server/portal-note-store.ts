@@ -19,13 +19,14 @@ type NoteRow = {
   body: string;
   request: string;
   team_message: string;
+  photo_ids: string[];
   updated_at: Date;
   comment_count: number;
 };
 
 const NOTE_SELECT = `
   SELECT n.id, n.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, n.practice_date, n.position, n.group_key,
-         n.body, n.request, n.team_message, n.updated_at,
+         n.body, n.request, n.team_message, n.photo_ids, n.updated_at,
          (SELECT count(*) FROM note_comments c WHERE c.note_id = n.id)::int AS comment_count
   FROM notes n JOIN members m ON m.id = n.member_id`;
 
@@ -40,6 +41,7 @@ function toNote(row: NoteRow): Note {
     body: row.body,
     request: row.request,
     teamMessage: row.team_message,
+    photoIds: row.photo_ids ?? [],
     updatedAt: row.updated_at.toISOString(),
     commentCount: row.comment_count,
   };
@@ -107,13 +109,15 @@ export async function saveNote(input: {
   body: string;
   request: string;
   teamMessage: string;
+  photoIds: string[];
 }): Promise<{ note: Note; requestChanged: boolean; created: boolean }> {
   const existing = await getNoteByDate(input.member.id, input.practiceDate);
   await query(
-    `INSERT INTO notes (id, team_slug, member_id, practice_date, position, group_key, body, request, team_message)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO notes (id, team_slug, member_id, practice_date, position, group_key, body, request, team_message, photo_ids)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
      ON CONFLICT (member_id, practice_date) DO UPDATE SET
-       body = EXCLUDED.body, request = EXCLUDED.request, team_message = EXCLUDED.team_message, updated_at = now()`,
+       body = EXCLUDED.body, request = EXCLUDED.request, team_message = EXCLUDED.team_message,
+       photo_ids = EXCLUDED.photo_ids, updated_at = now()`,
     [
       randomUUID(),
       input.member.teamSlug,
@@ -124,6 +128,7 @@ export async function saveNote(input: {
       input.body,
       input.request,
       input.teamMessage,
+      JSON.stringify(input.photoIds),
     ],
   );
   const note = await getNoteByDate(input.member.id, input.practiceDate);
@@ -167,10 +172,11 @@ export async function listComments(noteIds: string[]): Promise<NoteComment[]> {
     member_name: string;
     member_number: string | null;
     body: string;
+    photo_ids: string[];
     created_at: Date;
   }>(
     `SELECT c.id, c.note_id, c.member_id, ${MEMBER_DISPLAY_NAME_SQL} AS member_name, m.number AS member_number,
-            c.body, c.created_at
+            c.body, c.photo_ids, c.created_at
      FROM note_comments c JOIN members m ON m.id = c.member_id
      WHERE c.note_id = ANY($1::text[])
      ORDER BY c.created_at`,
@@ -183,17 +189,16 @@ export async function listComments(noteIds: string[]): Promise<NoteComment[]> {
     memberName: row.member_name,
     memberNumber: row.member_number,
     body: row.body,
+    photoIds: row.photo_ids ?? [],
     createdAt: new Date(row.created_at).toISOString(),
   }));
 }
 
-export async function addComment(noteId: string, memberId: string, body: string) {
-  await query("INSERT INTO note_comments (id, note_id, member_id, body) VALUES ($1, $2, $3, $4)", [
-    randomUUID(),
-    noteId,
-    memberId,
-    body,
-  ]);
+export async function addComment(noteId: string, memberId: string, body: string, photoIds: string[] = []) {
+  await query(
+    "INSERT INTO note_comments (id, note_id, member_id, body, photo_ids) VALUES ($1, $2, $3, $4, $5::jsonb)",
+    [randomUUID(), noteId, memberId, body, JSON.stringify(photoIds)],
+  );
 }
 
 /** 自分のノートを開いたら、そこまでのコメントを「読んだ」ことにする。 */
