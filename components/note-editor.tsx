@@ -13,8 +13,11 @@ import {
 import { NOTE_BODY_MAX, NOTE_REQUEST_MAX, NOTE_TEAM_MESSAGE_MAX } from "@/lib/domain/notes";
 import { buildTeamApiPath, buildTeamNotesPath } from "@/lib/domain/team";
 import { JaText } from "@/components/ja-text";
+import { PhotoPicker } from "@/components/note-media";
 
 type NoteFields = { body: string; request: string; teamMessage: string };
+// 端末の下書き。写真(2026-11-20 から)は、それより前の下書きには無い。
+type NoteDraft = NoteFields & { photoIds?: string[] };
 
 type NoteEditorProps = {
   date: string;
@@ -22,6 +25,7 @@ type NoteEditorProps = {
   initialBody: string;
   initialRequest: string;
   initialTeamMessage: string;
+  initialPhotoIds: string[];
   // 保存してあるその日のノート(なければ null)。下書きを戻すとき、ほかの端末で保存されていないか比べる。
   // 画面の最初の中身(試合から作った下書きを含む)とは別にする(開き方で中身が変わり、誤って知らせないように)。
   savedNote: NoteFields | null;
@@ -31,14 +35,15 @@ type NoteEditorProps = {
 // 「捨てる」は、戻した知らせの中と保存の欄の2か所にある。2回押しは、押した方だけ切り替える。
 type DiscardPlace = "notice" | "savearea";
 
-function isNoteFields(value: unknown): value is NoteFields {
-  const fields = value as NoteFields | null;
+function isNoteDraft(value: unknown): value is NoteDraft {
+  const fields = value as NoteDraft | null;
   return (
     typeof fields === "object" &&
     fields !== null &&
     typeof fields.body === "string" &&
     typeof fields.request === "string" &&
-    typeof fields.teamMessage === "string"
+    typeof fields.teamMessage === "string" &&
+    (fields.photoIds === undefined || (Array.isArray(fields.photoIds) && fields.photoIds.every((id) => typeof id === "string")))
   );
 }
 
@@ -53,10 +58,16 @@ export function NoteEditor({
   initialBody,
   initialRequest,
   initialTeamMessage,
+  initialPhotoIds,
   savedNote,
   teamSlug,
 }: NoteEditorProps) {
-  const initial: NoteFields = { body: initialBody, request: initialRequest, teamMessage: initialTeamMessage };
+  const initial: NoteDraft = {
+    body: initialBody,
+    request: initialRequest,
+    teamMessage: initialTeamMessage,
+    photoIds: initialPhotoIds,
+  };
   const storageKey = draftKey("note", teamSlug, memberId, date);
   // 保存してあるノートの写し。下書きを戻すとき、ほかの端末で保存されていないか比べる。
   const serverBase = draftBase(savedNote);
@@ -64,6 +75,8 @@ export function NoteEditor({
   const [body, setBody] = useState(initialBody);
   const [request, setRequest] = useState(initialRequest);
   const [teamMessage, setTeamMessage] = useState(initialTeamMessage);
+  const [photoIds, setPhotoIds] = useState(initialPhotoIds);
+  const [uploading, setUploading] = useState(false);
   const [base, setBase] = useState(serverBase);
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -77,21 +90,22 @@ export function NoteEditor({
   // 「捨てる」を1回押した場所(もう一度押すと捨てる)。
   const [confirmDiscard, setConfirmDiscard] = useState<DiscardPlace | null>(null);
 
-  const fields: NoteFields = { body, request, teamMessage };
+  const fields: NoteDraft = { body, request, teamMessage, photoIds };
   const dirty = JSON.stringify(fields) !== JSON.stringify(initial);
 
-  function fill(next: NoteFields) {
+  function fill(next: NoteDraft) {
     setBody(next.body);
     setRequest(next.request);
     setTeamMessage(next.teamMessage);
+    setPhotoIds(next.photoIds ?? initialPhotoIds);
   }
 
   // 開いたときに一度だけ:端末に下書きがあれば、すぐ続きから。
   useEffect(() => {
     const storage = browserDraftStorage();
-    const stored = storage ? readDraft(storage, storageKey, isNoteFields) : null;
+    const stored = storage ? readDraft(storage, storageKey, isNoteDraft) : null;
     if (stored) {
-      lastWritten.current = JSON.stringify(stored.data);
+      lastWritten.current = JSON.stringify({ ...stored.data, photoIds: stored.data.photoIds ?? initialPhotoIds });
       fill(stored.data);
       setBase(stored.base);
       setRestoredAt(stored.savedAt);
@@ -121,7 +135,7 @@ export function NoteEditor({
     const ok = writeDraft(storage, storageKey, { savedAt: new Date().toISOString(), base, data: fields });
     lastWritten.current = ok ? content : "";
     setStorageFailed(!ok);
-  }, [body, request, teamMessage, ready]); // eslint-disable-line react-hooks/exhaustive-deps -- 中身が変わったときだけ
+  }, [body, request, teamMessage, photoIds, ready]); // eslint-disable-line react-hooks/exhaustive-deps -- 中身が変わったときだけ
 
   function forgetDraft() {
     const storage = browserDraftStorage();
@@ -138,7 +152,7 @@ export function NoteEditor({
       const response = await fetch(buildTeamApiPath("/api/portal/notes", teamSlug), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ date, body, request, teamMessage }),
+        body: JSON.stringify({ date, body, request, teamMessage, photoIds }),
       });
       const payload = (await response.json()) as { error?: string; note?: { id: string } };
       if (!response.ok || !payload.note) {
@@ -241,6 +255,21 @@ export function NoteEditor({
           />
           <small className="tp-small tp-muted">ノートのページの「チームへ」に、全員分まとめて出ます。</small>
         </div>
+        <div className="tp-field">
+          <span>写真・動画</span>
+          <PhotoPicker
+            photoIds={photoIds}
+            onChange={(ids) => {
+              setPhotoIds(ids);
+              setConfirmDiscard(null);
+            }}
+            teamSlug={teamSlug}
+            onBusyChange={setUploading}
+          />
+          <small className="tp-small tp-muted">
+            動画は YouTube に限定公開で上げて、その URL を上の欄に貼ると、ノートの中で再生できます。
+          </small>
+        </div>
         {error ? (
           <p className="tp-error" role="alert">
             {error}
@@ -262,7 +291,7 @@ export function NoteEditor({
               </button>
             </p>
           ) : null}
-          <button className="tp-button" type="submit" disabled={busy || !body.trim()}>
+          <button className="tp-button" type="submit" disabled={busy || uploading || !body.trim()}>
             {busy ? "保存中…" : "保存"}
           </button>
           <p className="tp-small tp-muted">

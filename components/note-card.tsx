@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MemberAvatar } from "@/components/member-avatar";
 import { NoteComments } from "@/components/note-comments";
+import { NoteMedia, PhotoPicker } from "@/components/note-media";
 import {
   NOTE_BODY_MAX,
   NOTE_REQUEST_MAX,
@@ -63,6 +64,8 @@ export function NoteCard({
   const [body, setBody] = useState(note.body);
   const [request, setRequest] = useState(note.request);
   const [teamMessage, setTeamMessage] = useState(note.teamMessage);
+  const [photoIds, setPhotoIds] = useState(note.photoIds);
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
@@ -126,6 +129,7 @@ export function NoteCard({
             body,
             request,
             teamMessage,
+            photoIds,
           }),
         },
       );
@@ -142,6 +146,7 @@ export function NoteCard({
         body: body.trim(),
         request: request.trim(),
         teamMessage: teamMessage.trim(),
+        photoIds,
       });
       setMode("view");
       router.refresh();
@@ -233,6 +238,7 @@ export function NoteCard({
                       setBody(note.body);
                       setRequest(note.request);
                       setTeamMessage(note.teamMessage);
+                      setPhotoIds(note.photoIds);
                       setMode("edit");
                       setMenuOpen(false);
                     }}
@@ -295,11 +301,15 @@ export function NoteCard({
               onChange={(event) => setTeamMessage(event.target.value)}
             />
           </div>
+          <div className="tp-field">
+            <span>写真</span>
+            <PhotoPicker photoIds={photoIds} onChange={setPhotoIds} teamSlug={teamSlug} onBusyChange={setUploading} />
+          </div>
           <div className="tp-actions">
             <button
               type="button"
               className="tp-button"
-              disabled={busy || !body.trim()}
+              disabled={busy || uploading || !body.trim()}
               onClick={save}
             >
               {busy ? "保存中…" : "保存"}
@@ -349,6 +359,11 @@ export function NoteCard({
               <LinkedText text={note.teamMessage} />
             </p>
           ) : null}
+          <NoteMedia
+            photoIds={note.photoIds}
+            texts={[note.body, note.request, note.teamMessage]}
+            teamSlug={teamSlug}
+          />
         </>
       )}
 

@@ -11,6 +11,8 @@ export type Note = {
   request: string;
   // チーム全体への振り返り(2026-10-26 から)。全員に見える。なければ空。
   teamMessage: string;
+  // 付けた写真の ID(並べる順。2026-11-20 から)。
+  photoIds: string[];
   updatedAt: string;
   commentCount: number;
 };
@@ -23,6 +25,8 @@ export type NoteComment = {
   // 背番号(アイコンに出す)。ない人は null。
   memberNumber: string | null;
   body: string;
+  // 付けた写真の ID(2026-11-20 から)。写真だけのコメントは body が空。
+  photoIds: string[];
   createdAt: string;
 };
 

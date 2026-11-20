@@ -653,6 +653,23 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // 034 を当てた本番の控えはここで消える。当てていないデータベースでは何もしない。
     sql: `ALTER TABLE members DROP COLUMN IF EXISTS passphrase_sealed`,
   },
+  {
+    id: "036_note_photos",
+    // ノート・コメントの写真(2026-11-20 から)。中身は Blob、ここにはどこに置いたかと、誰が上げたか。
+    // 付いている先は notes.photo_ids / note_comments.photo_ids(並べる順の ID の配列)。
+    sql: `
+      CREATE TABLE note_photos (
+        id text PRIMARY KEY,
+        team_slug text NOT NULL,
+        uploader_id text NOT NULL REFERENCES members (id),
+        pathname text NOT NULL,
+        content_type text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      ALTER TABLE notes ADD COLUMN photo_ids jsonb NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE note_comments ADD COLUMN photo_ids jsonb NOT NULL DEFAULT '[]'::jsonb
+    `,
+  },
 ];
 
 function getDatabaseUrl() {
