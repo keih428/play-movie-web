@@ -647,10 +647,11 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     sql: `ALTER TABLE input_assist_ai_jobs ADD COLUMN partial jsonb`,
   },
   {
-    id: "034_member_passphrase_sealed",
-    // 自分の合言葉の控え(2026-11-20 から)。忘れた人のためにシステム担当が見る。暗号にして残す(portal-passphrase.ts)。
-    // これより前に決めた人の分は、次にログインしたとき・決め直したときに入る。
-    sql: `ALTER TABLE members ADD COLUMN passphrase_sealed text`,
+    id: "035_drop_member_passphrase_sealed",
+    // 2026-11-20 に 034 で足した、システム担当が見るための合言葉の控えを、同じ日にやめた。
+    // 見られる形で残すのは健全でないので、忘れた人はシステム担当が「忘れたので消す」でリセットするだけにする(けーいち)。
+    // 034 を当てた本番の控えはここで消える。当てていないデータベースでは何もしない。
+    sql: `ALTER TABLE members DROP COLUMN IF EXISTS passphrase_sealed`,
   },
 ];
 

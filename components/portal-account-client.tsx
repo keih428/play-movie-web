@@ -126,10 +126,7 @@ export function PortalAccountClient({
             onChange={(event) => setNext(event.target.value)}
             required
           />
-          <small className="tp-muted">
-            {MEMBER_PASSPHRASE_MIN_LENGTH}
-            文字以上。部の合言葉とは別のものにしてください。忘れたときに教えられるよう、システム担当は合言葉を見られます。ほかのサービスで使っているパスワードは使わないでください。
-          </small>
+          <small className="tp-muted">{MEMBER_PASSPHRASE_MIN_LENGTH}文字以上。部の合言葉とは別のものにしてください。</small>
         </div>
         <div className="tp-field">
           <label htmlFor="account-confirm">もう一度</label>
