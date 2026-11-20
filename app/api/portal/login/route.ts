@@ -8,9 +8,13 @@ import {
   recordLogin,
   registerMemberDevice,
 } from "@/lib/server/portal-login-log";
-import { getMemberPassphraseHash, listMembers } from "@/lib/server/portal-member-store";
+import {
+  fillMemberPassphraseSealed,
+  getMemberPassphraseHash,
+  listMembers,
+} from "@/lib/server/portal-member-store";
 import { notifyAdmin } from "@/lib/server/portal-notify";
-import { verifyMemberPassphrase } from "@/lib/server/portal-passphrase";
+import { sealMemberPassphrase, verifyMemberPassphrase } from "@/lib/server/portal-passphrase";
 import {
   DEVICE_COOKIE,
   SESSION_COOKIE,
@@ -94,10 +98,12 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { error: "自分の合言葉が違います。忘れたときは、システム担当に消してもらってください。" },
+        { error: "自分の合言葉が違います。忘れたときは、システム担当に聞いてください。" },
         { status: 401 },
       );
     }
+    // 控えが始まる(2026-11-20)前に決めた人は、ここで控えを入れる。
+    await fillMemberPassphraseSealed(member.id, sealMemberPassphrase(payload.memberPassphrase));
   }
 
   const device = await registerMemberDevice(member.id, deviceId, requestInfo);

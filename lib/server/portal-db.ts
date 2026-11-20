@@ -646,6 +646,12 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     // セットごとの途中の結果(2026-11-11 から)。係がセットを解析し終えるたびに送る骨組みを、セットごとにまとめて持つ。
     sql: `ALTER TABLE input_assist_ai_jobs ADD COLUMN partial jsonb`,
   },
+  {
+    id: "034_member_passphrase_sealed",
+    // 自分の合言葉の控え(2026-11-20 から)。忘れた人のためにシステム担当が見る。暗号にして残す(portal-passphrase.ts)。
+    // これより前に決めた人の分は、次にログインしたとき・決め直したときに入る。
+    sql: `ALTER TABLE members ADD COLUMN passphrase_sealed text`,
+  },
 ];
 
 function getDatabaseUrl() {

@@ -245,17 +245,37 @@ export async function getMemberPassphraseHash(memberId: string): Promise<string 
   return rows[0]?.passphrase_hash ?? null;
 }
 
-/** 自分の合言葉を決める(null なら消す)。番号が1つ増えるので、その人の前のログインはすべて無効になる。 */
+/** 自分の合言葉を決める(null なら消す)。番号が1つ増えるので、その人の前のログインはすべて無効になる。
+ * sealed はシステム担当が見るための控え(portal-passphrase.ts)。消すときは控えも消す。 */
 export async function setMemberPassphraseHash(
   teamSlug: string,
   memberId: string,
   hash: string | null,
+  sealed: string | null = null,
 ): Promise<Member | null> {
   const rows = await query<MemberRow>(
-    `UPDATE members SET passphrase_hash = $3, passphrase_version = passphrase_version + 1, updated_at = now()
+    `UPDATE members SET passphrase_hash = $3, passphrase_sealed = $4,
+       passphrase_version = passphrase_version + 1, updated_at = now()
      WHERE id = $1 AND team_slug = $2
      RETURNING *`,
-    [memberId, teamSlug, hash],
+    [memberId, teamSlug, hash, hash ? sealed : null],
   );
   return rows[0] ? toMember(rows[0]) : null;
+}
+
+/** 自分の合言葉の控え。決めていない・控えがまだ無いときは null。 */
+export async function getMemberPassphraseSealed(teamSlug: string, memberId: string): Promise<string | null> {
+  const rows = await query<{ passphrase_sealed: string | null }>(
+    "SELECT passphrase_sealed FROM members WHERE id = $1 AND team_slug = $2 AND passphrase_hash IS NOT NULL",
+    [memberId, teamSlug],
+  );
+  return rows[0]?.passphrase_sealed ?? null;
+}
+
+/** 控えだけを入れる(控えが始まる前に決めた人が、ログインで合言葉を入れたとき)。ログインはそのまま。 */
+export async function fillMemberPassphraseSealed(memberId: string, sealed: string): Promise<void> {
+  await query(
+    "UPDATE members SET passphrase_sealed = $2 WHERE id = $1 AND passphrase_hash IS NOT NULL AND passphrase_sealed IS NULL",
+    [memberId, sealed],
+  );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isPortalTeam, validateMemberPassphrase } from "@/lib/domain/portal";
 import { getMemberPassphraseHash, setMemberPassphraseHash } from "@/lib/server/portal-member-store";
-import { hashMemberPassphrase, verifyMemberPassphrase } from "@/lib/server/portal-passphrase";
+import { hashMemberPassphrase, sealMemberPassphrase, verifyMemberPassphrase } from "@/lib/server/portal-passphrase";
 import {
   SESSION_COOKIE,
   createSessionValue,
@@ -44,7 +44,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: wrong }, { status: 401 });
   }
 
-  const updated = await setMemberPassphraseHash(teamSlug, member.id, await hashMemberPassphrase(next));
+  const updated = await setMemberPassphraseHash(
+    teamSlug,
+    member.id,
+    await hashMemberPassphrase(next),
+    sealMemberPassphrase(next),
+  );
   if (!updated) {
     return NextResponse.json({ error: "名簿に見つかりません。" }, { status: 404 });
   }
