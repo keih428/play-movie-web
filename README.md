@@ -269,7 +269,6 @@ Vercel の Project Settings > Environment Variables に以下を設定する。
 
 * ログインは、署名を付けたクッキー(`HttpOnly`、400日)。`middleware.ts` が開くたびに期限を延ばす。
 * 合言葉(`PORTAL_PASSPHRASE`)を変えると、全員がログインし直しになる。
-* **自分の合言葉**(`/t/utvb/account`):部の合言葉に加えて1人ずつ決められる。ログインの確かめは scrypt のハッシュ(`passphrase_hash`)。忘れた人のために、`PORTAL_SESSION_SECRET` から作った鍵で AES-256-GCM で包んだ控え(`passphrase_sealed`)も残し、システム担当が名簿の「編集」→「合言葉を見る」で見られる(2026-11-20 から)。それより前に決めた人の控えは、次にログインしたとき・決め直したときに入る。控えが無い人は「忘れたので消す」。`PORTAL_SESSION_SECRET` を変えると控えは開けなくなる(ログインはそのまま通る)。
 * **名簿の並び**:学年の上から、同じ学年の中は背番号の順(数字 → 文字 → なし)。`sortMembers` で、名簿を使うすべての一覧に効く。
 * **背番号**:プレイヤーは数字、スタッフは T・M・C などの文字(4文字まで)。名簿に背番号(`members.number`)があれば、画面でも Slack の文でも、名前の前に付けて出す(`15林`。`Member.displayName`、SQL では `MEMBER_DISPLAY_NAME_SQL`)。取り込む表に「背番号」の列があるときだけ書き換える。
 * 名簿はリポジトリに入れない。名簿が空のあいだは、合言葉を入れた人がログイン画面から Markdown の表を貼って取り込める。

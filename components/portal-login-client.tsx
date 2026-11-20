@@ -192,7 +192,7 @@ export function PortalLoginClient({ redirectTo, teamName, teamSlug }: PortalLogi
               名前を選び直す
             </button>
           </div>
-          <p className="tp-small tp-muted">忘れたときは、システム担当に聞いてください(教えるか、消して名前を選ぶだけで入れるようにします)。</p>
+          <p className="tp-small tp-muted">忘れたときは、システム担当に消してもらうと、また名前を選ぶだけで入れます。</p>
         </form>
       ) : (
         groupByGrade(members).map(([label, group]) => (
