@@ -84,6 +84,9 @@ export function PortalMembersClient({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [shownPassphrase, setShownPassphrase] = useState<{ memberId: string; passphrase: string | null } | null>(
+    null,
+  );
 
   const current = members.find((member) => member.id === currentMemberId);
   const editingTarget = editingId && editingId !== "new" ? members.find((member) => member.id === editingId) : undefined;
@@ -147,6 +150,17 @@ export function PortalMembersClient({
       setMembers(result.members);
       setRosterMarkdown("");
       setMessage(`取り込みました(追加 ${result.added}人、上書き ${result.updated}人)。`);
+    });
+  }
+
+  // 忘れた人に教えるため、自分の合言葉の控えを見る(システム担当だけ)。控えが無い人は消すしかない。
+  function showPassphrase(memberId: string) {
+    void run(async () => {
+      const result = await sendJson<{ passphrase: string | null }>(
+        buildTeamApiPath(`/api/portal/members/${memberId}/passphrase`, teamSlug),
+        "GET",
+      );
+      setShownPassphrase({ memberId, passphrase: result.passphrase });
     });
   }
 
@@ -480,7 +494,27 @@ export function PortalMembersClient({
                       onClick={() => clearPassphrase(editingTarget.id)}
                     >
                       忘れたので消す
+                    </button>{" "}
+                    <button
+                      type="button"
+                      className="tp-mini"
+                      disabled={busy}
+                      onClick={() => showPassphrase(editingTarget.id)}
+                    >
+                      合言葉を見る
                     </button>
+                  </>
+                ) : null}
+                {editingTarget.hasPassphrase && shownPassphrase?.memberId === editingTarget.id ? (
+                  <>
+                    <br />
+                    {shownPassphrase.passphrase !== null ? (
+                      <>
+                        合言葉:<strong>{shownPassphrase.passphrase}</strong>(本人にだけ伝えてください)
+                      </>
+                    ) : (
+                      "控えがありません(11/20 より前に決めて、それからログインし直していない人)。教えられないので「忘れたので消す」を使ってください。"
+                    )}
                   </>
                 ) : null}
               </p>

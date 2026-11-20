@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canManageSite, isPortalTeam } from "@/lib/domain/portal";
-import { setMemberPassphraseHash } from "@/lib/server/portal-member-store";
+import { getMemberPassphraseSealed, setMemberPassphraseHash } from "@/lib/server/portal-member-store";
+import { openMemberPassphrase } from "@/lib/server/portal-passphrase";
 import {
   SESSION_COOKIE,
   createSessionValue,
@@ -13,6 +14,21 @@ type RouteContext = {
     memberId: string;
   }>;
 };
+
+// 部員が自分の合言葉を忘れたとき、システム担当が控えを見て教える(2026-11-20 から)。
+// 控えが無い(2026-11-20 より前に決めて、それからログインし直していない)ときは null。そのときは下の DELETE で消す。
+export async function GET(request: NextRequest, context: RouteContext) {
+  const teamSlug = request.nextUrl.searchParams.get("team") ?? "";
+  const current = isPortalTeam(teamSlug) ? await getCurrentMember(teamSlug) : null;
+  if (!current || !canManageSite(current)) {
+    return NextResponse.json({ error: "合言葉を見る権限がありません。" }, { status: 403 });
+  }
+
+  const { memberId } = await context.params;
+  const sealed = await getMemberPassphraseSealed(teamSlug, memberId);
+  const passphrase = sealed ? openMemberPassphrase(sealed) : null;
+  return NextResponse.json({ passphrase }, { headers: { "Cache-Control": "no-store" } });
+}
 
 // 部員が自分の合言葉を忘れたとき、システム担当が消す(2026-10-25 から)。
 // 消すとその人はログインし直しになり、次は名前を選ぶだけで入れる(入ったあとで決め直してもらう)。
