@@ -25,7 +25,7 @@
 // - セッターコール K3「zone3 High」は 3C・3B、K6「Zone3-Low」は 3D・3A → D と A はエンドライン側
 // - クイック KA・KB(セッターの前)は 3C、KC(セッターの後ろ)は 3B、KD(後ろに離れる)は 2C → C が左・B が右
 // - レセプションの始まりは、ゾーン5 なら B、ゾーン7 なら A、ゾーン1 なら D が多い(コートの内側)→ A・B が右、C・D が左
-// なお、試合ビューアのコースの図(lib/domain/court.ts の getEndZonePoint)は、サブゾーンの置き方がこれと違う。
+// 試合ビューアのコースの図(lib/domain/court.ts の getEndZonePoint)も、2026-11-22 からこの置き方にそろえた。
 //
 // サーブの始まり(エンドラインの後ろ)は、左から 5・7・6・9・1(court.ts の SERVE_START_ZONES と同じ)。
 
