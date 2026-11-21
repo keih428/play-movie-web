@@ -53,30 +53,40 @@ export function getZonePoint(zone: number, courtSide: "near" | "far"): Point | u
   };
 }
 
+// サブゾーン:そのコートのチームから見て(ネットが上)、[ネット側, エンドライン側] × [左, 右]。
+// 打ち込み補助(lib/domain/input-assist/zone.ts の SUB_ZONE_GRID)と同じ。
+const SUB_ZONE_GRID: string[][] = [
+  ["C", "B"],
+  ["D", "A"],
+];
+
+/**
+ * 相手のコート(図の上)の、ボールが落ちた場所。
+ * ゾーンは「そのコートのチームから見た向き」なので、相手のコートは図では上下も左右も逆になる
+ * (相手から見た左 = 図の右。ゾーン4 は図の右上ではなくネット際の右、ゾーン1 は奥の左)。
+ * 2026-11-22 まで左右を逆にしておらず、4 と 2、5 と 1、7 と 9 が入れ替わって描かれていた。
+ */
 export function getEndZonePoint(zone: number, subZone?: string): Point | undefined {
   const grid = ZONE_GRID[zone];
   if (!grid) {
     return undefined;
   }
 
-  const cellWidth = (COURT_RIGHT - COURT_LEFT) / 3;
-  const cellHeight = HALF_COURT_HEIGHT / 3;
-  const cellLeft = COURT_LEFT + cellWidth * grid.column;
-  const cellTop = NET_Y - cellHeight * (grid.row + 1);
+  // そのコートのチームから見た位置(x:左 0 → 右 1、y:ネット 0 → エンドライン 1)。
+  let dx = 0.5;
+  let dy = 0.5;
   const normalizedSubZone = subZone?.trim().toUpperCase();
-  const subZonePosition: Record<string, Point> = {
-    A: { x: 0.25, y: 0.75 },
-    D: { x: 0.75, y: 0.75 },
-    B: { x: 0.25, y: 0.25 },
-    C: { x: 0.75, y: 0.25 },
-  };
-  const position = normalizedSubZone
-    ? subZonePosition[normalizedSubZone]
-    : undefined;
+  const subRow = SUB_ZONE_GRID.findIndex((letters) => letters.includes(normalizedSubZone ?? ""));
+  if (normalizedSubZone && subRow !== -1) {
+    dx = SUB_ZONE_GRID[subRow].indexOf(normalizedSubZone) === 0 ? 0.25 : 0.75;
+    dy = subRow === 0 ? 0.25 : 0.75;
+  }
+  const x = (grid.column + dx) / 3;
+  const y = (grid.row + dy) / 3;
 
   return {
-    x: cellLeft + cellWidth * (position?.x ?? 0.5),
-    y: cellTop + cellHeight * (position?.y ?? 0.5),
+    x: COURT_RIGHT - (COURT_RIGHT - COURT_LEFT) * x,
+    y: NET_Y - HALF_COURT_HEIGHT * y,
   };
 }
 
@@ -179,7 +189,8 @@ export function getEndZoneRect(zone: number): { x: number; y: number; width: num
   }
   const width = (COURT_RIGHT - COURT_LEFT) / 3;
   const height = HALF_COURT_HEIGHT / 3;
-  return { x: COURT_LEFT + width * grid.column, y: NET_Y - height * (grid.row + 1), width, height };
+  // 相手のコートなので左右を逆に(相手から見た左の列が、図の右)。
+  return { x: COURT_LEFT + width * (2 - grid.column), y: NET_Y - height * (grid.row + 1), width, height };
 }
 
 export const END_ZONES = [4, 3, 2, 7, 8, 9, 5, 6, 1];

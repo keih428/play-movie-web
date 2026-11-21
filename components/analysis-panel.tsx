@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getEndZonePoint } from "@/lib/domain/court";
 import { SideoutMetricTable } from "@/components/sideout-metric-table";
 import { getEffectGrade, getSkillLabel } from "@/lib/domain/display";
 import { formatRotationLabel } from "@/lib/domain/rotation";
@@ -737,33 +738,8 @@ function getZonePoint(zone: number, courtSide: "near" | "far"): Point | undefine
 }
 
 function getAttackEndPoint(play: ParsedPlay): Point | undefined {
-  if (typeof play.endZone !== "number") {
-    return undefined;
-  }
-
-  const grid = ZONE_GRID[play.endZone];
-  if (!grid) {
-    return undefined;
-  }
-
-  const cellWidth = COURT_WIDTH / 3;
-  const cellHeight = HALF_COURT_HEIGHT / 3;
-  const cellLeft = COURT_LEFT + cellWidth * grid.column;
-  const cellTop = NET_Y - cellHeight * (grid.row + 1);
-  const subZonePosition: Record<string, Point> = {
-    A: { x: 0.25, y: 0.75 },
-    D: { x: 0.75, y: 0.75 },
-    B: { x: 0.25, y: 0.25 },
-    C: { x: 0.75, y: 0.25 },
-  };
-  const position = play.endSubZone
-    ? subZonePosition[play.endSubZone.trim().toUpperCase()]
-    : undefined;
-
-  return {
-    x: cellLeft + cellWidth * (position?.x ?? 0.5),
-    y: cellTop + cellHeight * (position?.y ?? 0.5),
-  };
+  // 相手のコートの置き方は、コースの図と同じ(lib/domain/court.ts。2026-11-22 に左右の向きを直した)。
+  return typeof play.endZone === "number" ? getEndZonePoint(play.endZone, play.endSubZone) : undefined;
 }
 
 function getAttackStartPoint(play: ParsedPlay): Point {
